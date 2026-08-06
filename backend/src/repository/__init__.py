@@ -109,6 +109,7 @@ from repository.session_repo import (
 )
 
 from repository.versions import (
+    count_versions,
     create_version,
     get_version,
     list_versions,
@@ -130,6 +131,7 @@ __all__ = [
     "create_run",
     "create_session",
     "create_user",
+    "count_versions",
     "create_version",
     "delete_api_key",
     "delete_asset",

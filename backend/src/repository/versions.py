@@ -102,3 +102,19 @@ async def get_version(session: AsyncSession, version_id: str) -> dict[str, Any] 
         "created_by": v.created_by,
         "created_at": v.created_at.isoformat(),
     }
+
+
+async def count_versions(resource_type: str, resource_id: str) -> int:
+    """Count version snapshots for a resource."""
+    from core.infra.database import VersionDB, get_session_factory
+    from sqlalchemy import func, select
+
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(func.count(VersionDB.id)).where(
+                VersionDB.resource_type == resource_type,
+                VersionDB.resource_id == resource_id,
+            )
+        )
+        return int(result.scalar_one() or 0)
