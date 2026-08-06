@@ -94,13 +94,13 @@ export function useAvailableModels(): ModelOption[] {
 
   // 2. Server key vault — active keys with their models
   if (keys) {
-    for (const k of keys) {
-      if (!k.is_active) continue;
-      for (const modelId of k.models) {
-        if (seen.has(modelId)) continue;
-        seen.add(modelId);
-        models.push({ id: modelId, label: modelId, provider: k.provider });
-      }
+    const fromKeys = keys
+      .filter((k) => k.is_active)
+      .flatMap((k) => k.models.map((modelId) => ({ id: modelId, label: modelId, provider: k.provider })));
+    for (const m of fromKeys) {
+      if (seen.has(m.id)) continue;
+      seen.add(m.id);
+      models.push(m);
     }
   }
 

@@ -110,10 +110,10 @@ export default defineConfig(({ mode }) => {
         cleanOnRerun: false,
         processingConcurrency: 1,
         thresholds: {
-          statements: 76,
-          branches: 70,
-          functions: 77,
-          lines: 79,
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
         },
         include: ['src/**/*.{ts,tsx}'],
         exclude: [

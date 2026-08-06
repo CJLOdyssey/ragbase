@@ -74,6 +74,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     let authenticated = false;
 
+    function applySession(me: Awaited<ReturnType<typeof getMe>>) {
+      authenticated = true;
+      setUser({ userId: me.id, email: me.email, username: me.username, roles: me.roles });
+      localStorage.setItem('agentstudio_user_id', me.id);
+      window.dispatchEvent(new CustomEvent('auth:login'));
+    }
+
+    async function restoreSession(): Promise<boolean> {
+      const me = await getMe();
+      if (!cancelled && me) {
+        applySession(me);
+        await mergeGuest();
+        return true;
+      }
+      return false;
+    }
+
+    async function refreshAndRestore(): Promise<void> {
+      const rt = localStorage.getItem('agentstudio_refresh_token');
+      let refreshed = false;
+      if (rt) {
+        try {
+          const res = await refreshTokens(rt);
+          setTokens(res.access_token, res.refresh_token);
+          refreshed = true;
+        } catch {
+          clearTokens();
+        }
+      }
+      if (!cancelled && refreshed) {
+        try {
+          const me = await getMe();
+          if (me) {
+            applySession(me);
+            await mergeGuest();
+          }
+        } catch {
+          // Refresh succeeded but /me still failed — token invalid
+        }
+      }
+    }
+
     async function init() {
       try {
         const config = await getAuthConfig();
@@ -91,14 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Legacy mode: still try to restore session from stored token
         if (isLegacy) {
           try {
-            const me = await getMe();
-            if (!cancelled && me) {
-              authenticated = true;
-              setUser({ userId: me.id, email: me.email, username: me.username, roles: me.roles });
-              localStorage.setItem('agentstudio_user_id', me.id);
-              window.dispatchEvent(new CustomEvent('auth:login'));
-              await mergeGuest();
-            }
+            await restoreSession();
           } catch {
             clearTokens();
           }
@@ -106,42 +141,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Token may be expired — try refreshing before giving up
         try {
-          const me = await getMe();
-          if (!cancelled && me) {
-            authenticated = true;
-            setUser({ userId: me.id, email: me.email, username: me.username, roles: me.roles });
-            localStorage.setItem('agentstudio_user_id', me.id);
-            window.dispatchEvent(new CustomEvent('auth:login'));
-            await mergeGuest();
-          }
+          await restoreSession();
         } catch {
-          // Token may be expired — try refreshing before giving up
-          const rt = localStorage.getItem('agentstudio_refresh_token');
-          let refreshed = false;
-          if (rt) {
-            try {
-              const res = await refreshTokens(rt);
-              setTokens(res.access_token, res.refresh_token);
-              refreshed = true;
-            } catch {
-              clearTokens();
-            }
-          }
-          if (!cancelled && refreshed) {
-            try {
-              const me = await getMe();
-              if (me) {
-                authenticated = true;
-                setUser({ userId: me.id, email: me.email, username: me.username, roles: me.roles });
-                localStorage.setItem('agentstudio_user_id', me.id);
-                window.dispatchEvent(new CustomEvent('auth:login'));
-                await mergeGuest();
-              }
-            } catch {
-              // Refresh succeeded but /me still failed — token invalid
-            }
-          }
+          await refreshAndRestore();
         }
       } catch {
         // Auth config unavailable

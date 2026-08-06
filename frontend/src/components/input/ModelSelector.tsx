@@ -11,6 +11,99 @@ interface Props {
   onConfigure?: () => void;
 }
 
+function ModelOptionButton({
+  m,
+  isSelected,
+  isFocused,
+  onSelect,
+}: {
+  m: ModelOption;
+  isSelected: boolean;
+  isFocused: boolean;
+  onSelect: () => void;
+}) {
+  const { t } = useTranslation();
+  const badge =
+    m.status === 'deprecated'
+      ? <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">{t('model.statusDeprecated')}</span>
+      : m.status === 'sunset'
+        ? <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">{t('model.statusSunset')}</span>
+        : null;
+  return (
+    <button
+      data-model-option
+      className={`flex items-center justify-between w-full px-3 py-2 border-none rounded-md bg-transparent text-[var(--color-text-primary)] text-sm cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-surface-hover)] ${isSelected ? 'bg-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] text-[var(--color-accent)]' : ''} ${isFocused ? 'outline-2 outline-[var(--color-accent)] outline-offset-[-2px]' : ''}`}
+      onClick={onSelect}
+      role="option"
+      aria-selected={isSelected}
+      type="button"
+    >
+      <span>{m.label}</span>
+      {badge}
+    </button>
+  );
+}
+
+function modelsReady(models: ModelOption[], selectedModel: string): boolean {
+  return models.length > 0 || models.some((m) => m.id === selectedModel);
+}
+
+function SelectorLabel({ hasLoadedOnce, isEmpty, current, selectedModel }: {
+  hasLoadedOnce: boolean;
+  isEmpty: boolean;
+  current: ModelOption | undefined;
+  selectedModel: string;
+}) {
+  const { t } = useTranslation();
+  if (!hasLoadedOnce) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <Loader2 size={10} className="animate-spin" />
+        {selectedModel || t('model.loading') || '加载中'}
+      </span>
+    );
+  }
+  return <>{isEmpty ? t('model.configure') : (current?.label ?? t('model.noModels'))}</>;
+}
+
+function OptionsList({ providers, models, selectedModel, focusIdx, onSelect }: {
+  providers: [string, ModelOption[]][];
+  models: ModelOption[];
+  selectedModel: string;
+  focusIdx: number;
+  onSelect: (id: string) => void;
+}) {
+  const allOptions = providers.flatMap(([, list]) => list);
+  return (
+    <>
+      {providers.length > 1
+        ? providers.map(([provider, list]) => (
+            <div key={provider} className="flex flex-col">
+              <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{provider}</div>
+              {list.map((m) => (
+                <ModelOptionButton
+                  key={m.id}
+                  m={m}
+                  isSelected={m.id === selectedModel}
+                  isFocused={allOptions.indexOf(m) === focusIdx}
+                  onSelect={() => onSelect(m.id)}
+                />
+              ))}
+            </div>
+          ))
+        : models.map((m, idx) => (
+            <ModelOptionButton
+              key={m.id}
+              m={m}
+              isSelected={m.id === selectedModel}
+              isFocused={idx === focusIdx}
+              onSelect={() => onSelect(m.id)}
+            />
+          ))}
+    </>
+  );
+}
+
 export default function ModelSelector({ models, selectedModel, onChange, onConfigure }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -23,7 +116,7 @@ export default function ModelSelector({ models, selectedModel, onChange, onConfi
 
   // Latch once models are available: render-phase state adjustment (React-sanctioned
   // pattern for deriving state from props). Prevents flashing "请配置API" on refresh.
-  if (!hasLoadedOnce && (models.length > 0 || models.some((m) => m.id === selectedModel))) {
+  if (!hasLoadedOnce && modelsReady(models, selectedModel)) {
     setHasLoadedOnce(true);
   }
 
@@ -122,63 +215,14 @@ export default function ModelSelector({ models, selectedModel, onChange, onConfi
         aria-haspopup={isEmpty ? undefined : 'listbox'}
       >
         <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-          {!hasLoadedOnce ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Loader2 size={10} className="animate-spin" />
-              {selectedModel || t('model.loading') || '加载中'}
-            </span>
-          ) : isEmpty ? t('model.configure') : (current?.label ?? t('model.noModels'))}
+          <SelectorLabel hasLoadedOnce={hasLoadedOnce} isEmpty={isEmpty} current={current} selectedModel={selectedModel} />
         </span>
         {hasLoadedOnce && <ChevronDown size={10} className={`flex-shrink-0 text-[var(--color-text-muted)] transition-transform duration-150 ease ${open ? 'rotate-180' : ''}`} />}
       </button>
 
       {open && !isEmpty && (
         <div className="absolute bottom-[calc(100%+8px)] left-0 min-w-[200px] max-h-[280px] overflow-y-auto bg-[var(--color-surface-raised)] rounded-[10px] shadow-[0_12px_40px_rgba(0,0,0,0.25)] z-[500] p-1" ref={listRef} role="listbox">
-          {providers.length > 1
-            ? providers.map(([provider, list]) => (
-                <div key={provider} className="flex flex-col">
-                  <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{provider}</div>
-                  {list.map((m) => {
-                    const globalIdx = allOptions.indexOf(m);
-                    return (
-                      <button
-                        key={m.id}
-                        data-model-option
-                        className={`flex items-center justify-between w-full px-3 py-2 border-none rounded-md bg-transparent text-[var(--color-text-primary)] text-sm cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-surface-hover)] ${m.id === selectedModel ? 'bg-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] text-[var(--color-accent)]' : ''} ${globalIdx === focusIdx ? 'outline-2 outline-[var(--color-accent)] outline-offset-[-2px]' : ''}`}
-                        onClick={() => handleSelect(m.id)}
-                        role="option"
-                        aria-selected={m.id === selectedModel}
-                        type="button"
-                      >
-                        <span>{m.label}</span>
-                        {m.status === 'deprecated' && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">{t('model.statusDeprecated')}</span>
-                        )}
-                        {m.status === 'sunset' && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">{t('model.statusSunset')}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))
-            : models.map((m, idx) => (
-                <button
-                  key={m.id}
-                  data-model-option
-                  className={`flex items-center justify-between w-full px-3 py-2 border-none rounded-md bg-transparent text-[var(--color-text-primary)] text-sm cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-surface-hover)] ${m.id === selectedModel ? 'bg-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] text-[var(--color-accent)]' : ''} ${idx === focusIdx ? 'outline-2 outline-[var(--color-accent)] outline-offset-[-2px]' : ''}`}
-                  onClick={() => handleSelect(m.id)}
-                  role="option"
-                  aria-selected={m.id === selectedModel}
-                  type="button"
-                >
-                  <span>{m.label}</span>
-                  {m.status === 'deprecated' && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">{t('model.statusDeprecated')}</span>
-                  )}
-                  {m.status === 'sunset' && <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">{t('model.statusSunset')}</span>}
-                </button>
-              ))}
+          <OptionsList providers={providers} models={models} selectedModel={selectedModel} focusIdx={focusIdx} onSelect={handleSelect} />
         </div>
       )}
     </div>

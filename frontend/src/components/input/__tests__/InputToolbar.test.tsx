@@ -28,24 +28,30 @@ vi.mock('@/hooks/useMessageComposer', () => ({
   }),
 }));
 
-const { mockPaletteFiltered, mockPaletteUpdateFromValue, mockPaletteHandleKeyDown, mockPaletteOpen } = vi.hoisted(() => ({
-  mockPaletteFiltered: [] as Array<{ id: string; label: string; source: string }>,
-  mockPaletteUpdateFromValue: vi.fn(),
-  mockPaletteHandleKeyDown: vi.fn(() => false),
-  mockPaletteOpen: false,
-}));
+const paletteMock = vi.hoisted(() => {
+  let open = false;
+  return {
+    filtered: [] as Array<{ id: string; label: string; source: string }>,
+    updateFromValue: vi.fn(),
+    handleKeyDown: vi.fn(() => false),
+    selectCommand: vi.fn(),
+    close: vi.fn(),
+    set openValue(v: boolean) { open = v; },
+    get openValue() { return open; },
+  };
+});
 
 vi.mock('@/hooks/useCommandPalette', () => ({
   useCommandPalette: () => ({
-    filtered: mockPaletteFiltered,
+    filtered: paletteMock.filtered,
     filteredCommands: [],
-    activeIndex: -1,
-    open: mockPaletteOpen,
-    updateFromValue: mockPaletteUpdateFromValue,
-    handleKeyDown: mockPaletteHandleKeyDown,
-    selectCommand: vi.fn(),
+    activeIndex: 0,
+    open: paletteMock.openValue,
+    updateFromValue: paletteMock.updateFromValue,
+    handleKeyDown: paletteMock.handleKeyDown,
+    selectCommand: paletteMock.selectCommand,
     setActiveIndex: vi.fn(),
-    close: vi.fn(),
+    close: paletteMock.close,
   }),
 }));
 
@@ -60,7 +66,20 @@ vi.mock('@/contexts/SettingsContext', () => ({
 }));
 
 vi.mock('@/components/input/ModelSelector', () => ({ default: ({ models }: { models: unknown[] }) => (models?.length ? <div data-testid="model-selector" /> : null) }));
-vi.mock('@/components/input/FileAttach', () => ({ default: () => <div data-testid="file-attach" /> }));
+vi.mock('@/components/input/FileAttach', () => ({
+  default: ({ onReject }: { onReject: (r: Array<{ file: File; reason: 'size_exceeded' | 'type_denied' }>) => void }) => (
+    <button
+      type="button"
+      data-testid="file-attach"
+      onClick={() =>
+        onReject([
+          { file: new File(['x'], 'big.txt'), reason: 'size_exceeded' },
+          { file: new File(['y'], 'bad.txt'), reason: 'type_denied' },
+        ])
+      }
+    />
+  ),
+}));
 vi.mock('@/components/input/CommandDropdown', () => ({ default: () => <div data-testid="command-dropdown" /> }));
 
 const defaultProps = {
@@ -75,6 +94,8 @@ const defaultProps = {
 describe('InputToolbar', { tags: ['unit'] }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    paletteMock.openValue = false;
+    paletteMock.filtered.length = 0;
   });
 
   it('renders basic elements', () => {
@@ -144,7 +165,7 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     render(<InputToolbar {...defaultProps} />);
     const textarea = screen.getByPlaceholderText('Type a message...');
     fireEvent.change(textarea, { target: { value: '/' } });
-    expect(mockPaletteUpdateFromValue).toHaveBeenCalled();
+    expect(paletteMock.updateFromValue).toHaveBeenCalled();
   });
 
   it('addFiles via ref does not crash', () => {
@@ -202,6 +223,50 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     const files = Array.from({ length: 6 }, (_, i) => new File([`content${i}`], `file${i}.txt`));
     act(() => { ref.current?.addFiles(files); });
     expect(mockToast).toHaveBeenCalled();
+  });
+
+  it('executes local command via palette on Enter', () => {
+    const onExecuteCommand = vi.fn();
+    paletteMock.openValue = true;
+    paletteMock.filtered.push({ id: 'c1', label: 'Cmd', source: 'local' });
+    paletteMock.handleKeyDown.mockReturnValue(true);
+    render(<InputToolbar {...defaultProps} onExecuteCommand={onExecuteCommand} />);
+    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), { key: 'Enter', shiftKey: false });
+    expect(paletteMock.close).toHaveBeenCalled();
+    expect(onExecuteCommand).toHaveBeenCalledWith('c1');
+  });
+
+  it('inserts agent command replacement when palette handled Enter', () => {
+    paletteMock.openValue = true;
+    paletteMock.filtered.push({ id: 'c2', label: 'Cmd2', source: 'agent' });
+    paletteMock.handleKeyDown.mockReturnValue(true);
+    paletteMock.selectCommand.mockReturnValue('/Cmd2 ');
+    render(<InputToolbar {...defaultProps} />);
+    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), { key: 'Enter', shiftKey: false });
+    expect(paletteMock.selectCommand).toHaveBeenCalledWith(0);
+    expect(mockComposerSetValue).toHaveBeenCalledWith('/Cmd2 ');
+  });
+
+  it('does not select command on Shift+Enter when palette open', () => {
+    paletteMock.openValue = true;
+    paletteMock.handleKeyDown.mockReturnValue(true);
+    render(<InputToolbar {...defaultProps} />);
+    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), { key: 'Enter', shiftKey: true });
+    expect(paletteMock.selectCommand).not.toHaveBeenCalled();
+  });
+
+  it('falls through to composer when palette does not handle key', () => {
+    paletteMock.handleKeyDown.mockReturnValue(false);
+    render(<InputToolbar {...defaultProps} />);
+    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), { key: 'Enter', shiftKey: false });
+    expect(mockComposerHandleKeyDown).toHaveBeenCalled();
+  });
+
+  it('shows fileTooLarge and fileTypeDenied toasts on rejections', () => {
+    render(<InputToolbar {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('file-attach'));
+    expect(mockToast).toHaveBeenCalledWith('home.fileTooLarge', 'error');
+    expect(mockToast).toHaveBeenCalledWith('home.fileTypeDenied', 'error');
   });
 
 });

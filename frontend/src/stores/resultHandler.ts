@@ -12,28 +12,52 @@ function makeRunResult(code: string): RunResult {
 type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 type GetFn = () => ChatState;
 
-export function handleThinkingDone(s: ChatState, msg: WsThinkingDoneEvent): Partial<ChatState> {
-  const continuingId = s.continuingId;
-  const pending = s.pendingVersions;
-  const pendingThinking = s.pendingThinkingVersions;
-  if (!continuingId) {
-    return {};
-  }
-  Logger.warn('[chat] continue thinking_done — no streamingId; falling back to direct replacement (continuingId=%s)', continuingId);
+function bumpLastVersion(versions: string[] | null | undefined, replacement: string): string[] | undefined {
+  if (!versions || versions.length === 0) return versions ?? undefined;
+  const next = [...versions];
+  next[next.length - 1] = replacement;
+  return next;
+}
+
+function buildReplacementMessage(
+  newId: string,
+  agentName: string,
+  content: string,
+  thinking: string,
+  versions: string[] | undefined,
+  thinkingVersions: string[] | undefined,
+): ChatMessage {
+  return {
+    id: newId,
+    role: 'agent',
+    agent_name: agentName,
+    content,
+    thinking,
+    round_number: 0,
+    created_at: new Date().toISOString(),
+    versions,
+    thinkingVersions,
+    currentVersion: versions ? versions.length - 1 : undefined,
+  };
+}
+
+function findContinuingTarget(s: ChatState, continuingId: string): { oldMsg: ChatMessage | null; base: ChatMessage[] } {
   const contIdx = s.messages.findIndex((m) => m.id === continuingId);
   const oldMsg = contIdx >= 0 ? s.messages[contIdx] : null;
+  const base = contIdx >= 0 ? s.messages.slice(0, contIdx) : s.messages.filter((m) => m.id !== continuingId);
+  return { oldMsg, base };
+}
+
+export function handleThinkingDone(s: ChatState, msg: WsThinkingDoneEvent): Partial<ChatState> {
+  if (!s.continuingId) {
+    return {};
+  }
+  Logger.warn('[chat] continue thinking_done — no streamingId; falling back to direct replacement (continuingId=%s)', s.continuingId);
+  const { oldMsg, base } = findContinuingTarget(s, s.continuingId);
+  const newId = crypto.randomUUID?.() || uid();
   const oldContent = oldMsg?.content || '';
   const oldThinking = oldMsg?.thinking || '';
-  const base = contIdx >= 0 ? s.messages.slice(0, contIdx) : s.messages.filter((m) => m.id !== continuingId);
-  const newId = crypto.randomUUID?.() || uid();
-  const newVersions = pending ? [...pending] : undefined;
-  const newThinkingVersions = pendingThinking ? [...pendingThinking] : undefined;
-  if (newVersions && newVersions.length > 0) {
-    newVersions[newVersions.length - 1] = oldContent;
-  }
-  if (newThinkingVersions && newThinkingVersions.length > 0) {
-    newThinkingVersions[newThinkingVersions.length - 1] = msg.thinking || oldThinking;
-  }
+  const thinking = msg.thinking || oldThinking;
   return {
     streamingId: newId,
     continuingId: null,
@@ -41,18 +65,7 @@ export function handleThinkingDone(s: ChatState, msg: WsThinkingDoneEvent): Part
     pendingThinkingVersions: null,
     messages: [
       ...base,
-      {
-        id: newId,
-        role: 'agent',
-        agent_name: oldMsg?.agent_name || msg.agent_name || 'Agent',
-        content: oldContent,
-        thinking: msg.thinking || oldThinking,
-        round_number: 0,
-        created_at: new Date().toISOString(),
-        versions: newVersions,
-        thinkingVersions: newThinkingVersions,
-        currentVersion: newVersions ? newVersions.length - 1 : undefined,
-      },
+      buildReplacementMessage(newId, oldMsg?.agent_name || msg.agent_name || 'Agent', oldContent, thinking, bumpLastVersion(s.pendingVersions, oldContent), bumpLastVersion(s.pendingThinkingVersions, thinking)),
     ],
     currentRole: msg.agent_name || 'Agent',
     wsStatus: 'connected' as ChatState['wsStatus'],

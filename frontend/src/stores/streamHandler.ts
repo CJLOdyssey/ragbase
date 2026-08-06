@@ -57,173 +57,155 @@ export function handleApprovalRequest(set: SetFn, msg: WsApprovalRequestEvent): 
 }
 
 
-export function handleStreamStart(s: ChatState, msg: WsStreamEvent, chunk: string): Partial<ChatState> {
-  const newId = crypto.randomUUID?.() || uid();
-  const pending = s.pendingVersions;
-  const pendingThinking = s.pendingThinkingVersions;
-  const continuingId = s.continuingId;
-  if (s.editTargetId) {
-    // Edit-regenerate: the new answer REPLACES the target message. Old content
-    // is archived into versions; the stream starts fresh (not old+new).
-    const targetIdx = s.messages.findIndex((m) => m.id === s.editTargetId);
-    const oldMsg = targetIdx >= 0 ? s.messages[targetIdx] : null;
-    const oldContent = oldMsg?.content || '';
-    const oldThinking = oldMsg?.thinking || '';
-    const newVersions = oldMsg?.versions ? [...oldMsg.versions, oldContent] : [oldContent];
-    const newThinkingVersions = oldMsg?.thinkingVersions
-      ? [...oldMsg.thinkingVersions, oldThinking]
-      : (oldThinking ? [oldThinking] : undefined);
-    Logger.info('[chat] edit stream — merging into target msg %s', s.editTargetId);
-    return {
-      streamingId: newId,
-      editTargetId: null,
-      continuingId: null,
-      pendingVersions: null,
-      pendingThinkingVersions: null,
-      skipThinking: false,
-      messages: s.messages.map((m) => {
-        if (m.id !== s.editTargetId) return m;
-        return {
-          ...m,
-          id: newId,
-          content: chunk,
-          thinking: '',
-          versions: newVersions,
-          thinkingVersions: newThinkingVersions,
-          currentVersion: newVersions.length - 1,
-        };
-      }),
-      currentRole: msg.agent_name || 'Agent',
-      wsStatus: 'connected' as ChatState['wsStatus'],
-    };
-  }
-  if (continuingId) {
-    Logger.info('[chat] continue stream — replacing interrupted msg (continuingId=%s, newId=%s)', continuingId, newId);
-    const contIdx = s.messages.findIndex((m) => m.id === continuingId);
-    const oldMsg = contIdx >= 0 ? s.messages[contIdx] : null;
-    const oldContent = oldMsg?.content || '';
-    const oldThinking = oldMsg?.thinking || '';
-    const base = contIdx >= 0 ? s.messages.slice(0, contIdx) : s.messages;
-    const newVersions = pending ? [...pending] : undefined;
-    const newThinkingVersions = pendingThinking ? [...pendingThinking] : undefined;
-    if (newVersions && newVersions.length > 0) {
-      newVersions[newVersions.length - 1] = oldContent;
-    }
-    if (newThinkingVersions && newThinkingVersions.length > 0) {
-      newThinkingVersions[newThinkingVersions.length - 1] = oldThinking;
-    }
-    return {
-      streamingId: newId, continuingId: null, pendingVersions: null, pendingThinkingVersions: null, skipThinking: false,
-      messages: [...base, { id: newId, role: 'agent', agent_name: oldMsg?.agent_name || msg.agent_name || 'Agent', content: oldContent + chunk, thinking: oldThinking, round_number: 0, created_at: new Date().toISOString(), versions: newVersions, thinkingVersions: newThinkingVersions, currentVersion: newVersions ? newVersions.length - 1 : undefined }],
-      currentRole: msg.agent_name || 'Agent', wsStatus: 'connected' as ChatState['wsStatus'],
-    };
-  }
+type StreamBranchMsg = { agent_name?: string };
+
+function bumpLastVersion(versions: string[] | null | undefined, replacement: string): string[] | undefined {
+  if (!versions || versions.length === 0) return versions ?? undefined;
+  const next = [...versions];
+  next[next.length - 1] = replacement;
+  return next;
+}
+
+// Edit-regenerate: the new answer REPLACES the target message. Old content
+// is archived into versions; the stream starts fresh (not old+new).
+function startEditBranch(s: ChatState, msg: StreamBranchMsg, chunk: string, newId: string, chunkInContent: boolean): Partial<ChatState> {
+  const targetIdx = s.messages.findIndex((m) => m.id === s.editTargetId);
+  const oldMsg = targetIdx >= 0 ? s.messages[targetIdx] : null;
+  const oldContent = oldMsg?.content || '';
+  const oldThinking = oldMsg?.thinking || '';
+  const newVersions = oldMsg?.versions ? [...oldMsg.versions, oldContent] : [oldContent];
+  const newThinkingVersions = oldMsg?.thinkingVersions
+    ? [...oldMsg.thinkingVersions, oldThinking]
+    : (oldThinking ? [oldThinking] : undefined);
   return {
-    streamingId: newId, pendingVersions: null, pendingThinkingVersions: null, skipThinking: false,
-    messages: [...s.messages, { id: newId, role: 'agent', agent_name: msg.agent_name || 'Agent', content: chunk, thinking: '', round_number: 0, created_at: new Date().toISOString(), versions: pending ? [...pending, chunk] : undefined, thinkingVersions: pendingThinking ? [...pendingThinking, ''] : undefined, currentVersion: pending ? pending.length : undefined }],
-    currentRole: msg.agent_name || 'Agent', wsStatus: 'connected' as ChatState['wsStatus'],
+    streamingId: newId,
+    editTargetId: null,
+    continuingId: null,
+    pendingVersions: null,
+    pendingThinkingVersions: null,
+    skipThinking: false,
+    messages: s.messages.map((m) => {
+      if (m.id !== s.editTargetId) return m;
+      return {
+        ...m,
+        id: newId,
+        content: chunkInContent ? chunk : '',
+        thinking: chunkInContent ? '' : chunk,
+        versions: newVersions,
+        thinkingVersions: newThinkingVersions,
+        currentVersion: newVersions.length - 1,
+      };
+    }),
+    currentRole: msg.agent_name || 'Agent',
+    wsStatus: 'connected' as ChatState['wsStatus'],
   };
 }
 
-export function handleThinkingStreamNew(s: ChatState, msg: WsThinkingStreamEvent, chunk: string): Partial<ChatState> {
-  const newId = crypto.randomUUID?.() || uid();
-  const continuingId = s.continuingId;
-  const pending = s.pendingVersions;
-  const pendingThinking = s.pendingThinkingVersions;
-  if (s.editTargetId) {
-    const targetIdx = s.messages.findIndex((m) => m.id === s.editTargetId);
-    const oldMsg = targetIdx >= 0 ? s.messages[targetIdx] : null;
-    const oldContent = oldMsg?.content || '';
-    const oldThinking = oldMsg?.thinking || '';
-    const newVersions = oldMsg?.versions ? [...oldMsg.versions, oldContent] : [oldContent];
-    const newThinkingVersions = oldMsg?.thinkingVersions
-      ? [...oldMsg.thinkingVersions, oldThinking]
-      : (oldThinking ? [oldThinking] : undefined);
-    return {
-      streamingId: newId,
-      editTargetId: null,
-      continuingId: null,
-      pendingVersions: null,
-      pendingThinkingVersions: null,
-      skipThinking: false,
-      messages: s.messages.map((m) => {
-        if (m.id !== s.editTargetId) return m;
-        return {
-          ...m,
-          id: newId,
-          content: '',
-          thinking: chunk,
-          versions: newVersions,
-          thinkingVersions: newThinkingVersions,
-          currentVersion: newVersions.length - 1,
-        };
-      }),
-      currentRole: msg.agent_name || 'Agent',
-      wsStatus: 'connected' as ChatState['wsStatus'],
-    };
-  }
-  if (continuingId) {
-    const contIdx = s.messages.findIndex((m) => m.id === continuingId);
-    const oldMsg = contIdx >= 0 ? s.messages[contIdx] : null;
-    const oldContent = oldMsg?.content || '';
-    const oldThinking = oldMsg?.thinking || '';
-    const base = contIdx >= 0 ? s.messages.slice(0, contIdx) : s.messages;
-    const newVersions = pending ? [...pending] : undefined;
-    const newThinkingVersions = pendingThinking ? [...pendingThinking] : undefined;
-    if (newVersions && newVersions.length > 0) {
-      newVersions[newVersions.length - 1] = oldContent;
-    }
-    if (newThinkingVersions && newThinkingVersions.length > 0) {
-      newThinkingVersions[newThinkingVersions.length - 1] = oldThinking + chunk;
-    }
-    return {
-      streamingId: newId,
-      continuingId: null,
-      pendingVersions: null,
-      pendingThinkingVersions: null,
-      skipThinking: false,
-      messages: [
-        ...base,
-        {
-          id: newId,
-          role: 'agent',
-          agent_name: oldMsg?.agent_name || msg.agent_name || 'Agent',
-          content: oldContent,
-          thinking: oldThinking + chunk,
-          round_number: 0,
-          created_at: new Date().toISOString(),
-          versions: newVersions,
-          thinkingVersions: newThinkingVersions,
-          currentVersion: newVersions ? newVersions.length - 1 : undefined,
-        },
-      ],
-      currentRole: msg.agent_name || 'Agent',
-      wsStatus: 'connected' as ChatState['wsStatus'],
-    };
-  }
+function startContinueBranch(s: ChatState, msg: StreamBranchMsg, chunk: string, newId: string, chunkInContent: boolean): Partial<ChatState> {
+  const contIdx = s.messages.findIndex((m) => m.id === s.continuingId);
+  const oldMsg = contIdx >= 0 ? s.messages[contIdx] : null;
+  const oldContent = oldMsg?.content || '';
+  const oldThinking = oldMsg?.thinking || '';
+  const base = contIdx >= 0 ? s.messages.slice(0, contIdx) : s.messages;
+  const agentName = oldMsg?.agent_name || msg.agent_name || 'Agent';
   return {
     streamingId: newId,
     continuingId: null,
     pendingVersions: null,
     pendingThinkingVersions: null,
+    skipThinking: false,
     messages: [
-      ...s.messages,
+      ...base,
       {
         id: newId,
         role: 'agent',
-        agent_name: msg.agent_name || 'Agent',
-        content: '',
-        thinking: chunk,
+        agent_name: agentName,
+        content: chunkInContent ? oldContent + chunk : oldContent,
+        thinking: chunkInContent ? oldThinking : oldThinking + chunk,
         round_number: 0,
         created_at: new Date().toISOString(),
-        versions: pending ? [...pending, ''] : undefined,
-        thinkingVersions: pendingThinking ? [...pendingThinking, chunk] : undefined,
-        currentVersion: pending ? pending.length : undefined,
+        versions: bumpLastVersion(s.pendingVersions, oldContent),
+        thinkingVersions: bumpLastVersion(s.pendingThinkingVersions, chunkInContent ? oldThinking : oldThinking + chunk),
+        currentVersion: s.pendingVersions ? s.pendingVersions.length - 1 : undefined,
       },
     ],
     currentRole: msg.agent_name || 'Agent',
     wsStatus: 'connected' as ChatState['wsStatus'],
   };
+}
+
+function startFreshStream(s: ChatState, msg: StreamBranchMsg, chunk: string, newId: string): Partial<ChatState> {
+  const pending = s.pendingVersions;
+  const pendingThinking = s.pendingThinkingVersions;
+  return {
+    streamingId: newId,
+    pendingVersions: null,
+    pendingThinkingVersions: null,
+    skipThinking: false,
+    messages: [...s.messages, {
+      id: newId,
+      role: 'agent',
+      agent_name: msg.agent_name || 'Agent',
+      content: chunk,
+      thinking: '',
+      round_number: 0,
+      created_at: new Date().toISOString(),
+      versions: pending ? [...pending, chunk] : undefined,
+      thinkingVersions: pendingThinking ? [...pendingThinking, ''] : undefined,
+      currentVersion: pending ? pending.length : undefined,
+    }],
+    currentRole: msg.agent_name || 'Agent',
+    wsStatus: 'connected' as ChatState['wsStatus'],
+  };
+}
+
+function startFreshThinking(s: ChatState, msg: StreamBranchMsg, chunk: string, newId: string): Partial<ChatState> {
+  const pending = s.pendingVersions;
+  const pendingThinking = s.pendingThinkingVersions;
+  return {
+    streamingId: newId,
+    continuingId: null,
+    pendingVersions: null,
+    pendingThinkingVersions: null,
+    messages: [...s.messages, {
+      id: newId,
+      role: 'agent',
+      agent_name: msg.agent_name || 'Agent',
+      content: '',
+      thinking: chunk,
+      round_number: 0,
+      created_at: new Date().toISOString(),
+      versions: pending ? [...pending, ''] : undefined,
+      thinkingVersions: pendingThinking ? [...pendingThinking, chunk] : undefined,
+      currentVersion: pending ? pending.length : undefined,
+    }],
+    currentRole: msg.agent_name || 'Agent',
+    wsStatus: 'connected' as ChatState['wsStatus'],
+  };
+}
+
+export function handleStreamStart(s: ChatState, msg: WsStreamEvent, chunk: string): Partial<ChatState> {
+  const newId = crypto.randomUUID?.() || uid();
+  if (s.editTargetId) {
+    Logger.info('[chat] edit stream — merging into target msg %s', s.editTargetId);
+    return startEditBranch(s, msg, chunk, newId, true);
+  }
+  if (s.continuingId) {
+    Logger.info('[chat] continue stream — replacing interrupted msg (continuingId=%s, newId=%s)', s.continuingId, newId);
+    return startContinueBranch(s, msg, chunk, newId, true);
+  }
+  return startFreshStream(s, msg, chunk, newId);
+}
+
+export function handleThinkingStreamNew(s: ChatState, msg: WsThinkingStreamEvent, chunk: string): Partial<ChatState> {
+  const newId = crypto.randomUUID?.() || uid();
+  if (s.editTargetId) {
+    return startEditBranch(s, msg, chunk, newId, false);
+  }
+  if (s.continuingId) {
+    return startContinueBranch(s, msg, chunk, newId, false);
+  }
+  return startFreshThinking(s, msg, chunk, newId);
 }
 
 export function handleStreamEvent(

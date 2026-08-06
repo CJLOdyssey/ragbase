@@ -6,6 +6,28 @@ import { createStreamHandler } from './chatStreaming';
 import { useChatStore } from './chatStore';
 import Logger from '../utils/logger';
 
+type KeyItem = Awaited<ReturnType<typeof listKeys>>[number];
+
+function resolveKey(
+  activeKeys: KeyItem[],
+  persistedModel: string | undefined,
+): { keyId?: string; model?: string } {
+  // Route to the key whose models contain the model the user actually selected in the UI,
+  // so a SiliconFlow/Groq model is never sent to a DeepSeek base URL.
+  const owningKey = persistedModel ? activeKeys.find((k) => k.models.includes(persistedModel)) : undefined;
+  if (owningKey) {
+    return { keyId: owningKey.id, model: persistedModel ?? undefined };
+  }
+  const defaultKey = activeKeys.find((k) => k.is_default && k.is_active) || activeKeys[0];
+  if (defaultKey) {
+    return {
+      keyId: defaultKey.id,
+      model: persistedModel && defaultKey.models.includes(persistedModel) ? persistedModel : defaultKey.models[0],
+    };
+  }
+  return {};
+}
+
 export async function submitRequirement(
   requirement: string,
   session_id?: string,
@@ -26,21 +48,9 @@ export async function submitRequirement(
     const keys = await listKeys();
     const activeKeys = keys.filter((k) => k.is_active);
     const persistedModel = localStorage.getItem('agentstudio-selected-model');
-    // Route to the key whose models contain the model the user actually selected in the UI,
-    // so a SiliconFlow/Groq model is never sent to a DeepSeek base URL.
-    const owningKey = persistedModel ? activeKeys.find((k) => k.models.includes(persistedModel)) : undefined;
-    if (owningKey) {
-      keyId = owningKey.id;
-      model = persistedModel ?? undefined;
-    } else {
-      const defaultKey = activeKeys.find((k) => k.is_default && k.is_active) || activeKeys[0];
-      if (defaultKey) {
-        keyId = defaultKey.id;
-        model = (persistedModel && defaultKey.models.includes(persistedModel))
-          ? persistedModel
-          : defaultKey.models[0];
-      }
-    }
+    const resolved = resolveKey(activeKeys, persistedModel ?? undefined);
+    keyId = resolved.keyId;
+    model = resolved.model;
   } catch {
     // Key vault unavailable
   }

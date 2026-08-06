@@ -14,8 +14,8 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-empty': ['error', { allowEmptyCatch: true }],
-      complexity: ['warn', 15],
-      'max-depth': ['warn', 3],
+      complexity: ['error', 15],
+      'max-depth': ['error', 3],
     },
   },
   {
