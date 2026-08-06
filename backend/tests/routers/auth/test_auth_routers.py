@@ -50,7 +50,7 @@ class TestAuthLogin:
         assert "expires_in" in data
         assert "user" in data
         assert data["access_token"] != ""
-        assert data["refresh_token"] != ""
+        assert data["refresh_token"] == ""
         assert len(data["access_token"].split(".")) == 3
 
     def test_login_wrong_password(self, client):
@@ -73,18 +73,20 @@ class TestAuthLogin:
             json={"email": "admin@test.com", "password": "admin123"},
         )
         assert login_resp.status_code == 200
-        refresh_token = login_resp.json()["refresh_token"]
-        resp = client.post(
-            "/api/auth/refresh", json={"refresh_token": refresh_token}
-        )
+        assert "refresh_token" in login_resp.cookies
+        resp = client.post("/api/auth/refresh")
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
 
     def test_refresh_token_invalid(self, client):
-        resp = client.post(
-            "/api/auth/refresh", json={"refresh_token": "totally_invalid_token"}
+        client.post(
+            "/api/auth/login",
+            json={"email": "admin@test.com", "password": "admin123"},
         )
+        client.cookies.clear()
+        client.cookies.set("refresh_token", "totally_invalid_token", domain="testserver")
+        resp = client.post("/api/auth/refresh")
         assert resp.status_code == 401
 
     def test_refresh_token_rotation(self, client):
@@ -93,18 +95,33 @@ class TestAuthLogin:
             json={"email": "admin@test.com", "password": "admin123"},
         )
         assert login_resp.status_code == 200
-        first_refresh = login_resp.json()["refresh_token"]
+        first_refresh = login_resp.cookies["refresh_token"]
 
-        resp1 = client.post(
-            "/api/auth/refresh", json={"refresh_token": first_refresh}
-        )
+        resp1 = client.post("/api/auth/refresh")
         assert resp1.status_code == 200
-        resp1.json()["refresh_token"]
+        assert resp1.cookies["refresh_token"] != first_refresh
 
-        resp2 = client.post(
-            "/api/auth/refresh", json={"refresh_token": first_refresh}
-        )
+        client.cookies.clear()
+        client.cookies.set("refresh_token", first_refresh, domain="testserver")
+        resp2 = client.post("/api/auth/refresh")
         assert resp2.status_code == 401
+
+    def test_refresh_requires_cookie(self, client):
+        resp = client.post("/api/auth/refresh")
+        assert resp.status_code == 401
+
+    def test_refresh_rotates_cookie(self, client):
+        login = client.post(
+            "/api/auth/login",
+            json={"email": "admin@test.com", "password": "admin123"},
+        )
+        assert login.status_code == 200
+        assert login.json()["refresh_token"] == ""
+        assert "refresh_token" in login.cookies
+        old = login.cookies["refresh_token"]
+        resp = client.post("/api/auth/refresh")
+        assert resp.status_code == 200
+        assert resp.cookies["refresh_token"] != old
 
 
 class TestAuthRegister:

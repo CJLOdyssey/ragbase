@@ -21,15 +21,15 @@ from .schemas import (
     ACCESS_TOKEN_TTL,
     AuthResponse,
     LoginRequest,
-    LogoutRequest,
-    RefreshRequest,
     _build_user_response,
     _check_rate_limit,
     _clear_access_token_cookie,
+    _clear_refresh_token_cookie,
     _client_ip,
     _create_auth_response,
     _mask_email,
     _set_access_token_cookie,
+    _set_refresh_token_cookie,
 )
 
 logger = get_logger(__name__)
@@ -80,33 +80,40 @@ async def login(body: LoginRequest, request: Request, response: Response) -> Any
 
     auth_resp = await _create_auth_response(user.id, user.email, user.username, body.remember_me)
     _set_access_token_cookie(response, auth_resp.access_token)
-    return auth_resp
+    _set_refresh_token_cookie(response, auth_resp.refresh_token)
+    return AuthResponse(
+        access_token=auth_resp.access_token,
+        refresh_token="",
+        expires_in=auth_resp.expires_in,
+        user=auth_resp.user,
+    )
 
 
 @router.post("/refresh", response_model=AuthResponse)
-async def refresh(body: RefreshRequest, response: Response) -> Any:
-    """Exchange a refresh token for new access and refresh tokens."""
-    user, family_id = await consume_refresh_token(body.refresh_token)
+async def refresh(request: Request, response: Response) -> Any:
+    """Exchange the refresh_token cookie for new access and refresh tokens."""
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise error_response(ErrorCode.AUTH_TOKEN_EXPIRED, detail="登录已过期，请重新登录")
+    user, family_id = await consume_refresh_token(refresh_token)
     if user is None:
+        _clear_refresh_token_cookie(response)
         raise error_response(ErrorCode.AUTH_TOKEN_EXPIRED, detail="登录已过期，请重新登录")
 
-    new_refresh_token_raw, _ = await create_refresh_token(
-        user.id, family_id=family_id, ttl_days=7
-    )
+    new_refresh_token_raw, _ = await create_refresh_token(user.id, family_id=family_id, ttl_days=7)
     access_token = create_token(user.id, AUTH_SECRET, ttl=ACCESS_TOKEN_TTL)
     user_resp = await _build_user_response(user.id, user.email, user.username)
 
     _set_access_token_cookie(response, access_token)
-    return AuthResponse(
-        access_token="",
-        refresh_token=new_refresh_token_raw,
-        expires_in=ACCESS_TOKEN_TTL,
-        user=user_resp,
-    )
+    _set_refresh_token_cookie(response, new_refresh_token_raw)
+    return AuthResponse(access_token="", refresh_token="", expires_in=ACCESS_TOKEN_TTL, user=user_resp)
 
 
 @router.post("/logout", status_code=204)
-async def logout(body: LogoutRequest, response: Response, _user: CurrentUser = Depends(get_current_user)) -> None:
-    """Invalidate a refresh token to log the user out and clear the access_token cookie."""
-    await consume_refresh_token(body.refresh_token)
+async def logout(request: Request, response: Response, _user: CurrentUser = Depends(get_current_user)) -> None:
+    """Invalidate the refresh_token cookie and clear both auth cookies."""
+    refresh_token = request.cookies.get("refresh_token")
+    if refresh_token:
+        await consume_refresh_token(refresh_token)
     _clear_access_token_cookie(response)
+    _clear_refresh_token_cookie(response)

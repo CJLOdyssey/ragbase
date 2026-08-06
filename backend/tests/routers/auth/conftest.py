@@ -9,6 +9,7 @@ from starlette.testclient import TestClient
 
 # ── Environment setup (must happen before app import) ─────────────────────
 os.environ["AUTH_MODE"] = "legacy"
+os.environ["DEV_MODE"] = "1"  # auth cookies non-secure so TestClient jar sends them over http
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ["KEY_VAULT_SECRET"] = "0123456789abcdef0123456789abcdef"

@@ -67,8 +67,8 @@ class TestAuthSchemas:
     def test_refresh_request(self):
         from routers.auth.schemas import RefreshRequest
 
-        req = RefreshRequest(refresh_token="rtok")
-        assert req.refresh_token == "rtok"
+        req = RefreshRequest()
+        assert req.model_dump() == {}
 
     def test_forgot_password_request(self):
         from routers.auth.schemas import ForgotPasswordRequest
@@ -85,8 +85,8 @@ class TestAuthSchemas:
     def test_logout_request(self):
         from routers.auth.schemas import LogoutRequest
 
-        req = LogoutRequest(refresh_token="tok")
-        assert req.refresh_token == "tok"
+        req = LogoutRequest()
+        assert req.model_dump() == {}
 
     def test_change_password_request(self):
         from routers.auth.schemas import ChangePasswordRequest

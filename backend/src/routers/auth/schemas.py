@@ -44,7 +44,7 @@ class LoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    """Refresh token arrives via httpOnly cookie — body intentionally empty."""
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -58,7 +58,7 @@ class ResetPasswordRequest(BaseModel):
 
 
 class LogoutRequest(BaseModel):
-    refresh_token: str
+    """Logout reads refresh_token from httpOnly cookie — body intentionally empty."""
 
 
 class ChangePasswordRequest(BaseModel):
@@ -185,6 +185,41 @@ def _clear_access_token_cookie(response: Response) -> None:
     """Clear the access_token httpOnly cookie on logout."""
     response.set_cookie(
         key="access_token",
+        value="",
+        httponly=True,
+        samesite="lax",
+        max_age=0,
+        path="/api",
+    )
+
+
+REFRESH_TOKEN_TTL = 7 * 86400  # 7 days — matches create_refresh_token default ttl_days=7
+
+
+def _set_refresh_token_cookie(response: Response, refresh_token: str) -> None:
+    """Set the refresh token as an httpOnly cookie (prevents XSS theft).
+
+    httpOnly (inaccessible to JS) + SameSite=Lax + existing XSRF header
+    pattern per OWASP CSRF Prevention. Path scoped to /api. Read
+    server-side only by the refresh/logout endpoints.
+    """
+    import os
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        secure=os.environ.get("DEV_MODE", "") != "1",
+        max_age=REFRESH_TOKEN_TTL,
+        path="/api",
+    )
+
+
+def _clear_refresh_token_cookie(response: Response) -> None:
+    """Clear the refresh_token httpOnly cookie on logout."""
+    response.set_cookie(
+        key="refresh_token",
         value="",
         httponly=True,
         samesite="lax",
