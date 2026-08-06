@@ -19,7 +19,11 @@ import {
   getMe,
   refreshTokens,
 } from '../../api/client/auth';
-import { clearTokens, setTokens } from '../../api/client/instance';
+import {
+  clearTokens,
+  getRefreshToken,
+  setTokens,
+} from '../../api/client/instance';
 import { useChatStore } from '../../stores/chatStore';
 
 function clearLocalConversations() {
@@ -115,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function refreshAndRestore(): Promise<void> {
-      const rt = localStorage.getItem('agentstudio_refresh_token');
+      const rt = getRefreshToken();
       let refreshed = false;
       if (rt) {
         try {
@@ -147,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLegacyMode(isLegacy);
 
         // Skip /me call if no refresh token exists — avoids 401 console noise for guests
-        const rt = localStorage.getItem('agentstudio_refresh_token');
+        const rt = getRefreshToken();
         if (!rt) {
           setLoading(false);
           return;
@@ -183,19 +187,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     void init();
 
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'agentstudio_refresh_token' && !e.newValue) {
-        setUser(null);
-        clearTokens();
-        clearLocalConversations();
-        setLoginModalOpen(true);
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-
     return () => {
       cancelled = true;
-      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 

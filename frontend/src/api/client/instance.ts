@@ -16,25 +16,17 @@ const api = axios.create({
   withCredentials: true,
 });
 
-const REFRESH_KEY = 'agentstudio_refresh_token';
+// refresh_token lives in memory only — never localStorage (one XSS would exfiltrate it).
+// Page reload clears it: user re-authenticates via the access_token cookie or re-login.
+let refreshToken: string | null = null;
 
-function getRefreshToken(): string | null {
-  try {
-    return localStorage.getItem(REFRESH_KEY);
-  } catch {
-    return null;
-  }
+export function getRefreshToken(): string | null {
+  return refreshToken;
 }
-let refreshToken: string | null = getRefreshToken();
 
-/** Store or clear the refresh_token only — access_token is an httpOnly cookie set by the server. */
+/** Store or clear the refresh_token in memory only — access_token is an httpOnly cookie set by the server. */
 export function setTokens(_access: string | null, refresh: string | null) {
   refreshToken = refresh;
-  if (refresh) {
-    localStorage.setItem(REFRESH_KEY, refresh);
-  } else {
-    localStorage.removeItem(REFRESH_KEY);
-  }
 }
 
 /** Access token is now an httpOnly cookie — not readable from JS. Returns null. */
@@ -47,12 +39,6 @@ export function clearTokens() {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e: StorageEvent) => {
-    if (e.key === REFRESH_KEY && !e.newValue) {
-      refreshToken = null;
-      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-    }
-  });
   window.addEventListener('auth:unauthorized', () => {
     clearTokens();
   });

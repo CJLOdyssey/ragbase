@@ -26,6 +26,7 @@ vi.mock('@/api/client/auth', () => ({
 vi.mock('@/api/client/instance', () => ({
   setTokens: vi.fn(),
   clearTokens: vi.fn(),
+  getRefreshToken: vi.fn().mockReturnValue(null),
 }));
 
 function AuthProbe() {

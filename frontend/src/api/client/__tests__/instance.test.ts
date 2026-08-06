@@ -56,8 +56,6 @@ vi.mock('../../utils/logger', () => ({
   error: vi.fn(),
 }));
 
-const REFRESH_KEY = 'agentstudio_refresh_token';
-
 describe('instance', { tags: ['unit'] }, () => {
   beforeEach(() => {
     vi.resetModules();
@@ -72,27 +70,27 @@ describe('instance', { tags: ['unit'] }, () => {
   });
 
   describe('setTokens', () => {
-    it('ignores access parameter and stores refresh token', async () => {
-      const { setTokens } = await import('../instance');
+    it('ignores access parameter and stores refresh token in memory', async () => {
+      const { setTokens, getRefreshToken } = await import('../instance');
       setTokens('some-access', 'refresh-456');
 
-      expect(localStorage.getItem(REFRESH_KEY)).toBe('refresh-456');
+      expect(getRefreshToken()).toBe('refresh-456');
+      expect(localStorage.getItem('agentstudio_refresh_token')).toBeNull();
     });
 
     it('removes refresh token when null is passed', async () => {
-      localStorage.setItem(REFRESH_KEY, 'old-refresh');
-
-      const { setTokens } = await import('../instance');
+      const { setTokens, getRefreshToken } = await import('../instance');
+      setTokens('access', 'old-refresh');
       setTokens(null, null);
 
-      expect(localStorage.getItem(REFRESH_KEY)).toBeNull();
+      expect(getRefreshToken()).toBeNull();
     });
 
     it('only stores refresh token when passed', async () => {
-      const { setTokens } = await import('../instance');
+      const { setTokens, getRefreshToken } = await import('../instance');
       setTokens(null, 'refresh-only');
 
-      expect(localStorage.getItem(REFRESH_KEY)).toBe('refresh-only');
+      expect(getRefreshToken()).toBe('refresh-only');
     });
   });
 
@@ -105,12 +103,12 @@ describe('instance', { tags: ['unit'] }, () => {
 
   describe('clearTokens', () => {
     it('removes refresh token', async () => {
-      localStorage.setItem(REFRESH_KEY, 'refresh');
-
-      const { clearTokens } = await import('../instance');
+      const { setTokens, clearTokens, getRefreshToken } =
+        await import('../instance');
+      setTokens('access', 'refresh');
       clearTokens();
 
-      expect(localStorage.getItem(REFRESH_KEY)).toBeNull();
+      expect(getRefreshToken()).toBeNull();
     });
   });
 
@@ -277,7 +275,6 @@ describe('instance', { tags: ['unit'] }, () => {
         },
       );
 
-      localStorage.removeItem(REFRESH_KEY);
       const authSpy = vi.fn();
       window.addEventListener('auth:unauthorized', authSpy);
 
@@ -318,8 +315,6 @@ describe('instance', { tags: ['unit'] }, () => {
     });
 
     it('rejects if already retrying', async () => {
-      localStorage.setItem(REFRESH_KEY, 'my-refresh');
-
       let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
       mockAxiosInstance.interceptors.response.use.mockImplementation(
         (
@@ -330,7 +325,8 @@ describe('instance', { tags: ['unit'] }, () => {
         },
       );
 
-      await import('../instance');
+      const { setTokens } = await import('../instance');
+      setTokens('access', 'my-refresh');
 
       const config = {
         method: 'GET' as string,
@@ -367,8 +363,6 @@ describe('instance', { tags: ['unit'] }, () => {
     });
 
     it('refreshes token on 401 and retries', async () => {
-      localStorage.setItem(REFRESH_KEY, 'my-refresh-token');
-
       const mockRefresh = await import('../auth');
       (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockResolvedValue(
         {
@@ -387,7 +381,8 @@ describe('instance', { tags: ['unit'] }, () => {
         },
       );
 
-      await import('../instance');
+      const { setTokens } = await import('../instance');
+      setTokens('access', 'my-refresh-token');
 
       const axiosErr = new (await import('axios')).AxiosError(
         'Unauthorized',
@@ -428,8 +423,6 @@ describe('instance', { tags: ['unit'] }, () => {
     });
 
     it('dispatches auth:unauthorized when refresh fails', async () => {
-      localStorage.setItem(REFRESH_KEY, 'bad-refresh');
-
       const mockRefresh = await import('../auth');
       (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Refresh failed'),
@@ -448,7 +441,8 @@ describe('instance', { tags: ['unit'] }, () => {
       const authSpy = vi.fn();
       window.addEventListener('auth:unauthorized', authSpy);
 
-      await import('../instance');
+      const { setTokens } = await import('../instance');
+      setTokens('access', 'bad-refresh');
 
       const axiosErr = new (await import('axios')).AxiosError(
         'Unauthorized',
