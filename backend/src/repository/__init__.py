@@ -3,6 +3,15 @@ Explicit imports from each submodule — no star-imports."""
 
 # ruff: noqa: I001 — isort wants alphabetical, we group by module
 
+from repository.assets import (
+    create_asset,
+    delete_asset,
+    get_asset,
+    increment_asset_usage,
+    list_assets_by_user,
+    set_asset_indexed,
+)
+
 from repository.attachments import (
     create_attachment,
     delete_attachment,
@@ -33,6 +42,11 @@ from repository.auth import (
 )
 
 from repository.command_logs import log_command
+
+from repository.compose_templates import (
+    get_template,
+    list_templates,
+)
 
 from repository.core import apply_owner_filter
 
@@ -107,6 +121,7 @@ __all__ = [
     "clear_session_memories",
     "consume_refresh_token",
     "create_api_key",
+    "create_asset",
     "create_attachment",
     "create_audit_entry",
     "create_memory_entry",
@@ -117,6 +132,7 @@ __all__ = [
     "create_user",
     "create_version",
     "delete_api_key",
+    "delete_asset",
     "delete_attachment",
     "delete_memory_entry",
     "delete_prompt",
@@ -124,6 +140,7 @@ __all__ = [
     "get_api_key_for_model",
     "get_api_key_for_use",
     "get_api_keys",
+    "get_asset",
     "get_attachment_by_id",
     "get_default_api_key",
     "get_embedding_api_key",
@@ -141,6 +158,7 @@ __all__ = [
     "get_session_messages",
     "get_session_runs",
     "get_sessions",
+    "get_template",
     "get_tool_api_key",
     "get_user_by_email",
     "get_user_by_id",
@@ -148,8 +166,11 @@ __all__ = [
     "get_user_roles",
     "get_version",
     "increment_failed_logins",
+    "increment_asset_usage",
+    "list_assets_by_user",
     "list_attachments_by_run",
     "list_attachments_by_session",
+    "list_templates",
     "list_versions",
     "log_command",
     "log_key_usage",
@@ -159,6 +180,7 @@ __all__ = [
     "revoke_all_user_tokens",
     "revoke_token_family",
     "save_message",
+    "set_asset_indexed",
     "test_api_key_connection",
     "update_message_content",
     "update_message_versions",
