@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  listKeys,
+  createKey,
+  updateKey,
+  deleteKey,
+  testKeyConnection,
+  getKeyUsage,
+  fetchModelsFromProvider,
+} from '../keys';
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -10,16 +19,6 @@ const { mockApi } = vi.hoisted(() => ({
 }));
 
 vi.mock('../instance', () => ({ default: mockApi }));
-
-import {
-  listKeys,
-  createKey,
-  updateKey,
-  deleteKey,
-  testKeyConnection,
-  getKeyUsage,
-  fetchModelsFromProvider,
-} from '../keys';
 
 beforeEach(() => {
   vi.resetAllMocks();

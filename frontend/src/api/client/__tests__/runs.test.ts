@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { submitRequirement, resumeRun } from '../runs';
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -10,8 +11,6 @@ const { mockApi } = vi.hoisted(() => ({
 }));
 
 vi.mock('../instance', () => ({ default: mockApi }));
-
-import { submitRequirement, resumeRun } from '../runs';
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -42,7 +41,7 @@ describe('submitRequirement', { tags: ['unit'] }, () => {
       session_id: 's1',
       key_id: 'k1',
       model: 'gpt-4',
-      parentRunId: 'parent-1',
+      parent_run_id: 'parent-1',
     });
     expect(result).toEqual({ run_id: 'r1', status: 'queued', session_id: 's1' });
   });

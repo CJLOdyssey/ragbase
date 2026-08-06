@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as api from './client';
 import type { ModelOption } from '../types/input';
+import * as api from './client';
 
 // ---- Sessions ----
 

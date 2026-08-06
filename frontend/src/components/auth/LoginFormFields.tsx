@@ -1,6 +1,6 @@
-import type * as React from 'react';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
+import type * as React from 'react';
 
 const inputBase = 'w-full pl-9 pr-10 py-[10px] rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] text-sm outline-none box-border transition-[border-color,box-shadow] duration-200';
 

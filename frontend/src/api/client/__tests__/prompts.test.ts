@@ -1,4 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  listPrompts,
+  createPrompt,
+  updatePrompt,
+  deletePrompt,
+  generatePrompt,
+  validatePrompt,
+} from '../prompts';
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -10,15 +18,6 @@ const { mockApi } = vi.hoisted(() => ({
 }));
 
 vi.mock('../instance', () => ({ default: mockApi }));
-
-import {
-  listPrompts,
-  createPrompt,
-  updatePrompt,
-  deletePrompt,
-  generatePrompt,
-  validatePrompt,
-} from '../prompts';
 
 beforeEach(() => {
   vi.resetAllMocks();

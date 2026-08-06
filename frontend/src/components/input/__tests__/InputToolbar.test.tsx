@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { createRef } from 'react';
+import InputToolbar from '@/components/input/InputToolbar';
+import type { InputToolbarHandle } from '@/components/input/InputToolbar';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
@@ -60,9 +62,6 @@ vi.mock('@/contexts/SettingsContext', () => ({
 vi.mock('@/components/input/ModelSelector', () => ({ default: ({ models }: { models: unknown[] }) => (models?.length ? <div data-testid="model-selector" /> : null) }));
 vi.mock('@/components/input/FileAttach', () => ({ default: () => <div data-testid="file-attach" /> }));
 vi.mock('@/components/input/CommandDropdown', () => ({ default: () => <div data-testid="command-dropdown" /> }));
-
-import InputToolbar from '@/components/input/InputToolbar';
-import type { InputToolbarHandle } from '@/components/input/InputToolbar';
 
 const defaultProps = {
   onSend: vi.fn(),

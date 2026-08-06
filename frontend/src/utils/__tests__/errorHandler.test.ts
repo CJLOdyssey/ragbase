@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { installGlobalErrorHandlers } from '../errorHandler';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: {
@@ -10,8 +11,6 @@ const { mockLogger } = vi.hoisted(() => ({
 }));
 
 vi.mock('../logger', () => mockLogger);
-
-import { installGlobalErrorHandlers } from '../errorHandler';
 
 describe('installGlobalErrorHandlers', { tags: ['unit'] }, () => {
   beforeEach(() => {

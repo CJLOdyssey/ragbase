@@ -17,20 +17,11 @@
     "delete": "Delete",
     "danger": "Dangerous Action",
     "info": "Confirmation",
-    "deleteTeam": "Delete this team? This action cannot be undone.",
-    "deleteAgent": "Delete this agent? This action cannot be undone.",
     "title": "Confirm Delete",
-    "deleteTeamConfirm": "Delete this team? All agents in the team will also be deleted. This cannot be undone.",
-    "deleteAgentConfirm": "Delete this agent? This action cannot be undone.",
     "tip": "Notice"
   },
   "toast": {
     "newChat": "New chat created",
-    "teamCreated": "Team created",
-    "teamDeleted": "Team deleted",
-    "teamRenamed": "Team renamed",
-    "agentAdded": "Agent added",
-    "agentDeleted": "Agent deleted",
     "saved": "Auto saved",
     "requestAbandoned": "Switched conversation, current request abandoned",
     "saveSuccess": "Saved successfully",
@@ -43,6 +34,14 @@
   "app": {
     "title": "ContentStudio",
     "subtitle": "AI Content Creator"
+  },
+  "home": {
+    "placeholder": "Type a message…",
+    "send": "Send",
+    "stop": "Stop",
+    "maxFiles": "You can attach up to {{count}} files",
+    "fileTooLarge": "\"{{name}}\" exceeds the 50MB limit",
+    "fileTypeDenied": "File type not supported: \"{{name}}\""
   },
   "model": {
     "loading": "Loading...",

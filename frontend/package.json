@@ -110,10 +110,6 @@
     "@rollup/rollup-win32-x64-msvc": "^4.61.0"
   },
   "knip": {
-    "entry": [
-      "src/components/AgentStudio/workstation/*/index.ts",
-      "src/components/AgentStudio/workstation/shared/index.ts"
-    ],
     "project": [
       "src/**/*.{ts,tsx}"
     ],

@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useChatStore } from '../chatStore';
+import { editMessage, regenerateMessage, retry, continueGeneration } from '../chatActions';
+import type { ChatMessage } from '../../types';
 
 const { mockListKeys, mockSubmitReq, mockResumeRun } = vi.hoisted(() => ({
   mockListKeys: vi.fn().mockResolvedValue([{ id: 'key-1', is_default: true, is_active: true, models: ['deepseek-chat'] }]),
@@ -19,10 +22,6 @@ vi.mock('../../api/client', () => ({
 }));
 
 vi.mock('../chatStreaming', () => ({ createStreamHandler: vi.fn(() => vi.fn()) }));
-
-import { useChatStore } from '../chatStore';
-import { editMessage, regenerateMessage, retry, continueGeneration } from '../chatActions';
-import type { ChatMessage } from '../../types';
 
 function makeMsg(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return {

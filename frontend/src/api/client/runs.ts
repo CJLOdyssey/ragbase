@@ -12,7 +12,7 @@ export async function submitRequirement(
     session_id,
     key_id: key_id || undefined,
     model: model || undefined,
-    parentRunId: parent_run_id || undefined,
+    parent_run_id: parent_run_id || undefined,
   });
   return data;
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { listProviders } from '../providers';
 
 const { mockClient } = vi.hoisted(() => ({
   mockClient: {
@@ -10,8 +11,6 @@ const { mockClient } = vi.hoisted(() => ({
 }));
 
 vi.mock('../instance', () => ({ default: mockClient }));
-
-import { listProviders } from '../providers';
 
 beforeEach(() => {
   vi.resetAllMocks();

@@ -1,6 +1,12 @@
 import '@testing-library/jest-dom';
 import * as axeMatchers from 'vitest-axe/matchers';
 import { vi, expect } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { VirtuosoMockContext } from 'react-virtuoso';
+import type { ReactNode } from 'react';
+import { ToastProvider } from '../utils/useToast';
+import { SettingsProvider } from '../contexts/SettingsContext';
+import '../i18n/index';
 
 expect.extend(axeMatchers);
 
@@ -16,12 +22,6 @@ console.error = (...args: unknown[]) => {
   if (typeof args[0] === 'string' && args[0].includes('not wrapped in act')) return;
   _origErr.call(console, ...args);
 };
-import type { ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { VirtuosoMockContext } from 'react-virtuoso';
-import { SettingsProvider } from '../contexts/SettingsContext';
-import { ToastProvider } from '../utils/useToast';
-import '../i18n/index';
 
 vi.mock('../components/auth', () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,

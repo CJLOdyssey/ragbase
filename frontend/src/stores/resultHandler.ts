@@ -1,13 +1,13 @@
-import Logger from '../utils/logger';
-import { uid } from './uid';
-import { updateAnswerVersions } from '../api/client/sessions';
 import type { ChatState } from './chatTypes';
 import type { ChatMessage, RunResult } from '../types';
+import type { WsThinkingDoneEvent, WsResultEvent, WsTeamResultEvent, WsThumbsEvent } from './wsEvents';
+import { uid } from './uid';
+import { updateAnswerVersions } from '../api/client/sessions';
+import Logger from '../utils/logger';
 
 function makeRunResult(code: string): RunResult {
   return { code, requirement: '', pm_document: '', review: '', approved: false, status: 'completed' };
 }
-import type { WsThinkingDoneEvent, WsResultEvent, WsTeamResultEvent, WsThumbsEvent } from './wsEvents';
 
 type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 type GetFn = () => ChatState;

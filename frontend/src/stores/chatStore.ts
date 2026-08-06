@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import type { AppStatus, ChatMessage, RunResult } from '../types';
-import { disconnectRun } from '../api/websocket';
-import Logger from '../utils/logger';
-import { uid } from './uid';
 import type { ChatState } from './chatTypes';
+import { disconnectRun } from '../api/websocket';
+import { uid } from './uid';
+import Logger from '../utils/logger';
 
 export type { WsConnectionStatus, ChatState } from './chatTypes';
 

@@ -1,10 +1,10 @@
 import type { ChatMessage } from '../types';
 import { connectRun, disconnectRun } from '../api/websocket';
 import { submitRequirement as submitRequirementExternal, resumeRun, listKeys } from '../api/client';
-import Logger from '../utils/logger';
 import { uid } from './uid';
 import { createStreamHandler } from './chatStreaming';
 import { useChatStore } from './chatStore';
+import Logger from '../utils/logger';
 
 export async function submitRequirement(
   requirement: string,

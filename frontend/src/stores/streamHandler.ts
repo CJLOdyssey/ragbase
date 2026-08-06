@@ -1,9 +1,9 @@
-import Logger from '../utils/logger';
-import { uid } from './uid';
 import { create } from 'zustand';
-import type { ChatState } from './chatTypes';
 import type { ChatMessage } from '../types';
+import type { ChatState } from './chatTypes';
 import type { WsStreamEvent, WsThinkingStreamEvent, WsTeamResultEvent, WsApprovalRequestEvent, TeamVerdict } from './wsEvents';
+import { uid } from './uid';
+import Logger from '../utils/logger';
 
 type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 type GetFn = () => ChatState;

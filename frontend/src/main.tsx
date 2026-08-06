@@ -1,4 +1,13 @@
 import * as Sentry from '@sentry/react';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import { SettingsProvider } from './contexts/SettingsContext';
+import { installGlobalErrorHandlers } from './utils/errorHandler';
+import './i18n/index';
+import './styles/tailwind-entry.css';
+import './styles/modals/index.css';
+import './styles/workstation/index.css';
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN || '',
@@ -14,16 +23,6 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0, // 100% of error sessions
   enabled: !!import.meta.env.VITE_SENTRY_DSN,
 });
-
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import { SettingsProvider } from './contexts/SettingsContext';
-import { installGlobalErrorHandlers } from './utils/errorHandler';
-import './i18n/index';
-import './styles/tailwind-entry.css';
-import './styles/modals/index.css';
-import './styles/workstation/index.css';
 
 installGlobalErrorHandlers();
 

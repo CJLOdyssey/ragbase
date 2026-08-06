@@ -1,7 +1,7 @@
-import Logger from '../utils/logger';
-import { uid } from './uid';
 import type { ChatState } from './chatTypes';
 import type { WsMessageEvent, WsInfoEvent, WsErrorEvent, WsBalanceWarningEvent, WsOpenUrlEvent, WsBrowserFrameEvent } from './wsEvents';
+import { uid } from './uid';
+import Logger from '../utils/logger';
 
 type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 

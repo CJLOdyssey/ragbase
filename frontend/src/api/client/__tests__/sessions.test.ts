@@ -1,16 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-const { mockApi } = vi.hoisted(() => ({
-  mockApi: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-  },
-}));
-
-vi.mock('../instance', () => ({ default: mockApi }));
-
 import {
   listSessions,
   getSessionDetail,
@@ -23,6 +11,17 @@ import {
   listRuns,
   healthCheck,
 } from '../sessions';
+
+const { mockApi } = vi.hoisted(() => ({
+  mockApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
+vi.mock('../instance', () => ({ default: mockApi }));
 
 beforeEach(() => {
   vi.resetAllMocks();

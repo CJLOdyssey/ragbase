@@ -123,12 +123,12 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(function 
         }));
         const merged = [...prev, ...mapped].slice(0, MAX_FILES);
         if (merged.length < prev.length + mapped.length) {
-          toast(`最多附加 ${MAX_FILES} 个文件`, 'info');
+          toast(t('home.maxFiles', { count: MAX_FILES }), 'info');
         }
         return merged;
       });
     },
-    [toast],
+    [toast, t],
   );
 
   useImperativeHandle(ref, () => ({ addFiles }), [addFiles]);
@@ -137,13 +137,13 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(function 
     (rejections: FileRejection[]) => {
       for (const r of rejections) {
         if (r.reason === 'size_exceeded') {
-          toast(`"${r.file.name}" 超过 50MB 限制`, 'error');
+          toast(t('home.fileTooLarge', { name: r.file.name }), 'error');
         } else {
-          toast(`"${r.file.name}" 格式不支持`, 'error');
+          toast(t('home.fileTypeDenied', { name: r.file.name }), 'error');
         }
       }
     },
-    [toast],
+    [toast, t],
   );
 
   const handlePaste = useCallback(
@@ -200,10 +200,10 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(function 
             <button
               onClick={onStop}
               className="flex items-center justify-center gap-2 px-6 py-2 rounded-xl border-none text-base font-semibold cursor-pointer transition-all duration-150 min-h-10 bg-red-500/20 text-[var(--color-danger)] shadow-sm hover:bg-red-500/30 hover:-translate-y-px hover:shadow-md active:translate-y-0 active:shadow-sm"
-              aria-label={t('home.stop', '停止')}
+              aria-label={t('home.stop')}
             >
               <Square size={14} fill="currentColor" />
-              <span>{t('home.stop', '停止')}</span>
+              <span>{t('home.stop')}</span>
             </button>
           ) : (
             <button
