@@ -19,9 +19,8 @@ from pathlib import Path
 import httpx
 from core.infra.logging_config import get_logger
 from pydantic import BaseModel
-from repository import get_api_key_for_use, get_default_api_key
+from repository import get_api_key_for_use, get_default_api_key, get_run_for_user
 from repository.attachments import create_attachment
-from repository.run_repo import get_run
 
 logger = get_logger(__name__)
 
@@ -56,11 +55,10 @@ class ImageService:
         key_id: str | None = None,
         user_id: str = "",
     ) -> ImageResult:
-        run = await get_run(run_id)
+        run = await get_run_for_user(run_id, user_id)
         if run is None:
             raise ValueError("run 不存在")
-        if run.session_id is None:
-            raise ValueError("run 无会话，无法存储图片")
+        assert run.session_id is not None  # get_run_for_user denies sessionless runs
         handler = _PROVIDER_HANDLERS.get(provider)
         if handler is None:
             raise ValueError(f"不支持的图像 provider: {provider}")
@@ -71,15 +69,19 @@ class ImageService:
         storage_path = str(IMAGE_DIR / filename)
         Path(storage_path).write_bytes(png_bytes)
 
-        attachment = await create_attachment(
-            attachment_id=str(uuid.uuid4()),
-            session_id=run.session_id,
-            filename=filename,
-            content_type="image/png",
-            size_bytes=len(png_bytes),
-            storage_path=storage_path,
-            run_id=run_id,
-        )
+        try:
+            attachment = await create_attachment(
+                attachment_id=str(uuid.uuid4()),
+                session_id=run.session_id,
+                filename=filename,
+                content_type="image/png",
+                size_bytes=len(png_bytes),
+                storage_path=storage_path,
+                run_id=run_id,
+            )
+        except Exception:
+            Path(storage_path).unlink(missing_ok=True)
+            raise
         logger.info("Image generated | run=%s | provider=%s | %s", run_id, provider, storage_path)
         return ImageResult(attachment_id=attachment.id, storage_path=storage_path)
 
@@ -90,9 +92,10 @@ class ImageService:
         base_url: str | None = None
         if key_id:
             entry = await get_api_key_for_use(key_id, user_id)
-            if entry:
-                api_key = entry.get("api_key")
-                base_url = entry.get("base_url")
+            if entry is None:
+                raise ValueError("指定 API Key 不存在")
+            api_key = entry.get("api_key")
+            base_url = entry.get("base_url")
         if not api_key:
             entry = await get_default_api_key(user_id)
             if entry:

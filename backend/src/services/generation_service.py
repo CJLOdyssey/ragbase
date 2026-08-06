@@ -15,11 +15,15 @@ from repository import (
     create_session,
     get_api_key_for_model,
     get_default_api_key,
-    get_run,
+    get_run_for_user,
     update_run_result,
     update_run_status,
 )
-from repository.assets import get_asset, increment_asset_usage, list_assets_by_user
+from repository.assets import (
+    get_asset_for_user,
+    increment_asset_usage,
+    list_assets_by_user,
+)
 from repository.compose_templates import get_template
 from repository.run_repo import count_runs_by_parent, create_run
 
@@ -123,8 +127,8 @@ class GenerationService:
         )
         return {"run_id": run_id, "session_id": session_id, "status": "pending"}
 
-    async def get_generation(self, run_id: str) -> dict[str, Any] | None:
-        run = await get_run(run_id)
+    async def get_generation(self, run_id: str, user_id: str) -> dict[str, Any] | None:
+        run = await get_run_for_user(run_id, user_id)
         if run is None:
             return None
         return {
@@ -141,7 +145,7 @@ class GenerationService:
     async def continue_generation(
         self, run_id: str, content: str, user_id: str
     ) -> dict[str, Any]:
-        run = await get_run(run_id)
+        run = await get_run_for_user(run_id, user_id)
         if run is None:
             raise ValueError("run 不存在")
         return await self.create_generation(
@@ -154,7 +158,7 @@ class GenerationService:
         )
 
     async def create_variations(self, run_id: str, user_id: str) -> dict[str, Any]:
-        run = await get_run(run_id)
+        run = await get_run_for_user(run_id, user_id)
         if run is None:
             raise ValueError("run 不存在")
         count = await count_runs_by_parent(run_id)
@@ -174,8 +178,9 @@ class GenerationService:
         template_id: str,
         title: str,
         summary: str,
+        user_id: str,
     ) -> dict[str, Any]:
-        run = await get_run(run_id)
+        run = await get_run_for_user(run_id, user_id)
         if run is None:
             raise ValueError("run 不存在")
         template = await get_template(template_id)
@@ -240,18 +245,22 @@ class GenerationService:
             await self._save_version(session_id, run_id, snapshot)
             from broker import publish_run_message
 
-            await publish_run_message(run_id, {"type": "result", "status": "completed", **snapshot})
+            await publish_run_message(
+                run_id, {"type": "result", "status": "completed", "code": result.body_markdown, **snapshot}
+            )
         except Exception as e:  # noqa: BLE001
             logger.exception("Generation pipeline failed for run=%s", run_id)
             await update_run_status(run_id, "error")
             from broker import publish_run_message
 
-            await publish_run_message(run_id, {"type": "error", "detail": str(e)})
+            await publish_run_message(
+                run_id, {"type": "error", "content": f"生成失败: {e}", "detail": str(e)}
+            )
 
     async def _build_asset_context(self, user_id: str, asset_ids: list[str], query: str) -> str:
         parts: list[str] = []
         for asset_id in asset_ids:
-            asset = await get_asset(asset_id)
+            asset = await get_asset_for_user(asset_id, user_id)
             if asset is None:
                 continue
             await increment_asset_usage(asset_id)
@@ -311,9 +320,10 @@ class GenerationService:
             from repository import get_api_key_for_use
 
             entry = await get_api_key_for_use(key_id, user_id)
-            if entry:
-                api_key = entry.get("api_key")
-                api_base = entry.get("base_url") or api_base
+            if entry is None:
+                raise ValueError("指定 API Key 不存在")
+            api_key = entry.get("api_key")
+            api_base = entry.get("base_url") or api_base
         if not api_key and effective_model:
             entry = await get_api_key_for_model(effective_model, user_id)
             if entry:

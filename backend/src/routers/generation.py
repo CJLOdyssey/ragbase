@@ -1,5 +1,6 @@
 """Generation API routes — SPEC §3.3 全部端点."""
 
+from pathlib import Path
 from typing import Any
 
 from auth import get_user_id
@@ -79,8 +80,8 @@ async def create_generation(req: GenerationRequest, request: Request) -> Any:
 
 
 @router.get("/api/generations/{run_id}")
-async def get_generation(run_id: str) -> Any:
-    result = await generation_service.get_generation(run_id)
+async def get_generation(run_id: str, request: Request) -> Any:
+    result = await generation_service.get_generation(run_id, get_user_id(request))
     if result is None:
         raise error_response(ErrorCode.RUN_NOT_FOUND, detail="未找到该次生成")
     return result
@@ -98,10 +99,10 @@ async def continue_generation(run_id: str, req: ContinueRequest, request: Reques
 
 @router.post("/api/generations/{run_id}/variations")
 async def create_variations(run_id: str, request: Request) -> Any:
-    if await generation_service.get_generation(run_id) is None:
+    user_id = get_user_id(request)
+    if await generation_service.get_generation(run_id, user_id) is None:
         raise error_response(ErrorCode.RUN_NOT_FOUND, detail="未找到该次生成")
     try:
-        user_id = get_user_id(request)
         result = await generation_service.create_variations(run_id, user_id)
         return GenerationResponse(**result)
     except ValueError as e:
@@ -115,18 +116,22 @@ async def generate_image(run_id: str, req: ImageRequest, request: Request) -> An
         result = await image_service.generate(
             run_id, req.prompt, provider=req.provider, key_id=req.key_id, user_id=user_id
         )
-        return {"attachment_id": result.attachment_id, "storage_path": result.storage_path}
+        return {
+            "attachment_id": result.attachment_id,
+            "filename": Path(result.storage_path).name,
+        }
     except ValueError as e:
         raise error_response(ErrorCode.INVALID_REQUEST, detail=str(e)) from e
 
 
 @router.post("/api/generations/{run_id}/compose")
-async def compose_card(run_id: str, req: ComposeRequest) -> Any:
-    if await generation_service.get_generation(run_id) is None:
+async def compose_card(run_id: str, req: ComposeRequest, request: Request) -> Any:
+    user_id = get_user_id(request)
+    if await generation_service.get_generation(run_id, user_id) is None:
         raise error_response(ErrorCode.RUN_NOT_FOUND, detail="未找到该次生成")
     try:
         result = await generation_service.compose_card(
-            run_id, req.template_id, title=req.title, summary=req.summary
+            run_id, req.template_id, title=req.title, summary=req.summary, user_id=user_id
         )
         return result
     except ValueError as e:

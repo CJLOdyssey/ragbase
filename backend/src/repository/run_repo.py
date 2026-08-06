@@ -127,6 +127,19 @@ async def get_run(run_id: str) -> ProjectRun | None:
         return run
 
 
+async def get_run_for_user(run_id: str, user_id: str) -> ProjectRun | None:
+    """Fetch a run only if its session belongs to user_id. None otherwise."""
+    factory = get_session_factory()
+    async with factory() as session:
+        run = await session.get(ProjectRun, run_id)
+        if run is None or run.session_id is None:
+            return None
+        sess = await session.get(SessionDB, run.session_id)
+        if sess is None or sess.user_id != user_id:
+            return None
+        return run
+
+
 async def get_runs(limit: int = 20) -> list[ProjectRun]:
     """Return the most recent project runs, up to the given limit."""
     factory = get_session_factory()

@@ -124,9 +124,11 @@ async def test_stability_image_generation(monkeypatch: pytest.MonkeyPatch, tmp_p
 async def test_unsupported_provider_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     await _mem_db(monkeypatch)
     await _tmp_img_dir(monkeypatch, tmp_path)
+    from repository import create_session
     from repository.run_repo import create_run
-    run_id = await create_run("主题")
-    with pytest.raises(ValueError):
+    sess = await create_session(title="t", user_id="u1", kind="normal")
+    run_id = await create_run("主题", session_id=sess.id)
+    with pytest.raises(ValueError, match="不支持的图像 provider"):
         await img_mod.image_service.generate(run_id, "x", provider="nope", user_id="u1")
 
 
@@ -140,9 +142,30 @@ async def test_sessionless_run_rejected_before_provider_call(
     monkeypatch.setattr(
         img_mod, "_new_client", lambda: pytest.fail("provider must not be called")
     )
+    from repository import create_session
     from repository.run_repo import create_run
-    run_id = await create_run("主题")
-    with pytest.raises(ValueError):
+    await create_session(title="t", user_id="u1", kind="normal")
+    run_id = await create_run("主题", session_id=None)
+    with pytest.raises(ValueError, match="run 不存在"):
+        await img_mod.image_service.generate(
+            run_id, "x", provider="openai", key_id="k1", user_id="u1"
+        )
+
+
+@pytest.mark.asyncio
+async def test_foreign_owner_run_rejected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    await _mem_db(monkeypatch)
+    await _tmp_img_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        img_mod, "_new_client", lambda: pytest.fail("provider must not be called")
+    )
+    from repository import create_session
+    from repository.run_repo import create_run
+    sess = await create_session(title="t", user_id="u2", kind="normal")
+    run_id = await create_run("主题", session_id=sess.id)
+    with pytest.raises(ValueError, match="run 不存在"):
         await img_mod.image_service.generate(
             run_id, "x", provider="openai", key_id="k1", user_id="u1"
         )

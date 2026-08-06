@@ -84,17 +84,22 @@ async def upload_asset(
     content = await file.read()
     asset_type = _validate(content_type, len(content))
 
-    filename = f"{user_id}-{uuid.uuid4().hex[:8]}-{file.filename or 'asset'}"
+    safe_name = Path(file.filename or "asset").name
+    filename = f"{user_id}-{uuid.uuid4().hex[:8]}-{safe_name}"
     storage_path = str(ASSET_DIR / filename)
     Path(storage_path).write_bytes(content)
 
-    asset = await create_asset(
-        user_id=user_id,
-        name=name or (file.filename or filename),
-        asset_type=asset_type,
-        size_bytes=len(content),
-        storage_path=storage_path,
-    )
+    try:
+        asset = await create_asset(
+            user_id=user_id,
+            name=(name or file.filename or filename)[:256],
+            asset_type=asset_type,
+            size_bytes=len(content),
+            storage_path=storage_path,
+        )
+    except Exception:
+        Path(storage_path).unlink(missing_ok=True)
+        raise
     logger.info("Asset uploaded | user=%s | %s", user_id, storage_path)
     return _to_item(asset)
 
@@ -134,6 +139,8 @@ async def index_asset(asset_id: str, request: Request) -> Any:
     asset = await get_asset(asset_id)
     if asset is None or asset.user_id != user_id:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    if asset.asset_type != "document":
+        raise error_response(ErrorCode.INVALID_REQUEST, detail="仅文档类素材可索引")
     try:
         from rag.rag_chunking import semantic_chunk
         from rag.rag_embedding import EmbeddingProvider

@@ -119,3 +119,51 @@ def test_variations_bogus_run_returns_run_not_found(client) -> None:  # noqa: AN
     resp = client.post("/api/generations/bogus/variations", headers={"X-User-ID": "u1"})
     assert resp.status_code == 404
     assert resp.json()["detail"]["error"]["code"] == "RUN_001"
+
+
+def test_get_generation_denied_for_foreign_owner(client) -> None:  # noqa: ANN001
+    from core.infra.database import SessionDB, get_session_factory
+    from repository.run_repo import create_run
+
+    async def _seed() -> str:
+        factory = get_session_factory()
+        async with factory() as session:
+            session.add(SessionDB(id="s-u2", title="t", user_id="u2", kind="normal"))
+            await session.commit()
+        return await create_run("主题", session_id="s-u2", content_type="generic")
+
+    run_id = asyncio.run(_seed())
+    resp = client.get(f"/api/generations/{run_id}", headers={"X-User-ID": "u1"})
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["error"]["code"] == "RUN_001"
+
+    resp = client.get(f"/api/generations/{run_id}", headers={"X-User-ID": "u2"})
+    assert resp.status_code == 200
+
+
+def test_upload_asset_sanitizes_traversal_filename(client, monkeypatch, tmp_path) -> None:  # noqa: ANN001
+    from pathlib import Path
+
+    import routers.assets as assets_mod
+
+    monkeypatch.setattr(assets_mod, "ASSET_DIR", tmp_path)
+
+    resp = client.post(
+        "/api/assets",
+        files={"file": ("../../evil.png", b"\x89PNG\x0d\x0a\x1a\n", "image/png")},
+        headers={"X-User-ID": "u1"},
+    )
+    assert resp.status_code == 201
+    asset_id = resp.json()["id"]
+
+    async def _read() -> str:
+        from repository import get_asset
+
+        asset = await get_asset(asset_id)
+        assert asset is not None
+        return asset.storage_path
+
+    storage_path = asyncio.run(_read())
+    assert ".." not in storage_path
+    assert Path(storage_path).parent == tmp_path
+    assert Path(storage_path).is_file()

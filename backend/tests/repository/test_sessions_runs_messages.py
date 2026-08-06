@@ -16,6 +16,7 @@ from repository.message_repo import (
 from repository.run_repo import (
     create_run,
     get_run,
+    get_run_for_user,
     get_runs,
     get_runs_by_session_ids,
     get_session_runs,
@@ -122,6 +123,19 @@ class TestRunRepo:
         runs = await get_session_runs(sess.id)
         assert len(runs) == 1
         assert runs[0].id == run_id
+
+    async def test_get_run_for_user_scoped(self, db_engine):
+        sess = await create_session(title="Owner", user_id="u1")
+        run_id = await create_run(requirement="scoped", session_id=sess.id)
+        assert await get_run_for_user(run_id, "u1") is not None
+        assert await get_run_for_user(run_id, "u2") is None
+
+    async def test_get_run_for_user_sessionless_denied(self, db_engine):
+        run_id = await create_run(requirement="no session")
+        assert await get_run_for_user(run_id, "u1") is None
+
+    async def test_get_run_for_user_missing_denied(self, db_engine):
+        assert await get_run_for_user("no-such-run", "u1") is None
 
     async def test_get_session_runs_empty(self, db_engine):
         runs = await get_session_runs("no-such-session")

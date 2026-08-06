@@ -31,6 +31,16 @@ async def get_asset(asset_id: str) -> AssetDB | None:
         return await session.get(AssetDB, asset_id)
 
 
+async def get_asset_for_user(asset_id: str, user_id: str) -> AssetDB | None:
+    """Fetch an asset only if it belongs to user_id. None otherwise."""
+    factory = get_session_factory()
+    async with factory() as session:
+        asset = await session.get(AssetDB, asset_id)
+        if asset is None or asset.user_id != user_id:
+            return None
+        return asset
+
+
 async def list_assets_by_user(user_id: str) -> list[AssetDB]:
     factory = get_session_factory()
     async with factory() as session:

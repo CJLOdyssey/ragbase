@@ -5,6 +5,7 @@ from repository.assets import (
     create_asset,
     delete_asset,
     get_asset,
+    get_asset_for_user,
     increment_asset_usage,
     list_assets_by_user,
     set_asset_indexed,
@@ -27,3 +28,11 @@ async def test_asset_crud_roundtrip() -> None:
     path = await delete_asset(asset.id)
     assert path == "/tmp/assets/brand.md"
     assert await get_asset(asset.id) is None
+
+
+@pytest.mark.asyncio
+async def test_get_asset_for_user_scoped() -> None:
+    asset = await create_asset("u1", "brand.md", "document", 42, "/tmp/assets/brand.md")
+    assert await get_asset_for_user(asset.id, "u1") is not None
+    assert await get_asset_for_user(asset.id, "u2") is None
+    assert await get_asset_for_user("no-such-asset", "u1") is None

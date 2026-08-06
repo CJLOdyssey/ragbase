@@ -48,6 +48,14 @@ async def _fake_stream(url: str, headers: dict, body: dict, run_id: str, timeout
     return payload, []
 
 
+async def _run_for_user(user_id: str, topic: str = "主题", **kwargs: object) -> str:
+    from repository import create_session
+    from repository.run_repo import create_run
+
+    sess = await create_session(title=topic[:64], user_id=user_id, kind="normal")
+    return await create_run(topic, session_id=sess.id, **kwargs)  # type: ignore[arg-type]
+
+
 @pytest.mark.asyncio
 async def test_create_generation_returns_run(monkeypatch: pytest.MonkeyPatch) -> None:
     await _mem_session_factory(monkeypatch)
@@ -67,7 +75,7 @@ async def test_create_generation_returns_run(monkeypatch: pytest.MonkeyPatch) ->
 
     gen = None
     for _ in range(40):
-        gen = await generation_service.get_generation(run_id)
+        gen = await generation_service.get_generation(run_id, "u1")
         if gen and gen["status"] == "completed":
             break
         await asyncio.sleep(0.05)
@@ -120,14 +128,26 @@ async def test_create_variations_missing_run(monkeypatch: pytest.MonkeyPatch) ->
 async def test_compose_card_missing_run(monkeypatch: pytest.MonkeyPatch) -> None:
     await _mem_session_factory(monkeypatch)
     with pytest.raises(ValueError, match="run 不存在"):
-        await generation_service.compose_card("run-nope", "square", title="t", summary="s")
+        await generation_service.compose_card("run-nope", "square", title="t", summary="s", user_id="u1")
+
+
+@pytest.mark.asyncio
+async def test_get_generation_returns_none_for_foreign_owner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await _mem_session_factory(monkeypatch)
+    run_id = await _run_for_user("u2")
+    assert await generation_service.get_generation(run_id, "u1") is None
+    assert await generation_service.get_generation(run_id, "u2") is not None
 
 
 @pytest.mark.asyncio
 async def test_build_asset_context(monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
-    async def _fake_get_asset(asset_id: str) -> SimpleNamespace:
+    async def _fake_get_asset(asset_id: str, user_id: str) -> SimpleNamespace | None:
+        if asset_id == "foreign":
+            return None
         return SimpleNamespace(name="logo", storage_path="s3://bucket/logo.png")
 
     async def _fake_increment(asset_id: str) -> None:
@@ -136,11 +156,11 @@ async def test_build_asset_context(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _no_rag(user_id: str, query: str) -> str:
         return ""
 
-    monkeypatch.setattr(gen_mod, "get_asset", _fake_get_asset)
+    monkeypatch.setattr(gen_mod, "get_asset_for_user", _fake_get_asset)
     monkeypatch.setattr(gen_mod, "increment_asset_usage", _fake_increment)
     monkeypatch.setattr(generation_service, "_retrieve_rag_context", _no_rag)
 
-    context = await generation_service._build_asset_context("u1", ["a1", "missing"], "主题")
+    context = await generation_service._build_asset_context("u1", ["a1", "foreign"], "主题")
     assert "logo" in context
     assert "s3://bucket/logo.png" in context
 
@@ -162,11 +182,10 @@ async def test_compose_card_returns_template_and_fields(monkeypatch: pytest.Monk
             await session.commit()
     await _seed()
 
-    from repository.run_repo import create_run
-    run_id = await create_run("主题", content_type="generic")
+    run_id = await _run_for_user("u1", content_type="generic")
 
     result = await generation_service.compose_card(
-        run_id, "square", title="标题", summary="摘要"
+        run_id, "square", title="标题", summary="摘要", user_id="u1"
     )
     assert result["template"]["id"] == "square"
     assert result["fields"]["title"] == "标题"
@@ -176,10 +195,9 @@ async def test_compose_card_returns_template_and_fields(monkeypatch: pytest.Monk
 @pytest.mark.asyncio
 async def test_compose_card_unknown_template(monkeypatch: pytest.MonkeyPatch) -> None:
     await _mem_session_factory(monkeypatch)
-    from repository.run_repo import create_run
-    run_id = await create_run("主题")
+    run_id = await _run_for_user("u1")
     with pytest.raises(ValueError):
-        await generation_service.compose_card(run_id, "nope", title="t", summary="s")
+        await generation_service.compose_card(run_id, "nope", title="t", summary="s", user_id="u1")
 
 
 @pytest.mark.asyncio
@@ -200,9 +218,10 @@ async def test_count_versions_counts_snapshots(monkeypatch: pytest.MonkeyPatch) 
 @pytest.mark.asyncio
 async def test_create_variations_limit_via_parent_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     await _mem_session_factory(monkeypatch)
+
+    parent_id = await _run_for_user("u1", content_type="xiaohongshu")
     from repository.run_repo import create_run
 
-    parent_id = await create_run("主题", content_type="xiaohongshu")
     for _ in range(3):
         await create_run("变体", parent_run_id=parent_id)
 
@@ -217,9 +236,8 @@ async def test_create_variations_limit_via_parent_runs(monkeypatch: pytest.Monke
 @pytest.mark.asyncio
 async def test_create_variations_passes_parent_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
     await _mem_session_factory(monkeypatch)
-    from repository.run_repo import create_run
 
-    parent_id = await create_run("主题", content_type="xiaohongshu")
+    parent_id = await _run_for_user("u1", content_type="xiaohongshu")
 
     calls: list[dict] = []
 
@@ -238,9 +256,8 @@ async def test_create_variations_passes_parent_run_id(monkeypatch: pytest.Monkey
 @pytest.mark.asyncio
 async def test_continue_generation_passes_content(monkeypatch: pytest.MonkeyPatch) -> None:
     await _mem_session_factory(monkeypatch)
-    from repository.run_repo import create_run
 
-    run_id = await create_run("主题", content_type="xiaohongshu", topic="主题")
+    run_id = await _run_for_user("u1", content_type="xiaohongshu", topic="主题")
 
     calls: list[dict] = []
 
