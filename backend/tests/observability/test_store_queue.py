@@ -4,11 +4,11 @@ import os
 import queue
 import sqlite3
 import tempfile
-import time
 import threading
+import time
 from unittest.mock import MagicMock, patch
 
-from observability.schema import Event, SCHEMA_SQL
+from observability.schema import SCHEMA_SQL, Event
 
 
 class TestStoreQueueFull:

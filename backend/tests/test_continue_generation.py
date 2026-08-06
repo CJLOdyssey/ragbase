@@ -11,7 +11,6 @@ Tests the "继续生成" (resume after interruption) functionality:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from services.run_service import RunService
 
 
@@ -30,7 +29,7 @@ class TestContinueRun:
             patch("services.run_service.get_default_api_key") as mock_key,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("repository.create_run") as mock_create_run,
-            patch("services.run_service.buffer_run_messages") as mock_buffer,
+            patch("services.run_service.buffer_run_messages"),
             patch("asyncio.create_task"),
         ):
             mock_config.return_value = MagicMock(model="test-model")
@@ -58,7 +57,7 @@ class TestContinueRun:
             patch("services.run_service.get_default_api_key") as mock_key,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("repository.create_run") as mock_create_run,
-            patch("services.run_service.buffer_run_messages") as mock_buffer,
+            patch("services.run_service.buffer_run_messages"),
             patch("asyncio.create_task"),
         ):
             mock_config.return_value = MagicMock(model="test-model")
@@ -104,7 +103,7 @@ class TestContinueRun:
             patch("services.run_service.get_api_key_for_model", return_value=None),
             patch("services.run_service.get_default_api_key") as mock_key,
             patch("repository.create_run") as mock_create_run,
-            patch("services.run_service.buffer_run_messages") as mock_buffer,
+            patch("services.run_service.buffer_run_messages"),
             patch("asyncio.create_task"),
         ):
             mock_config.return_value = MagicMock(model="test-model")
@@ -130,7 +129,7 @@ class TestContinueRun:
             patch("services.run_service.get_api_key_for_model", return_value=None),
             patch("services.run_service.get_default_api_key") as mock_key,
             patch("repository.create_run") as mock_create_run,
-            patch("services.run_service.buffer_run_messages") as mock_buffer,
+            patch("services.run_service.buffer_run_messages"),
             patch("asyncio.create_task") as mock_create_task,
         ):
             mock_config.return_value = MagicMock(model="test-model")
@@ -155,7 +154,7 @@ class TestContinueRun:
             patch("services.run_service.get_api_key_for_model", return_value=None),
             patch("services.run_service.get_default_api_key") as mock_key,
             patch("repository.create_run") as mock_create_run,
-            patch("services.run_service.buffer_run_messages") as mock_buffer,
+            patch("services.run_service.buffer_run_messages"),
             patch("asyncio.create_task") as mock_create_task,
         ):
             mock_config.return_value = MagicMock(model="test-model")

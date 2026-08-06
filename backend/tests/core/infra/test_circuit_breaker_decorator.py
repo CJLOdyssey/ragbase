@@ -3,7 +3,6 @@
 import asyncio
 
 import pytest
-
 from core.infra.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError, State, llm_circuit
 
 
@@ -12,7 +11,8 @@ class TestDecorator:
     async def test_success_path(self):
         cb = CircuitBreaker(name="d", maxfail=3)
         @cb
-        async def f(x): return x * 2
+        async def f(x):
+            return x * 2
         assert await f(5) == 10
         assert cb.state == State.CLOSED
 
@@ -20,35 +20,46 @@ class TestDecorator:
     async def test_failure_path(self):
         cb = CircuitBreaker(name="d", maxfail=2)
         @cb
-        async def f(): raise ValueError
-        with pytest.raises(ValueError): await f()
-        with pytest.raises(ValueError): await f()
+        async def f():
+            raise ValueError
+        with pytest.raises(ValueError):
+            await f()
+        with pytest.raises(ValueError):
+            await f()
         assert cb.state == State.OPEN
 
     @pytest.mark.asyncio
     async def test_opens_and_blocks(self):
         cb = CircuitBreaker(name="d", maxfail=1)
         @cb
-        async def f(): raise RuntimeError
-        with pytest.raises(RuntimeError): await f()
-        with pytest.raises(CircuitBreakerOpenError): await f()
+        async def f():
+            raise RuntimeError
+        with pytest.raises(RuntimeError):
+            await f()
+        with pytest.raises(CircuitBreakerOpenError):
+            await f()
 
     @pytest.mark.asyncio
     async def test_passes_through_cb_error(self):
         cb = CircuitBreaker(name="d", maxfail=1)
         @cb
-        async def f(): return "ok"
-        await cb._acquire(); await cb._on_failure()
-        with pytest.raises(CircuitBreakerOpenError): await f()
+        async def f():
+            return "ok"
+        await cb._acquire()
+        await cb._on_failure()
+        with pytest.raises(CircuitBreakerOpenError):
+            await f()
 
     @pytest.mark.asyncio
     async def test_recovery_after_half_open(self):
         cb = CircuitBreaker(name="d", maxfail=1, reset_timeout=0)
         @cb
         async def f(bad):
-            if bad: raise ValueError
+            if bad:
+                raise ValueError
             return "ok"
-        with pytest.raises(ValueError): await f(True)
+        with pytest.raises(ValueError):
+            await f(True)
         assert await f(False) == "ok"
         assert cb.state == State.CLOSED
 
@@ -56,8 +67,10 @@ class TestDecorator:
     async def test_wrapped_func_raises_cb_error(self):
         cb = CircuitBreaker(name="d", maxfail=3)
         @cb
-        async def f(): raise CircuitBreakerOpenError("inner")
-        with pytest.raises(CircuitBreakerOpenError): await f()
+        async def f():
+            raise CircuitBreakerOpenError("inner")
+        with pytest.raises(CircuitBreakerOpenError):
+            await f()
         assert cb.failures == 0
 
 
@@ -65,7 +78,9 @@ class TestConcurrency:
     @pytest.mark.asyncio
     async def test_concurrent_acquire(self):
         cb = CircuitBreaker(name="c", maxfail=10)
-        async def fail(): await cb._acquire(); await cb._on_failure()
+        async def fail():
+            await cb._acquire()
+            await cb._on_failure()
         await asyncio.gather(*(fail() for _ in range(5)))
         assert cb.failures == 5
         assert cb.state == State.CLOSED

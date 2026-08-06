@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 
 class TestAttachments:
@@ -193,12 +194,12 @@ class TestAttachments:
 
     def test_validate_upload_too_large(self):
         from routers.attachments import _validate_upload
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             _validate_upload("text/plain", 11 * 1024 * 1024)
 
     def test_validate_upload_invalid_type(self):
         from routers.attachments import _validate_upload
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             _validate_upload("application/x-executable", 100)
 
     def test_upload_dir_creation(self):

@@ -1,5 +1,6 @@
 """Shared Pydantic schemas and helpers for the auth sub-package."""
 
+import logging
 import secrets
 from typing import TYPE_CHECKING, Any
 
@@ -15,6 +16,8 @@ else:
 
 from auth import AUTH_SECRET, create_token
 from repository.auth import create_refresh_token, get_user_by_id, get_user_roles
+
+logger = logging.getLogger(__name__)
 
 # ── Request schemas ─────────────────────────────────────────────────
 
@@ -123,10 +126,15 @@ def _client_ip(request: Request) -> str:
 
 
 async def _check_rate_limit(r: AsyncRedis, key: str, max_count: int, window: int = 60) -> bool:
-    current = await r.incr(key)
-    if current == 1:
-        await r.expire(key, window)
-    return bool(current <= max_count)
+    """Increment + check rate limit; degrade open on Redis failure."""
+    try:
+        current = await r.incr(key)
+        if current == 1:
+            await r.expire(key, window)
+        return bool(current <= max_count)
+    except Exception:
+        logger.warning("Rate limit Redis check failed — allowing request")
+        return True
 
 
 async def _store_code_in_redis(r: AsyncRedis, key: str, code: str, ttl: int) -> None:

@@ -107,11 +107,11 @@ class TestDecodeJWT:
 
     def test_simplified_token_valid(self):
         """Create a valid simplified token and verify it decodes correctly."""
-        from auth.auth_jwt import decode_jwt
-
         import base64
         import hashlib
         import hmac
+
+        from auth.auth_jwt import decode_jwt
 
         now = int(time.time())
         raw = f"testuser:{now}"
@@ -130,9 +130,10 @@ class TestDecodeJWT:
 
     def test_decode_jwt_exception_catch_all(self):
         """The catch-all except branch handles unexpected errors gracefully."""
-        from auth.auth_jwt import decode_jwt
         # A token that causes json.loads to fail on valid-looking base64
         import base64
+
+        from auth.auth_jwt import decode_jwt
         bad_payload = base64.urlsafe_b64encode(b"{not json}").rstrip(b"=").decode()
         bad_token = f"e30.{bad_payload}.e30"
         payload = decode_jwt(bad_token, "secret")
@@ -147,9 +148,9 @@ class TestDecodeJWT:
 
     def test_base64url_decode_different_paddings(self):
         """Test base64url_decode with 0, 1, 2 padding chars needed."""
-        from auth.auth_jwt import _base64url_decode
         import base64
-        import json
+
+        from auth.auth_jwt import _base64url_decode
 
         # No padding needed (len divisible by 4)
         data = base64.urlsafe_b64encode(b"abcd").rstrip(b"=").decode()

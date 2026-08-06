@@ -5,9 +5,8 @@ from unittest.mock import patch
 
 class TestAuthLogin:
     def test_login_inactive_user(self, client):
-        from sqlalchemy import update
-
         from core.infra.database import UserDB, get_session_factory
+        from sqlalchemy import update
         factory = get_session_factory()
         async def _deactivate():
             async with factory() as s:
@@ -306,6 +305,7 @@ class TestAuthPassword:
 
     def test_change_password(self, client):
         from unittest.mock import AsyncMock, MagicMock
+
         import bcrypt
         mock_user = MagicMock()
         mock_user.id = "u-change-legacy"

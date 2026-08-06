@@ -12,9 +12,8 @@ os.environ["AUTH_ENABLED"] = "0"
 os.environ["RATE_LIMIT"] = "9999"
 os.environ["CHECKPOINTER_BACKEND"] = "memory"
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 import core.infra.database as db_mod
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 if db_mod._async_engine is None:
     _sqlite_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -41,8 +40,8 @@ def client():
         from core.seed import seed_default_roles_and_admin
         await seed_default_roles_and_admin()
         import bcrypt
-        from sqlalchemy import select
         from core.infra.database import UserDB
+        from sqlalchemy import select
         async with db_mod._async_session_factory() as session:  # type: ignore[arg-type]
             existing = await session.execute(
                 select(UserDB).where(UserDB.email == "admin@test.com")

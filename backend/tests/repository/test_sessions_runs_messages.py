@@ -1,11 +1,11 @@
 import pytest
+
 pytestmark = pytest.mark.integration
 """Repository tests for session, run, and message CRUD operations.
 
 Uses conftest fixtures (db_engine, async_session) against in-memory SQLite.
 """
 
-import uuid
 
 from repository.message_repo import (
     get_messages,

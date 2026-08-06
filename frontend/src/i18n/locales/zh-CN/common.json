@@ -41,8 +41,8 @@
     "onlineStatus": "在线状态"
   },
   "app": {
-    "title": "AgentStudio",
-    "subtitle": "虚拟开发团队"
+    "title": "ContentStudio",
+    "subtitle": "AI 内容创作助手"
   },
   "model": {
     "loading": "加载中...",

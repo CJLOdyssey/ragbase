@@ -2,7 +2,6 @@
 from unittest.mock import AsyncMock
 
 import pytest
-
 from core.infra.request_logger import (
     _SENSITIVE_HEADERS,
     RequestLogMiddleware,

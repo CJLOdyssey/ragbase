@@ -3,7 +3,6 @@
 import asyncio
 
 import pytest
-
 from core.infra.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError, State
 
 
@@ -93,7 +92,8 @@ class TestHalfOpenQuota:
     @pytest.mark.asyncio
     async def test_exhausted_rejects(self):
         cb = CircuitBreaker(name="t", maxfail=1, reset_timeout=0, half_open_max_calls=1)
-        await cb._acquire(); await cb._on_failure()
+        await cb._acquire()
+        await cb._on_failure()
         await cb._acquire()  # half-open
         with pytest.raises(CircuitBreakerOpenError):
             await cb._acquire()
@@ -101,7 +101,8 @@ class TestHalfOpenQuota:
     @pytest.mark.asyncio
     async def test_max_calls_gt_one(self):
         cb = CircuitBreaker(name="t", maxfail=1, reset_timeout=0, half_open_max_calls=2)
-        await cb._acquire(); await cb._on_failure()
+        await cb._acquire()
+        await cb._on_failure()
         await cb._acquire()
         await cb._acquire()
         with pytest.raises(CircuitBreakerOpenError):
@@ -112,7 +113,8 @@ class TestTimeoutTransition:
     @pytest.mark.asyncio
     async def test_open_to_half_open_after_timeout(self):
         cb = CircuitBreaker(name="t", maxfail=1, reset_timeout=0.01)
-        await cb._acquire(); await cb._on_failure()
+        await cb._acquire()
+        await cb._on_failure()
         await asyncio.sleep(0.02)
         await cb._acquire()
         assert cb.state == State.HALF_OPEN
@@ -120,6 +122,7 @@ class TestTimeoutTransition:
     @pytest.mark.asyncio
     async def test_open_stays_before_timeout(self):
         cb = CircuitBreaker(name="t", maxfail=1, reset_timeout=60)
-        await cb._acquire(); await cb._on_failure()
+        await cb._acquire()
+        await cb._on_failure()
         with pytest.raises(CircuitBreakerOpenError):
             await cb._acquire()

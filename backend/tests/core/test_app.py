@@ -42,9 +42,8 @@ class TestAppCreation:
         assert "/api/version" in paths
 
     def test_cors_middleware_registered(self):
-        from fastapi.middleware.cors import CORSMiddleware
-
         from core.app import app
+        from fastapi.middleware.cors import CORSMiddleware
 
         middleware_types = [m.cls for m in app.user_middleware]
         assert CORSMiddleware in middleware_types

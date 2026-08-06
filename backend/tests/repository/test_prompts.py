@@ -3,7 +3,6 @@
 import uuid
 
 import pytest
-
 from repository.prompts import (
     create_prompt,
     delete_prompt,

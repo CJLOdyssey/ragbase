@@ -28,8 +28,6 @@ describe('submitRequirement', { tags: ['unit'] }, () => {
       session_id: undefined,
       key_id: undefined,
       model: undefined,
-      agent_id: undefined,
-      team_id: undefined,
     });
     expect(result).toEqual({ run_id: 'r1', status: 'queued' });
   });
@@ -37,15 +35,14 @@ describe('submitRequirement', { tags: ['unit'] }, () => {
   it('passes all optional params', async () => {
     mockApi.post.mockResolvedValue({ data: { run_id: 'r1', status: 'queued', session_id: 's1' } });
 
-    const result = await submitRequirement('req', 's1', 'k1', 'gpt-4', 'a1', 't1');
+    const result = await submitRequirement('req', 's1', 'k1', 'gpt-4', 'parent-1');
 
     expect(mockApi.post).toHaveBeenCalledWith('/runs', {
       requirement: 'req',
       session_id: 's1',
       key_id: 'k1',
       model: 'gpt-4',
-      agent_id: 'a1',
-      team_id: 't1',
+      parentRunId: 'parent-1',
     });
     expect(result).toEqual({ run_id: 'r1', status: 'queued', session_id: 's1' });
   });

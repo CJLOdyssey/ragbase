@@ -6,9 +6,8 @@ import os
 from unittest.mock import patch
 
 import pytest
-from fastapi import HTTPException
-
 from auth.auth_rbac import CurrentUser, require_role
+from fastapi import HTTPException
 
 
 def _make_user(roles: list[str] | None = None) -> CurrentUser:

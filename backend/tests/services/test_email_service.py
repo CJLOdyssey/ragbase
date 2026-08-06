@@ -11,7 +11,6 @@ os.environ["EMAIL_SMTP_TLS"] = "1"
 os.environ["RESEND_API_KEY"] = "re_test_key"
 
 import pytest
-
 from services.email_service import (
     LogMailer,
     ResendApiMailer,

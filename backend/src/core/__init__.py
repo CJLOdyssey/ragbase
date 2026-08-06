@@ -8,7 +8,7 @@ Public symbols are explicitly imported below so callers can use either:
 from ._interfaces import StreamResponseHandler, ToolDescriptor, ToolExecutor
 from .audit import log_audit
 from .base import Base
-from .config import TeamConfig, load_config
+from .config import LLMConfig, load_config
 from .error_codes import ErrorCode, error_response
 from .infra.events import EventBus, Events
 from .infra.key_vault import (
@@ -27,7 +27,7 @@ __all__ = [
     "Events",
     "RequestLogMiddleware",
     "StreamResponseHandler",
-    "TeamConfig",
+    "LLMConfig",
     "ToolDescriptor",
     "ToolExecutor",
     "decrypt_api_key",

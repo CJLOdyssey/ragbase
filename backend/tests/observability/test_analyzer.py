@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 class TestAnalyzeError:
     def test_known_error_returns_suggestion(self):

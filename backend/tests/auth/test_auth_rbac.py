@@ -3,8 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException, status
-
 from auth.auth_rbac import (
     AUTH_ENABLED,
     AUTH_MODE,
@@ -15,6 +13,7 @@ from auth.auth_rbac import (
     get_user_id,
     require_role,
 )
+from fastapi import HTTPException, status
 
 FAKE_STATE = type("FakeState", (), {"user_id": None})
 

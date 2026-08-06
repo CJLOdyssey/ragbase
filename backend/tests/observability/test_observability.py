@@ -330,7 +330,7 @@ class TestTrace:
 
     @patch("observability.trace.get_store")
     def test_span_auto_generates_trace_id(self, mock_get_store):
-        from observability.trace import current_trace_id, set_trace_id, span
+        from observability.trace import set_trace_id, span
 
         # Clear the current trace_id so span must auto-generate one
         set_trace_id("")

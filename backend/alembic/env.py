@@ -13,11 +13,9 @@ import os
 import re
 from logging.config import fileConfig
 
-from sqlalchemy import create_engine, pool
-
 from alembic import context
-
 from core.base import Base as ProjectBase
+from sqlalchemy import create_engine, pool
 
 config = context.config
 
@@ -34,10 +32,7 @@ raw_url = config.get_main_option("sqlalchemy.url", "")
 env_url = os.environ.get("DATABASE_URL", "")
 
 # If the ini template variable wasn't expanded, use env var or dev default
-if "${" in raw_url:
-    resolved_url = env_url or "sqlite:///./dev.db"
-else:
-    resolved_url = raw_url
+resolved_url = env_url or "sqlite:///./dev.db" if "${" in raw_url else raw_url
 
 # Strip async driver prefix so sync engine can handle it
 _sync_url = re.sub(

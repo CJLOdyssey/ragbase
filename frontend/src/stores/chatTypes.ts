@@ -26,11 +26,7 @@ export interface ChatState {
   wsStatus: WsConnectionStatus;
   /** Conversation ID at submission time */
   submissionConvId: string | null;
-  /** Active team for multi-agent workflow */
-  activeTeamId: string | null;
-  selectedAgentId: string | null;
 
-  setActiveTeam: (teamId: string | null) => void;
   restoreSession: (sessionId: string, runId: string, messages: ChatMessage[], result: RunResult | null, status: AppStatus) => void;
   loadConversation: (messages: ChatMessage[], convId?: string | null, sessionId?: string | null) => void;
   cancelRun: () => void;
@@ -40,5 +36,4 @@ export interface ChatState {
   setError: (error: string | null) => void;
   setWsStatus: (wsStatus: WsConnectionStatus) => void;
   reset: () => void;
-  selectAgent: (agentId: string) => void;
 }

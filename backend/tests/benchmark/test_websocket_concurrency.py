@@ -8,8 +8,8 @@ import time
 
 import pytest
 import websockets
-
 from tests.conftest import Api
+
 
 def _clear_limits():
     import subprocess
@@ -103,7 +103,7 @@ class TestWebSocketConcurrency:
                     while True:
                         await asyncio.wait_for(ws.recv(), timeout=3.0)
                         msg_count += 1
-                except (asyncio.TimeoutError, websockets.ConnectionClosed):
+                except (TimeoutError, websockets.ConnectionClosed):
                     pass
             elapsed = time.monotonic() - t0
             return msg_count, elapsed

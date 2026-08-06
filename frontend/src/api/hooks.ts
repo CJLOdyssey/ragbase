@@ -4,10 +4,10 @@ import type { ModelOption } from '../types/input';
 
 // ---- Sessions ----
 
-export function useSessions(limit = 50, agent_id?: string) {
+export function useSessions(limit = 50) {
   return useQuery({
-    queryKey: ['sessions', limit, agent_id],
-    queryFn: () => api.listSessions(limit, agent_id),
+    queryKey: ['sessions', limit],
+    queryFn: () => api.listSessions(limit),
     staleTime: 30_000,
   });
 }
@@ -24,7 +24,7 @@ export function useSessionDetail(sessionId: string | undefined) {
 export function useCreateSession() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ title, agent_id }: { title: string; agent_id?: string }) => api.createSession(title, agent_id),
+    mutationFn: (title: string) => api.createSession(title),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sessions'] }),
   });
 }

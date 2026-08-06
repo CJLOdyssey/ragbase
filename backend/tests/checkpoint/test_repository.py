@@ -4,18 +4,17 @@ Uses a real in-memory SQLite database — no mocks.
 """
 
 import asyncio
-
-import pytest
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from unittest.mock import patch
 
+import pytest
 from checkpoint.models import AgentCheckpoint, CheckpointDB
 from checkpoint.repository import (
-    save_checkpoint,
-    load_latest_checkpoint,
     list_checkpoints,
+    load_latest_checkpoint,
+    save_checkpoint,
 )
 from core.base import Base
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 @pytest.fixture
@@ -218,7 +217,7 @@ class TestUnicodeHandling:
             user_input="你好，请帮我写一段代码",
             messages=[{"role": "user", "content": "这是一个测试消息"}],
         )
-        cp_id = await save_checkpoint(cp)
+        await save_checkpoint(cp)
 
         result = await load_latest_checkpoint("sess-unicode")
         assert result is not None

@@ -3,11 +3,6 @@
 import uuid
 
 import pytest
-
-from core.infra.database import (
-    PromptDB,
-    get_session_factory,
-)
 from repository.prompts import PromptRepository
 
 

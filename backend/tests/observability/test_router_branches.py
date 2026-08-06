@@ -3,9 +3,8 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from starlette.testclient import TestClient
-
 from core.app import app
+from starlette.testclient import TestClient
 
 
 @pytest.fixture

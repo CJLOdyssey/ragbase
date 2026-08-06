@@ -6,17 +6,16 @@ Create Date: 2026-07-13 18:00:00.000000
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e4f5a6b7c8d9"
-down_revision: Union[str, Sequence[str], None] = "d3e1f2a3b4c5"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "d3e1f2a3b4c5"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -26,7 +25,7 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("is_verified", sa.Boolean(), server_default=sa.text("false"), nullable=False))
         batch_op.add_column(sa.Column("auth_provider", sa.String(16), server_default="email", nullable=False))
         batch_op.add_column(sa.Column("auth_provider_id", sa.String(255), nullable=True))
-        batch_op.add_column(sa.Column("failed_login_attempts", sa.Integer(), server_default=sa.text("0"), nullable=False))
+        batch_op.add_column(sa.Column("failed_login_attempts", sa.Integer(), server_default=sa.text("0"), nullable=False))  # noqa: E501
         batch_op.add_column(sa.Column("locked_until", sa.DateTime(timezone=True), nullable=True))
 
     # Migrate existing rows: copy username -> email as legacy fallback

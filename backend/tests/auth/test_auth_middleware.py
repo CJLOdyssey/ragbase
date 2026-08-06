@@ -3,11 +3,10 @@
 from unittest.mock import patch
 
 import pytest
-from starlette.requests import Request
-from starlette.testclient import TestClient
-
 from auth.auth_middleware import AuthMiddleware
 from core.app import app
+from starlette.requests import Request
+from starlette.testclient import TestClient
 
 
 @pytest.fixture
@@ -69,7 +68,6 @@ class TestAuthMiddleware:
     def test_websocket_query_token(self, client):
         """Token from query param is extracted for WebSocket upgrade."""
         # This tests the query param branch
-        from urllib.parse import parse_qs
         from auth.auth_rbac import PUBLIC_PREFIXES
         # Just ensure PUBLIC_PREFIXES is iterable
         assert isinstance(PUBLIC_PREFIXES, (tuple, list))
@@ -197,7 +195,7 @@ class TestAuthMiddlewareDispatch:
         request = _make_request(path="/api/models", headers={"Authorization": "Bearer real.jwt"})
         with patch("auth.auth_middleware.AUTH_ENABLED", True), \
              patch("auth.auth_middleware.decode_jwt", return_value={"sub": "uid-42"}):
-            resp = await mw.dispatch(request, _noop_call_next)
+            await mw.dispatch(request, _noop_call_next)
         assert request.state.user_id == "uid-42"
 
     @pytest.mark.asyncio
@@ -207,5 +205,5 @@ class TestAuthMiddlewareDispatch:
         request = _make_request(path="/api/models", headers={"Authorization": "Bearer no.sub.jwt"})
         with patch("auth.auth_middleware.AUTH_ENABLED", True), \
              patch("auth.auth_middleware.decode_jwt", return_value={"iat": 123}):
-            resp = await mw.dispatch(request, _noop_call_next)
+            await mw.dispatch(request, _noop_call_next)
         assert request.state.user_id == "unknown"

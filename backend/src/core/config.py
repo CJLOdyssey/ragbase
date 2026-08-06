@@ -1,4 +1,4 @@
-"""Team configuration via environment variables and .env file."""
+"""LLM configuration via environment variables and .env file."""
 
 import os
 from pathlib import Path
@@ -21,8 +21,8 @@ if _env_file.exists():
                 os.environ[key] = value
 
 
-class TeamConfig(BaseModel):
-    """LLM team configuration with validation via Pydantic."""
+class LLMConfig(BaseModel):
+    """LLM configuration with validation via Pydantic."""
 
     model_config = {"extra": "forbid"}
 
@@ -39,10 +39,10 @@ class TeamConfig(BaseModel):
         """Return a safe string representation with masked API key."""
         safe = self.model_dump()
         safe["api_key"] = "***" if self.api_key else "(unset)"
-        return f"TeamConfig({safe})"
+        return f"LLMConfig({safe})"
 
 
-def load_config() -> TeamConfig:
+def load_config() -> LLMConfig:
     """Load configuration from environment variables.
 
     Note: This reads DEEPSEEK_API_KEY/OPENAI_API_KEY for backward compatibility,
@@ -57,7 +57,7 @@ def load_config() -> TeamConfig:
     timeout = _safe_int("TIMEOUT", 120)
     max_retries = _safe_int("MAX_RETRIES", 3)
     max_requirement_length = _safe_int("MAX_REQUIREMENT_LENGTH", 2000)
-    return TeamConfig(
+    return LLMConfig(
         api_key=api_key,
         api_base=api_base,
         model=model,

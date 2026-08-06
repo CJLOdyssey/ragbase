@@ -26,8 +26,6 @@ const INITIAL_STATE = {
   pendingThinkingVersions: null,
   wsStatus: 'disconnected' as ChatState['wsStatus'],
   submissionConvId: null,
-  activeTeamId: null,
-  selectedAgentId: null as string | null,
 };
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -70,8 +68,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   reset: () => {
     const s = get();
     if (s.currentRunId) disconnectRun(s.currentRunId);
-    const activeTeamId = s.activeTeamId;
-    set({ ...INITIAL_STATE, activeTeamId, submissionConvId: null });
+    set({ ...INITIAL_STATE, submissionConvId: null });
   },
 
   switchVersion: (msgId, direction) => {
@@ -96,14 +93,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setThumbsFeedback: (msgId, value) => {
     set((s) => ({ messages: s.messages.map((m) => m.id === msgId ? { ...m, thumbs: value } : m) }));
-  },
-
-  selectAgent: (_agentId) => {
-    set({ selectedAgentId: _agentId });
-  },
-
-  setActiveTeam: (teamId) => {
-    set({ activeTeamId: teamId });
   },
 }));
 

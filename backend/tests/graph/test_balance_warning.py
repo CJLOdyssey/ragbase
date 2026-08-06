@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from tasks.pipeline_utils import _is_balance_error
 
 

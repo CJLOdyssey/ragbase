@@ -10,10 +10,10 @@ Run with:
     pytest --requirement-coverage
 """
 
-import pytest
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional
+
+import pytest
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

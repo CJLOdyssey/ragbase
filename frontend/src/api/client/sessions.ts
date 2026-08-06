@@ -1,10 +1,8 @@
 import api from './instance';
 import type { SessionDetail, SessionItem, ProjectRun } from '../../types';
 
-export async function listSessions(limit = 50, agent_id?: string): Promise<SessionItem[]> {
-  const params: Record<string, string | number> = { limit };
-  if (agent_id) params.agent_id = agent_id;
-  const { data } = await api.get('/sessions', { params });
+export async function listSessions(limit = 50): Promise<SessionItem[]> {
+  const { data } = await api.get('/sessions', { params: { limit } });
   return data;
 }
 
@@ -13,10 +11,8 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
   return data;
 }
 
-export async function createSession(title = '\u65b0\u5bf9\u8bdd', agent_id?: string): Promise<{ id: string; title: string }> {
-  const body: Record<string, string> = { title };
-  if (agent_id) body.agent_id = agent_id;
-  const { data } = await api.post('/sessions', body);
+export async function createSession(title = '\u65b0\u5bf9\u8bdd'): Promise<{ id: string; title: string }> {
+  const { data } = await api.post('/sessions', { title });
   return data;
 }
 

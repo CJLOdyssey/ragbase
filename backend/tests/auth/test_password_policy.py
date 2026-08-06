@@ -1,7 +1,6 @@
 """Password policy tests — equivalence class + boundary value analysis."""
 
 import pytest
-
 from auth.password_policy import validate_password
 
 

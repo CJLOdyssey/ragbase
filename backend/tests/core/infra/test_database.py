@@ -1,11 +1,10 @@
 """Tests for backend.core.infra.database — singleton engine and session factory."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 import core.infra.database as db_mod
+import pytest
 from core.infra.database import (
     SLOW_QUERY_THRESHOLD,
     _attach_slow_query_listeners,

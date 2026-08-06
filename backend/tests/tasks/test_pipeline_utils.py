@@ -1,11 +1,8 @@
 """Tests for backend.tasks.pipeline_utils — all helper functions."""
 import asyncio
-import json
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # =============================================================================
 # log_memory_diff

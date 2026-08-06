@@ -2,7 +2,6 @@
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 def _uid() -> str:
@@ -14,8 +13,8 @@ class AgentFactory:
     name: str = ""
     role_identifier: str = ""
     system_prompt: str = "You are a helpful assistant."
-    model: Optional[str] = None
-    temperature: Optional[float] = 0.7
+    model: str | None = None
+    temperature: float | None = 0.7
     is_active: bool = True
     is_approver: bool = False
     icon: str = "🤖"

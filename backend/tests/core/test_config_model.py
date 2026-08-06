@@ -6,11 +6,11 @@ import pytest
 from pydantic import ValidationError
 
 
-class TestTeamConfig:
+class TestLLMConfig:
     def test_default_values(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
-        cfg = TeamConfig()
+        cfg = LLMConfig()
         assert cfg.api_key == ""
         assert cfg.api_base is None
         assert cfg.model == "deepseek-v4-flash"
@@ -21,57 +21,57 @@ class TestTeamConfig:
         assert cfg.max_requirement_length == 2000
 
     def test_extra_fields_forbidden(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
         with pytest.raises(ValidationError):
-            TeamConfig(unknown_field="nope")
+            LLMConfig(unknown_field="nope")
 
     def test_model_min_length_validation(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
         with pytest.raises(ValidationError):
-            TeamConfig(model="")
+            LLMConfig(model="")
 
     def test_temperature_range(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
         with pytest.raises(ValidationError):
-            TeamConfig(temperature=-0.1)
+            LLMConfig(temperature=-0.1)
         with pytest.raises(ValidationError):
-            TeamConfig(temperature=1.1)
+            LLMConfig(temperature=1.1)
 
     def test_max_rounds_ge_1(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
         with pytest.raises(ValidationError):
-            TeamConfig(max_rounds=0)
+            LLMConfig(max_rounds=0)
 
     def test_timeout_ge_10(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
         with pytest.raises(ValidationError):
-            TeamConfig(timeout=5)
+            LLMConfig(timeout=5)
 
     def test_max_requirement_length_range(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
         with pytest.raises(ValidationError):
-            TeamConfig(max_requirement_length=0)
+            LLMConfig(max_requirement_length=0)
         with pytest.raises(ValidationError):
-            TeamConfig(max_requirement_length=20000)
+            LLMConfig(max_requirement_length=20000)
 
     def test_repr_masks_api_key(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
-        cfg = TeamConfig(api_key="secret123")
+        cfg = LLMConfig(api_key="secret123")
         rep = repr(cfg)
         assert "***" in rep
         assert "secret123" not in rep
 
     def test_repr_unset_key(self):
-        from core.config import TeamConfig
+        from core.config import LLMConfig
 
-        rep = repr(TeamConfig())
+        rep = repr(LLMConfig())
         assert "(unset)" in rep
 
 

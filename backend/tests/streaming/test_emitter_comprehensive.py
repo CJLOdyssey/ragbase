@@ -706,7 +706,7 @@ class TestEmitMethod:
         emitter = StreamEmitter("run-49")
         with (
             patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub,
-            patch("streaming.emitter.save_message", new_callable=AsyncMock) as mock_save,
+            patch("streaming.emitter.save_message", new_callable=AsyncMock),
         ):
             await emitter._emit("Agent", "output", thinking="my thinking")
             payload = mock_pub.await_args[0][1]

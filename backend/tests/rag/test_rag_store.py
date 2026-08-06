@@ -1,8 +1,8 @@
 """Tests for RAG vector store (backend/rag/rag_store.py)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from rag.rag_chunking import Chunk
 from rag.rag_store import PgVectorStore
 

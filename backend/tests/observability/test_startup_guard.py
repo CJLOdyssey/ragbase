@@ -1,16 +1,11 @@
 """Tests for backend/observability/startup_guard.py — startup markers and crash logs."""
 
-import os
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from observability.startup_guard import (
-    _CRASH_LOG,
-    _MARKER_DIR,
-    _MARKER_FILE,
     health,
     mark_started,
     mark_starting,

@@ -1,5 +1,5 @@
 """Tests for backend.tasks.registry — Celery task functions."""
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

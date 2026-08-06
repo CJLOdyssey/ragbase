@@ -3,7 +3,6 @@
 import asyncio
 
 import pytest
-
 from core.infra.events import EventBus, Events, bus
 
 

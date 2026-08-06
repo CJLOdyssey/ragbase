@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from core.infra.rate_limit import DEFAULT_RATE, DEFAULT_WINDOW, RateLimiter
 
 

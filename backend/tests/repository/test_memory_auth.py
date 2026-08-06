@@ -5,8 +5,6 @@ Uses conftest fixtures (db_engine) against in-memory SQLite.
 
 import uuid
 
-from sqlalchemy import select
-
 from core.infra.database import RoleDB, get_session_factory
 from repository.auth import (
     consume_refresh_token,
@@ -31,6 +29,7 @@ from repository.memory_repo import (
     get_session_memories,
 )
 from repository.session_repo import create_session
+from sqlalchemy import select
 
 # ── Memory Tests ───────────────────────────────────────────────────────
 

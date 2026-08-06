@@ -1,10 +1,8 @@
 """Tests for remaining uncovered repository code: attachments, memory, auth, tools, mcps, skills, keys_connectivity."""
 
 import os
-import uuid
 import unittest.mock
-
-import pytest
+import uuid
 
 os.environ.setdefault("KEY_VAULT_SECRET", "0123456789abcdef0123456789abcdef")
 os.environ.setdefault("AUTH_MODE", "legacy")
@@ -18,8 +16,8 @@ os.environ.setdefault("DATABASE_POOL_SIZE", "0")
 
 class TestAttachments:
     async def test_create_attachment(self, db_engine):
-        from repository.session_repo import create_session
         from repository.attachments import create_attachment, get_attachment_by_id
+        from repository.session_repo import create_session
 
         sess = await create_session(title="Att Test")
         att = await create_attachment(
@@ -39,8 +37,8 @@ class TestAttachments:
         assert fetched.filename == "test.pdf"
 
     async def test_create_attachment_with_optional_fields(self, db_engine):
-        from repository.session_repo import create_session
         from repository.attachments import create_attachment
+        from repository.session_repo import create_session
 
         sess = await create_session(title="Att Opt")
         att = await create_attachment(
@@ -62,8 +60,8 @@ class TestAttachments:
         assert result is None
 
     async def test_list_attachments_by_session(self, db_engine):
-        from repository.session_repo import create_session
         from repository.attachments import create_attachment, list_attachments_by_session
+        from repository.session_repo import create_session
 
         sess = await create_session(title="List Att")
         for i in range(3):
@@ -84,8 +82,8 @@ class TestAttachments:
         assert result == []
 
     async def test_delete_attachment(self, db_engine):
-        from repository.session_repo import create_session
         from repository.attachments import create_attachment, delete_attachment, get_attachment_by_id
+        from repository.session_repo import create_session
 
         sess = await create_session(title="Del Att")
         att = await create_attachment(
@@ -111,8 +109,8 @@ class TestAttachments:
 
 class TestMemoryRepo:
     async def test_create_memory_entry(self, db_engine):
-        from repository.session_repo import create_session
         from repository.memory_repo import create_memory_entry
+        from repository.session_repo import create_session
 
         sess = await create_session(title="Mem")
         mem = await create_memory_entry(
@@ -129,8 +127,8 @@ class TestMemoryRepo:
         assert mem.details == "Chose FastAPI over Flask"
 
     async def test_create_memory_entry_default_details(self, db_engine):
-        from repository.session_repo import create_session
         from repository.memory_repo import create_memory_entry
+        from repository.session_repo import create_session
 
         sess = await create_session(title="Mem Def")
         mem = await create_memory_entry(
@@ -143,8 +141,8 @@ class TestMemoryRepo:
         assert mem.details == ""
 
     async def test_get_session_memories(self, db_engine):
-        from repository.session_repo import create_session
         from repository.memory_repo import create_memory_entry, get_session_memories
+        from repository.session_repo import create_session
 
         sess = await create_session(title="Mem Get")
         await create_memory_entry(
@@ -164,10 +162,12 @@ class TestMemoryRepo:
         assert result == []
 
     async def test_clear_session_memories(self, db_engine):
-        from repository.session_repo import create_session
         from repository.memory_repo import (
-            create_memory_entry, clear_session_memories, get_session_memories,
+            clear_session_memories,
+            create_memory_entry,
+            get_session_memories,
         )
+        from repository.session_repo import create_session
 
         sess = await create_session(title="Mem Clear")
         for i in range(3):
@@ -180,10 +180,12 @@ class TestMemoryRepo:
         assert len(memories) == 0
 
     async def test_delete_memory_entry(self, db_engine):
-        from repository.session_repo import create_session
         from repository.memory_repo import (
-            create_memory_entry, delete_memory_entry, get_session_memories,
+            create_memory_entry,
+            delete_memory_entry,
+            get_session_memories,
         )
+        from repository.session_repo import create_session
 
         sess = await create_session(title="Mem Del")
         mem = await create_memory_entry(
@@ -210,7 +212,9 @@ class TestAuthRevokeTokenFamily:
         await seed_default_roles_and_admin()
 
         from repository.auth import (
-            create_user, create_refresh_token, revoke_token_family,
+            create_refresh_token,
+            create_user,
+            revoke_token_family,
         )
         user = await create_user("family@example.com", "hash")
         token, _ = await create_refresh_token(user.id)

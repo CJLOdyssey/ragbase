@@ -16,9 +16,8 @@ os.environ['RATE_LIMIT'] = '9999'
 os.environ['CHECKPOINTER_BACKEND'] = 'memory'
 os.environ['DATABASE_POOL_SIZE'] = '0'
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 import core.infra.database as db_mod
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 if db_mod._async_engine is None:
     _sqlite_engine = create_async_engine('sqlite+aiosqlite:///:memory:')

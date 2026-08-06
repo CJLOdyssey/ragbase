@@ -51,7 +51,7 @@ class TestStreamPrefixCompletion:
 
         chunk1 = json.dumps({"choices": [{"delta": {"reasoning_content": "thinking...", "content": ""}}]})
         chunk2 = json.dumps({"choices": [{"delta": {"content": "answer"}}]})
-        lines = [f"data: {chunk1}", f"data: {chunk2}", f"data: [DONE]"]
+        lines = [f"data: {chunk1}", f"data: {chunk2}", "data: [DONE]"]
 
         mock_response = AsyncMock()
         mock_response.status_code = 200

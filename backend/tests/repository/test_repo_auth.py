@@ -271,7 +271,7 @@ async def test_consume_refresh_token_replay_attack(db_engine):
 @pytest.mark.asyncio
 async def test_consume_refresh_token_no_user(db_engine):
     """Token belongs to a user that was deleted after token creation."""
-    from core.infra.database import RefreshTokenDB, UserDB, get_session_factory
+    from core.infra.database import UserDB, get_session_factory
     from repository.auth import consume_refresh_token, create_refresh_token, create_user
 
     user = await create_user("test@example.com", "hash")
@@ -315,7 +315,6 @@ async def test_revoke_token_family(db_engine):
     from repository.auth import (
         create_refresh_token,
         create_user,
-        revoke_token_family,
     )
 
     user = await create_user("test@example.com", "hash")
@@ -372,9 +371,10 @@ async def test_merge_guest_data(db_engine):
 @pytest.mark.asyncio
 async def test_merge_guest_data_with_anonymous(db_engine):
     """merge_guest_data skips 'anonymous' for UserApiKey table."""
-    from repository.auth import create_user, merge_guest_data
     from uuid import uuid4
+
     from core.infra.database import SessionDB, get_session_factory
+    from repository.auth import create_user, merge_guest_data
 
     real_user = await create_user("real@example.com", "hash")
 

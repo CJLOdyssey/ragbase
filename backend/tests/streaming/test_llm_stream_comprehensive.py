@@ -7,7 +7,6 @@ import httpx
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
-
 # ── Mock SSE helpers ────────────────────────────────────────────────────────
 
 class _MockStreamCtx:

@@ -337,8 +337,9 @@ async def test_get_key_usage_stats(db_engine):
 
     k = await create_api_key("user1", "openai", plaintext_key="sk-stat")
 
-    from core.infra.database import KeyUsageLog, get_session_factory
     from uuid import uuid4
+
+    from core.infra.database import KeyUsageLog, get_session_factory
     factory = get_session_factory()
     async with factory() as session:
         log = KeyUsageLog(
@@ -441,9 +442,10 @@ async def test_get_api_key_for_use_models_list(db_engine):
 
 @pytest.mark.asyncio
 async def test_get_api_keys_with_last_used_at(db_engine):
-    from repository.keys_crud import create_api_key, get_api_keys
-    from core.infra.database import UserApiKey, get_session_factory
     from datetime import UTC, datetime
+
+    from core.infra.database import UserApiKey, get_session_factory
+    from repository.keys_crud import create_api_key, get_api_keys
 
     k = await create_api_key("user1", "openai", plaintext_key="sk-lastused")
     factory = get_session_factory()

@@ -9,10 +9,8 @@ Tests the lockout mechanism after 5 failed login attempts:
 """
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from repository.auth import (
     create_user,
     get_user_by_email,
@@ -27,7 +25,7 @@ class TestAccountLockout:
 
     async def test_increment_failed_logins(self, db_engine):
         """Failed login counter increments on each failure."""
-        user = await create_user(
+        await create_user(
             email="lockout_test@example.com",
             password_hash="hashed_password",
             is_verified=True,
@@ -44,14 +42,14 @@ class TestAccountLockout:
 
     async def test_lockout_after_5_failures(self, db_engine):
         """Account locks after 5 failed login attempts."""
-        user = await create_user(
+        await create_user(
             email="lockout5@example.com",
             password_hash="hashed_password",
             is_verified=True,
         )
 
         # Simulate 5 failed attempts
-        for i in range(5):
+        for _i in range(5):
             count = await increment_failed_logins("lockout5@example.com")
 
         assert count == 5
@@ -68,7 +66,7 @@ class TestAccountLockout:
 
     async def test_lockout_duration_is_15_minutes(self, db_engine):
         """Locked account remains locked for 15 minutes."""
-        user = await create_user(
+        await create_user(
             email="lockout15@example.com",
             password_hash="hashed_password",
             is_verified=True,
@@ -90,7 +88,7 @@ class TestAccountLockout:
 
     async def test_successful_login_resets_failed_attempts(self, db_engine):
         """Successful login resets failed login counter to 0."""
-        user = await create_user(
+        await create_user(
             email="reset_test@example.com",
             password_hash="hashed_password",
             is_verified=True,
@@ -113,7 +111,7 @@ class TestAccountLockout:
 
     async def test_reset_failed_logins_unlocks_account(self, db_engine):
         """reset_failed_logins unlocks a locked account."""
-        user = await create_user(
+        await create_user(
             email="unlock_test@example.com",
             password_hash="hashed_password",
             is_verified=True,
@@ -147,7 +145,7 @@ class TestAccountLockout:
 
     async def test_failed_attempts_not_locked_until_4(self, db_engine):
         """Account is not locked with only 4 failed attempts."""
-        user = await create_user(
+        await create_user(
             email="not_locked@example.com",
             password_hash="hashed_password",
             is_verified=True,
@@ -172,7 +170,7 @@ class TestLoginWithLockout:
         # The lockout check happens in the login endpoint
         from repository.auth import create_user
 
-        user = await create_user(
+        await create_user(
             email="locked_login@example.com",
             password_hash="hashed_password",
             is_verified=True,

@@ -131,8 +131,6 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'key-1',
       'deepseek-chat',
       undefined,
-      undefined,
-      undefined,
     );
   });
 
@@ -160,15 +158,12 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'siliconflow-key',
       'Qwen/Qwen3-8B',
       undefined,
-      undefined,
-      undefined,
     );
   });
 });
 
 describe('editAndRegenerate', { tags: ['unit'] }, () => {  it('merges into the following agent answer and keeps the user edit history', async () => {
     const userMsg = makeMsg({ id: 'u1', role: 'user', content: 'old question' });
-    // Real store agent roles are 'pm'|'programmer'|'tester', not 'agent'.
     const agentMsg = makeMsg({ id: 'a1', role: 'pm', content: 'old answer' });
     useChatStore.setState({
       messages: [userMsg, agentMsg],
@@ -187,7 +182,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {  it('merges into the f
     expect(updatedUser.currentUserVersion).toBe(0);
     // The old answer is NOT deleted — it stays as the merge target for the stream.
     expect(s.messages.map((m) => m.id)).toEqual(['u1', 'a1']);
-    expect(mockSubmitReq).toHaveBeenCalledWith('new question', 'sess-1', 'key-1', 'deepseek-chat', undefined, undefined, undefined);
+    expect(mockSubmitReq).toHaveBeenCalledWith('new question', 'sess-1', 'key-1', 'deepseek-chat', undefined);
   });
 
   it('regenerates even when the edited user message has no following agent answer', async () => {
@@ -203,7 +198,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {  it('merges into the f
     expect(s.editTargetId).toBeNull();
     expect(s.messages[0].content).toBe('edited solo');
     expect(s.messages[0].userVersions).toEqual(['solo']);
-    expect(mockSubmitReq).toHaveBeenCalledWith('edited solo', 'sess-1', 'key-1', 'deepseek-chat', undefined, undefined, undefined);
+    expect(mockSubmitReq).toHaveBeenCalledWith('edited solo', 'sess-1', 'key-1', 'deepseek-chat', undefined);
   });
 
   it('does nothing when content is unchanged', async () => {
@@ -228,7 +223,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {  it('merges into the f
     const { editAndRegenerate } = await import('../chatActions');
     await editAndRegenerate('run-abc123-requirement', 'edited');
 
-    expect(mockSubmitReq).toHaveBeenCalledWith('edited', 'sess-1', 'key-1', 'deepseek-chat', undefined, undefined, 'abc123');
+    expect(mockSubmitReq).toHaveBeenCalledWith('edited', 'sess-1', 'key-1', 'deepseek-chat', 'abc123');
   });
 });
 

@@ -41,8 +41,8 @@
     "onlineStatus": "Online"
   },
   "app": {
-    "title": "AgentStudio",
-    "subtitle": "Virtual Dev Team"
+    "title": "ContentStudio",
+    "subtitle": "AI Content Creator"
   },
   "model": {
     "loading": "Loading...",

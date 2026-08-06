@@ -1,21 +1,20 @@
 """add_rbac_and_owner_id
 
 Revision ID: 3a5020dfb72d
-Revises: 
+Revises:
 Create Date: 2026-06-25 00:07:06.958337
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '3a5020dfb72d'
-down_revision: Union[str, Sequence[str], None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -232,7 +231,7 @@ def upgrade() -> None:
     sa.Column('code', sa.Text(), server_default='', nullable=False),
     sa.Column('review', sa.Text(), server_default='', nullable=False),
     sa.Column('approved', sa.Boolean(), server_default='f', nullable=False),
-    sa.Column('status', sa.String(length=32), server_default='pending', nullable=False, comment='pending|running|converged|max_rounds_reached|error'),
+    sa.Column('status', sa.String(length=32), server_default='pending', nullable=False, comment='pending|running|converged|max_rounds_reached|error'),  # noqa: E501
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['session_id'], ['sessions.id'], ondelete='SET NULL'),

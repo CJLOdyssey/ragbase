@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from core.seed import seed_default_roles_and_admin
 
 # =============================================================================

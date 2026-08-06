@@ -3,7 +3,6 @@
 import os
 
 import pytest
-
 from checkpoint import create_checkpointer
 
 
@@ -25,10 +24,9 @@ class TestOwnedAgentRuns:
                 os.remove("./.test_checkpoints_integration.db")
 
     def test_apply_owner_filter_exists(self):
-        from sqlalchemy import select
-
         from core.infra.database import SessionDB
         from repository.core import apply_owner_filter
+        from sqlalchemy import select
 
         stmt = select(SessionDB)
         result = apply_owner_filter(stmt, SessionDB, owner_id=None)

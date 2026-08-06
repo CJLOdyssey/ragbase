@@ -4,8 +4,6 @@ import os
 from unittest.mock import patch
 
 import pytest
-from cryptography.fernet import Fernet, InvalidToken, MultiFernet
-
 from core.infra.key_vault import (
     _derive_fernet_key,
     _get_fernet,
@@ -14,7 +12,7 @@ from core.infra.key_vault import (
     encrypt_api_key,
     mask_api_key,
 )
-
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 # =============================================================================
 # _derive_fernet_key

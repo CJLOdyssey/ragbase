@@ -40,7 +40,7 @@ class TestAuthProfile:
             assert resp.status_code == 200
 
     def test_merge_guest_data(self, client):
-        with patch("routers.auth.profile._merge_guest_data", new_callable=AsyncMock) as mock_merge:
+        with patch("routers.auth.profile._merge_guest_data", new_callable=AsyncMock):
             resp = client.post("/api/auth/merge", json={"guest_id": "guest-123"})
             assert resp.status_code == 200
             assert resp.json()["status"] == "merged"

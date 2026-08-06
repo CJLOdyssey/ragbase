@@ -36,14 +36,6 @@ describe('listSessions', { tags: ['unit'] }, () => {
 
     expect(mockApi.get).toHaveBeenCalledWith('/sessions', { params: { limit: 50 } });
   });
-
-  it('passes agent_id when provided', async () => {
-    mockApi.get.mockResolvedValue({ data: [] });
-
-    await listSessions(50, 'agent1');
-
-    expect(mockApi.get).toHaveBeenCalledWith('/sessions', { params: { limit: 50, agent_id: 'agent1' } });
-  });
 });
 
 describe('getSessionDetail', { tags: ['unit'] }, () => {
@@ -65,14 +57,6 @@ describe('createSession', { tags: ['unit'] }, () => {
 
     expect(mockApi.post).toHaveBeenCalledWith('/sessions', { title: '新对话' });
     expect(result).toEqual({ id: 's1', title: '新对话' });
-  });
-
-  it('passes agent_id when provided', async () => {
-    mockApi.post.mockResolvedValue({ data: { id: 's1', title: 'Chat' } });
-
-    await createSession('Chat', 'agent1');
-
-    expect(mockApi.post).toHaveBeenCalledWith('/sessions', { title: 'Chat', agent_id: 'agent1' });
   });
 });
 

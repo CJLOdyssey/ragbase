@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
-
 from tasks.complete_pipeline import _complete_pipeline
 from tasks.pipeline_utils import (
     _build_session_context,

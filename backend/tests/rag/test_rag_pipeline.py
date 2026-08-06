@@ -1,8 +1,8 @@
 """Tests for RAG pipeline (backend/rag/rag_pipeline.py)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from rag import rag_pipeline
 from rag.rag_chunking import Chunk
 

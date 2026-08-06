@@ -9,9 +9,9 @@ from core.base import Base
 # Import from domain files
 from orm.auth import RefreshTokenDB, RoleDB, UserDB, UserRoleDB
 from orm.content import PromptDB, VersionDB
+from orm.infra import AttachmentDB, AuditLogDB, CommandLogDB
 from orm.key import KeyUsageLog, UserApiKey
 from orm.session import ChatMessage, MemoryEntry, ProjectRun, SessionDB
-from orm.team import AttachmentDB, AuditLogDB, CommandLogDB
 
 __all__ = [
     "Base",

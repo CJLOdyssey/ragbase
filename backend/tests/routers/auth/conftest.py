@@ -16,9 +16,8 @@ os.environ["AUTH_ENABLED"] = "0"
 os.environ["RATE_LIMIT"] = "9999"
 os.environ["CHECKPOINTER_BACKEND"] = "memory"
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 import core.infra.database as db_mod
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 _sqlite_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 if db_mod._async_engine is None:
@@ -42,10 +41,12 @@ def client():
         # Create roles and users with explicit IDs for legacy mode compatibility.
         # Use raw seeding (not seed_default_roles_and_admin) so admin user gets
         # id="admin" matching CurrentUser() defaults in legacy auth mode.
-        from sqlalchemy import select
         from core.infra.database import (
-            RoleDB, UserDB, UserRoleDB,
+            RoleDB,
+            UserDB,
+            UserRoleDB,
         )
+        from sqlalchemy import select
 
         async with db_mod._async_session_factory() as session:  # type: ignore[arg-type]
             for role_data in [

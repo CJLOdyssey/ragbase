@@ -364,27 +364,4 @@ describe('chatStore', { tags: ['unit'] }, () => {
       expect(useChatStore.getState().messages[0].thumbs).toBeNull();
     });
   });
-
-  describe('selectAgent', () => {
-    it('sets selectedAgentId', async () => {
-      const { useChatStore } = await import('../chatStore');
-      useChatStore.getState().selectAgent('agent-123');
-      expect(useChatStore.getState().selectedAgentId).toBe('agent-123');
-    });
-  });
-
-  describe('setActiveTeam', () => {
-    it('sets activeTeamId', async () => {
-      const { useChatStore } = await import('../chatStore');
-      useChatStore.getState().setActiveTeam('team-456');
-      expect(useChatStore.getState().activeTeamId).toBe('team-456');
-    });
-
-    it('clears activeTeamId', async () => {
-      const { useChatStore } = await import('../chatStore');
-      useChatStore.setState({ activeTeamId: 'old-team' });
-      useChatStore.getState().setActiveTeam(null);
-      expect(useChatStore.getState().activeTeamId).toBeNull();
-    });
-  });
 });

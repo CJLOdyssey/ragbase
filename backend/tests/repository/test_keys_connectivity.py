@@ -4,8 +4,6 @@ import json
 import os
 import unittest.mock
 
-import pytest
-
 os.environ.setdefault("KEY_VAULT_SECRET", "0123456789abcdef0123456789abcdef")
 os.environ.setdefault("AUTH_MODE", "legacy")
 os.environ.setdefault("AUTH_ENABLED", "0")

@@ -12,19 +12,12 @@ Strategy:
     factory always points at the session engine.
 """
 
-import uuid
-from datetime import UTC, datetime
 
 import pytest
+from core.infra.database import Base
 from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
     async_sessionmaker,
     create_async_engine,
-)
-
-from core.infra.database import Base
-from core.infra.database import (
-    _async_session_factory as _real_factory,
 )
 
 

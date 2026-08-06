@@ -6,7 +6,6 @@ ContentStudio 场景无 Agent 配置/工具/MCP 绑定，管线直接以默认�
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from tasks.agent_pipeline import _run_agent_pipeline
 
 # =============================================================================
@@ -30,6 +29,7 @@ def mock_agent_deps():
         patch("tasks.agent_pipeline._build_session_context", return_value="session_ctx"),
         patch("tasks.agent_pipeline._get_rag_context", new_callable=AsyncMock, return_value="rag_ctx"),
         patch("tasks.agent_pipeline._save_output_memories", new_callable=AsyncMock),
+        patch("tasks.agent_pipeline.list_attachments_by_run", new_callable=AsyncMock, return_value=[]),
         patch("tasks.agent_pipeline.tracemalloc"),
     ]
     mocks = {}
@@ -98,12 +98,11 @@ class TestRunAgentPipeline:
         )
         assert result is not None
         mock_agent_deps["SingleAgentGraph"].assert_called_once()
-        mock_agent_deps["bind_tools"] if "bind_tools" in mock_agent_deps else None
 
-    async def test_no_agent_config_no_tools_bound(self, mock_agent_deps):
-        """内容创作场景：无 agent 配置时工具列表为空，graph.bind_tools 以空列表调用。"""
+    async def test_runs_without_tools_binding(self, mock_agent_deps):
+        """ContentStudio 无工具生态：管线不绑定任何工具，直接以默认图运行。"""
         graph = _default_mocks(mock_agent_deps)
-        await _run_agent_pipeline(
+        result = await _run_agent_pipeline(
             run_id="run-2",
             requirement="写一篇公众号文章",
             session_id=None,
@@ -112,7 +111,9 @@ class TestRunAgentPipeline:
             api_base=None,
             model=None,
         )
-        graph.bind_tools.assert_called_once_with([])
+        assert result is not None
+        graph.bind_tools.assert_not_called()
+        graph.run.assert_awaited_once()
 
     async def test_session_context_injected_when_session_id(self, mock_agent_deps):
         _default_mocks(mock_agent_deps)
@@ -203,7 +204,6 @@ class TestRunAgentPipeline:
                 api_base=None,
                 model=None,
                 )
-        mock_agent_deps["_report_run_error"] if "_report_run_error" in mock_agent_deps else None
 
     async def test_model_override(self, mock_agent_deps):
         cfg = MagicMock()

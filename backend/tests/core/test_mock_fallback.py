@@ -1,6 +1,5 @@
 """Tests for backend/core/mock_fallback.py — run_mock function."""
 
-import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest

@@ -2,8 +2,6 @@
 
 import uuid
 
-import pytest
-
 from core.infra.database import get_session_factory
 from repository.versions import create_version, get_version, list_versions
 

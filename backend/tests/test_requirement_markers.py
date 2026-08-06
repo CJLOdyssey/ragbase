@@ -2,7 +2,6 @@ import uuid
 
 import bcrypt
 import pytest
-
 from repository.auth import create_user
 
 

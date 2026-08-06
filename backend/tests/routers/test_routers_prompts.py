@@ -1,7 +1,7 @@
 """Prompts router tests — merged from test_coverage_boost, test_coverage_gaps, test_remaining_coverage."""
 
-import os
 import asyncio
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -19,9 +19,8 @@ os.environ["AUTH_ENABLED"] = "0"
 os.environ["RATE_LIMIT"] = "9999"
 os.environ["CHECKPOINTER_BACKEND"] = "memory"
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 import core.infra.database as db_mod
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 if db_mod._async_engine is None:
     _sqlite_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -48,8 +47,8 @@ def client():
         from core.seed import seed_default_roles_and_admin
         await seed_default_roles_and_admin()
         import bcrypt
-        from sqlalchemy import select
         from core.infra.database import UserDB, get_session_factory
+        from sqlalchemy import select
         factory = get_session_factory()
         async with factory() as session:
             existing = await session.execute(

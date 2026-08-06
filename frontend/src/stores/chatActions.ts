@@ -9,7 +9,6 @@ import { useChatStore } from './chatStore';
 export async function submitRequirement(
   requirement: string,
   session_id?: string,
-  agent_id?: string,
   skipAddUserMessage?: boolean,
   submissionConvId?: string | null,
   parent_run_id?: string,
@@ -69,10 +68,8 @@ export async function submitRequirement(
   });
 
   try {
-    const currentState = useChatStore.getState();
-    const teamId = currentState.activeTeamId ?? undefined;
-    Logger.info('[chat] submitRequirement — team_id=%s | agent_id=%s | session_id=%s', teamId, agent_id, effectiveSessionId);
-    const resp = await submitRequirementExternal(requirement, effectiveSessionId, keyId, model, agent_id, teamId, parent_run_id);
+    Logger.info('[chat] submitRequirement — session_id=%s', effectiveSessionId);
+    const resp = await submitRequirementExternal(requirement, effectiveSessionId, keyId, model, parent_run_id);
     const run_id = resp.run_id;
     const returnedSessionId = resp.session_id || effectiveSessionId || null;
     useChatStore.setState({ currentRunId: run_id, currentSessionId: returnedSessionId, status: 'running', wsStatus: 'connecting' });
@@ -113,7 +110,7 @@ export async function regenerateMessage(msgIndex: number) {
   if (!userMsg) return;
   if (s.currentRunId) disconnectRun(s.currentRunId);
   useChatStore.setState({ status: 'loading', error: null, result: null, messages: s.messages.slice(0, msgIndex) });
-  await submitRequirement(userMsg.content, s.currentSessionId ?? undefined, undefined, true);
+  await submitRequirement(userMsg.content, s.currentSessionId ?? undefined, true);
 }
 
 /**
@@ -144,8 +141,7 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
   const userVersions = old.userVersions ? [...old.userVersions] : [];
   if (old.content !== trimmed) userVersions.push(old.content);
 
-  // First non-user message after the edit is the merge target (agent roles are
-  // 'pm'|'programmer'|'tester' in the store; displayMessages normalizes them to 'agent').
+  // First non-user message after the edit is the merge target.
   const nextAgentIdx = s.messages.findIndex((m, i) => i > idx && m.role !== 'user');
   const editTargetId = nextAgentIdx >= 0 ? s.messages[nextAgentIdx].id : null;
 
@@ -164,7 +160,7 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
     ),
   });
 
-  await submitRequirement(trimmed, s.currentSessionId ?? undefined, undefined, true, null, parentRunId);
+  await submitRequirement(trimmed, s.currentSessionId ?? undefined, true, null, parentRunId);
 }
 
 export async function retry() {

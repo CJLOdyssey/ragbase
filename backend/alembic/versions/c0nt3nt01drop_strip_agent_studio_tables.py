@@ -9,15 +9,15 @@ registered_tools, mcp_servers, registered_skills, workflow_configs,
 workflow_nodes, workflow_edges, and the sessions.agent_id column.
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = 'c0nt3nt01drop'
-down_revision: Union[str, Sequence[str], None] = 'f7c3d9a1b2e4'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = 'f7c3d9a1b2e4'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 _DROPPED_TABLES = [
     "teams",

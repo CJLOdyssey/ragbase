@@ -5,17 +5,17 @@ Revises: 2b69c6f32e6a
 Create Date: 2026-07-10 17:52:11.470248
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '8347788032e5'
-down_revision: Union[str, Sequence[str], None] = '2b69c6f32e6a'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '2b69c6f32e6a'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def _table_exists(name: str) -> bool:
@@ -62,7 +62,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['workflow_config_id'], ['workflow_configs.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_workflow_nodes_workflow_config_id'), 'workflow_nodes', ['workflow_config_id'], unique=False)
+    op.create_index(op.f('ix_workflow_nodes_workflow_config_id'), 'workflow_nodes', ['workflow_config_id'], unique=False)  # noqa: E501
     op.create_table('workflow_edges',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('workflow_config_id', sa.String(length=36), nullable=False),
@@ -76,7 +76,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['workflow_config_id'], ['workflow_configs.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_workflow_edges_workflow_config_id'), 'workflow_edges', ['workflow_config_id'], unique=False)
+    op.create_index(op.f('ix_workflow_edges_workflow_config_id'), 'workflow_edges', ['workflow_config_id'], unique=False)  # noqa: E501
 
     # Drop old LangGraph runtime tables if they exist (created at runtime, not by migrations)
     if _table_exists('checkpoint_writes'):
@@ -122,7 +122,7 @@ def downgrade() -> None:
     sa.Column('parent_checkpoint_id', sa.TEXT(), autoincrement=False, nullable=True),
     sa.Column('type', sa.TEXT(), autoincrement=False, nullable=True),
     sa.Column('checkpoint', postgresql.JSONB(astext_type=sa.Text()), autoincrement=False, nullable=False),
-    sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), autoincrement=False, nullable=False),
+    sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), autoincrement=False, nullable=False),  # noqa: E501
     sa.PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'checkpoint_id', name=op.f('checkpoints_pkey1'))
     )
     op.create_index(op.f('checkpoints_thread_id_idx'), 'checkpoints', ['thread_id'], unique=False)
@@ -144,7 +144,7 @@ def downgrade() -> None:
     sa.Column('agent_state', sa.TEXT(), autoincrement=False, nullable=False),
     sa.Column('created_at', postgresql.TIMESTAMP(timezone=True), autoincrement=False, nullable=False),
     sa.ForeignKeyConstraint(['run_id'], ['project_runs.id'], name=op.f('checkpoints_run_id_fkey'), ondelete='SET NULL'),
-    sa.ForeignKeyConstraint(['session_id'], ['sessions.id'], name=op.f('checkpoints_session_id_fkey'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['session_id'], ['sessions.id'], name=op.f('checkpoints_session_id_fkey'), ondelete='CASCADE'),  # noqa: E501
     sa.PrimaryKeyConstraint('id', name=op.f('checkpoints_pkey'))
     )
     op.create_index(op.f('ix_checkpoints_session_id'), 'agent_checkpoints', ['session_id'], unique=False)
@@ -158,7 +158,7 @@ def downgrade() -> None:
     sa.Column('type', sa.TEXT(), autoincrement=False, nullable=True),
     sa.Column('blob', postgresql.BYTEA(), autoincrement=False, nullable=False),
     sa.Column('task_path', sa.TEXT(), server_default=sa.text("''::text"), autoincrement=False, nullable=False),
-    sa.PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'checkpoint_id', 'task_id', 'idx', name=op.f('checkpoint_writes_pkey'))
+    sa.PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'checkpoint_id', 'task_id', 'idx', name=op.f('checkpoint_writes_pkey'))  # noqa: E501
     )
     op.create_index(op.f('checkpoint_writes_thread_id_idx'), 'checkpoint_writes', ['thread_id'], unique=False)
     op.drop_index(op.f('ix_workflow_edges_workflow_config_id'), table_name='workflow_edges')
