@@ -1,11 +1,12 @@
-"""CommandLogDB, AuditLogDB, AttachmentDB ORM models."""
+"""CommandLogDB, AuditLogDB, AttachmentDB, AssetDB, ComposeTemplateDB ORM models."""
 
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from core.base import Base
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -63,4 +64,41 @@ class AttachmentDB(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
+    )
+
+
+class AssetDB(Base):
+    """User-level asset library (distinct from session-scoped attachments)."""
+
+    __tablename__ = "assets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    asset_type: Mapped[str] = mapped_column(String(32), default="document")
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    storage_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    usage_count: Mapped[int] = mapped_column(Integer, default=0)
+    indexed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class ComposeTemplateDB(Base):
+    """Card composition templates — seeded with 3 built-in layouts."""
+
+    __tablename__ = "compose_templates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    layout_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

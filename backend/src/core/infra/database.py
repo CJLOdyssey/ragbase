@@ -138,10 +138,12 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 # All ORM models moved to backend.orm package.
 # These imports keep `from core.infra.database import XxxDB` working.
 from orm import (  # noqa: F401
+    AssetDB,
     AttachmentDB,
     AuditLogDB,
     ChatMessage,
     CommandLogDB,
+    ComposeTemplateDB,
     KeyUsageLog,
     MemoryEntry,
     ProjectRun,
@@ -156,8 +158,8 @@ from orm import (  # noqa: F401
 )
 
 __all__ = [
-    "AttachmentDB", "AuditLogDB",
-    "ChatMessage", "CommandLogDB", "KeyUsageLog",
+    "AssetDB", "AttachmentDB", "AuditLogDB",
+    "ChatMessage", "CommandLogDB", "ComposeTemplateDB", "KeyUsageLog",
     "MemoryEntry", "ProjectRun",
     "PromptDB", "RefreshTokenDB",
     "RoleDB", "SessionDB",
