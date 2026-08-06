@@ -1,0 +1,117 @@
+[project]
+name = "content-studio"
+version = "0.1.0"
+description = "Content creation assistant platform"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = ["E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/src/routers/*.py" = ["B008"]
+"backend/src/auth/auth_rbac.py" = ["F401"]
+"backend/tests/*.py" = ["E501", "SIM117", "N806"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+python_version = "3.12"
+warn_unused_ignores = true
+# backend/src 作为顶层模块根（core/broker/repository 等，与运行时 PYTHONPATH=backend/src 一致）
+mypy_path = ["backend/src", "backend/stubs"]
+exclude = ["backend/tests/", "backend/stubs/", "backend/alembic/", "backend/src/system_team/"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["backend/src"]
+addopts = ["-n", "auto", "--dist", "worksteal", "--reruns=2", "--reruns-delay=1"]
+asyncio_mode = "auto"
+markers = [
+    "benchmark: marks performance benchmark tests (not run in default CI)",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "env: marks tests that need specific environment variables",
+    "integration: marks tests that require a running backend + Docker stack (deselect with '-m \"not integration\"')",
+    "requirement(req_id): mark test as covering a specific requirement",
+    "unit: marks unit tests (fast, no external dependencies)",
+    "smoke: marks smoke tests (basic connectivity checks)",
+    "regression: marks regression tests (edge cases and validation)",
+    "flaky: marks tests as flaky (retried automatically via pytest-rerunfailures)",
+    "xdist_group: marks tests that must run in the same xdist worker (e.g. shared state, ordering)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:langchain.*",
+    "ignore::DeprecationWarning:langgraph.*",
+    "ignore::DeprecationWarning:langevals_*",
+    "ignore::UserWarning:langchain.*",
+    "ignore::ImportWarning:langgraph.*",
+
+]
+
+[tool.coverage.run]
+source = ["backend/src"]
+omit = [
+    "backend/tests/*",
+    "backend/thinking_tree/*",
+    "backend/system_team/*",
+    "backend/main.py",
+    "backend/checkpoint/*",
+    "backend/rag/rag_store.py",
+    "backend/graph/agent_graph.py",
+]
+
+[tool.bandit]
+exclude_dirs = ["backend/tests", ".venv", ".opencode"]
+skips = [
+    "B101",  # assert — tests/ is already excluded; remaining asserts are intentional defensive checks
+    "B102",  # exec — sandboxed tool code validator runs with empty __builtins__ (no arbitrary code execution)
+    "B104",  # 0.0.0.0 — required for Docker container networking; not exposed to public internet
+    "B608",  # SQL injection — false positive: all SQL uses parameterized text() with params= bound variables
+]
+
+[tool.bandit.asserts]
+
+
+[tool.coverage.report]
+fail_under = 89
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+
+[tool.mutmut]
+# CI 硬门禁运行范围：core/infra/（纯逻辑、单测覆盖）。
+# 引擎（graph/workflow/checkpoint）依赖 langgraph 重 mock，逐步扩量（见 2026-08-05 plan P5）。
+# mutmut 3.7 配置要点：
+#   - source_paths 必须是 backend/src/（mutant 模块名从相对路径派生，须与 trampoline 记录的
+#     core.infra.X 一致；配成 backend/src/core/infra/ 会派生 infra.X 导致 0 关联）
+#   - only_mutate 限定实际突变的文件（只动 core/infra，避免引擎/全局慢 + no-tests 拉低 score）
+#   - pytest_add_cli_args_test_selection 只跑 core/infra 测试（stats 关联用）
+#   - pytest_add_cli_args 追加 -n 0 覆盖 pyproject pytest addopts 的 -n auto（xdist 跨进程
+#     丢失 trampoline stats，导致 0 关联）
+#   - PYTHONPATH=backend/src 必须在 mutmut 进程 env（PytestRunner 同进程调 pytest，不读 test_runner）
+source_paths = ["src/"]
+only_mutate = ["src/core/infra/*.py"]
+exclude_paths = [
+    "backend/system_team/",
+    "backend/thinking_tree/",
+    "backend/checkpoint/",
+    "backend/graph/",
+]
+test_runner = "env PYTHONPATH=backend/src python3 -m pytest -p no:cacheprovider -q --no-header"
+pytest_add_cli_args_test_selection = ["backend/tests/core/infra"]
+also_copy = ["backend/tests/core/infra"]
+pytest_add_cli_args = ["-n", "0"]
+# 基线 45.7%（2026-08-05 实测，257 killed / 562 有测试 mutants）。
+# 主要漏网：rate_limit(107 survived) / logging_config(65) / redis_sentinel(62)。
+# CI 门禁阈值 40%（mutmut.yml 硬编码，与 run 波动的 killed 数留缓冲）。
+# TODO: 补 core/infra 单测后逐步提到 60%+。
+score_threshold = 40
+

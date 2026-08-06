@@ -1,0 +1,131 @@
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.whl
+
+# ── pytest-testmon 增量测试本地缓存（机器相关，不入库）─────────────────────
+.testmondata
+.testmondata-*
+.testmondata-shm
+
+# ── mutmut 运行时临时 symlink（src → backend/src，勿入库，会让 ruff 误报 I001）──
+/src
+
+# ── Node / Frontend ───────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+
+# ── IDE / Editor ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.obsidian/
+
+# ── OS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Secrets / Env ──────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.*
+
+# ── Databases ──────────────────────────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+.sqlite3
+
+# ── Runtime / Logs ─────────────────────────────────────────────────────────
+*.log
+*.log.*
+
+# ── Coverage ───────────────────────────────────────────────────────────────
+.coverage
+.coverage.*
+coverage.xml
+coverage/
+frontend/coverage/
+
+# ── Virtual Env ────────────────────────────────────────────────────────────
+.venv/
+.venv-*/
+
+# ── Docker ──────────────────────────────────────────────────────────────────
+.docker/
+
+# ── Testing Tools ──────────────────────────────────────────────────────────
+.playwright-mcp/
+
+# Playwright auth state (contains credentials)
+frontend/.auth/
+
+# Playwright test artifacts
+frontend/test-results/
+.playwright-cli/
+
+# ── Build Artifacts ───────────────────────────────────────────────────────
+frontend/lighthouse-report.json
+frontend/antd-migration-screenshot.png
+frontend/antd-snapshot.txt
+
+# ── Code Intelligence Caches ──────────────────────────────────────────────
+.codegraph/
+.superpowers/
+.cocoindex_code/
+
+# ── AI Tool Directories ───────────────────────────────────────────────────
+.mimocode/
+.opencode/
+.agents/
+.claude/
+
+# ── Runtime Artifacts ─────────────────────────────────────────────────────
+checkpoints.db
+uploads/
+
+# ── Project-specific ───────────────────────────────────────────────────────
+skills-lock.json
+.sisyphus/
+prototypes/
+scripts/deploy_prod.py
+scripts/ask_credentials.py
+.omo/
+coverage.json
+# Docs are versioned — keep screenshots out
+
+# Internal (not for public repo)
+start.sh
+.secrets.baseline
+monitoring/
+.github/workflows/deploy*.yml
+.github/workflows/rollback.yml
+.github/workflows/sync-docs.yml
+docker/compose.redis-ha.yml
+scripts/ci-debug.sh
+scripts/sync-docs.sh
+scripts/run_mutmut.sh
+scripts/test_tools_in_ai_response.py
+scripts/test_tools_verified.py
+
+# Web prototype leftovers (never commit)
+index.html
+script.js
+styles.css
+# Internal docs (not for public repo)
+docs/
+AGENTS.md
+CLAUDE.md
+RUNBOOK.md
+.mutmut-cache

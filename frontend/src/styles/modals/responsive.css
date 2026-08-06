@@ -1,0 +1,11 @@
+/* modals/responsive.css — all responsive overrides migrated to Tailwind (Phase 5), except api-modal */
+
+@media (max-width: 768px) {
+  .api-modal {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+}

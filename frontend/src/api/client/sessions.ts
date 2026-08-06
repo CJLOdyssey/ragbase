@@ -1,0 +1,68 @@
+import api from './instance';
+import type { SessionDetail, SessionItem, ProjectRun } from '../../types';
+
+export async function listSessions(limit = 50, agent_id?: string): Promise<SessionItem[]> {
+  const params: Record<string, string | number> = { limit };
+  if (agent_id) params.agent_id = agent_id;
+  const { data } = await api.get('/sessions', { params });
+  return data;
+}
+
+export async function getSessionDetail(sessionId: string): Promise<SessionDetail> {
+  const { data } = await api.get(`/sessions/${sessionId}`);
+  return data;
+}
+
+export async function createSession(title = '\u65b0\u5bf9\u8bdd', agent_id?: string): Promise<{ id: string; title: string }> {
+  const body: Record<string, string> = { title };
+  if (agent_id) body.agent_id = agent_id;
+  const { data } = await api.post('/sessions', body);
+  return data;
+}
+
+export async function renameSession(sessionId: string, title: string): Promise<void> {
+  await api.put(`/sessions/${sessionId}`, { title });
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  await api.delete(`/sessions/${sessionId}`);
+}
+
+export async function deleteMemory(memoryId: string): Promise<void> {
+  await api.delete(`/memories/${memoryId}`);
+}
+
+export async function exportSessionMemories(sessionId: string, format: 'json' | 'md'): Promise<Blob> {
+  const { data } = await api.get(`/sessions/${sessionId}/memories/export`, {
+    params: { format },
+    responseType: 'blob',
+  });
+  return data;
+}
+
+export async function getRun(runId: string): Promise<ProjectRun> {
+  const { data } = await api.get(`/runs/${runId}`);
+  return data;
+}
+
+export async function updateAnswerVersions(
+  runId: string,
+  versions: string[],
+  thinking_versions?: string[],
+): Promise<{ ok: boolean; versions: number }> {
+  const { data } = await api.put(`/runs/${runId}/answer-versions`, {
+    versions,
+    thinking_versions: thinking_versions?.length ? thinking_versions : undefined,
+  });
+  return data;
+}
+
+export async function listRuns(limit = 20, offset?: number): Promise<ProjectRun[]> {
+  const { data } = await api.get('/runs', { params: { limit, ...(offset !== undefined && { offset }) } });
+  return data;
+}
+
+export async function healthCheck(): Promise<Record<string, unknown>> {
+  const { data } = await api.get('/health');
+  return data;
+}

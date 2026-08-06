@@ -1,0 +1,14 @@
+# Gitleaks allowlist — 测试/示例假密钥（非真实凭据）
+# 这些值仅存在于测试 fixture 与示例中，误报为真实密钥会阻塞 CI 的 secrets-scan。
+# 真实密钥（.env / vault）永不入库，由 .gitignore + pre-commit 保证。
+[extend]
+
+[allowlist]
+description = "Test fixtures and placeholder credentials (not real secrets)"
+regexes = [
+  '''0123456789abcdef0123456789abcdef''',          # KEY_VAULT_SECRET test fixture
+  '''sk-integration-test-12345''',                  # integration test fake key
+  '''sk-anon-key-12345''',                          # anonymous key test fixture
+  '''rotated-key-1234567890''',                     # KEY_VAULT_SECRET_ROTATED fixture
+  '''duration_ms=0''',                              # non-secret metric false positive
+]

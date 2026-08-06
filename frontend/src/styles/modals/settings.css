@@ -1,0 +1,9 @@
+/* modals/settings.css — all classes migrated to Tailwind (Phase 5), except .settings-section */
+
+/* settings-section — used by SettingsModal for scrollable content grouping. */
+.settings-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--sp-5);
+}

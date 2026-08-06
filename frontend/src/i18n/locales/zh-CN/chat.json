@@ -1,0 +1,158 @@
+{
+  "home": {
+    "greeting": "你好，我是你的需求分析助手",
+    "subtitle": "描述你的需求，我来帮你分析和规划",
+    "placeholder": "描述你的需求，我来帮你分析和规划...",
+    "send": "发送",
+    "attach": "附加文件 (PRD, 设计稿)",
+    "commands": "/命令",
+    "samples": {
+      "login": "设计登录页面组件",
+      "api": "API 性能分析",
+      "auth": "权限管理接口",
+      "database": "电商数据库设计"
+    }
+  },
+  "chat": {
+    "inputPlaceholder": "输入需求，AI 团队将展开讨论..."
+  },
+  "agent": {
+    "welcome": "请描述你的需求，Agent 将为你分析和处理",
+    "startChat": "与 {{name}} 开始对话",
+    "thinking": "{{name}} 正在思考...",
+    "config": "配置 Agent",
+    "saveConfig": "保存配置"
+  },
+  "teamMessage": {
+    "you": "你",
+    "copy": "复制",
+    "copied": "已复制",
+    "unknownAgent": "DevAgent",
+    "system": "系统",
+    "executeTask": "执行任务 ({{count}} 步)",
+    "mentionBackend": "@后端 Agent",
+    "syncedToWorkspace": "已同步至工作区",
+    "thinkingProcess": "思考过程",
+    "thinkingComplete": "已思考",
+    "thinkingPending": "思考中",
+    "seconds": "s",
+    "expand": "展开",
+    "collapse": "收起",
+    "regenerate": "重新生成",
+    "edit": "编辑",
+    "continue": "继续生成",
+    "interrupted": "内容被中断",
+    "continuing": "正在继续...",
+    "thumbsUp": "有用",
+    "thumbsDown": "没用",
+    "removeFeedback": "取消评价",
+    "thinkingStopped": "思考已停止",
+    "verdictApproved": "已通过",
+    "verdictRejected": "已驳回",
+    "rounds": "{{count}} 轮",
+    "totalRounds": "共 {{count}} 轮",
+    "approvalRequired": "等待人工审批",
+    "approvalNode": "节点：{{node}}",
+    "approvalApprove": "通过",
+    "approvalReject": "驳回",
+    "approvalNote": "审批备注（可选）",
+    "approvalFailed": "提交失败，请重试"
+  },
+  "commandGroups": {
+    "agent": "Agent",
+    "general": "通用",
+    "skills": "技能",
+    "mcp": "MCP",
+    "tools": "工具"
+  },
+  "fileAttach": {
+    "attach": "添加附件",
+    "dropHere": "释放文件以添加附件"
+  },
+  "model": {
+    "loading": "加载中...",
+    "noCommands": "暂无可用命令",
+    "noModels": "暂无可用模型",
+    "configure": "配置 API 提供商",
+    "noModelsHint": "请先配置 API 提供商以使用模型",
+    "statusDeprecated": "已弃用",
+    "statusSunset": "即将下线"
+  },
+  "agentResponses": {
+    "pm": [
+      "收到需求，我正在分析用户故事和功能优先级...",
+      "PRD 文档已整理完成，包含核心功能和验收标准。",
+      "任务已拆解为可执行的 Sprint backlog。",
+      "需求评审完成，可以开始开发了。"
+    ],
+    "architect": [
+      "收到技术问题，我正在评估架构方案...",
+      "系统架构设计完成，采用微服务架构。",
+      "技术选型报告已输出，推荐使用主流技术栈。",
+      "代码评审完成，发现几个可以优化的地方。"
+    ],
+    "ui": [
+      "收到设计需求，我正在构思界面布局方案...",
+      "好的，我会为你设计一个现代化的 UI 界面。",
+      "设计规范已就绪，我将输出设计 Token 和组件草图。",
+      "配色方案和字体选择已完成，准备进入开发阶段。"
+    ],
+    "frontend": [
+      "收到前端需求，我正在搭建组件结构...",
+      "React 组件已创建，支持响应式布局。",
+      "API 接口已对接，前端功能开发完成。",
+      "已添加单元测试，代码质量检查通过。"
+    ],
+    "backend": [
+      "收到后端需求，我正在设计 API 接口...",
+      "数据库表结构已设计完成，开始编写 Controller。",
+      "JWT 认证逻辑已实现，接口测试通过。",
+      "已优化查询性能，API 响应时间提升 50%。"
+    ],
+    "qa": [
+      "收到测试需求，我正在编写测试用例...",
+      "单元测试覆盖率达到 85%，发现 2 个潜在问题。",
+      "集成测试通过，所有接口运行正常。",
+      "安全扫描完成，未发现高危漏洞。"
+    ],
+    "devops": [
+      "收到运维需求，我正在配置 CI/CD 流水线...",
+      "Docker 镜像已构建，部署脚本准备就绪。",
+      "监控告警已配置，系统运行状态正常。",
+      "生产环境部署完成，性能指标符合预期。"
+    ],
+    "fullstack": [
+      "收到需求，我正在评估前后端实现方案...",
+      "全栈原型已快速搭建，支持基本功能。",
+      "前后端联调完成，功能运行正常。",
+      "已编写技术文档，方便后续维护。"
+    ],
+    "fallback": "收到消息，正在处理中...",
+    "home": [
+      "收到你的描述，让我来帮你梳理一下需求。请问这个功能的主要用户群体是谁？",
+      "这是一个很好的想法！为了更好地理解你的需求，能告诉我你希望解决什么核心问题吗？",
+      "明白了。基于你的描述，我建议我们可以从以下几个方面来规划这个功能...",
+      "你的需求已经记录下来了。接下来我们可以深入讨论技术实现方案，你有什么偏好的技术栈吗？",
+      "这是一个有趣的需求！让我帮你分析一下可能的实现路径和所需的时间周期。"
+    ],
+    "greeting": {
+      "pm": "你好！我是产品经理，负责需求分析和产品规划。有什么产品需求可以告诉我。",
+      "architect": "你好！我是架构师，负责系统架构设计和技术选型。有什么架构问题可以讨论。",
+      "ui": "你好！我是 UI 设计师，负责界面与交互设计。有什么设计需求可以告诉我。",
+      "frontend": "你好！我是前端工程师，精通 React/Vue 开发。有什么前端需求可以告诉我。",
+      "backend": "你好！我是后端工程师，负责 API 与数据库设计。有什么后端需求可以告诉我。",
+      "qa": "你好！我是测试工程师，负责自动化与安全测试。有什么测试需求可以告诉我。",
+      "devops": "你好！我是 DevOps 工程师，负责 CI/CD 和部署运维。有什么运维需求可以告诉我。",
+      "fullstack": "你好！我是全栈工程师，可以处理前后端各种问题。有什么需求可以告诉我。"
+    }
+  },
+  "shortcuts": {
+    "newChat": "新建对话",
+    "settings": "打开设置",
+    "send": "发送消息",
+    "newline": "换行",
+    "close": "关闭弹窗",
+    "undo": "撤销",
+    "save": "保存"
+  }
+}

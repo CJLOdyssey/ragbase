@@ -1,0 +1,23 @@
+# <type>: <简短描述（50 字以内）>
+#
+# ## 类型
+# feat:    新功能
+# fix:     修复 Bug
+# refactor:重构
+# docs:    文档变更
+# test:    测试相关
+# chore:   构建/工具链
+# perf:    性能优化
+# security:安全修复
+#
+# ## 示例
+# feat: 添加 Agent 批量删除功能
+# fix: 修复 WebSocket 断连后重连失败
+# docs: 更新 API 使用示例
+# test: 补齐 useGenericCrud 单测
+#
+# ## 关联
+# 关联 Issue: #123
+# 关联 ADR: adr/005-dynamic-team-graph.md
+#
+# 如果变更需要更新 CHANGELOG，请在 CHANGELOG.md [未发布] 区块添加对应条目。

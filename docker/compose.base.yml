@@ -1,0 +1,132 @@
+# ── 共享基础 compose ─────────────────────────────────────────────────────
+# 按 Docker 官方推荐（include/extends 多文件机制）拆分的共享骨架：
+#   docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
+#   docker compose -f docker/compose.base.yml -f docker/compose.prod.yml up -d
+# 环境差异（端口/密钥/celery/日志轮转）放在各自 overlay 文件，避免双份维护漂移。
+# 注意 include 的 merge 语义：mapping 字段深合并，scalar 覆盖，
+# ports/volumes 按 source:target / target 匹配合并。
+# ─────────────────────────────────────────────────────────────────────────
+
+name: agent-studio
+
+x-common-env: &common-env
+  PYTHONPATH: /app/backend/src
+  DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/backend
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/0
+  DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.deepseek.com}
+  OPENAI_MODEL: ${OPENAI_MODEL:-deepseek-v4-flash}
+  KEY_VAULT_SECRET: ${KEY_VAULT_SECRET:-}
+  MAX_ROUNDS: ${MAX_ROUNDS:-5}
+  TEMPERATURE: ${TEMPERATURE:-0.7}
+  TIMEOUT: ${TIMEOUT:-120}
+  MAX_RETRIES: ${MAX_RETRIES:-3}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  NO_PROXY: localhost,127.0.0.1,postgres,redis,backend,.local
+  BAIDU_QIANFAN_API_KEY: ${BAIDU_QIANFAN_API_KEY:-}
+  CHECKPOINTER_BACKEND: ${CHECKPOINTER_BACKEND:-postgres}
+  CHECKPOINTER_DSN: ${CHECKPOINTER_DSN:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/backend}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agent-studio-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: backend
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512m
+    mem_reservation: 256m
+
+  redis:
+    image: redis:7-alpine
+    container_name: agent-studio-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    mem_limit: 256m
+    mem_reservation: 128m
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        - PIP_INDEX_URL
+        - PIP_TRUSTED_HOST
+    image: agent-studio/backend:latest
+    container_name: agent-studio-api
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    mem_limit: 1g
+    mem_reservation: 512m
+    healthcheck:
+      test: ["CMD", "python3", "scripts/health.py", "--port", "8080"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - checkpoint_data:/app/data
+
+  celery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        - PIP_INDEX_URL
+        - PIP_TRUSTED_HOST
+    image: agent-studio/backend:latest
+    container_name: agent-studio-worker
+    restart: unless-stopped
+    command: celery -A broker worker --loglevel=${LOG_LEVEL:-info} --concurrency=2 --pool=threads
+    environment:
+      <<: *common-env
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: 2g
+    mem_reservation: 1g
+    volumes:
+      - checkpoint_data:/app/data
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        - NPM_REGISTRY
+    image: agent-studio/frontend:latest
+    container_name: agent-studio-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    depends_on:
+      backend:
+        condition: service_healthy
+    mem_limit: 512m
+    mem_reservation: 256m
+
+volumes:
+  pgdata:
+  checkpoint_data:

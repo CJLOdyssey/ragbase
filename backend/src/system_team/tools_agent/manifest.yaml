@@ -1,0 +1,24 @@
+agent:
+  id: tools_agent
+  name: "工具生成 Agent"
+  version: "1.0.0"
+
+dependencies:
+  shared_tools:
+    - common.py
+  
+  python_packages:
+    - requests
+    - sqlite3
+  
+  system_requirements:
+    - python >= 3.10
+
+provides:
+  - tool_generation
+  - tool_validation
+  - tool_execution
+
+consumes:
+  - user_descriptions
+  - language_preferences

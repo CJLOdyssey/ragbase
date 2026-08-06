@@ -1,0 +1,31 @@
+/* New Project Modal */
+.new-project-modal {
+  width: var(--modal-m);
+  height: var(--modal-height);
+  overflow: hidden;
+}
+
+.new-project-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.new-project-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-card);
+  background: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-on-accent);
+}
+
+.new-project-subtitle {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin: var(--sp-1) 0 0;
+}
+
+/* api-toggle and reduced-motion block migrated to Tailwind (Phase 5) */

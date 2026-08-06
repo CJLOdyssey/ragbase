@@ -1,0 +1,47 @@
+{
+  "common": {
+    "close": "关闭",
+    "error": "出错了",
+    "retry": "重试",
+    "loading": "加载中...",
+    "connecting": "正在重新连接",
+    "show": "显示",
+    "hide": "隐藏",
+    "send": "发送",
+    "cancel": "取消",
+    "noData": "暂无数据"
+  },
+  "confirm": {
+    "cancel": "取消",
+    "confirm": "确定",
+    "delete": "删除",
+    "danger": "危险操作",
+    "info": "确认操作",
+    "deleteTeam": "确定要删除这个团队吗？此操作不可撤销。",
+    "deleteAgent": "确定要删除这个 Agent 吗？此操作不可撤销。",
+    "title": "确认删除",
+    "deleteTeamConfirm": "确定要删除该团队吗？团队内的所有 Agent 也将被删除，此操作不可撤销。",
+    "deleteAgentConfirm": "确定要删除该 Agent 吗？此操作不可撤销。",
+    "tip": "提示"
+  },
+  "toast": {
+    "newChat": "已创建新对话",
+    "teamCreated": "团队已创建",
+    "teamDeleted": "团队已删除",
+    "teamRenamed": "团队已重命名",
+    "agentAdded": "Agent 已添加",
+    "agentDeleted": "Agent 已删除",
+    "saved": "已自动保存",
+    "requestAbandoned": "已切换对话，当前请求已中断",
+    "saveSuccess": "保存成功",
+    "saveFailed": "保存失败",
+    "error": "操作失败，请重试"
+  },
+  "user": {
+    "onlineStatus": "在线状态"
+  },
+  "app": {
+    "title": "AgentStudio",
+    "subtitle": "虚拟开发团队"
+  }
+}

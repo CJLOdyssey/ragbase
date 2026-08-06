@@ -1,0 +1,64 @@
+/* ============================================
+   Modal Buttons — 弹窗操作栏 + 按钮
+   ============================================ */
+
+.agentstudio-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 14px 20px 16px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.agentstudio-modal-btn {
+  min-width: 68px;
+  height: 36px;
+  padding: 0 15px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.agentstudio-modal-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 4%, transparent);
+}
+
+.agentstudio-modal-btn:active {
+  transform: scale(0.97);
+}
+
+.agentstudio-modal-btn.danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-text-on-accent);
+  font-weight: 500;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-danger) 15%, transparent);
+}
+
+.agentstudio-modal-btn.danger:hover {
+  background: color-mix(in srgb, var(--color-danger), #000000);
+  border-color: color-mix(in srgb, var(--color-danger), #000000);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-danger) 25%, transparent);
+  color: var(--color-text-on-accent);
+}
+
+.agentstudio-modal-btn.danger:active {
+  background: color-mix(in srgb, var(--color-danger), #000000);
+  border-color: color-mix(in srgb, var(--color-danger), #000000);
+}
+
+.agent-config-list input[type="checkbox"] {
+  accent-color: var(--color-accent);
+}

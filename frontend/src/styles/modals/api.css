@@ -1,0 +1,18 @@
+/* modals/api.css — all classes migrated to Tailwind (Phase 5), except api-modal and btn-sm */
+
+/* api-modal — api management modal dimensions */
+.api-modal {
+  width: 970px;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* btn-sm — compact icon button used in VersionHistoryModal and Workspace */
+.btn-sm {
+  padding: var(--sp-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,0 +1,43 @@
+Congratulations! The virtual-team Helm chart has been installed.
+
+{{ if .Values.postgres.enabled }}
+⚠️  In-cluster Postgres is enabled. For production, use an external managed
+   database (AWS RDS, Alibaba Cloud RDS) instead. Disable with:
+     --set postgres.enabled=false
+{{ end }}
+
+📋 Quick start:
+
+  1. Check pod status:
+     kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+  2. Get the frontend access URL:
+{{ if eq .Values.frontend.service.type "LoadBalancer" }}
+     export SERVICE_IP=$(kubectl get svc {{ include "virtual-team.fullname" . }}-frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+     echo http://$SERVICE_IP:{{ .Values.frontend.service.port }}
+{{ else if eq .Values.frontend.service.type "NodePort" }}
+     export NODE_PORT=$(kubectl get svc {{ include "virtual-team.fullname" . }}-frontend -o jsonpath='{.spec.ports[0].nodePort}')
+     echo http://<node-ip>:$NODE_PORT
+{{ else }}
+     kubectl port-forward svc/{{ include "virtual-team.fullname" . }}-frontend {{ .Values.frontend.service.port }}:{{ .Values.frontend.port }}
+{{ end }}
+
+  3. Check logs:
+     kubectl logs -l component=backend -f
+     kubectl logs -l component=celery -f
+
+  4. Verify health:
+     kubectl exec deploy/{{ include "virtual-team.backend.fullname" . }} -- python3 -c "import httpx; print(httpx.get('http://localhost:8080/api/models').status_code)"
+
+🔐 Secrets to configure:
+  - DEEPSEEK_API_KEY (backend.secrets.deepseekApiKey)
+  - KEY_VAULT_SECRET (backend.secrets.keyVaultSecret) — must be ≥32 bytes
+  - AUTH_SECRET (backend.secrets.authSecret)
+  - postgres.password (postgres.password)
+
+  Set via --set or a custom values file:
+    helm upgrade {{ .Release.Name }} . --set backend.secrets.deepseekApiKey=sk-...
+
+📈 Scaling:
+  Backend HPA:  {{ .Values.hpa.backend.minReplicas }}-{{ .Values.hpa.backend.maxReplicas }} replicas @ {{ .Values.hpa.backend.targetCPUUtilizationPercentage }}% CPU
+  Celery HPA:   {{ .Values.hpa.celery.minReplicas }}-{{ .Values.hpa.celery.maxReplicas }} replicas @ {{ .Values.hpa.celery.targetCPUUtilizationPercentage }}% CPU

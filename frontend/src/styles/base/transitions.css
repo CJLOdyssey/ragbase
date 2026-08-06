@@ -1,0 +1,44 @@
+/* ── Theme transition (background, color, border) ── */
+.agentstudio-app,
+.agentstudio-sidebar,
+.agentstudio-global-header,
+.agentstudio-main,
+.agentstudio-home,
+.agentstudio-messages,
+.agentstudio-modal,
+.wsta-root,
+.wsta-modal,
+.wsta-table,
+.wsta-toolbar {
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* ── High contrast mode (accessibility) ──
+   Intentional !important: user contrast preference must override all author styles. */
+@media (prefers-contrast: more) {
+  * {
+    border-color: currentColor !important;
+  }
+}
+
+/* ── Reduced transparency (accessibility) ──
+   Intentional !important: user transparency preference must override component styles. */
+@media (prefers-reduced-transparency: reduce) {
+  .agentstudio-modal-overlay,
+  .backdrop-blur-\[4px\] {
+    backdrop-filter: none !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+  }
+}

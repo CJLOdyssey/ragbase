@@ -1,0 +1,158 @@
+{
+  "home": {
+    "greeting": "Hello, I am your requirements analysis assistant",
+    "subtitle": "Describe your needs, I will help you analyze and plan",
+    "placeholder": "Describe your requirements...",
+    "send": "Send",
+    "attach": "Attach file (PRD, Design)",
+    "commands": "/commands",
+    "samples": {
+      "login": "Design Login Component",
+      "api": "API Performance Analysis",
+      "auth": "Auth API Design",
+      "database": "DB Schema Design"
+    }
+  },
+  "chat": {
+    "inputPlaceholder": "Describe your requirements, the AI team will discuss..."
+  },
+  "agent": {
+    "welcome": "Fine-tune the model by sending messages to optimize responses",
+    "startChat": "Chat with {{name}}",
+    "thinking": "{{name}} is thinking...",
+    "config": "Configure Agent",
+    "saveConfig": "Save Configuration"
+  },
+  "teamMessage": {
+    "you": "You",
+    "copy": "Copy",
+    "copied": "Copied",
+    "unknownAgent": "DevAgent",
+    "system": "System",
+    "executeTask": "Execute Task ({{count}} steps)",
+    "mentionBackend": "@Backend Agent",
+    "syncedToWorkspace": "Synced to workspace",
+    "thinkingProcess": "Thinking Process",
+    "thinkingComplete": "Thought",
+    "thinkingPending": "Thinking...",
+    "seconds": "s",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "regenerate": "Regenerate",
+    "edit": "Edit",
+    "continue": "Continue",
+    "interrupted": "Interrupted",
+    "continuing": "Continuing...",
+    "thumbsUp": "Helpful",
+    "thumbsDown": "Not helpful",
+    "removeFeedback": "Remove feedback",
+    "thinkingStopped": "Thinking stopped",
+    "verdictApproved": "Approved",
+    "verdictRejected": "Rejected",
+    "rounds": "{{count}} rounds",
+    "totalRounds": "{{count}} rounds total",
+    "approvalRequired": "Human approval required",
+    "approvalNode": "Node: {{node}}",
+    "approvalApprove": "Approve",
+    "approvalReject": "Reject",
+    "approvalNote": "Approval note (optional)",
+    "approvalFailed": "Submission failed, please retry"
+  },
+  "commandGroups": {
+    "agent": "Agent",
+    "general": "General",
+    "skills": "Skills",
+    "mcp": "MCP",
+    "tools": "Tools"
+  },
+  "fileAttach": {
+    "attach": "Attach files",
+    "dropHere": "Drop files to attach"
+  },
+  "model": {
+    "loading": "Loading...",
+    "noCommands": "No commands available",
+    "noModels": "No models available",
+    "configure": "Configure API provider",
+    "noModelsHint": "Configure an API provider to enable models",
+    "statusDeprecated": "Deprecated",
+    "statusSunset": "Sunsetting"
+  },
+  "agentResponses": {
+    "pm": [
+      "Received requirements, analyzing user stories and feature priorities...",
+      "PRD document completed, including core features and acceptance criteria.",
+      "Tasks broken down into executable Sprint backlog.",
+      "Requirements review complete, ready for development."
+    ],
+    "architect": [
+      "Received technical question, evaluating architecture approach...",
+      "System architecture design completed, using microservices architecture.",
+      "Tech selection report output, recommended mainstream stack.",
+      "Code review completed, found several optimization opportunities."
+    ],
+    "ui": [
+      "Received design requirements, brainstorming layout approach...",
+      "I'll design a modern UI interface for you.",
+      "Design spec ready, outputting design tokens and component sketches.",
+      "Color scheme and typography selected, ready for development phase."
+    ],
+    "frontend": [
+      "Received frontend requirements, scaffolding component structure...",
+      "React components created, supporting responsive layout.",
+      "API integration done, frontend features complete.",
+      "Unit tests added, code quality check passed."
+    ],
+    "backend": [
+      "Received backend requirements, designing API interfaces...",
+      "Database schema designed, starting Controller implementation.",
+      "JWT auth logic implemented, API tests passed.",
+      "Query performance optimized, API response time improved 50%."
+    ],
+    "qa": [
+      "Received testing requirements, writing test cases...",
+      "Unit test coverage at 85%, found 2 potential issues.",
+      "Integration tests passed, all endpoints running normally.",
+      "Security scan completed, no high-risk vulnerabilities found."
+    ],
+    "devops": [
+      "Received ops requirements, configuring CI/CD pipeline...",
+      "Docker image built, deployment scripts ready.",
+      "Monitoring alerts configured, system running normally.",
+      "Production deployment completed, performance metrics within expectations."
+    ],
+    "fullstack": [
+      "Received requirements, evaluating full-stack approach...",
+      "Full-stack prototype quickly scaffolded, supporting basic features.",
+      "Frontend-backend integration done, features running normally.",
+      "Technical documentation written for future maintenance."
+    ],
+    "fallback": "Message received, processing...",
+    "home": [
+      "Got your description, let me help you sort out the requirements. Who is the primary user group?",
+      "Great idea! To better understand, can you tell me what core problem you want to solve?",
+      "Understood. Based on your description, I suggest planning from these aspects...",
+      "Your requirements are noted. Let's dive deeper into implementation — any preferred tech stack?",
+      "Interesting! Let me analyze the possible implementation path and timeline."
+    ],
+    "greeting": {
+      "pm": "Hello! I'm the Product Manager, responsible for requirements analysis and product planning. Let me know your product needs.",
+      "architect": "Hello! I'm the Architect, responsible for system architecture design and tech selection. What architecture questions can I discuss?",
+      "ui": "Hello! I'm the UI Designer, responsible for interface and interaction design. What design needs do you have?",
+      "frontend": "Hello! I'm the Frontend Engineer, skilled in React/Vue development. What frontend needs can I help with?",
+      "backend": "Hello! I'm the Backend Engineer, responsible for API and database design. What backend needs do you have?",
+      "qa": "Hello! I'm the QA Engineer, responsible for automation and security testing. What testing needs can I help with?",
+      "devops": "Hello! I'm the DevOps Engineer, responsible for CI/CD and deployment. What ops needs do you have?",
+      "fullstack": "Hello! I'm the Fullstack Engineer, I can handle both frontend and backend. What do you need help with?"
+    }
+  },
+  "shortcuts": {
+    "newChat": "New Chat",
+    "settings": "Open Settings",
+    "send": "Send Message",
+    "newline": "New Line",
+    "close": "Close Modal",
+    "undo": "Undo",
+    "save": "Save"
+  }
+}

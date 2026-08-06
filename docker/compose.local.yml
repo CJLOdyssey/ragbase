@@ -1,0 +1,26 @@
+# ── 本地开发 compose（overlay）───────────────────────────────────────────
+# 用法：docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
+# 差异：端口全暴露（5432/6379/8080/5173）、弱密钥默认、build args、本地镜像名。
+# ─────────────────────────────────────────────────────────────────────────
+
+include:
+  - compose.base.yml
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  backend:
+    image: agent-studio/backend:latest
+    ports:
+      - "8080:8080"
+
+  frontend:
+    image: agent-studio/frontend:latest
+    ports:
+      - "5173:8080"

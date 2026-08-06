@@ -1,0 +1,24 @@
+agent:
+  id: skill_agent
+  name: "技能生成 Agent"
+  version: "1.0.0"
+
+dependencies:
+  shared_skills: []
+  
+  templates:
+    - code_review.md
+    - security_audit.md
+    - api_design.md
+  
+  python_packages:
+    - pyyaml
+
+provides:
+  - skill_generation
+  - skill_validation
+  - skill_template_management
+
+consumes:
+  - user_descriptions
+  - category_preferences

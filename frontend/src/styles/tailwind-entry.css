@@ -1,0 +1,199 @@
+@layer theme, base, antd, components, utilities;
+
+@import "tailwindcss";
+@import "./base/index.css" layer(base);
+
+/* ── Geist font (variable) ── */
+@font-face {
+  font-family: 'Geist';
+  src: url('../../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('../../node_modules/geist/dist/fonts/geist-sans/Geist-Italic[wght].woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ── 静态设计 token（不随主题切换） ── */
+@theme {
+  /* ── 品牌强调色（固定） ── */
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --color-accent-soft: #818cf8;
+  --color-accent-muted: #a5b4fc;
+
+  /* ── 语义色（固定） ── */
+  --color-danger: #ff4444;
+  --color-success: #34d399;
+  --color-warning: #f59e0b;
+  --color-text-on-accent: #ffffff;
+
+  /* ── 字号阶梯 (rem，随 html font-size 缩放) ── */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;     /* 展示标题 */
+  --text-4xl: 2.25rem;      /* 页面大标题 */
+
+  /* ── 圆角阶梯 ── */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ── 表面色（通过 :root 变量引用） ── */
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-overlay: var(--color-surface-overlay);
+  --color-surface-elevated: var(--color-surface-elevated);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-surface-card: var(--color-surface-card);
+  --color-surface-sidebar: var(--color-surface-sidebar);
+  --color-surface-pressed: var(--color-surface-pressed);
+
+  /* ── 文字色 ── */
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-tertiary: var(--color-text-tertiary);
+
+  /* ── 边框色 ── */
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-strong);
+  --color-border-light: var(--color-border-light);
+
+  /* ── 阴影预设 ── */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+}
+
+/* ── 主题相关颜色（运行时切换） ── */
+
+/* 暗色主题（默认） */
+:root {
+  color-scheme: dark;
+
+  --body-font-size: 16px;
+  --color-surface: #0f1117;
+  --color-surface-sidebar: #111318;
+  --color-surface-raised: #1c1e24;
+  --color-surface-overlay: #24252d;
+  --color-surface-elevated: #2a2c34;
+  --color-surface-hover: rgba(255, 255, 255, 0.08);
+  --color-surface-pressed: rgba(255, 255, 255, 0.08);
+  --color-surface-card: #24252d;
+
+  --color-text-primary: #f1f1f1;
+  --color-text-secondary: #a0a5b0;
+  --color-text-muted: #8b97a6;
+  --color-text-tertiary: #9ca3af;
+
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.20);
+  --color-border-light: rgba(0, 0, 0, 0.08);
+
+  --color-overlay: rgba(0, 0, 0, 0.65);
+
+  /* ── Z-index ── */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-modal-backdrop: 300;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  /* ── 布局尺寸 ── */
+  --da-sidebar-width: clamp(17.5rem, 18vw, 20rem);
+  --da-sidebar-min: 17.5rem;
+  --da-sidebar-max: 20rem;
+  --da-input-height: 56px;
+  --da-input-radius: 16px;
+  --da-toolbar-height: 48px;
+
+  /* ── 弹窗尺寸 ── */
+  --modal-sm: 420px;
+  --modal-m:  560px;
+  --modal-l:  1100px;
+  --modal-height: min(700px, 85vh);
+
+  /* ── 间距 ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  --radius-btn: 6px;        /* Button / Input / Select / Tag */
+  --radius-card: 10px;       /* Card / Modal / Table */
+  --radius-modal: 16px;      /* 大弹窗 */
+  --radius-full: 9999px;     /* Pill / Avatar */
+
+  /* ── 字体 ── */
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* ── 语法高亮 ── */
+  --syntax-blue-300: #888888;
+  --syntax-blue-400: #666666;
+  --syntax-cyan-200: #999999;
+  --syntax-red: #ff4444;
+
+  /* ── 阴影 ── */
+  --shadow-sm: 0 1px 2px rgba(255,255,255,0.10);
+  --shadow-md: 0 4px 8px -2px rgba(255,255,255,0.15);
+  --shadow-lg: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
+}
+
+/* 亮色主题（当 .dark class 不存在时） */
+:root:not(.dark) {
+  color-scheme: light;
+
+  --color-surface: #ffffff;
+  --color-surface-raised: #f7f8fa;
+  --color-surface-overlay: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-hover: #f1f3f5;
+  --color-surface-pressed: #e9ecef;
+  --color-surface-card: #ffffff;
+  --color-surface-sidebar: #f7f8fa;
+
+  --color-text-primary: #1a1a2e;
+  --color-text-secondary: #495057;
+  --color-text-muted: #868e96;
+  --color-text-tertiary: #adb5bd;
+
+  --color-text-on-accent: #1a1a2e;
+
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-subtle: rgba(0, 0, 0, 0.05);
+  --color-border-strong: rgba(0, 0, 0, 0.12);
+  --color-border-light: rgba(0, 0, 0, 0.04);
+
+  --color-overlay: rgba(0, 0, 0, 0.35);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 2px 8px -1px rgba(0,0,0,0.07);
+  --shadow-lg: 0 8px 16px -3px rgba(0,0,0,0.10);
+}
+
+

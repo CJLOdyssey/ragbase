@@ -1,0 +1,23 @@
+skill_agent:
+  name: "技能生成 Agent"
+  version: "1.0.0"
+  description: "负责生成和管理 SKILL.md 技能文件"
+
+  capabilities:
+    - generate_skill
+    - validate_skill
+    - list_skills
+
+  skill_categories:
+    - code_quality
+    - security
+    - architecture
+    - performance
+    - workflow
+    - documentation
+    - devops
+
+  settings:
+    max_content_length: 5000
+    default_version: "1.0.0"
+    include_metadata: true

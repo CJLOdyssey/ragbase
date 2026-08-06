@@ -1,0 +1,27 @@
+tools_agent:
+  name: "工具生成 Agent"
+  version: "1.0.0"
+  description: "负责生成和管理可执行工具"
+  
+  capabilities:
+    - generate_tool
+    - validate_tool
+    - execute_tool
+    - list_tools
+  
+  supported_languages:
+    - python
+    - javascript
+    - typescript
+  
+  tool_categories:
+    - file_operations
+    - http_requests
+    - database
+    - data_processing
+    - system_commands
+  
+  settings:
+    max_code_length: 10000
+    timeout_seconds: 30
+    sandbox_enabled: true

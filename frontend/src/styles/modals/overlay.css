@@ -1,0 +1,95 @@
+/* ============================================
+   Modal Overlay & Container — 遮罩、弹窗容器、header、关闭按钮、内容区
+   ============================================ */
+
+.agentstudio-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  animation: antModalFadeIn 0.2s ease-out;
+  padding: var(--sp-4);
+}
+
+@keyframes antModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes antModalZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.agentstudio-modal {
+  background: var(--color-surface-elevated);
+  border: none;
+  border-radius: var(--radius-card);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    0 0 30px rgba(0, 0, 0, 0.12);
+  max-width: 400px;
+  width: 100%;
+  animation: antModalZoomIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.agentstudio-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.agentstudio-modal-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.agentstudio-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-btn);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.agentstudio-modal-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.agentstudio-modal-content {
+  padding: 16px 20px;
+}
+
+.agentstudio-modal-content p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}

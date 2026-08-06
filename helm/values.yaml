@@ -1,0 +1,168 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Virtual Team — Helm Values
+# ──────────────────────────────────────────────────────────────────────────────
+# IMPORTANT: For production, use an external managed Postgres (e.g. AWS RDS,
+# Alibaba Cloud RDS) instead of the in-cluster postgres deployment.
+# Set postgres.enabled: false and configure the external connection string via
+# backend.env.DATABASE_URL and backend.env.CHECKPOINTER_DSN overrides.
+# ──────────────────────────────────────────────────────────────────────────────
+
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  # Alibaba Cloud Container Registry base path
+  acrRegistry: crpi-j0fhvkobexa3ilkn.cn-shenzhen.personal.cr.aliyuncs.com/agent-studio
+
+# ── Postgres ───────────────────────────────────────────────────────────────────
+postgres:
+  enabled: true
+  image:
+    repository: pgvector/pgvector
+    tag: pg16
+  user: postgres
+  password: ""  # REQUIRED: set via --set postgres.password=<value>
+  db: backend
+  port: 5432
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+# ── Redis ──────────────────────────────────────────────────────────────────────
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+  port: 6379
+  resources:
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+
+# ── Backend (FastAPI + Uvicorn) ────────────────────────────────────────────────
+# Backend and Celery share the same Docker image (both built from docker/Dockerfile).
+backend:
+  image:
+    repository: ""  # defaults to global.acrRegistry/backend
+    tag: latest
+  replicas: 2
+  port: 8080
+  resources:
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+  # Non-secret environment variables — stored in ConfigMap
+  env:
+    PYTHONPATH: /app/backend/src
+    DB_HOST: ""  # auto-set to postgres service name if empty
+    DB_PORT: "5432"
+    DB_USER: postgres
+    OPENAI_BASE_URL: https://api.deepseek.com
+    OPENAI_MODEL: deepseek-v4-flash
+    MAX_ROUNDS: "5"
+    TEMPERATURE: "0.7"
+    TIMEOUT: "120"
+    MAX_RETRIES: "3"
+    LOG_LEVEL: INFO
+    CELERY_BROKER_URL: ""  # auto-set to redis URL if empty
+    CELERY_RESULT_BACKEND: ""  # auto-set to redis URL if empty
+    CHECKPOINTER_BACKEND: postgres
+    CORS_ORIGIN: http://localhost:80
+    HTTP_PROXY: ""
+    HTTPS_PROXY: ""
+    NO_PROXY: localhost,127.0.0.1,postgres,redis,backend,.local
+    BAIDU_QIANFAN_API_KEY: ""
+  # Secret values — stored in Kubernetes Secret
+  secrets:
+    deepseekApiKey: ""      # DEEPSEEK_API_KEY
+    keyVaultSecret: ""      # KEY_VAULT_SECRET (must be >= 32 bytes)
+    authSecret: ""          # AUTH_SECRET (JWT signing key)
+
+# ── Celery Worker ──────────────────────────────────────────────────────────────
+celery:
+  # Uses the same image as backend
+  replicas: 2
+  concurrency: 2
+  logLevel: INFO
+  resources:
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+
+# ── Alembic migration Job ─────────────────────────────────────────────────────
+migrations:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ── Frontend (Nginx SPA) ───────────────────────────────────────────────────────
+frontend:
+  image:
+    repository: ""  # defaults to global.acrRegistry/frontend
+    tag: latest
+  replicas: 2
+  port: 8080
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+  service:
+    type: LoadBalancer  # NodePort for bare-metal / on-prem; LoadBalancer for cloud
+    port: 80
+    nodePort: null     # leave null for auto-assignment
+
+# ── HPA (Horizontal Pod Autoscaler) ───────────────────────────────────────────
+hpa:
+  backend:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  celery:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# ── Shared checkpoint volume ───────────────────────────────────────────────────
+checkpoints:
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessMode: ReadWriteMany  # shared between backend and celery pods
+
+# ── Pod security context (applied to backend, celery, frontend) ────────────────
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  capabilities:
+    drop:
+      - ALL

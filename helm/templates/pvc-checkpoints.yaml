@@ -1,0 +1,17 @@
+{{- if .Values.checkpoints.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "agent-studio.fullname" . }}-checkpoints
+  labels:
+    {{- include "agent-studio.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.checkpoints.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.checkpoints.persistence.size }}
+  {{- if .Values.checkpoints.persistence.storageClass }}
+  storageClassName: {{ .Values.checkpoints.persistence.storageClass }}
+  {{- end }}
+{{- end }}

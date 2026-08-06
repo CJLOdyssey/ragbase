@@ -1,0 +1,134 @@
+{
+  "name": "content-studio-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "knip": "npx knip",
+    "size": "size-limit",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run --tagsFilter 'unit'",
+    "test:quick": "vitest run --tagsFilter '!integration'",
+    "test:changed": "vitest run --changed",
+    "test:coverage:unit": "vitest run --coverage --tagsFilter 'unit'",
+    "test:e2e": "playwright test --headed --debug",
+    "test:e2e:run": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:visual": "echo 'Visual regression tests: use Chromatic or Lost Pixel for snapshot testing'",
+    "docs:check": "node ../scripts/dev/check-docs.js",
+    "docs:generate": "node ../scripts/dev/generate-docs.js",
+    "prepare": "husky",
+    "dev:e2e": "VITE_DEV_PORT=5175 VITE_API_BASE_URL=http://localhost:8082 vite"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.css": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "@ant-design/cssinjs": "^2.1.2",
+    "@ant-design/icons": "^6.3.2",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@sentry/browser": "^10.55.0",
+    "@sentry/react": "^10.55.0",
+    "@tanstack/react-query": "^5.100.14",
+    "antd": "^6.5.3",
+    "axios": "^1.7.0",
+    "dompurify": "^3.4.7",
+    "geist": "^1.7.2",
+    "i18next": "^26.3.0",
+    "lucide-react": "^1.17.0",
+    "motion": "^12.42.2",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-error-boundary": "^6.1.2",
+    "react-i18next": "^17.0.8",
+    "react-markdown": "^9.1.0",
+    "react-router-dom": "^6.30.4",
+    "react-syntax-highlighter": "^16.1.1",
+    "react-virtuoso": "^4.18.11",
+    "reactflow": "^11.11.4",
+    "vite-plugin-csp": "^1.1.2",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.0",
+    "@size-limit/preset-app": "^12.1.0",
+    "@tailwindcss/vite": "^4.3.2",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^25.9.1",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@types/react-syntax-highlighter": "^15.5.0",
+    "@vitejs/plugin-react": "4.7.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "axe-core": "^4.10.0",
+    "c8": "^12.0.0",
+    "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "lint-staged": "^17.0.6",
+    "playwright": "^1.60.0",
+    "prettier": "^3.8.3",
+    "rollup-plugin-visualizer": "^7.0.1",
+    "size-limit": "^12.1.0",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.60.0",
+    "vite": "^6.0.0",
+    "vitest": "^4.1.7",
+    "vitest-axe": "^0.1.0"
+  },
+  "size-limit": [
+    {
+      "path": "dist/assets/*.js",
+      "limit": "1 MB"
+    }
+  ],
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.61.0",
+    "@rollup/rollup-win32-x64-msvc": "^4.61.0"
+  },
+  "knip": {
+    "entry": [
+      "src/components/AgentStudio/workstation/*/index.ts",
+      "src/components/AgentStudio/workstation/shared/index.ts"
+    ],
+    "project": [
+      "src/**/*.{ts,tsx}"
+    ],
+    "ignoreDependencies": [
+      "tailwindcss"
+    ]
+  },
+  "overrides": {
+    "refractor": {
+      "prismjs": "1.30.0"
+    },
+    "undici": "7.29.0",
+    "ip-address": "10.4.0",
+    "brace-expansion": "5.0.9",
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
+  }
+}

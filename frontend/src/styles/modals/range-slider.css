@@ -1,0 +1,62 @@
+/* ============================================
+   Range Slider — 字体大小滑块（SettingsModal）
+   ============================================ */
+
+.settings-font-slider {
+  width: 120px;
+  height: 6px;
+  border-radius: 3px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.settings-font-slider:focus-visible {
+  outline: none;
+}
+
+.settings-font-slider::-webkit-slider-runnable-track {
+  appearance: none;
+  height: 6px;
+  background: transparent;
+}
+
+.settings-font-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  margin-top: -5px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.settings-font-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--color-accent), 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.settings-font-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  border: none;
+  background: var(--color-surface-hover);
+}
+
+.settings-font-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: none;
+  cursor: pointer;
+}
+
+.settings-font-slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.settings-font-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-accent);
+}
