@@ -39,11 +39,14 @@ class SecurityHeadersMiddleware:
 
         async def _send(message: Message) -> None:
             if message["type"] == "http.response.start":
-                existing = dict(message.get("headers", []))
+                # Preserve multi-value headers (e.g. multiple Set-Cookie) —
+                # dict() collapsing would silently drop all but the last.
+                existing = list(message.get("headers", []))
+                existing_keys = {k for k, _ in existing}
                 for k, v in headers:
-                    if k not in existing:
-                        existing[k] = v
-                message["headers"] = list(existing.items())
+                    if k not in existing_keys:
+                        existing.append((k, v))
+                message["headers"] = existing
             await send(message)
 
         await self.app(scope, receive, _send)
