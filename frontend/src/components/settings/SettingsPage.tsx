@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../auth/AuthContext';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { KeyRound, Loader2, Plus, Trash2, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +14,7 @@ import { useToast } from '../../utils/useToast';
 export default function SettingsPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({
@@ -26,6 +28,9 @@ export default function SettingsPage() {
   const { data: keys = [] } = useQuery({
     queryKey: ['keys'],
     queryFn: listKeys,
+    // Backend returns 200 [] for unauthenticated GETs — only query once auth
+    // is established so the pre-auth empty result is never cached.
+    enabled: isAuthenticated,
   });
 
   const invalidateKeys = () =>

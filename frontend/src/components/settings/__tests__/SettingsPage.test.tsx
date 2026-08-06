@@ -26,6 +26,10 @@ vi.mock('../../../utils/useToast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+vi.mock('../../../components/auth/AuthContext', () => ({
+  useAuth: () => ({ isAuthenticated: true }),
+}));
+
 const keyItem = {
   id: 'k1',
   provider: 'deepseek',
