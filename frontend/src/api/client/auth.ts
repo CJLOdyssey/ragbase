@@ -77,13 +77,9 @@ export async function verify(
   return data;
 }
 
-export async function refreshTokens(
-  refreshToken: string,
-): Promise<AuthTokensResponse> {
-  const { data } = await api.post<AuthTokensResponse>('/auth/refresh', {
-    refresh_token: refreshToken,
-  });
-  return data;
+export async function refreshTokens(): Promise<void> {
+  // refresh_token 在 httpOnly cookie，axios withCredentials 自动携带
+  await api.post('/auth/refresh');
 }
 
 export async function forgotPassword(email: string): Promise<MessageResponse> {
@@ -106,8 +102,8 @@ export async function resetPassword(
   return data;
 }
 
-export async function logout(refreshToken: string): Promise<void> {
-  await api.post('/auth/logout', { refresh_token: refreshToken });
+export async function logout(): Promise<void> {
+  await api.post('/auth/logout');
 }
 
 export async function getMe(): Promise<UserResponse> {

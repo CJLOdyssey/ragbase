@@ -23,11 +23,7 @@ vi.mock('@/api/client/auth', () => ({
   sendRegisterCode: vi.fn(),
 }));
 
-vi.mock('@/api/client/instance', () => ({
-  setTokens: vi.fn(),
-  clearTokens: vi.fn(),
-  getRefreshToken: vi.fn().mockReturnValue(null),
-}));
+vi.mock('@/api/client/instance', () => ({}));
 
 function AuthProbe() {
   const { user, loading } = useAuth();
@@ -138,7 +134,7 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
     });
   });
 
-  it('loading becomes false after init() completes when no refresh token exists', async () => {
+  it('loading becomes false after init() completes for a guest (no token state)', async () => {
     vi.mocked(authApi.getAuthConfig).mockResolvedValue({
       enabled: true,
       mode: 'jwt',
@@ -153,5 +149,6 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
     });
+    expect(authApi.getMe).toHaveBeenCalled();
   });
 });

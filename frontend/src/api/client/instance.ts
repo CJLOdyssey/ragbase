@@ -16,32 +16,13 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// refresh_token lives in memory only — never localStorage (one XSS would exfiltrate it).
-// Page reload clears it: user re-authenticates via the access_token cookie or re-login.
-let refreshToken: string | null = null;
+// Tokens live in httpOnly cookies only — JS never holds or reads them (OWASP).
+// Access token is not readable from JS; refresh token is sent by the browser
+// on /auth/refresh and /auth/logout via withCredentials.
 
-export function getRefreshToken(): string | null {
-  return refreshToken;
-}
-
-/** Store or clear the refresh_token in memory only — access_token is an httpOnly cookie set by the server. */
-export function setTokens(_access: string | null, refresh: string | null) {
-  refreshToken = refresh;
-}
-
-/** Access token is now an httpOnly cookie — not readable from JS. Returns null. */
+/** Access token is an httpOnly cookie — not readable from JS. Returns null. */
 export function getAccessToken(): string | null {
   return null;
-}
-
-export function clearTokens() {
-  setTokens(null, null);
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('auth:unauthorized', () => {
-    clearTokens();
-  });
 }
 
 interface RetryConfig extends InternalAxiosRequestConfig {
@@ -99,11 +80,6 @@ if (api.interceptors?.response) {
         return Promise.reject(normalizeError(error));
       }
 
-      if (!refreshToken) {
-        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-        return Promise.reject(normalizeError(error));
-      }
-
       if (isRefreshing) {
         return new Promise((resolve) => {
           pendingQueue.push(() => resolve(api(retryConfig)));
@@ -114,14 +90,12 @@ if (api.interceptors?.response) {
       isRefreshing = true;
 
       try {
-        const res = await refreshTokens(refreshToken);
-        setTokens(null, res.refresh_token);
+        await refreshTokens();
         pendingQueue.forEach((cb) => cb());
         pendingQueue = [];
         // New access_token was set as httpOnly cookie by server — auto-sent on retry
         return api(retryConfig);
       } catch {
-        clearTokens();
         pendingQueue = [];
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
         return Promise.reject(normalizeError(error));

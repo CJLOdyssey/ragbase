@@ -162,30 +162,12 @@ describe('verify', { tags: ['unit'] }, () => {
 });
 
 describe('refreshTokens', { tags: ['unit'] }, () => {
-  it('calls POST /auth/refresh with refresh token', async () => {
-    const mockResponse = {
-      data: {
-        access_token: 'new-at',
-        refresh_token: 'new-rt',
-        token_type: 'bearer',
-        expires_in: 3600,
-        user: {
-          id: 'u1',
-          email: 'a@b.com',
-          username: null,
-          roles: [],
-          is_verified: true,
-        },
-      },
-    };
-    mockApi.post.mockResolvedValue(mockResponse);
+  it('calls POST /auth/refresh with no body (token via httpOnly cookie)', async () => {
+    mockApi.post.mockResolvedValue({});
 
-    const result = await refreshTokens('old-rt');
+    await refreshTokens();
 
-    expect(mockApi.post).toHaveBeenCalledWith('/auth/refresh', {
-      refresh_token: 'old-rt',
-    });
-    expect(result).toEqual(mockResponse.data);
+    expect(mockApi.post).toHaveBeenCalledWith('/auth/refresh');
   });
 });
 
@@ -220,14 +202,12 @@ describe('resetPassword', { tags: ['unit'] }, () => {
 });
 
 describe('logout', { tags: ['unit'] }, () => {
-  it('calls POST /auth/logout', async () => {
+  it('calls POST /auth/logout with no body', async () => {
     mockApi.post.mockResolvedValue({});
 
-    await logout('rt');
+    await logout();
 
-    expect(mockApi.post).toHaveBeenCalledWith('/auth/logout', {
-      refresh_token: 'rt',
-    });
+    expect(mockApi.post).toHaveBeenCalledWith('/auth/logout');
   });
 });
 

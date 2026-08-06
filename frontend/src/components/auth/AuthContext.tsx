@@ -19,11 +19,6 @@ import {
   getMe,
   refreshTokens,
 } from '../../api/client/auth';
-import {
-  clearTokens,
-  getRefreshToken,
-  setTokens,
-} from '../../api/client/instance';
 import { useChatStore } from '../../stores/chatStore';
 
 function clearLocalConversations() {
@@ -119,27 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function refreshAndRestore(): Promise<void> {
-      const rt = getRefreshToken();
-      let refreshed = false;
-      if (rt) {
-        try {
-          const res = await refreshTokens(rt);
-          setTokens(res.access_token, res.refresh_token);
-          refreshed = true;
-        } catch {
-          clearTokens();
+      try {
+        await refreshTokens();
+        const me = await getMe();
+        if (!cancelled && me) {
+          applySession(me);
+          await mergeGuest();
         }
-      }
-      if (!cancelled && refreshed) {
-        try {
-          const me = await getMe();
-          if (me) {
-            applySession(me);
-            await mergeGuest();
-          }
-        } catch {
-          // Refresh succeeded but /me still failed — token invalid
-        }
+      } catch {
+        // Refresh failed — guest stays
       }
     }
 
@@ -150,28 +133,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isLegacy = !config.enabled || config.mode === 'legacy';
         setLegacyMode(isLegacy);
 
-        // Skip /me call if no refresh token exists — avoids 401 console noise for guests
-        const rt = getRefreshToken();
-        if (!rt) {
-          setLoading(false);
-          return;
-        }
-
-        // Legacy mode: still try to restore session from stored token
-        if (isLegacy) {
-          try {
-            await restoreSession();
-          } catch {
-            clearTokens();
-          }
-          setLoading(false);
-          return;
-        }
-
-        // Token may be expired — try refreshing before giving up
+        // Tokens are httpOnly cookies — axios withCredentials carries them.
         try {
           await restoreSession();
         } catch {
+          if (isLegacy) {
+            setLoading(false);
+            return;
+          }
+          // Access token may be expired — try refreshing before giving up
           await refreshAndRestore();
         }
       } catch {
@@ -197,7 +167,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (email: string, password: string, rememberMe?: boolean) => {
       const res = await apiLogin(email, password, rememberMe);
-      setTokens(res.access_token, res.refresh_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -215,7 +184,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (email: string, code: string, password: string) => {
       const res = await apiRegister(email, code, password);
-      setTokens(res.access_token, res.refresh_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -232,7 +200,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verify = useCallback(async (email: string, code: string) => {
     const res = await apiVerify(email, code);
-    setTokens(res.access_token, res.refresh_token);
     setLoading(false);
     setUser({
       userId: res.user.id,
@@ -258,7 +225,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     setUser(null);
-    clearTokens();
     clearLocalConversations();
     localStorage.removeItem('agentstudio_user_id');
     useChatStore.getState().reset();
