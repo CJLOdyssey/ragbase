@@ -87,6 +87,65 @@ async def test_create_generation_invalid_content_type(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.asyncio
+async def test_create_generation_invalid_mode() -> None:
+    with pytest.raises(ValueError, match="generation_mode"):
+        await generation_service.create_generation(
+            user_id="u1", content_type="xiaohongshu", topic="x", generation_mode="bogus"
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_generation_extra_requirements_too_long() -> None:
+    with pytest.raises(ValueError, match="附加要求"):
+        await generation_service.create_generation(
+            user_id="u1", content_type="xiaohongshu", topic="x", additional_requirements="长" * 2001
+        )
+
+
+@pytest.mark.asyncio
+async def test_continue_generation_missing_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    await _mem_session_factory(monkeypatch)
+    with pytest.raises(ValueError, match="run 不存在"):
+        await generation_service.continue_generation("run-nope", "补充", "u1")
+
+
+@pytest.mark.asyncio
+async def test_create_variations_missing_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    await _mem_session_factory(monkeypatch)
+    with pytest.raises(ValueError, match="run 不存在"):
+        await generation_service.create_variations("run-nope", "u1")
+
+
+@pytest.mark.asyncio
+async def test_compose_card_missing_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    await _mem_session_factory(monkeypatch)
+    with pytest.raises(ValueError, match="run 不存在"):
+        await generation_service.compose_card("run-nope", "square", title="t", summary="s")
+
+
+@pytest.mark.asyncio
+async def test_build_asset_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    async def _fake_get_asset(asset_id: str) -> SimpleNamespace:
+        return SimpleNamespace(name="logo", storage_path="s3://bucket/logo.png")
+
+    async def _fake_increment(asset_id: str) -> None:
+        return None
+
+    async def _no_rag(user_id: str, query: str) -> str:
+        return ""
+
+    monkeypatch.setattr(gen_mod, "get_asset", _fake_get_asset)
+    monkeypatch.setattr(gen_mod, "increment_asset_usage", _fake_increment)
+    monkeypatch.setattr(generation_service, "_retrieve_rag_context", _no_rag)
+
+    context = await generation_service._build_asset_context("u1", ["a1", "missing"], "主题")
+    assert "logo" in context
+    assert "s3://bucket/logo.png" in context
+
+
+@pytest.mark.asyncio
 async def test_compose_card_returns_template_and_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     await _mem_session_factory(monkeypatch)
     from orm.infra import ComposeTemplateDB

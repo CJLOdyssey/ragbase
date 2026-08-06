@@ -38,3 +38,11 @@ def test_parse_fallback_when_not_json() -> None:
     assert result.body_markdown == "纯文本内容，没有 JSON"
     assert result.summary == "纯文本内容，没有 JSON"[:200]
     assert result.title == ""
+
+
+@pytest.mark.unit
+def test_parse_skips_invalid_blocks_then_falls_back() -> None:
+    text = "```json\n[1, 2]\n```\n```json\n{\"keywords\": 42}\n```\n```\nnot json\n```"
+    result = parse_generation_result(text)
+    assert result.title == ""
+    assert result.body_markdown == text

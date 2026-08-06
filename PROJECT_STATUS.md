@@ -48,22 +48,24 @@ cd frontend && npm run dev
 已删：多 Agent 编排（teams/agents/agent_configs）、工具生态（tools/mcps/skills）、工作流（workflow）、system_team/thinking_tree、AgentStudio 前端组件、CLI main.py。
 保留：auth/sessions/runs/prompts/versions/rag/attachments、SingleAgentGraph（单 agent 引擎）、生成管线基础。
 
-## 六、待办：P9 SPEC 新功能（未开始实现）
+## 六、待办：P9 SPEC 新功能（已完成）
 
 | 项 | 内容 | 状态 |
 |---|---|---|
 | 调研 | run_service / attachments / providers 复用点 | ✅ 已调研（多源参照见实施计划） |
-| alembic | project_runs 加列 + assets + compose_templates 表 + seed | 🔄 实施计划 Task 2 |
-| generation_service | 生成编排（校验/提示词/结构化/存版本） | 🔄 实施计划 Task 5 |
-| image_service | 文生图 provider（OpenAI/DashScope 通义万相/Stability） | 🔄 实施计划 Task 6 |
-| routers/generation | POST /api/generations + continue/variations/image/compose | 🔄 实施计划 Task 7 |
-| assets | 素材库 CRUD + RAG index | 🔄 实施计划 Task 4/7 |
-| compose_templates | 内置 3 套卡片模板 + GET /api/compose-templates | 🔄 实施计划 Task 2/7 |
-| 测试+验证门 | ruff/mypy/pytest/tsc/vitest/eslint | 🔄 实施计划 Task 8 |
+| alembic | project_runs 加列 + assets + compose_templates 表 + seed | ✅ 已实现（p9g3n001） |
+| generation_service | 生成编排（校验/提示词/结构化/存版本） | ✅ 已实现 |
+| image_service | 文生图 provider（OpenAI/DashScope 通义万相/Stability） | ✅ 已实现 |
+| routers/generation | POST /api/generations + continue/variations/image/compose | ✅ 已实现 |
+| assets | 素材库 CRUD + RAG index | ✅ 已实现 |
+| compose_templates | 内置 3 套卡片模板 + GET /api/compose-templates | ✅ 已实现（seed） |
+| 测试+验证门 | ruff/mypy/pytest/tsc/vitest/eslint | ✅ 全绿（见下） |
+
+验证门结果：ruff 0 error / mypy strict 0 error / pytest 1346 过 7 跳过（含 P9 新增 39 用例）/ tsc 0 error / eslint 0 error / vitest 445/445；generation 管线覆盖率 81%（generation_service 81%、image_service 82%、structured 100%，SPEC §4.1 ≥80%）。
 
 实施计划：`docs/superpowers/plans/2026-08-06-p9-generation-pipeline.md`
 
-当前生成链路走通用 runs 通道（发主题→LLM 返回文本），无类型化生成/素材库/配图/卡片合成。
+当前生成链路：类型化生成（content_type/主题校验 → vault key → run 创建 → LLM SSE → 结构化解析 → 版本+草稿），配素材 RAG + compose 模板 + 文生图。冒烟已验证：GET /api/compose-templates 3 套模板、POST /api/generations 返回 run_id（无真实 key 时管线入 error 态）。
 
 ## 七、配置文档
 
@@ -80,4 +82,4 @@ make test-backend-quick  # pytest
 cd frontend && npx tsc --noEmit && npx eslint src/ && npx vitest run
 ```
 
-上次全量：mypy 0 错、pytest 1307 过（6 个 pre-existing 环境失败）、tsc 0 错、vitest 450/450、eslint 0 错。
+上次全量（P9 收尾）：ruff 0 错、mypy strict 0 错、pytest 1346 过 7 跳过、tsc 0 错、vitest 445/445、eslint 0 错。
