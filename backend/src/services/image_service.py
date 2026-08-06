@@ -59,6 +59,8 @@ class ImageService:
         run = await get_run(run_id)
         if run is None:
             raise ValueError("run 不存在")
+        if run.session_id is None:
+            raise ValueError("run 无会话，无法存储图片")
         handler = _PROVIDER_HANDLERS.get(provider)
         if handler is None:
             raise ValueError(f"不支持的图像 provider: {provider}")
@@ -71,7 +73,7 @@ class ImageService:
 
         attachment = await create_attachment(
             attachment_id=str(uuid.uuid4()),
-            session_id=run.session_id or "system",
+            session_id=run.session_id,
             filename=filename,
             content_type="image/png",
             size_bytes=len(png_bytes),
