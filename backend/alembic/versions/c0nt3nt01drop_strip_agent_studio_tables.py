@@ -37,7 +37,12 @@ def upgrade() -> None:
     with op.batch_alter_table("sessions") as batch_op:
         batch_op.drop_constraint("sessions_agent_id_fkey", type_="foreignkey")
         batch_op.drop_column("agent_id")
-    for table in _DROPPED_TABLES:
+    # Children before parents to satisfy FK dependencies.
+    for table in ["team_agents", "workflow_edges", "workflow_nodes"]:
+        op.drop_table(table)
+    for table in ["workflow_configs", "teams"]:
+        op.execute(f"DROP TABLE {table} CASCADE")
+    for table in ["agent_configs", "registered_tools", "mcp_servers", "registered_skills"]:
         op.drop_table(table)
 
 

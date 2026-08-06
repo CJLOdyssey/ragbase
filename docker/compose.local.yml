@@ -16,11 +16,11 @@ services:
       - "6379:6379"
 
   backend:
-    image: agent-studio/backend:latest
+    image: content-studio/backend:latest
     ports:
       - "8080:8080"
 
   frontend:
-    image: agent-studio/frontend:latest
+    image: content-studio/frontend:latest
     ports:
       - "5173:8080"

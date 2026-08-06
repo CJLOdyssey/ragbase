@@ -7,11 +7,11 @@
 # ports/volumes 按 source:target / target 匹配合并。
 # ─────────────────────────────────────────────────────────────────────────
 
-name: agent-studio
+name: content-studio
 
 x-common-env: &common-env
   PYTHONPATH: /app/backend/src
-  DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/backend
+  DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/content_studio
   REDIS_URL: redis://redis:6379/0
   CELERY_BROKER_URL: redis://redis:6379/0
   CELERY_RESULT_BACKEND: redis://redis:6379/0
@@ -29,15 +29,15 @@ x-common-env: &common-env
   NO_PROXY: localhost,127.0.0.1,postgres,redis,backend,.local
   BAIDU_QIANFAN_API_KEY: ${BAIDU_QIANFAN_API_KEY:-}
   CHECKPOINTER_BACKEND: ${CHECKPOINTER_BACKEND:-postgres}
-  CHECKPOINTER_DSN: ${CHECKPOINTER_DSN:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/backend}
+  CHECKPOINTER_DSN: ${CHECKPOINTER_DSN:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/content_studio}
 
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: agent-studio-db
+    container_name: content-studio-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: backend
+      POSTGRES_DB: content_studio
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
@@ -52,7 +52,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: agent-studio-redis
+    container_name: content-studio-redis
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -69,8 +69,8 @@ services:
       args:
         - PIP_INDEX_URL
         - PIP_TRUSTED_HOST
-    image: agent-studio/backend:latest
-    container_name: agent-studio-api
+    image: content-studio/backend:latest
+    container_name: content-studio-api
     restart: unless-stopped
     environment:
       <<: *common-env
@@ -97,8 +97,8 @@ services:
       args:
         - PIP_INDEX_URL
         - PIP_TRUSTED_HOST
-    image: agent-studio/backend:latest
-    container_name: agent-studio-worker
+    image: content-studio/backend:latest
+    container_name: content-studio-worker
     restart: unless-stopped
     command: celery -A broker worker --loglevel=${LOG_LEVEL:-info} --concurrency=2 --pool=threads
     environment:
@@ -116,8 +116,8 @@ services:
       context: ../frontend
       args:
         - NPM_REGISTRY
-    image: agent-studio/frontend:latest
-    container_name: agent-studio-frontend
+    image: content-studio/frontend:latest
+    container_name: content-studio-frontend
     restart: unless-stopped
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
