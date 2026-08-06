@@ -1,5 +1,6 @@
 """GenerationService orchestration tests."""
 
+import asyncio
 from importlib import import_module
 
 import pytest
@@ -59,9 +60,21 @@ async def test_create_generation_returns_run(monkeypatch: pytest.MonkeyPatch) ->
         content_type="xiaohongshu",
         topic="AI 写作入门",
     )
-    assert result["status"] in ("pending", "completed")
-    assert result["run_id"]
+    assert result["status"] == "pending"
+    run_id = result["run_id"]
+    assert run_id
     assert result["session_id"]
+
+    gen = None
+    for _ in range(40):
+        gen = await generation_service.get_generation(run_id)
+        if gen and gen["status"] == "completed":
+            break
+        await asyncio.sleep(0.05)
+    assert gen is not None
+    assert gen["status"] == "completed"
+    assert gen["result"]["title"] == "AI 写作入门"
+    assert gen["result"]["body_markdown"] == "## 正文"
 
 
 @pytest.mark.asyncio
@@ -123,3 +136,61 @@ async def test_count_versions_counts_snapshots(monkeypatch: pytest.MonkeyPatch) 
 
     assert await count_versions("generation", "run-1") == 2
     assert await count_versions("generation", "run-nope") == 0
+
+
+@pytest.mark.asyncio
+async def test_create_variations_limit_via_parent_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    await _mem_session_factory(monkeypatch)
+    from repository.run_repo import create_run
+
+    parent_id = await create_run("主题", content_type="xiaohongshu")
+    for _ in range(3):
+        await create_run("变体", parent_run_id=parent_id)
+
+    monkeypatch.setattr(
+        generation_service, "create_generation",
+        lambda **kwargs: {"run_id": "new", "status": "pending", "session_id": "s"},
+    )
+    with pytest.raises(ValueError, match="最多生成"):
+        await generation_service.create_variations(parent_id, "u1")
+
+
+@pytest.mark.asyncio
+async def test_create_variations_passes_parent_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    await _mem_session_factory(monkeypatch)
+    from repository.run_repo import create_run
+
+    parent_id = await create_run("主题", content_type="xiaohongshu")
+
+    calls: list[dict] = []
+
+    async def _fake_generation(**kwargs: object) -> dict:
+        calls.append(kwargs)
+        return {"run_id": "new", "status": "pending", "session_id": "s"}
+
+    monkeypatch.setattr(generation_service, "create_generation", _fake_generation)
+    result = await generation_service.create_variations(parent_id, "u1")
+    assert result["run_id"] == "new"
+    assert len(calls) == 1
+    assert calls[0]["parent_run_id"] == parent_id
+    assert calls[0]["generation_mode"] == "variations"
+
+
+@pytest.mark.asyncio
+async def test_continue_generation_passes_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    await _mem_session_factory(monkeypatch)
+    from repository.run_repo import create_run
+
+    run_id = await create_run("主题", content_type="xiaohongshu", topic="主题")
+
+    calls: list[dict] = []
+
+    async def _fake_generation(**kwargs: object) -> dict:
+        calls.append(kwargs)
+        return {"run_id": "rewritten", "status": "pending", "session_id": "s"}
+
+    monkeypatch.setattr(generation_service, "create_generation", _fake_generation)
+    await generation_service.continue_generation(run_id, "补充要求", "u1")
+    assert len(calls) == 1
+    assert calls[0]["additional_requirements"] == "补充要求"
+    assert calls[0]["generation_mode"] == "rewrite"

@@ -6,7 +6,7 @@ from typing import Any
 from uuid import uuid4
 
 from core.infra.database import ProjectRun, SessionDB, get_session_factory
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 
 
 async def get_session_runs(session_id: str) -> list[ProjectRun]:
@@ -134,3 +134,13 @@ async def get_runs(limit: int = 20) -> list[ProjectRun]:
         stmt = select(ProjectRun).order_by(desc(ProjectRun.created_at)).limit(limit)
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+
+async def count_runs_by_parent(parent_run_id: str) -> int:
+    """Count child runs linked to the given parent run."""
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(func.count(ProjectRun.id)).where(ProjectRun.parent_run_id == parent_run_id)
+        )
+        return int(result.scalar_one() or 0)

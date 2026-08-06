@@ -21,7 +21,7 @@ from repository import (
 )
 from repository.assets import get_asset, increment_asset_usage, list_assets_by_user
 from repository.compose_templates import get_template
-from repository.run_repo import create_run
+from repository.run_repo import count_runs_by_parent, create_run
 
 from services.structured import (
     CONTENT_TYPES,
@@ -75,6 +75,7 @@ class GenerationService:
         model: str | None = None,
         generation_mode: str = "generate",
         template_id: str | None = None,
+        parent_run_id: str | None = None,
     ) -> dict[str, Any]:
         topic = topic.strip()
         if content_type not in CONTENT_TYPES:
@@ -97,6 +98,7 @@ class GenerationService:
             generation_mode=generation_mode,
             topic=topic,
             template_id=template_id,
+            parent_run_id=parent_run_id,
         )
 
         await buffer_run_messages(run_id)
@@ -146,6 +148,7 @@ class GenerationService:
             user_id=user_id,
             content_type=run.content_type,
             topic=run.topic or run.requirement,
+            additional_requirements=content,
             generation_mode="rewrite",
             template_id=run.template_id,
         )
@@ -154,9 +157,7 @@ class GenerationService:
         run = await get_run(run_id)
         if run is None:
             raise ValueError("run 不存在")
-        from repository.versions import count_versions
-
-        count = await count_versions("generation", run_id)
+        count = await count_runs_by_parent(run_id)
         if count >= MAX_VARIATIONS:
             raise ValueError(f"同一输入最多生成 {MAX_VARIATIONS} 版")
         return await self.create_generation(
@@ -164,6 +165,7 @@ class GenerationService:
             content_type=run.content_type,
             topic=run.topic or run.requirement,
             generation_mode="variations",
+            parent_run_id=run_id,
         )
 
     async def compose_card(
