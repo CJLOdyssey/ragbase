@@ -110,7 +110,7 @@ describe('ComposePreview', { tags: ['unit'] }, () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'content.card.compose' }),
     );
-    expect(await screen.findByText('assets.upload.failed')).toBeInTheDocument();
+    expect(await screen.findByText('toast.error')).toBeInTheDocument();
     expect(screen.queryByTestId('compose-result')).toBeNull();
   });
 

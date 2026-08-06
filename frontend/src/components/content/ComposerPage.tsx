@@ -11,6 +11,7 @@ import {
 import AssetPicker from './AssetPicker';
 import ComposePreview from './ComposePreview';
 import ResultViewer from './ResultViewer';
+import { useToast } from '../../utils/useToast';
 
 const CONTENT_TYPES = [
   'xiaohongshu',
@@ -24,6 +25,7 @@ const POLL_INTERVAL_MS = 2000;
 
 export default function ComposerPage() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [contentType, setContentType] = useState<string>(CONTENT_TYPES[0]);
   const [topic, setTopic] = useState('');
   const [extra, setExtra] = useState('');
@@ -80,9 +82,10 @@ export default function ComposerPage() {
       });
       setRunId(resp.run_id);
     } catch {
+      toast(t('toast.error'), 'error');
       setRunning(false);
     }
-  }, [topic, extra, contentType, assetIds, running]);
+  }, [topic, extra, contentType, assetIds, running, toast, t]);
 
   const handleVariants = useCallback(async () => {
     if (!detail || busy) return;
@@ -92,9 +95,10 @@ export default function ComposerPage() {
       setRunId(resp.run_id);
       setRunning(true);
     } catch {
+      toast(t('toast.error'), 'error');
       setBusy(null);
     }
-  }, [detail, busy]);
+  }, [detail, busy, toast, t]);
 
   const handleImage = useCallback(
     async (prompt: string, provider: string) => {
@@ -103,10 +107,11 @@ export default function ComposerPage() {
       try {
         await generateImage(detail.id, { prompt: prompt.trim(), provider });
       } catch {
+        toast(t('toast.error'), 'error');
         setBusy(null);
       }
     },
-    [detail, busy],
+    [detail, busy, toast, t],
   );
 
   return (

@@ -50,7 +50,7 @@ export default function ComposePreview({
     try {
       setResult(await composeCard(runId, { templateId, title, summary }));
     } catch {
-      toast(t('assets.upload.failed'), 'error');
+      toast(t('toast.error'), 'error');
     } finally {
       setComposing(false);
     }
