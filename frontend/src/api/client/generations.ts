@@ -3,11 +3,19 @@ import type {
   ComposeRequest,
   GenerationCreateRequest,
   GenerationDetail,
+  GenerationListItem,
   GenerationResponse,
   ImageGenerateRequest,
   ImageResult,
 } from '../../types/generation';
 import api from './instance';
+
+export async function listGenerations(
+  limit = 20,
+): Promise<GenerationListItem[]> {
+  const { data } = await api.get('/generations', { params: { limit } });
+  return data;
+}
 
 export async function createGeneration(
   req: GenerationCreateRequest,

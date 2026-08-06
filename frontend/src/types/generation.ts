@@ -31,6 +31,17 @@ export interface GenerationResponse {
   status: string;
 }
 
+export interface GenerationListItem {
+  run_id: string;
+  session_id: string | null;
+  topic: string | null;
+  content_type: string | null;
+  generation_mode: string | null;
+  status: string | null;
+  result: Record<string, unknown>;
+  created_at: string | null;
+}
+
 export interface GenerationDetail {
   id: string;
   session_id: string | null;
