@@ -1,6 +1,7 @@
 import { useAuth } from '../AuthContext';
 import LoginTrigger from '../LoginTrigger';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 
@@ -25,7 +26,11 @@ describe('LoginTrigger', { tags: ['unit'] }, () => {
   });
 
   it('shows login/register buttons when anonymous', () => {
-    render(<LoginTrigger />);
+    render(
+      <MemoryRouter>
+        <LoginTrigger />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('auth.login')).toBeTruthy();
     expect(screen.getByText('auth.register')).toBeTruthy();
   });
@@ -38,7 +43,11 @@ describe('LoginTrigger', { tags: ['unit'] }, () => {
       openLoginModal,
       logout: vi.fn(),
     } as ReturnType<typeof useAuth>);
-    render(<LoginTrigger />);
+    render(
+      <MemoryRouter>
+        <LoginTrigger />
+      </MemoryRouter>,
+    );
     fireEvent.click(screen.getByText('auth.login'));
     expect(openLoginModal).toHaveBeenCalledWith('login');
     fireEvent.click(screen.getByText('auth.register'));
@@ -52,13 +61,21 @@ describe('LoginTrigger', { tags: ['unit'] }, () => {
       openLoginModal: vi.fn(),
       logout: vi.fn(),
     } as unknown as ReturnType<typeof useAuth>);
-    render(<LoginTrigger />);
+    render(
+      <MemoryRouter>
+        <LoginTrigger />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('测试用户')).toBeTruthy();
     expect(screen.getByText('auth.logout')).toBeTruthy();
   });
 
   it('has no axe violations', async () => {
-    const { container } = render(<LoginTrigger />);
+    const { container } = render(
+      <MemoryRouter>
+        <LoginTrigger />
+      </MemoryRouter>,
+    );
     expect(await axe(container)).toHaveNoViolations();
   });
 });
