@@ -67,6 +67,15 @@ class ErrorCode(StrEnum):
     KEY_NOT_FOUND = "KEY_001"
     KEY_INVALID = "KEY_002"
 
+    # ── Asset ────────────────────────────────────────────────────────
+    ASSET_NOT_FOUND = "ASSET_001"
+
+    # ── Compose ──────────────────────────────────────────────────────
+    TEMPLATE_NOT_FOUND = "COMPOSE_001"
+
+    # ── Generation ───────────────────────────────────────────────────
+    GENERATION_LIMIT = "GEN_001"
+
     # ── Session ──────────────────────────────────────────────────────
     SESSION_NOT_FOUND = "SESSION_001"
     SESSION_FORBIDDEN = "SESSION_002"

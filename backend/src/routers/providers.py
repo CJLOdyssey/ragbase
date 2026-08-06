@@ -12,13 +12,13 @@ from typing import Any, Literal
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-Capability = Literal["llm", "embedding"]
+Capability = Literal["llm", "embedding", "image"]
 
 PROVIDERS: dict[str, dict[str, Any]] = {
     "openai": {
         "name": "OpenAI",
         "base_url": "https://api.openai.com/v1",
-        "capabilities": ["chat", "vector"],
+        "capabilities": ["chat", "vector", "image"],
         "docs_url": "https://platform.openai.com/api-keys",
     },
     "deepseek": {
@@ -36,7 +36,7 @@ PROVIDERS: dict[str, dict[str, Any]] = {
     "dashscope": {
         "name": "DashScope（阿里云百炼）",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "capabilities": ["chat", "vector"],
+        "capabilities": ["chat", "vector", "image"],
         "docs_url": "https://bailian.console.aliyun.com/#/api-key",
     },
     "tavily": {
@@ -44,6 +44,12 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "base_url": "",
         "capabilities": ["tool"],
         "docs_url": "https://app.tavily.com",
+    },
+    "stability": {
+        "name": "Stability AI",
+        "base_url": "https://api.stability.ai",
+        "capabilities": ["image"],
+        "docs_url": "https://platform.stability.ai/docs/getting-started/authentication",
     },
     "custom": {
         "name": "自定义",
