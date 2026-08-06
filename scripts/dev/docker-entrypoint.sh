@@ -8,7 +8,7 @@ set -euo pipefail
 
 # ── 1. Wait for Postgres ──────────────────────────────────────────────────────
 DB_HOST="${DB_HOST:-postgres}"
-DB_PORT="${DB_PORT:-5432}"
+DB_PORT="${DB_PORT:-5433}"
 DB_USER="${DB_USER:-postgres}"
 
 echo "⏳ Waiting for Postgres at ${DB_HOST}:${DB_PORT}..."

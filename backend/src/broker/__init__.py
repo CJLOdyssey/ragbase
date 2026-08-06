@@ -15,8 +15,8 @@ from redis.asyncio import Redis as AsyncRedis  # noqa: F401  # re-exported for b
 # Celery app
 # ---------------------------------------------------------------------------
 
-BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
-RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6380/0")
+RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6380/0")
 
 celery_app = Celery(
     "backend",
@@ -43,7 +43,7 @@ celery_app.autodiscover_tasks(["tasks"])
 # Redis pub/sub
 # ---------------------------------------------------------------------------
 
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6380/0")
 
 # Per-event-loop connection pool — Celery prefork workers create a new event
 # loop via asyncio.run() in each child process, so a single global pool bound

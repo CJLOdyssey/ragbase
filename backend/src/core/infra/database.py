@@ -41,7 +41,7 @@ if _env_file.exists():
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/backend",
+    "postgresql+asyncpg://postgres:postgres@localhost:5433/content_studio",
 )
 
 _async_engine: AsyncEngine | None = None

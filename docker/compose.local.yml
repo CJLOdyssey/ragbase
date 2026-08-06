@@ -1,6 +1,7 @@
 # ── 本地开发 compose（overlay）───────────────────────────────────────────
 # 用法：docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
-# 差异：端口全暴露（5432/6379/8080/5173）、弱密钥默认、build args、本地镜像名。
+# 差异：端口全暴露（5433/6380/8080/5173）、弱密钥默认、build args、本地镜像名。
+# 端口避开 agent-studio 共享实例（5432/6379）——内容库/缓存完全独立。
 # ─────────────────────────────────────────────────────────────────────────
 
 include:
@@ -9,11 +10,11 @@ include:
 services:
   postgres:
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   redis:
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   backend:
     image: content-studio/backend:latest

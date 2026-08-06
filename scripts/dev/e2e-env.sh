@@ -21,7 +21,7 @@ for c in content-studio-db content-studio-redis; do
     fi
 done
 
-echo "✅ E2E 环境就绪：postgres=5432, redis=6379"
+echo "✅ E2E 环境就绪：postgres=5433, redis=6380"
 echo "   下一步:"
 echo "     PORT=8082 make dev-backend   # 启动后端 (端口 8082, E2E 测试目标)"
 echo "     make test-e2e           # 运行 API 级 E2E 测试"

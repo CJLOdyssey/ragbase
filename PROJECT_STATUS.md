@@ -23,15 +23,16 @@ d336e4d chore: isolate content-studio env from agent-studio
 
 | 服务 | 端口 | 状态 |
 |---|---|---|
-| 后端 | 8081 | ✅ health 200，连 `content_studio` 库 |
+| 后端 | 8081 | ✅ health 200，连 `content_studio` 库（5433） |
 | 前端 | 5174 | ✅ 200，proxy → 8081 |
-| postgres/redis | docker 容器 | ✅ 运行中 |
+| postgres | 5433 | ✅ `content-studio-db` 独立容器（pgvector/pg16） |
+| redis | 6380 | ✅ `content-studio-redis` 独立容器 |
 
 标准启动命令（混合模式，开发推荐）：
 
 ```bash
 docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
-DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/content_studio" make dev-backend
+DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5433/content_studio" make dev-backend
 cd frontend && npm run dev
 ```
 
@@ -39,8 +40,9 @@ cd frontend && npm run dev
 
 ## 四、数据库隔离
 
-- content-studio → `content_studio` 库（独立，17 张表，alembic_version = `c0nt3nt01drop`）
-- agent-studio → `backend` 库（表结构已恢复，数据无损失，**不再触碰**）
+- content-studio → `content_studio` 库（**独立容器** `content-studio-db`：5433，pgvector/pg16；20 张表，alembic_version = `p9g3n001`；2026-08-06 从共享实例全量迁移数据后隔离）
+- content-studio → `content-studio-redis`（**独立容器**：6380）
+- agent-studio → `backend` 库（共享实例 5432/6379，**不再触碰**）
 - 已授权范围：不得修改 agent-studio 的代码/数据/进程/配置
 
 ## 五、裁剪边界（已完成）

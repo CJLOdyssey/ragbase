@@ -29,7 +29,7 @@ class TestDirectConnection:
         with patch.object(mod.AsyncRedis, "from_url") as m:
             m.return_value = "redis"
             mod.create_redis()
-            assert m.call_args[0][0] == "redis://localhost:6379/0"
+            assert m.call_args[0][0] == "redis://localhost:6380/0"
 
     def test_custom_url(self, monkeypatch):
         monkeypatch.delenv("REDIS_SENTINEL_ENABLED", raising=False)
