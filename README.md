@@ -27,7 +27,7 @@ docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
 
 ```bash
 docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
-DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/backend" make dev-backend
+DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/content_studio" make dev-backend
 cd frontend && npm run dev
 ```
 

@@ -4,7 +4,7 @@
 #       所以默认不带 --reload。如果非要热更新, 用 PORT=8081 RELOAD=1 make dev-backend。
 set -euo pipefail
 
-PIDFILE="/tmp/agent-studio-backend.pid"
+PIDFILE="/tmp/content-studio-backend.pid"
 PORT="${PORT:-8081}"
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
