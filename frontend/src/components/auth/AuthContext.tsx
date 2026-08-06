@@ -9,6 +9,7 @@ import {
 import {
   forgotPassword as apiForgotPassword,
   login as apiLogin,
+  logout as apiLogout,
   mergeGuestData as apiMergeGuestData,
   register as apiRegister,
   resendVerification as apiResendVerification,
@@ -224,6 +225,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    try {
+      // Invalidate server-side refresh_token cookie (httpOnly); local state clears either way.
+      await apiLogout();
+    } catch {
+      // access_token may already be expired — the refresh cookie expires server-side on next refresh attempt.
+    }
     setUser(null);
     clearLocalConversations();
     localStorage.removeItem('agentstudio_user_id');

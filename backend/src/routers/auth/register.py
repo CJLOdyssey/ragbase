@@ -24,6 +24,7 @@ from .schemas import (
     _generate_code,
     _mask_email,
     _set_access_token_cookie,
+    _set_refresh_token_cookie,
     _store_code_in_redis,
 )
 
@@ -112,7 +113,8 @@ async def register(body: RegisterRequest, request: Request, response: Response) 
     logger.info("User registered and verified: %s", _mask_email(email))
     auth_resp = await _create_auth_response(user.id, user.email, user.username)
     _set_access_token_cookie(response, auth_resp.access_token)
-    return auth_resp
+    _set_refresh_token_cookie(response, auth_resp.refresh_token)
+    return auth_resp.model_copy(update={"refresh_token": ""})
 
 
 @router.post("/verify", response_model=AuthResponse)
@@ -157,7 +159,8 @@ async def verify(body: VerifyRequest, request: Request, response: Response) -> A
 
     auth_resp = await _create_auth_response(user.id, user.email, user.username)
     _set_access_token_cookie(response, auth_resp.access_token)
-    return auth_resp
+    _set_refresh_token_cookie(response, auth_resp.refresh_token)
+    return auth_resp.model_copy(update={"refresh_token": ""})
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
