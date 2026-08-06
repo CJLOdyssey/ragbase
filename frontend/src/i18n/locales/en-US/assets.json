@@ -1,0 +1,23 @@
+{
+  "assets": {
+    "title": "Assets",
+    "upload": {
+      "button": "Upload Asset",
+      "selectFile": "Select File",
+      "tooLarge": "\"{{name}}\" exceeds the size limit",
+      "typeDenied": "File type not supported: \"{{name}}\"",
+      "uploading": "Uploading…",
+      "success": "Upload successful",
+      "failed": "Upload failed"
+    },
+    "list": {
+      "empty": "No assets yet. Upload one to get started.",
+      "rename": "Rename",
+      "deleteConfirm": "Delete asset \"{{name}}\"? This action cannot be undone.",
+      "deleteSuccess": "Deleted successfully",
+      "index": "Index",
+      "indexSuccess": "Index created",
+      "documentsOnly": "Only document-type assets can be indexed"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "settings": {
+    "title": "Settings",
+    "section": {
+      "api": "API Management",
+      "general": "General"
+    },
+    "apiKeyHint": "API Keys are encrypted server-side and only used for model calls; they are never exposed to the frontend."
+  }
+}

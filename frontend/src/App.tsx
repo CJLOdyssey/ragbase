@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import type * as React from 'react';
 import { StyleProvider } from '@ant-design/cssinjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,6 +10,21 @@ import ContentStudioShell from './components/content/ContentStudioShell';
 import { useSettings } from './contexts/SettingsContext';
 import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
+
+// ponytail: ComposerPage 尚未实现，/compose 暂复用 shell 占位
+const ComposerPage = lazy(
+  () => import('./components/content/ContentStudioShell'),
+);
+const AssetsPage = lazy(() => import('./components/assets/AssetsPage'));
+const HistoryPage = lazy(() => import('./components/history/HistoryPage'));
+
+function PageLoading() {
+  return (
+    <div className="h-screen flex items-center justify-center text-sm text-[var(--color-text-muted)]">
+      加载中…
+    </div>
+  );
+}
 
 const CSS_VARS = {
   accent: '--color-accent',
@@ -156,6 +172,30 @@ function ThemedApp() {
               <AuthGate>
                 <AppInit />
                 <Routes>
+                  <Route
+                    path="/compose"
+                    element={
+                      <Suspense fallback={<PageLoading />}>
+                        <ComposerPage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/assets"
+                    element={
+                      <Suspense fallback={<PageLoading />}>
+                        <AssetsPage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/history"
+                    element={
+                      <Suspense fallback={<PageLoading />}>
+                        <HistoryPage />
+                      </Suspense>
+                    }
+                  />
                   <Route
                     path="*"
                     element={

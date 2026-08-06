@@ -24,4 +24,30 @@ export {
   healthCheck,
 } from './sessions';
 export { listModels } from './models';
+export {
+  createGeneration,
+  getGeneration,
+  continueGeneration,
+  createVariations,
+  generateImage,
+  composeCard,
+} from './generations';
+export type {
+  GenerationCreateRequest,
+  GenerationDetail,
+  GenerationResponse,
+  ImageGenerateRequest,
+  ComposeRequest,
+  ComposeCardResult,
+  ComposeTemplate,
+} from '../../types/generation';
+export { listComposeTemplates } from './composeTemplates';
+export {
+  listAssets,
+  uploadAsset,
+  renameAsset,
+  deleteAsset,
+  indexAsset,
+} from './assets';
+export type { AssetItem, AssetIndexResult } from '../../types/assets';
 export { default } from './instance';

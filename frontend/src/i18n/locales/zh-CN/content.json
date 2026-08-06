@@ -1,0 +1,46 @@
+{
+  "content": {
+    "title": "创作工作台",
+    "input": {
+      "topicPlaceholder": "输入创作主题…",
+      "contentTypeLabel": "内容类型",
+      "generationModeLabel": "生成模式",
+      "extraLabel": "附加要求（可选）",
+      "extraPlaceholder": "补充风格、字数、受众等要求…"
+    },
+    "contentType_generic": "通用文案",
+    "contentType_wechat": "公众号文章",
+    "contentType_xiaohongshu": "小红书笔记",
+    "contentType_shortvideo": "短视频脚本",
+    "contentType_marketing": "营销文案",
+    "generationMode_single": "单次生成",
+    "generationMode_multi": "多版本",
+    "generate": "生成",
+    "stop": "停止生成",
+    "generating": "生成中…",
+    "result": {
+      "titleLabel": "标题",
+      "bodyLabel": "正文",
+      "summaryLabel": "摘要"
+    },
+    "variants": {
+      "generateVariant": "生成变体",
+      "limit": "最多生成 {{count}} 个变体",
+      "generating": "正在生成变体…"
+    },
+    "image": {
+      "generate": "生成配图",
+      "prompt": "图片提示词",
+      "promptPlaceholder": "描述想要的图片效果…",
+      "generating": "正在生成配图…"
+    },
+    "card": {
+      "compose": "合成卡片",
+      "template": "模板",
+      "titleLabel": "卡片标题",
+      "summaryLabel": "卡片摘要",
+      "preview": "预览",
+      "selectTemplate": "选择模板"
+    }
+  }
+}

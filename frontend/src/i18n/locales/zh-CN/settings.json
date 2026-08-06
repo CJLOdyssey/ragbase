@@ -1,0 +1,10 @@
+{
+  "settings": {
+    "title": "设置",
+    "section": {
+      "api": "API 管理",
+      "general": "通用"
+    },
+    "apiKeyHint": "API Key 由服务端加密保管，仅用于调用模型，不会展示给前端。"
+  }
+}

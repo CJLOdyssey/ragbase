@@ -1,9 +1,17 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import apiEn from './locales/en-US/api.json';
+import assetsEn from './locales/en-US/assets.json';
 import commonEn from './locales/en-US/common.json';
+import contentEn from './locales/en-US/content.json';
+import historyEn from './locales/en-US/history.json';
+import settingsEn from './locales/en-US/settings.json';
 import apiZh from './locales/zh-CN/api.json';
+import assetsZh from './locales/zh-CN/assets.json';
 import commonZh from './locales/zh-CN/common.json';
+import contentZh from './locales/zh-CN/content.json';
+import historyZh from './locales/zh-CN/history.json';
+import settingsZh from './locales/zh-CN/settings.json';
 
 function deepMerge<T extends Record<string, unknown>>(
   target: T,
@@ -32,8 +40,24 @@ function deepMerge<T extends Record<string, unknown>>(
   return out;
 }
 
-const zh = deepMerge({}, commonZh, apiZh);
-const en = deepMerge({}, commonEn, apiEn);
+const zh = deepMerge(
+  {},
+  commonZh,
+  apiZh,
+  assetsZh,
+  contentZh,
+  historyZh,
+  settingsZh,
+);
+const en = deepMerge(
+  {},
+  commonEn,
+  apiEn,
+  assetsEn,
+  contentEn,
+  historyEn,
+  settingsEn,
+);
 
 const saved =
   typeof window !== 'undefined' ? localStorage.getItem('language') : null;

@@ -1,0 +1,17 @@
+{
+  "history": {
+    "title": "Creation History",
+    "empty": "No creation records yet",
+    "loading": "Loading…",
+    "type_generic": "Generic Copy",
+    "type_wechat": "WeChat Article",
+    "type_xiaohongshu": "Xiaohongshu Note",
+    "type_shortvideo": "Short Video Script",
+    "type_marketing": "Marketing Copy",
+    "actions": {
+      "view": "View",
+      "continue": "Continue",
+      "generateVariant": "Generate Variant"
+    }
+  }
+}
