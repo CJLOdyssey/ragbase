@@ -8,6 +8,8 @@ from uuid import uuid4
 from core.infra.database import ProjectRun, SessionDB, get_session_factory
 from sqlalchemy import desc, func, select
 
+from repository.session_repo import get_sessions
+
 
 async def get_session_runs(session_id: str) -> list[ProjectRun]:
     """Return all project runs belonging to a session, ordered by creation time."""
@@ -147,6 +149,17 @@ async def get_runs(limit: int = 20) -> list[ProjectRun]:
         stmt = select(ProjectRun).order_by(desc(ProjectRun.created_at)).limit(limit)
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+
+async def get_runs_for_user(user_id: str, limit: int = 20) -> list[ProjectRun]:
+    """List a user's runs via session ownership (project_runs has no user_id column)."""
+    sessions = await get_sessions(user_id=user_id, limit=limit * 2)
+    if not sessions:
+        return []
+    run_map = await get_runs_by_session_ids([s.id for s in sessions])
+    runs = [run for rs in run_map.values() for run in rs]
+    runs.sort(key=lambda r: r.created_at or datetime.min, reverse=True)
+    return runs[:limit]
 
 
 async def count_runs_by_parent(parent_run_id: str) -> int:

@@ -6,7 +6,7 @@ from typing import Any
 from auth import get_user_id
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
 from services.generation_service import generation_service
@@ -54,6 +54,26 @@ class GenerationResponse(BaseModel):
     run_id: str
     session_id: str | None = None
     status: str
+
+
+class GenerationListItem(BaseModel):
+    run_id: str
+    session_id: str | None = None
+    topic: str | None = None
+    content_type: str | None = None
+    generation_mode: str | None = None
+    status: str | None = None
+    result: dict[str, Any] = Field(default_factory=dict)
+    created_at: str | None = None
+
+
+@router.get("/api/generations", response_model=list[GenerationListItem])
+async def list_generations(
+    request: Request, limit: int = Query(20, ge=1, le=100)
+) -> Any:
+    """List the caller's generations, newest first (AIP-121 list)."""
+    user_id = get_user_id(request)
+    return await generation_service.list_generations(user_id, limit=limit)
 
 
 @router.post("/api/generations", response_model=GenerationResponse)

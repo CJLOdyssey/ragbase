@@ -121,6 +121,30 @@ def test_variations_bogus_run_returns_run_not_found(client) -> None:  # noqa: AN
     assert resp.json()["detail"]["error"]["code"] == "RUN_001"
 
 
+def test_list_generations_user_scoped(client) -> None:  # noqa: ANN001
+    from repository.run_repo import create_run
+    from repository.session_repo import create_session
+
+    async def _seed() -> None:
+        s1 = await create_session(title="s1", user_id="u1", kind="normal")
+        s2 = await create_session(title="s2", user_id="u2", kind="normal")
+        await create_run("甲", session_id=s1.id, content_type="wechat")
+        await create_run("乙", session_id=s1.id, content_type="generic")
+        await create_run("丙", session_id=s2.id, content_type="generic")
+
+    asyncio.run(_seed())
+    resp = client.get("/api/generations", headers={"X-User-ID": "u1"})
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 2
+    topics = {i["topic"] for i in items}
+    assert topics == {"甲", "乙"}
+    assert all(i["content_type"] in ("generic", "wechat") for i in items)
+
+    limited = client.get("/api/generations?limit=1", headers={"X-User-ID": "u1"})
+    assert len(limited.json()) == 1
+
+
 def test_get_generation_denied_for_foreign_owner(client) -> None:  # noqa: ANN001
     from core.infra.database import SessionDB, get_session_factory
     from repository.run_repo import create_run

@@ -25,7 +25,7 @@ from repository.assets import (
     list_assets_by_user,
 )
 from repository.compose_templates import get_template
-from repository.run_repo import count_runs_by_parent, create_run
+from repository.run_repo import count_runs_by_parent, create_run, get_runs_for_user
 
 from services.structured import (
     CONTENT_TYPES,
@@ -141,6 +141,22 @@ class GenerationService:
             "result": run.result_json or {},
             "created_at": run.created_at.isoformat() if run.created_at else None,
         }
+
+    async def list_generations(self, user_id: str, limit: int = 20) -> list[dict[str, Any]]:
+        runs = await get_runs_for_user(user_id, limit=limit)
+        return [
+            {
+                "run_id": run.id,
+                "session_id": run.session_id,
+                "topic": run.topic or run.requirement,
+                "content_type": run.content_type,
+                "generation_mode": run.generation_mode,
+                "status": run.status,
+                "result": run.result_json or {},
+                "created_at": run.created_at.isoformat() if run.created_at else None,
+            }
+            for run in runs
+        ]
 
     async def continue_generation(
         self, run_id: str, content: str, user_id: str
