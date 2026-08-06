@@ -1,7 +1,14 @@
-import type { ChatState } from './chatTypes';
-import type { WsMessageEvent, WsInfoEvent, WsErrorEvent, WsBalanceWarningEvent, WsOpenUrlEvent, WsBrowserFrameEvent } from './wsEvents';
-import { uid } from './uid';
 import Logger from '../utils/logger';
+import type { ChatState } from './chatTypes';
+import { uid } from './uid';
+import type {
+  WsBalanceWarningEvent,
+  WsBrowserFrameEvent,
+  WsErrorEvent,
+  WsInfoEvent,
+  WsMessageEvent,
+  WsOpenUrlEvent,
+} from './wsEvents';
 
 type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 
@@ -13,12 +20,21 @@ export function handleMessageEvent(set: SetFn, msg: WsMessageEvent): void {
           if (m.id !== s.streamingId) return m;
           const newThinking = msg.thinking ?? m.thinking;
           const cv = m.currentVersion ?? 0;
-          const tvBase = m.thinkingVersions?.length ? m.thinkingVersions : (m.thinking ? [m.thinking] : []);
+          const tvBase = m.thinkingVersions?.length
+            ? m.thinkingVersions
+            : m.thinking
+              ? [m.thinking]
+              : [];
           const newTV = [...tvBase];
           if (newTV[cv] !== undefined) {
             newTV[cv] = newThinking ?? '';
           }
-          return { ...m, content: msg.content!, thinking: newThinking, thinkingVersions: newTV };
+          return {
+            ...m,
+            content: msg.content!,
+            thinking: newThinking,
+            thinkingVersions: newTV,
+          };
         }),
         currentRole: msg.role!,
         wsStatus: 'connected' as ChatState['wsStatus'],
@@ -44,12 +60,16 @@ export function handleMessageEvent(set: SetFn, msg: WsMessageEvent): void {
 
 export function handleInfoEvent(set: SetFn, msg: WsInfoEvent): void {
   set((s) => {
-    const infoContent = msg.content || typeof msg.data === 'string' ? msg.data : '';
+    const infoContent =
+      msg.content || typeof msg.data === 'string' ? msg.data : '';
     if (s.streamingId) {
       return {
         messages: s.messages.map((m) =>
           m.id === s.streamingId
-            ? { ...m, content: m.content + (infoContent ? `\n[${infoContent}]` : '') }
+            ? {
+                ...m,
+                content: m.content + (infoContent ? `\n[${infoContent}]` : ''),
+              }
             : m,
         ),
       };
@@ -68,7 +88,10 @@ export function handleErrorEvent(set: SetFn, msg: WsErrorEvent): void {
   }));
 }
 
-export function handleBalanceWarningEvent(set: SetFn, msg: WsBalanceWarningEvent): void {
+export function handleBalanceWarningEvent(
+  set: SetFn,
+  msg: WsBalanceWarningEvent,
+): void {
   Logger.error('[chat] balance warning:', msg.content);
   set((_s) => ({
     status: 'error' as ChatState['status'],
@@ -99,7 +122,9 @@ export function handleOpenUrlEvent(msg: WsOpenUrlEvent): void {
   if (!targetUrl) return;
   Logger.info('[chat] open_url: %s', targetUrl);
   _pendingBrowserUrl = targetUrl;
-  window.dispatchEvent(new CustomEvent('browser-open-url', { detail: targetUrl }));
+  window.dispatchEvent(
+    new CustomEvent('browser-open-url', { detail: targetUrl }),
+  );
 }
 
 export function handleBrowserFrameEvent(msg: WsBrowserFrameEvent): void {

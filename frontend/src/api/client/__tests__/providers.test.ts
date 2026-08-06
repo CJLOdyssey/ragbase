@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { listProviders } from '../providers';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockClient } = vi.hoisted(() => ({
   mockClient: {
@@ -19,7 +19,12 @@ beforeEach(() => {
 describe('listProviders', { tags: ['unit'] }, () => {
   it('calls GET /providers', async () => {
     const mockData = {
-      openai: { name: 'openai', base_url: 'https://api.openai.com', capabilities: ['chat'], docs_url: null },
+      openai: {
+        name: 'openai',
+        base_url: 'https://api.openai.com',
+        capabilities: ['chat'],
+        docs_url: null,
+      },
     };
     mockClient.get.mockResolvedValue({ data: mockData });
 

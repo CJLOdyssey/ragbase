@@ -1,8 +1,24 @@
 import type { ChatState } from './chatTypes';
+import {
+  handleBalanceWarningEvent,
+  handleErrorEvent,
+  handleInfoEvent,
+  handleMessageEvent,
+  handleOpenUrlEvent,
+} from './messageHandler';
+import {
+  handleResultEvent,
+  handleTeamResultEvent,
+  handleThinkingDoneEvent,
+  handleThumbsEvent,
+} from './resultHandler';
+import {
+  handleApprovalRequest,
+  handleStreamEvent,
+  handleTeamResultMeta,
+  handleThinkingStreamEvent,
+} from './streamHandler';
 import type { WsEvent } from './wsEvents';
-import { handleStreamEvent, handleThinkingStreamEvent, handleTeamResultMeta, handleApprovalRequest } from './streamHandler';
-import { handleMessageEvent, handleInfoEvent, handleErrorEvent, handleBalanceWarningEvent, handleOpenUrlEvent } from './messageHandler';
-import { handleThinkingDoneEvent, handleResultEvent, handleTeamResultEvent, handleThumbsEvent } from './resultHandler';
 
 type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 type GetFn = () => ChatState;

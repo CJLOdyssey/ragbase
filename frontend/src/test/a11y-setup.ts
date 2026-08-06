@@ -1,6 +1,6 @@
-import { axe } from 'vitest-axe';
-import { expect } from 'vitest';
 import type { Result, RunOptions } from 'axe-core';
+import { expect } from 'vitest';
+import { axe } from 'vitest-axe';
 
 export async function expectNoA11yViolations(
   container: HTMLElement,

@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  listKeys,
   createKey,
-  updateKey,
   deleteKey,
-  testKeyConnection,
-  getKeyUsage,
   fetchModelsFromProvider,
+  getKeyUsage,
+  listKeys,
+  testKeyConnection,
+  updateKey,
 } from '../keys';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -25,9 +25,17 @@ beforeEach(() => {
 });
 
 const mockKeyItem = {
-  id: '1', provider: 'openai', usage_type: 'chat', label: 'My Key',
-  key_masked: 'sk-***', base_url: null, models: ['gpt-4'], is_active: true,
-  is_default: false, last_used_at: null, created_at: '2024-01-01',
+  id: '1',
+  provider: 'openai',
+  usage_type: 'chat',
+  label: 'My Key',
+  key_masked: 'sk-***',
+  base_url: null,
+  models: ['gpt-4'],
+  is_active: true,
+  is_default: false,
+  last_used_at: null,
+  created_at: '2024-01-01',
 };
 
 describe('listKeys', { tags: ['unit'] }, () => {
@@ -56,7 +64,9 @@ describe('createKey', { tags: ['unit'] }, () => {
 describe('updateKey', { tags: ['unit'] }, () => {
   it('calls PUT /keys/:id with config', async () => {
     const cfg = { label: 'Updated' };
-    mockApi.put.mockResolvedValue({ data: { ...mockKeyItem, label: 'Updated' } });
+    mockApi.put.mockResolvedValue({
+      data: { ...mockKeyItem, label: 'Updated' },
+    });
 
     const result = await updateKey('1', cfg);
 
@@ -88,7 +98,12 @@ describe('testKeyConnection', { tags: ['unit'] }, () => {
 
 describe('getKeyUsage', { tags: ['unit'] }, () => {
   it('calls GET /keys/usage', async () => {
-    const usage = { today_requests: 10, today_tokens: 500, month_requests: 100, month_tokens: 5000 };
+    const usage = {
+      today_requests: 10,
+      today_tokens: 500,
+      month_requests: 100,
+      month_tokens: 5000,
+    };
     mockApi.get.mockResolvedValue({ data: usage });
 
     const result = await getKeyUsage();
@@ -100,18 +115,26 @@ describe('getKeyUsage', { tags: ['unit'] }, () => {
 
 describe('fetchModelsFromProvider', { tags: ['unit'] }, () => {
   it('calls POST /keys/fetch-models', async () => {
-    mockApi.post.mockResolvedValue({ data: { success: true, models: ['gpt-4', 'gpt-3.5'] } });
+    mockApi.post.mockResolvedValue({
+      data: { success: true, models: ['gpt-4', 'gpt-3.5'] },
+    });
 
     const result = await fetchModelsFromProvider({ api_key: 'sk-xxx' });
 
-    expect(mockApi.post).toHaveBeenCalledWith('/keys/fetch-models', { api_key: 'sk-xxx' });
+    expect(mockApi.post).toHaveBeenCalledWith('/keys/fetch-models', {
+      api_key: 'sk-xxx',
+    });
     expect(result).toEqual({ success: true, models: ['gpt-4', 'gpt-3.5'] });
   });
 
   it('passes all config fields', async () => {
     mockApi.post.mockResolvedValue({ data: { success: true, models: [] } });
 
-    await fetchModelsFromProvider({ api_key: 'sk-xxx', base_url: 'https://api.example.com', provider: 'openai' });
+    await fetchModelsFromProvider({
+      api_key: 'sk-xxx',
+      base_url: 'https://api.example.com',
+      provider: 'openai',
+    });
 
     expect(mockApi.post).toHaveBeenCalledWith('/keys/fetch-models', {
       api_key: 'sk-xxx',

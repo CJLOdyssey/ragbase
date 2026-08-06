@@ -1,6 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { getAgentInfo } from '@/types/index';
-import type { AgentConfig } from '@/types/index';
+import { getAgentInfo, type AgentConfig } from '@/types/index';
+import { describe, expect, it } from 'vitest';
 
 describe('getAgentInfo', { tags: ['unit'] }, () => {
   const agents: AgentConfig[] = [
@@ -47,7 +46,11 @@ describe('getAgentInfo', { tags: ['unit'] }, () => {
 
   it('找到匹配角色时返回对应图标和名称', () => {
     const info = getAgentInfo(agents, 'pm');
-    expect(info).toEqual({ icon: '📋', label: '产品经理', color: expect.any(String) });
+    expect(info).toEqual({
+      icon: '📋',
+      label: '产品经理',
+      color: expect.any(String),
+    });
   });
 
   it('未找到角色时返回默认值', () => {
@@ -72,7 +75,9 @@ describe('getAgentInfo', { tags: ['unit'] }, () => {
   });
 
   it('不同角色可能返回不同颜色', () => {
-    const colors = new Set(['pm', 'dev', 'qa'].map((r) => getAgentInfo(agents, r).color));
+    const colors = new Set(
+      ['pm', 'dev', 'qa'].map((r) => getAgentInfo(agents, r).color),
+    );
     expect(colors.size).toBeGreaterThan(1);
   });
 
@@ -90,7 +95,16 @@ describe('getAgentInfo', { tags: ['unit'] }, () => {
   });
 
   it('返回的颜色在预定义调色板范围内', () => {
-    const ROLE_COLORS = ['#4A90D9', '#00C853', '#FF6D00', '#9C27B0', '#00BCD4', '#FF5722', '#607D8B', '#E91E63'];
+    const ROLE_COLORS = [
+      '#4A90D9',
+      '#00C853',
+      '#FF6D00',
+      '#9C27B0',
+      '#00BCD4',
+      '#FF5722',
+      '#607D8B',
+      '#E91E63',
+    ];
     for (const a of agents) {
       const info = getAgentInfo(agents, a.role_identifier);
       expect(ROLE_COLORS).toContain(info.color);

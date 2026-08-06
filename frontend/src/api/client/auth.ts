@@ -30,38 +30,79 @@ export interface EmailHintResponse {
   email_hint: string;
 }
 
-export async function login(email: string, password: string, rememberMe?: boolean): Promise<AuthTokensResponse> {
-  const { data } = await api.post<AuthTokensResponse>('/auth/login', { email, password, remember_me: rememberMe });
+export async function login(
+  email: string,
+  password: string,
+  rememberMe?: boolean,
+): Promise<AuthTokensResponse> {
+  const { data } = await api.post<AuthTokensResponse>('/auth/login', {
+    email,
+    password,
+    remember_me: rememberMe,
+  });
   return data;
 }
 
-export async function sendRegisterCode(email: string): Promise<EmailHintResponse> {
-  const { data } = await api.post<EmailHintResponse>('/auth/send-register-code', { email });
+export async function sendRegisterCode(
+  email: string,
+): Promise<EmailHintResponse> {
+  const { data } = await api.post<EmailHintResponse>(
+    '/auth/send-register-code',
+    { email },
+  );
   return data;
 }
 
-export async function register(email: string, code: string, password: string): Promise<AuthTokensResponse> {
-  const { data } = await api.post<AuthTokensResponse>('/auth/register', { email, code, password });
+export async function register(
+  email: string,
+  code: string,
+  password: string,
+): Promise<AuthTokensResponse> {
+  const { data } = await api.post<AuthTokensResponse>('/auth/register', {
+    email,
+    code,
+    password,
+  });
   return data;
 }
 
-export async function verify(email: string, code: string): Promise<AuthTokensResponse> {
-  const { data } = await api.post<AuthTokensResponse>('/auth/verify', { email, code });
+export async function verify(
+  email: string,
+  code: string,
+): Promise<AuthTokensResponse> {
+  const { data } = await api.post<AuthTokensResponse>('/auth/verify', {
+    email,
+    code,
+  });
   return data;
 }
 
-export async function refreshTokens(refreshToken: string): Promise<AuthTokensResponse> {
-  const { data } = await api.post<AuthTokensResponse>('/auth/refresh', { refresh_token: refreshToken });
+export async function refreshTokens(
+  refreshToken: string,
+): Promise<AuthTokensResponse> {
+  const { data } = await api.post<AuthTokensResponse>('/auth/refresh', {
+    refresh_token: refreshToken,
+  });
   return data;
 }
 
 export async function forgotPassword(email: string): Promise<MessageResponse> {
-  const { data } = await api.post<MessageResponse>('/auth/forgot-password', { email });
+  const { data } = await api.post<MessageResponse>('/auth/forgot-password', {
+    email,
+  });
   return data;
 }
 
-export async function resetPassword(email: string, code: string, newPassword: string): Promise<MessageResponse> {
-  const { data } = await api.post<MessageResponse>('/auth/reset-password', { email, code, new_password: newPassword });
+export async function resetPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<MessageResponse> {
+  const { data } = await api.post<MessageResponse>('/auth/reset-password', {
+    email,
+    code,
+    new_password: newPassword,
+  });
   return data;
 }
 
@@ -79,8 +120,13 @@ export async function getAuthConfig(): Promise<AuthConfigResponse> {
   return data;
 }
 
-export async function resendVerification(email: string): Promise<MessageResponse> {
-  const { data } = await api.post<MessageResponse>('/auth/resend-verification', { email });
+export async function resendVerification(
+  email: string,
+): Promise<MessageResponse> {
+  const { data } = await api.post<MessageResponse>(
+    '/auth/resend-verification',
+    { email },
+  );
   return data;
 }
 

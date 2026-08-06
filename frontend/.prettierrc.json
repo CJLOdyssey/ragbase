@@ -1,0 +1,17 @@
+{
+  "plugins": ["@ianvs/prettier-plugin-sort-imports"],
+  "singleQuote": true,
+  "importOrder": [
+    "^react$",
+    "^react-dom(/.*)?$",
+    "<THIRD_PARTY_MODULES>",
+    "^\\.\\./\\.\\./types(/.*)?$",
+    "^\\.\\./\\.\\./api(/.*)?$",
+    "^\\.\\./\\.\\./(stores|components)(/.*)?$",
+    "^\\./(?!.*\\.css$).*$",
+    "^\\.\\./\\.\\./hooks(/.*)?$",
+    "^\\.\\./\\.\\./utils(/.*)?$",
+    "^\\.\\./\\.\\./contexts(/.*)?$"
+  ],
+  "importOrderTypeScriptVersion": "5.9.0"
+}

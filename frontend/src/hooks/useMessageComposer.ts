@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
-import { validateInput } from '../utils/validation';
+import { useCallback, useRef, useState } from 'react';
 import type * as React from 'react';
+import { validateInput } from '../utils/validation';
 
 interface UseMessageComposerOptions {
   /** External submit handler — receives sanitized text */
@@ -29,7 +29,11 @@ interface UseMessageComposerReturn {
  * All input state lives here — no parent re-render on every keystroke.
  * Uses a ref to always read the latest value in callbacks without stale closures.
  */
-export function useMessageComposer({ onSend, maxLength = 10000, sendMode = 'enter' }: UseMessageComposerOptions): UseMessageComposerReturn {
+export function useMessageComposer({
+  onSend,
+  maxLength = 10000,
+  sendMode = 'enter',
+}: UseMessageComposerOptions): UseMessageComposerReturn {
   const [value, setValue] = useState('');
   const valueRef = useRef(value);
   // Keep ref in sync during render — intentional, avoids stale closures in callbacks
@@ -74,5 +78,13 @@ export function useMessageComposer({ onSend, maxLength = 10000, sendMode = 'ente
     [submit, sendMode],
   );
 
-  return { value, setValue, submit, handleKeyDown, hasContent, charCount, maxLength };
+  return {
+    value,
+    setValue,
+    submit,
+    handleKeyDown,
+    hasContent,
+    charCount,
+    maxLength,
+  };
 }

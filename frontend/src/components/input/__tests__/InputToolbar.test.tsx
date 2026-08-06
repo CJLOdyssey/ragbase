@@ -1,18 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
 import { createRef } from 'react';
-import InputToolbar from '@/components/input/InputToolbar';
-import type { InputToolbarHandle } from '@/components/input/InputToolbar';
+import InputToolbar, {
+  type InputToolbarHandle,
+} from '@/components/input/InputToolbar';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
 
-const { mockComposerSetValue, mockComposerSubmit, mockComposerHandleKeyDown } = vi.hoisted(() => ({
-  mockComposerSetValue: vi.fn(),
-  mockComposerSubmit: vi.fn(),
-  mockComposerHandleKeyDown: vi.fn(),
-}));
+const { mockComposerSetValue, mockComposerSubmit, mockComposerHandleKeyDown } =
+  vi.hoisted(() => ({
+    mockComposerSetValue: vi.fn(),
+    mockComposerSubmit: vi.fn(),
+    mockComposerHandleKeyDown: vi.fn(),
+  }));
 
 let mockComposerHasContent = false;
 
@@ -22,7 +24,9 @@ vi.mock('@/hooks/useMessageComposer', () => ({
     setValue: mockComposerSetValue,
     submit: mockComposerSubmit,
     handleKeyDown: mockComposerHandleKeyDown,
-    get hasContent() { return mockComposerHasContent; },
+    get hasContent() {
+      return mockComposerHasContent;
+    },
     charCount: 0,
     maxLength: 2000,
   }),
@@ -36,8 +40,12 @@ const paletteMock = vi.hoisted(() => {
     handleKeyDown: vi.fn(() => false),
     selectCommand: vi.fn(),
     close: vi.fn(),
-    set openValue(v: boolean) { open = v; },
-    get openValue() { return open; },
+    set openValue(v: boolean) {
+      open = v;
+    },
+    get openValue() {
+      return open;
+    },
   };
 });
 
@@ -62,12 +70,24 @@ vi.mock('@/utils/useToast', () => ({
 }));
 
 vi.mock('@/contexts/SettingsContext', () => ({
-  useSettings: () => ({ settings: { sendOnEnter: true, sendMode: 'enter' }, updateSettings: vi.fn() }),
+  useSettings: () => ({
+    settings: { sendOnEnter: true, sendMode: 'enter' },
+    updateSettings: vi.fn(),
+  }),
 }));
 
-vi.mock('@/components/input/ModelSelector', () => ({ default: ({ models }: { models: unknown[] }) => (models?.length ? <div data-testid="model-selector" /> : null) }));
+vi.mock('@/components/input/ModelSelector', () => ({
+  default: ({ models }: { models: unknown[] }) =>
+    models?.length ? <div data-testid="model-selector" /> : null,
+}));
 vi.mock('@/components/input/FileAttach', () => ({
-  default: ({ onReject }: { onReject: (r: Array<{ file: File; reason: 'size_exceeded' | 'type_denied' }>) => void }) => (
+  default: ({
+    onReject,
+  }: {
+    onReject: (
+      r: Array<{ file: File; reason: 'size_exceeded' | 'type_denied' }>,
+    ) => void;
+  }) => (
     <button
       type="button"
       data-testid="file-attach"
@@ -80,7 +100,9 @@ vi.mock('@/components/input/FileAttach', () => ({
     />
   ),
 }));
-vi.mock('@/components/input/CommandDropdown', () => ({ default: () => <div data-testid="command-dropdown" /> }));
+vi.mock('@/components/input/CommandDropdown', () => ({
+  default: () => <div data-testid="command-dropdown" />,
+}));
 
 const defaultProps = {
   onSend: vi.fn(),
@@ -110,7 +132,9 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
   });
 
   it('renders stop button when running', () => {
-    render(<InputToolbar {...defaultProps} isRunning={true} onStop={vi.fn()} />);
+    render(
+      <InputToolbar {...defaultProps} isRunning={true} onStop={vi.fn()} />,
+    );
     const buttons = screen.getAllByRole('button');
     expect(buttons.length).toBeGreaterThan(0);
   });
@@ -121,7 +145,12 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
   });
 
   it('renders model selector when models are provided', () => {
-    render(<InputToolbar {...defaultProps} models={[{ id: 'gpt-4', name: 'GPT-4' }]} />);
+    render(
+      <InputToolbar
+        {...defaultProps}
+        models={[{ id: 'gpt-4', name: 'GPT-4' }]}
+      />,
+    );
     expect(screen.getByTestId('model-selector')).toBeInTheDocument();
   });
 
@@ -131,7 +160,9 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
   });
 
   it('renders without crashing when isRunning=true', () => {
-    render(<InputToolbar {...defaultProps} isRunning={true} onStop={vi.fn()} />);
+    render(
+      <InputToolbar {...defaultProps} isRunning={true} onStop={vi.fn()} />,
+    );
     expect(screen.getByPlaceholderText('Type a message...')).toBeDefined();
   });
 
@@ -213,15 +244,24 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
   it('shows file count in FileAttach when files added via ref', () => {
     const ref = createRef<InputToolbarHandle>();
     render(<InputToolbar {...defaultProps} ref={ref} />);
-    act(() => { ref.current?.addFiles([new File(['a'], 'a.txt')]); });
-    act(() => { ref.current?.addFiles([new File(['b'], 'b.txt')]); });
+    act(() => {
+      ref.current?.addFiles([new File(['a'], 'a.txt')]);
+    });
+    act(() => {
+      ref.current?.addFiles([new File(['b'], 'b.txt')]);
+    });
   });
 
   it('triggers toast when more than 5 files attached', () => {
     const ref = createRef<InputToolbarHandle>();
     render(<InputToolbar {...defaultProps} ref={ref} />);
-    const files = Array.from({ length: 6 }, (_, i) => new File([`content${i}`], `file${i}.txt`));
-    act(() => { ref.current?.addFiles(files); });
+    const files = Array.from(
+      { length: 6 },
+      (_, i) => new File([`content${i}`], `file${i}.txt`),
+    );
+    act(() => {
+      ref.current?.addFiles(files);
+    });
     expect(mockToast).toHaveBeenCalled();
   });
 
@@ -230,8 +270,13 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     paletteMock.openValue = true;
     paletteMock.filtered.push({ id: 'c1', label: 'Cmd', source: 'local' });
     paletteMock.handleKeyDown.mockReturnValue(true);
-    render(<InputToolbar {...defaultProps} onExecuteCommand={onExecuteCommand} />);
-    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), { key: 'Enter', shiftKey: false });
+    render(
+      <InputToolbar {...defaultProps} onExecuteCommand={onExecuteCommand} />,
+    );
+    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), {
+      key: 'Enter',
+      shiftKey: false,
+    });
     expect(paletteMock.close).toHaveBeenCalled();
     expect(onExecuteCommand).toHaveBeenCalledWith('c1');
   });
@@ -242,7 +287,10 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     paletteMock.handleKeyDown.mockReturnValue(true);
     paletteMock.selectCommand.mockReturnValue('/Cmd2 ');
     render(<InputToolbar {...defaultProps} />);
-    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), { key: 'Enter', shiftKey: false });
+    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), {
+      key: 'Enter',
+      shiftKey: false,
+    });
     expect(paletteMock.selectCommand).toHaveBeenCalledWith(0);
     expect(mockComposerSetValue).toHaveBeenCalledWith('/Cmd2 ');
   });
@@ -251,14 +299,20 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     paletteMock.openValue = true;
     paletteMock.handleKeyDown.mockReturnValue(true);
     render(<InputToolbar {...defaultProps} />);
-    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), { key: 'Enter', shiftKey: true });
+    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), {
+      key: 'Enter',
+      shiftKey: true,
+    });
     expect(paletteMock.selectCommand).not.toHaveBeenCalled();
   });
 
   it('falls through to composer when palette does not handle key', () => {
     paletteMock.handleKeyDown.mockReturnValue(false);
     render(<InputToolbar {...defaultProps} />);
-    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), { key: 'Enter', shiftKey: false });
+    fireEvent.keyDown(screen.getByPlaceholderText('Type a message...'), {
+      key: 'Enter',
+      shiftKey: false,
+    });
     expect(mockComposerHandleKeyDown).toHaveBeenCalled();
   });
 
@@ -268,5 +322,4 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     expect(mockToast).toHaveBeenCalledWith('home.fileTooLarge', 'error');
     expect(mockToast).toHaveBeenCalledWith('home.fileTypeDenied', 'error');
   });
-
 });

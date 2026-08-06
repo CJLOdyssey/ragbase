@@ -7,4 +7,9 @@ export { default as InputToolbar } from './InputToolbar';
 export type { InputToolbarHandle } from './InputToolbar';
 
 // Types — single source of truth in types/input.ts, no circular deps
-export type { ModelOption, CommandOption, AttachedFile, FileRejection } from '../../types/input';
+export type {
+  ModelOption,
+  CommandOption,
+  AttachedFile,
+  FileRejection,
+} from '../../types/input';

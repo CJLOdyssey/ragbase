@@ -1,8 +1,9 @@
-import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
-import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 import type * as React from 'react';
+import { Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react';
+import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
-const inputBase = 'w-full pl-9 pr-10 py-[10px] rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] text-sm outline-none box-border transition-[border-color,box-shadow] duration-200';
+const inputBase =
+  'w-full pl-9 pr-10 py-[10px] rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] text-sm outline-none box-border transition-[border-color,box-shadow] duration-200';
 
 const iconBase: React.CSSProperties = {
   position: 'absolute',
@@ -28,10 +29,17 @@ const eyeToggleStyle: React.CSSProperties = {
   display: 'flex',
 };
 
-function dynamicStyle(focusedField: string | null, field: string): React.CSSProperties {
+function dynamicStyle(
+  focusedField: string | null,
+  field: string,
+): React.CSSProperties {
   return {
-    borderColor: focusedField === field ? 'var(--color-accent)' : 'var(--color-border)',
-    boxShadow: focusedField === field ? '0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent)' : 'none',
+    borderColor:
+      focusedField === field ? 'var(--color-accent)' : 'var(--color-border)',
+    boxShadow:
+      focusedField === field
+        ? '0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent)'
+        : 'none',
   };
 }
 
@@ -46,7 +54,13 @@ interface EmailFieldProps extends FieldCallbacks {
   onChange: (value: string) => void;
 }
 
-function EmailField({ value, onChange, focusedField, onFocusField, onBlurField }: EmailFieldProps) {
+function EmailField({
+  value,
+  onChange,
+  focusedField,
+  onFocusField,
+  onBlurField,
+}: EmailFieldProps) {
   return (
     <div className="relative mb-3.5">
       <Mail style={iconBase} size={16} />
@@ -75,7 +89,18 @@ interface PasswordFieldProps extends FieldCallbacks {
   hint?: React.ReactNode;
 }
 
-function PasswordField({ value, onChange, showPassword, onToggleShowPassword, wrapperClass, autoComplete, hint, focusedField, onFocusField, onBlurField }: PasswordFieldProps) {
+function PasswordField({
+  value,
+  onChange,
+  showPassword,
+  onToggleShowPassword,
+  wrapperClass,
+  autoComplete,
+  hint,
+  focusedField,
+  onFocusField,
+  onBlurField,
+}: PasswordFieldProps) {
   return (
     <div className={wrapperClass}>
       <div className="relative">
@@ -113,7 +138,16 @@ interface ConfirmPasswordFieldProps extends FieldCallbacks {
   passwordTouched: boolean;
 }
 
-function ConfirmPasswordField({ value, onChange, showPassword, password, passwordTouched, focusedField, onFocusField, onBlurField }: ConfirmPasswordFieldProps) {
+function ConfirmPasswordField({
+  value,
+  onChange,
+  showPassword,
+  password,
+  passwordTouched,
+  focusedField,
+  onFocusField,
+  onBlurField,
+}: ConfirmPasswordFieldProps) {
   return (
     <div className="relative mb-4">
       <Lock style={iconBase} size={16} />
@@ -145,7 +179,16 @@ interface CodeFieldRowProps extends FieldCallbacks {
   disabled: boolean;
 }
 
-function CodeFieldRow({ value, onChange, codeCooldown, onSendCode, disabled, focusedField, onFocusField, onBlurField }: CodeFieldRowProps) {
+function CodeFieldRow({
+  value,
+  onChange,
+  codeCooldown,
+  onSendCode,
+  disabled,
+  focusedField,
+  onFocusField,
+  onBlurField,
+}: CodeFieldRowProps) {
   return (
     <div className="flex gap-2 items-start mb-3">
       <div className="relative flex-1">
@@ -169,9 +212,14 @@ function CodeFieldRow({ value, onChange, codeCooldown, onSendCode, disabled, foc
         disabled={disabled || codeCooldown > 0}
         className="h-10 px-3.5 rounded-[var(--radius-btn)] border text-xs font-semibold whitespace-nowrap shrink-0 transition-all duration-200"
         style={{
-          borderColor: codeCooldown > 0 ? 'var(--color-border)' : 'var(--color-accent)',
-          background: codeCooldown > 0 ? 'var(--color-surface-raised)' : 'transparent',
-          color: codeCooldown > 0 ? 'var(--color-text-tertiary)' : 'var(--color-accent)',
+          borderColor:
+            codeCooldown > 0 ? 'var(--color-border)' : 'var(--color-accent)',
+          background:
+            codeCooldown > 0 ? 'var(--color-surface-raised)' : 'transparent',
+          color:
+            codeCooldown > 0
+              ? 'var(--color-text-tertiary)'
+              : 'var(--color-accent)',
           cursor: codeCooldown > 0 ? 'default' : 'pointer',
         }}
       >
@@ -190,7 +238,17 @@ export interface LoginFormFieldsProps extends FieldCallbacks {
   onToggleShowPassword: () => void;
 }
 
-export function LoginFormFields({ email, onEmailChange, password, onPasswordChange, showPassword, onToggleShowPassword, focusedField, onFocusField, onBlurField }: LoginFormFieldsProps) {
+export function LoginFormFields({
+  email,
+  onEmailChange,
+  password,
+  onPasswordChange,
+  showPassword,
+  onToggleShowPassword,
+  focusedField,
+  onFocusField,
+  onBlurField,
+}: LoginFormFieldsProps) {
   return (
     <>
       <EmailField
@@ -234,9 +292,24 @@ export interface RegisterFormFieldsProps extends FieldCallbacks {
 }
 
 export function RegisterFormFields({
-  email, onEmailChange, password, onPasswordChange, confirmPassword, onConfirmPasswordChange,
-  code, onCodeChange, showPassword, onToggleShowPassword, passwordTouched, onPasswordBlur,
-  codeCooldown, onSendCode, submitting, focusedField, onFocusField, onBlurField,
+  email,
+  onEmailChange,
+  password,
+  onPasswordChange,
+  confirmPassword,
+  onConfirmPasswordChange,
+  code,
+  onCodeChange,
+  showPassword,
+  onToggleShowPassword,
+  passwordTouched,
+  onPasswordBlur,
+  codeCooldown,
+  onSendCode,
+  submitting,
+  focusedField,
+  onFocusField,
+  onBlurField,
 }: RegisterFormFieldsProps) {
   return (
     <>
@@ -257,11 +330,14 @@ export function RegisterFormFields({
         onToggleShowPassword={onToggleShowPassword}
         wrapperClass="mb-4"
         autoComplete="new-password"
-        hint={password && !passwordTouched && (
-          <div className="text-xs text-[var(--color-text-tertiary)] mt-1 opacity-60">
-            至少8位 · 数字 · 小写 · 大写 · 特殊字符
-          </div>
-        )}
+        hint={
+          password &&
+          !passwordTouched && (
+            <div className="text-xs text-[var(--color-text-tertiary)] mt-1 opacity-60">
+              至少8位 · 数字 · 小写 · 大写 · 特殊字符
+            </div>
+          )
+        }
       />
       <ConfirmPasswordField
         value={confirmPassword}
@@ -273,7 +349,10 @@ export function RegisterFormFields({
         password={password}
         passwordTouched={passwordTouched}
       />
-      <PasswordStrengthIndicator password={password} validated={passwordTouched} />
+      <PasswordStrengthIndicator
+        password={password}
+        validated={passwordTouched}
+      />
       <CodeFieldRow
         value={code}
         onChange={onCodeChange}

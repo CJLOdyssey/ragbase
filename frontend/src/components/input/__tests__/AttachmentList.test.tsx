@@ -1,10 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { TestProviders } from '@/test/setup';
 import AttachmentList from '@/components/input/AttachmentList';
+import { TestProviders } from '@/test/setup';
 import type { AttachedFile } from '@/types/input';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
-function makeFile(id: string, overrides: Partial<AttachedFile> = {}): AttachedFile {
+function makeFile(
+  id: string,
+  overrides: Partial<AttachedFile> = {},
+): AttachedFile {
   return {
     id,
     name: 'test.txt',

@@ -1,18 +1,33 @@
-import type { ChatState } from './chatTypes';
-import type { ChatMessage, RunResult } from '../types';
-import type { WsThinkingDoneEvent, WsResultEvent, WsTeamResultEvent, WsThumbsEvent } from './wsEvents';
-import { uid } from './uid';
 import { updateAnswerVersions } from '../api/client/sessions';
+import type { ChatMessage, RunResult } from '../types';
 import Logger from '../utils/logger';
+import type { ChatState } from './chatTypes';
+import { uid } from './uid';
+import type {
+  WsResultEvent,
+  WsTeamResultEvent,
+  WsThinkingDoneEvent,
+  WsThumbsEvent,
+} from './wsEvents';
 
 function makeRunResult(code: string): RunResult {
-  return { code, requirement: '', pm_document: '', review: '', approved: false, status: 'completed' };
+  return {
+    code,
+    requirement: '',
+    pm_document: '',
+    review: '',
+    approved: false,
+    status: 'completed',
+  };
 }
 
 type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 type GetFn = () => ChatState;
 
-function bumpLastVersion(versions: string[] | null | undefined, replacement: string): string[] | undefined {
+function bumpLastVersion(
+  versions: string[] | null | undefined,
+  replacement: string,
+): string[] | undefined {
   if (!versions || versions.length === 0) return versions ?? undefined;
   const next = [...versions];
   next[next.length - 1] = replacement;
@@ -41,18 +56,30 @@ function buildReplacementMessage(
   };
 }
 
-function findContinuingTarget(s: ChatState, continuingId: string): { oldMsg: ChatMessage | null; base: ChatMessage[] } {
+function findContinuingTarget(
+  s: ChatState,
+  continuingId: string,
+): { oldMsg: ChatMessage | null; base: ChatMessage[] } {
   const contIdx = s.messages.findIndex((m) => m.id === continuingId);
   const oldMsg = contIdx >= 0 ? s.messages[contIdx] : null;
-  const base = contIdx >= 0 ? s.messages.slice(0, contIdx) : s.messages.filter((m) => m.id !== continuingId);
+  const base =
+    contIdx >= 0
+      ? s.messages.slice(0, contIdx)
+      : s.messages.filter((m) => m.id !== continuingId);
   return { oldMsg, base };
 }
 
-export function handleThinkingDone(s: ChatState, msg: WsThinkingDoneEvent): Partial<ChatState> {
+export function handleThinkingDone(
+  s: ChatState,
+  msg: WsThinkingDoneEvent,
+): Partial<ChatState> {
   if (!s.continuingId) {
     return {};
   }
-  Logger.warn('[chat] continue thinking_done — no streamingId; falling back to direct replacement (continuingId=%s)', s.continuingId);
+  Logger.warn(
+    '[chat] continue thinking_done — no streamingId; falling back to direct replacement (continuingId=%s)',
+    s.continuingId,
+  );
   const { oldMsg, base } = findContinuingTarget(s, s.continuingId);
   const newId = crypto.randomUUID?.() || uid();
   const oldContent = oldMsg?.content || '';
@@ -65,14 +92,24 @@ export function handleThinkingDone(s: ChatState, msg: WsThinkingDoneEvent): Part
     pendingThinkingVersions: null,
     messages: [
       ...base,
-      buildReplacementMessage(newId, oldMsg?.agent_name || msg.agent_name || 'Agent', oldContent, thinking, bumpLastVersion(s.pendingVersions, oldContent), bumpLastVersion(s.pendingThinkingVersions, thinking)),
+      buildReplacementMessage(
+        newId,
+        oldMsg?.agent_name || msg.agent_name || 'Agent',
+        oldContent,
+        thinking,
+        bumpLastVersion(s.pendingVersions, oldContent),
+        bumpLastVersion(s.pendingThinkingVersions, thinking),
+      ),
     ],
     currentRole: msg.agent_name || 'Agent',
     wsStatus: 'connected' as ChatState['wsStatus'],
   };
 }
 
-export function handleThinkingDoneEvent(set: SetFn, msg: WsThinkingDoneEvent): void {
+export function handleThinkingDoneEvent(
+  set: SetFn,
+  msg: WsThinkingDoneEvent,
+): void {
   set((s) => {
     if (s.streamingId) {
       return {
@@ -99,7 +136,7 @@ export function handleResultEvent(
 ): void {
   const runId = get().currentRunId;
   const streamMsgId = get().streamingId;
-    const codeContent: string = msg.code ? String(msg.code) : '';
+  const codeContent: string = msg.code ? String(msg.code) : '';
   set((_s) => {
     let msgs = _s.messages;
     if (_s.streamingId) {
@@ -123,9 +160,15 @@ export function handleResultEvent(
   if (streamMsgId && runId) {
     const done = get().messages.find((m) => m.id === streamMsgId);
     if (done && done.versions && done.versions.length > 0) {
-      updateAnswerVersions(runId, done.versions, done.thinkingVersions).catch((err) => {
-        Logger.warn('[chat] failed to persist answer versions for run %s: %s', runId, String(err));
-      });
+      updateAnswerVersions(runId, done.versions, done.thinkingVersions).catch(
+        (err) => {
+          Logger.warn(
+            '[chat] failed to persist answer versions for run %s: %s',
+            runId,
+            String(err),
+          );
+        },
+      );
     }
   }
   Logger.info('[chat] result received — status set to idle');
@@ -139,10 +182,14 @@ export function handleTeamResultEvent(
   msg: WsTeamResultEvent,
 ): void {
   const runId = get().currentRunId;
-  const display = typeof msg.display === 'string' && msg.display.trim() ? msg.display : '';
-  const artifactCount = msg.artifacts && typeof msg.artifacts === 'object' && !Array.isArray(msg.artifacts)
-    ? Object.keys(msg.artifacts).length
-    : 0;
+  const display =
+    typeof msg.display === 'string' && msg.display.trim() ? msg.display : '';
+  const artifactCount =
+    msg.artifacts &&
+    typeof msg.artifacts === 'object' &&
+    !Array.isArray(msg.artifacts)
+      ? Object.keys(msg.artifacts).length
+      : 0;
   set((_s) => {
     let msgs = _s.messages;
     if (_s.streamingId) {
@@ -162,7 +209,10 @@ export function handleTeamResultEvent(
       skipThinking: false,
     };
   });
-  Logger.info('[chat] team_result received — surfaced %d node artifacts, status set to idle', artifactCount);
+  Logger.info(
+    '[chat] team_result received — surfaced %d node artifacts, status set to idle',
+    artifactCount,
+  );
   activeStreamMsgIds.delete(runId || '');
 }
 

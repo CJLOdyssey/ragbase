@@ -1,8 +1,8 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import type * as React from 'react';
 import { Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { FileRejection } from '../../types/input';
-import type * as React from 'react';
 
 interface Props {
   onAdd: (files: File[]) => void;
@@ -37,7 +37,10 @@ function isAllowed(file: File): boolean {
   return ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
-function validateFiles(files: File[]): { accepted: File[]; rejected: FileRejection[] } {
+function validateFiles(files: File[]): {
+  accepted: File[];
+  rejected: FileRejection[];
+} {
   const accepted: File[] = [];
   const rejected: FileRejection[] = [];
   for (const f of files) {
@@ -106,12 +109,20 @@ export default function FileAttach({ onAdd, onReject, fileCount = 0 }: Props) {
       <button
         className="p-2 bg-transparent border-none rounded-lg text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 flex items-center justify-center hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] relative"
         onClick={handleClick}
-        title={fileCount > 0 ? `${fileCount} 个文件已选择` : t('fileAttach.attach')}
+        title={
+          fileCount > 0 ? `${fileCount} 个文件已选择` : t('fileAttach.attach')
+        }
         type="button"
-        aria-label={fileCount > 0 ? `${fileCount} files attached` : t('fileAttach.attach')}
+        aria-label={
+          fileCount > 0 ? `${fileCount} files attached` : t('fileAttach.attach')
+        }
       >
         <Paperclip size={16} />
-        {fileCount > 0 && <span className="absolute -top-0.5 -right-1 min-w-[14px] h-[14px] px-1 rounded-[7px] bg-[var(--color-accent)] text-[var(--color-text-on-accent)] text-xs font-bold leading-[14px] text-center pointer-events-none">{fileCount}</span>}
+        {fileCount > 0 && (
+          <span className="absolute -top-0.5 -right-1 min-w-[14px] h-[14px] px-1 rounded-[7px] bg-[var(--color-accent)] text-[var(--color-text-on-accent)] text-xs font-bold leading-[14px] text-center pointer-events-none">
+            {fileCount}
+          </span>
+        )}
       </button>
     </>
   );

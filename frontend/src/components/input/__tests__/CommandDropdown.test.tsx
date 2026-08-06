@@ -1,10 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { TestProviders } from '@/test/setup';
 import CommandDropdown from '@/components/input/CommandDropdown';
+import { TestProviders } from '@/test/setup';
 import type { CommandOption } from '@/types/input';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
-function makeCmd(id: string, overrides: Partial<CommandOption> = {}): CommandOption {
+function makeCmd(
+  id: string,
+  overrides: Partial<CommandOption> = {},
+): CommandOption {
   return {
     id,
     name: 'cmd-' + id,
@@ -25,17 +28,32 @@ describe('CommandDropdown', { tags: ['unit'] }, () => {
   it('renders empty state when no commands', () => {
     const { container } = render(
       <TestProviders>
-        <CommandDropdown commands={[]} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={[]}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     expect(container.querySelector('[class*="text-center"]')).toBeTruthy();
   });
 
   it('renders command list', () => {
-    const cmds = [makeCmd('1', { name: 'search' }), makeCmd('2', { name: 'deploy' })];
+    const cmds = [
+      makeCmd('1', { name: 'search' }),
+      makeCmd('2', { name: 'deploy' }),
+    ];
     render(
       <TestProviders>
-        <CommandDropdown commands={cmds} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={cmds}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     expect(screen.getByText('/search')).toBeInTheDocument();
@@ -46,7 +64,13 @@ describe('CommandDropdown', { tags: ['unit'] }, () => {
     const cmds = [makeCmd('1', { name: 'a' }), makeCmd('2', { name: 'b' })];
     render(
       <TestProviders>
-        <CommandDropdown commands={cmds} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={cmds}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     const options = screen.getAllByRole('option');
@@ -58,7 +82,13 @@ describe('CommandDropdown', { tags: ['unit'] }, () => {
     const cmds = [makeCmd('1', { name: 'search' })];
     render(
       <TestProviders>
-        <CommandDropdown commands={cmds} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={cmds}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     fireEvent.click(screen.getByText('/search'));
@@ -69,7 +99,13 @@ describe('CommandDropdown', { tags: ['unit'] }, () => {
     const cmds = [makeCmd('1', { name: 'a' }), makeCmd('2', { name: 'b' })];
     render(
       <TestProviders>
-        <CommandDropdown commands={cmds} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={cmds}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     fireEvent.mouseEnter(screen.getByText('/b'));
@@ -77,20 +113,36 @@ describe('CommandDropdown', { tags: ['unit'] }, () => {
   });
 
   it('shows agent source badge', () => {
-    const cmds = [makeCmd('1', { name: 'agent-cmd', source: 'agent' as const })];
+    const cmds = [
+      makeCmd('1', { name: 'agent-cmd', source: 'agent' as const }),
+    ];
     render(
       <TestProviders>
-        <CommandDropdown commands={cmds} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={cmds}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     expect(screen.getByText('Agent')).toBeInTheDocument();
   });
 
   it('shows description when present', () => {
-    const cmds = [makeCmd('1', { name: 'search', description: 'Search files' })];
+    const cmds = [
+      makeCmd('1', { name: 'search', description: 'Search files' }),
+    ];
     render(
       <TestProviders>
-        <CommandDropdown commands={cmds} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={cmds}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     expect(screen.getByText('Search files')).toBeInTheDocument();
@@ -100,7 +152,13 @@ describe('CommandDropdown', { tags: ['unit'] }, () => {
     const cmds = [makeCmd('1', { name: 'search' })];
     render(
       <TestProviders>
-        <CommandDropdown commands={cmds} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={cmds}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     fireEvent.mouseDown(document.body);
@@ -111,7 +169,13 @@ describe('CommandDropdown', { tags: ['unit'] }, () => {
     const cmds = [makeCmd('1', { name: 'search' })];
     render(
       <TestProviders>
-        <CommandDropdown commands={cmds} activeIndex={0} onSelect={onSelect} onHover={onHover} onClose={onClose} />
+        <CommandDropdown
+          commands={cmds}
+          activeIndex={0}
+          onSelect={onSelect}
+          onHover={onHover}
+          onClose={onClose}
+        />
       </TestProviders>,
     );
     const popover = document.querySelector('[role="listbox"]')!;

@@ -52,7 +52,9 @@ export async function deleteKey(id: string): Promise<void> {
   await api.delete(`/keys/${id}`);
 }
 
-export async function testKeyConnection(id: string): Promise<{ success: boolean; message: string }> {
+export async function testKeyConnection(
+  id: string,
+): Promise<{ success: boolean; message: string }> {
   const { data } = await api.post(`/keys/${id}/test`);
   return data;
 }

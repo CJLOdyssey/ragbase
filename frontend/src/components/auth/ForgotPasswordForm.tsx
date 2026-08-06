@@ -10,17 +10,37 @@ interface Props {
 
 type Step = 'email' | 'code' | 'reset';
 
-const btnClass = 'w-full py-[10px] rounded-[var(--radius-btn)] border-none bg-[var(--color-accent)] text-white text-base font-semibold';
+const btnClass =
+  'w-full py-[10px] rounded-[var(--radius-btn)] border-none bg-[var(--color-accent)] text-white text-base font-semibold';
 
-function SubmitButton({ submitting, label }: { submitting: boolean; label: string }) {
+function SubmitButton({
+  submitting,
+  label,
+}: {
+  submitting: boolean;
+  label: string;
+}) {
   return (
-    <button type="submit" disabled={submitting} className={btnClass} style={{ cursor: submitting ? 'default' : 'pointer', opacity: submitting ? 0.6 : 1 }}>
+    <button
+      type="submit"
+      disabled={submitting}
+      className={btnClass}
+      style={{
+        cursor: submitting ? 'default' : 'pointer',
+        opacity: submitting ? 0.6 : 1,
+      }}
+    >
       {label}
     </button>
   );
 }
 
-export default function ForgotPasswordForm({ onSendCode, onReset, onBack, error }: Props) {
+export default function ForgotPasswordForm({
+  onSendCode,
+  onReset,
+  onBack,
+  error,
+}: Props) {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -31,7 +51,10 @@ export default function ForgotPasswordForm({ onSendCode, onReset, onBack, error 
 
   async function handleSendCode(e: FormEvent) {
     e.preventDefault();
-    if (!email) { setLocalError('请输入邮箱'); return; }
+    if (!email) {
+      setLocalError('请输入邮箱');
+      return;
+    }
     setSubmitting(true);
     setLocalError('');
     try {
@@ -46,8 +69,14 @@ export default function ForgotPasswordForm({ onSendCode, onReset, onBack, error 
 
   async function handleReset(e: FormEvent) {
     e.preventDefault();
-    if (!email || !code || !newPassword) { setLocalError('请填写完整信息'); return; }
-    if (newPassword !== confirmPassword) { setLocalError('两次密码输入不一致'); return; }
+    if (!email || !code || !newPassword) {
+      setLocalError('请填写完整信息');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setLocalError('两次密码输入不一致');
+      return;
+    }
     setSubmitting(true);
     setLocalError('');
     try {
@@ -60,7 +89,8 @@ export default function ForgotPasswordForm({ onSendCode, onReset, onBack, error 
     }
   }
 
-  const inputClass = 'w-full px-3 py-[10px] rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] text-sm outline-none box-border mb-3';
+  const inputClass =
+    'w-full px-3 py-[10px] rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] text-sm outline-none box-border mb-3';
 
   const errorText = localError || error;
 
@@ -72,7 +102,14 @@ export default function ForgotPasswordForm({ onSendCode, onReset, onBack, error 
         <p className="text-sm text-[var(--color-text-tertiary)] m-0 mb-5">
           请使用新密码重新登录
         </p>
-        <button onClick={onBack} className={btnClass} style={{ cursor: submitting ? 'default' : 'pointer', opacity: submitting ? 0.6 : 1 }}>
+        <button
+          onClick={onBack}
+          className={btnClass}
+          style={{
+            cursor: submitting ? 'default' : 'pointer',
+            opacity: submitting ? 0.6 : 1,
+          }}
+        >
           返回登录
         </button>
       </div>
@@ -109,13 +146,20 @@ export default function ForgotPasswordForm({ onSendCode, onReset, onBack, error 
           onChange={(e) => setConfirmPassword(e.target.value)}
           className={`${inputClass} mt-3`}
         />
-        {(errorText) && (
+        {errorText && (
           <p className="m-0 mb-2 text-sm text-[var(--color-danger)]">
             {errorText}
           </p>
         )}
-        <SubmitButton submitting={submitting} label={submitting ? '重置中...' : '重置密码'} />
-        <button type="button" onClick={() => setStep('email')} className="block mx-auto mt-3 bg-transparent border-none text-[var(--color-text-tertiary)] cursor-pointer text-sm underline">
+        <SubmitButton
+          submitting={submitting}
+          label={submitting ? '重置中...' : '重置密码'}
+        />
+        <button
+          type="button"
+          onClick={() => setStep('email')}
+          className="block mx-auto mt-3 bg-transparent border-none text-[var(--color-text-tertiary)] cursor-pointer text-sm underline"
+        >
           返回
         </button>
       </form>
@@ -135,13 +179,20 @@ export default function ForgotPasswordForm({ onSendCode, onReset, onBack, error 
         className={inputClass}
         autoComplete="email"
       />
-      {(errorText) && (
+      {errorText && (
         <p className="m-0 mb-2 text-sm text-[var(--color-danger)]">
           {errorText}
         </p>
       )}
-      <SubmitButton submitting={submitting} label={submitting ? '发送中...' : '发送验证码'} />
-      <button type="button" onClick={onBack} className="block mx-auto mt-3 bg-transparent border-none text-[var(--color-text-tertiary)] cursor-pointer text-sm underline">
+      <SubmitButton
+        submitting={submitting}
+        label={submitting ? '发送中...' : '发送验证码'}
+      />
+      <button
+        type="button"
+        onClick={onBack}
+        className="block mx-auto mt-3 bg-transparent border-none text-[var(--color-text-tertiary)] cursor-pointer text-sm underline"
+      >
         返回登录
       </button>
     </form>

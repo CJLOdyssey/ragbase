@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { TestProviders } from '@/test/setup';
 import FileAttach from '@/components/input/FileAttach';
+import { TestProviders } from '@/test/setup';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('FileAttach', { tags: ['unit'] }, () => {
   const onAdd = vi.fn();
@@ -44,7 +44,9 @@ describe('FileAttach', { tags: ['unit'] }, () => {
         <FileAttach onAdd={onAdd} />
       </TestProviders>,
     );
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     const clickSpy = vi.spyOn(input, 'click');
     fireEvent.click(screen.getByRole('button'));
     expect(clickSpy).toHaveBeenCalled();
@@ -56,7 +58,9 @@ describe('FileAttach', { tags: ['unit'] }, () => {
         <FileAttach onAdd={onAdd} onReject={onReject} />
       </TestProviders>,
     );
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     const file = new File(['content'], 'test.txt', { type: 'text/plain' });
     Object.defineProperty(input, 'files', { value: [file] });
     fireEvent.change(input);
@@ -69,11 +73,17 @@ describe('FileAttach', { tags: ['unit'] }, () => {
         <FileAttach onAdd={onAdd} onReject={onReject} />
       </TestProviders>,
     );
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const bigFile = new File(['x'.repeat(51 * 1024 * 1024)], 'huge.bin', { type: 'application/octet-stream' });
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const bigFile = new File(['x'.repeat(51 * 1024 * 1024)], 'huge.bin', {
+      type: 'application/octet-stream',
+    });
     Object.defineProperty(input, 'files', { value: [bigFile] });
     fireEvent.change(input);
-    expect(onReject).toHaveBeenCalledWith([{ file: bigFile, reason: 'size_exceeded' }]);
+    expect(onReject).toHaveBeenCalledWith([
+      { file: bigFile, reason: 'size_exceeded' },
+    ]);
     expect(onAdd).not.toHaveBeenCalled();
   });
 
@@ -83,11 +93,17 @@ describe('FileAttach', { tags: ['unit'] }, () => {
         <FileAttach onAdd={onAdd} onReject={onReject} />
       </TestProviders>,
     );
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const exe = new File(['binary'], 'app.exe', { type: 'application/x-msdownload' });
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const exe = new File(['binary'], 'app.exe', {
+      type: 'application/x-msdownload',
+    });
     Object.defineProperty(input, 'files', { value: [exe] });
     fireEvent.change(input);
-    expect(onReject).toHaveBeenCalledWith([{ file: exe, reason: 'type_denied' }]);
+    expect(onReject).toHaveBeenCalledWith([
+      { file: exe, reason: 'type_denied' },
+    ]);
   });
 
   it('handles paste event with files (clipboard handler)', () => {
@@ -151,7 +167,9 @@ describe('FileAttach', { tags: ['unit'] }, () => {
         <FileAttach onAdd={onAdd} />
       </TestProviders>,
     );
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     Object.defineProperty(input, 'files', { value: [] });
     fireEvent.change(input);
     expect(onAdd).not.toHaveBeenCalled();

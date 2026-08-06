@@ -25,9 +25,12 @@ vi.mock('reactflow', () => ({
 // @ant-design/icons
 vi.mock('@ant-design/icons', () => {
   const MockIcon = () => null as any;
-  return new Proxy({}, {
-    get: () => MockIcon,
-  });
+  return new Proxy(
+    {},
+    {
+      get: () => MockIcon,
+    },
+  );
 });
 
 // @ant-design/cssinjs

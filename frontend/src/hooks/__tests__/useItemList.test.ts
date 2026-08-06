@@ -1,16 +1,25 @@
-import { describe, it, expect } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
 import { useItemList } from '../useItemList';
+import { act, renderHook } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-interface MockItem { id: string; enabled: boolean; label: string }
+interface MockItem {
+  id: string;
+  enabled: boolean;
+  label: string;
+}
 
-const presets: MockItem[] = [{ id: 'p1', enabled: false, label: 'P1' }, { id: 'p2', enabled: false, label: 'P2' }];
+const presets: MockItem[] = [
+  { id: 'p1', enabled: false, label: 'P1' },
+  { id: 'p2', enabled: false, label: 'P2' },
+];
 
 describe('useItemList', { tags: ['unit'] }, () => {
   it('toggles an existing item', () => {
     const { result } = renderHook(() => useItemList<MockItem>(presets));
     act(() => result.current.toggle('p1'));
-    expect(result.current.items).toEqual([{ id: 'p1', enabled: true, label: 'P1' }]);
+    expect(result.current.items).toEqual([
+      { id: 'p1', enabled: true, label: 'P1' },
+    ]);
     act(() => result.current.toggle('p1'));
     expect(result.current.items[0].enabled).toBe(false);
   });
@@ -51,7 +60,12 @@ describe('useItemList', { tags: ['unit'] }, () => {
 
   it('getEnabledCount counts enabled items', () => {
     const { result } = renderHook(() => useItemList<MockItem>(presets));
-    act(() => result.current.setItems([{ id: 'a', enabled: true, label: 'A' }, { id: 'b', enabled: false, label: 'B' }]));
+    act(() =>
+      result.current.setItems([
+        { id: 'a', enabled: true, label: 'A' },
+        { id: 'b', enabled: false, label: 'B' },
+      ]),
+    );
     expect(result.current.getEnabledCount()).toBe(1);
   });
 });

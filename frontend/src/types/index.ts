@@ -19,7 +19,15 @@ export interface AgentConfig {
 }
 
 export interface WsMessage {
-  type: 'message' | 'stream' | 'thinking_stream' | 'thinking_done' | 'status' | 'result' | 'error' | 'client_action';
+  type:
+    | 'message'
+    | 'stream'
+    | 'thinking_stream'
+    | 'thinking_done'
+    | 'status'
+    | 'result'
+    | 'error'
+    | 'client_action';
   role?: AgentRole;
   agent_name?: string;
   content?: string;
@@ -102,7 +110,10 @@ export interface SessionDetail extends SessionItem {
 export type AppStatus = 'idle' | 'loading' | 'running' | 'completed' | 'error';
 
 // Agent info is now dynamic from the API
-export function getAgentInfo(agents: AgentConfig[], role: string): { icon: string; label: string; color: string } {
+export function getAgentInfo(
+  agents: AgentConfig[],
+  role: string,
+): { icon: string; label: string; color: string } {
   const found = agents.find((a) => a.role_identifier === role);
   if (found) {
     return {
@@ -114,7 +125,16 @@ export function getAgentInfo(agents: AgentConfig[], role: string): { icon: strin
   return { icon: '◆', label: role, color: '#666' };
 }
 
-const ROLE_COLORS = ['#4A90D9', '#00C853', '#FF6D00', '#9C27B0', '#00BCD4', '#FF5722', '#607D8B', '#E91E63'];
+const ROLE_COLORS = [
+  '#4A90D9',
+  '#00C853',
+  '#FF6D00',
+  '#9C27B0',
+  '#00BCD4',
+  '#FF5722',
+  '#607D8B',
+  '#E91E63',
+];
 function getColorForRole(role: string): string {
   let hash = 0;
   for (let i = 0; i < role.length; i++) {

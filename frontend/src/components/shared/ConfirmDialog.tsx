@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react';
 import { AlertTriangle, OctagonX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { ReactNode } from 'react';
 import Modal from './Modal';
 
 interface ConfirmDialogProps {
@@ -32,9 +32,17 @@ export default function ConfirmDialog({
   const Icon =
     icon ??
     (danger ? (
-      <OctagonX size={24} className="text-[var(--color-danger)]" aria-label={t('confirm.danger')} />
+      <OctagonX
+        size={24}
+        className="text-[var(--color-danger)]"
+        aria-label={t('confirm.danger')}
+      />
     ) : (
-      <AlertTriangle size={24} className="text-[var(--color-accent-soft)]" aria-label={t('confirm.info')} />
+      <AlertTriangle
+        size={24}
+        className="text-[var(--color-accent-soft)]"
+        aria-label={t('confirm.info')}
+      />
     ));
 
   return (
@@ -70,7 +78,9 @@ export default function ConfirmDialog({
       <div className="flex items-start gap-4 p-6">
         {Icon}
         <div>
-          <p style={{ fontWeight: 600, marginBottom: 4 }}>{danger ? t('confirm.danger') : t('confirm.info')}</p>
+          <p style={{ fontWeight: 600, marginBottom: 4 }}>
+            {danger ? t('confirm.danger') : t('confirm.info')}
+          </p>
           <p>{message}</p>
         </div>
       </div>

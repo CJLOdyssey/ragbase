@@ -1,4 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import {
+  handleBalanceWarningEvent,
+  handleErrorEvent,
+  handleInfoEvent,
+  handleMessageEvent,
+  handleOpenUrlEvent,
+} from '../messageHandler';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../utils/logger', () => ({
   default: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -10,14 +17,20 @@ vi.mock('../utils/logger', () => ({
 
 vi.mock('./uid', () => ({ uid: vi.fn(() => 'test-uid') }));
 
-import { handleMessageEvent, handleInfoEvent, handleErrorEvent, handleBalanceWarningEvent, handleOpenUrlEvent } from '../messageHandler';
-
 function makeState(overrides: Record<string, unknown> = {}) {
   return {
     currentRunId: 'run-1',
     streamingId: 'msg-1',
     messages: [
-      { id: 'msg-1', role: 'agent', content: 'Hello', thinking: 'thinking...', agent_name: 'Agent', round_number: 0, created_at: new Date().toISOString() },
+      {
+        id: 'msg-1',
+        role: 'agent',
+        content: 'Hello',
+        thinking: 'thinking...',
+        agent_name: 'Agent',
+        round_number: 0,
+        created_at: new Date().toISOString(),
+      },
     ],
     status: 'streaming',
     currentRole: 'Agent',
@@ -36,7 +49,12 @@ describe('handleMessageEvent', { tags: ['unit'] }, () => {
       return result;
     });
 
-    handleMessageEvent(set as never, { type: 'message', content: 'Updated', thinking: 'new thinking', role: 'agent' });
+    handleMessageEvent(set as never, {
+      type: 'message',
+      content: 'Updated',
+      thinking: 'new thinking',
+      role: 'agent',
+    });
 
     const updateFn = set.mock.calls[0][0];
     const result = updateFn(makeState());
@@ -45,11 +63,22 @@ describe('handleMessageEvent', { tags: ['unit'] }, () => {
   });
 
   it('creates new message when no streamingId', () => {
-    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) => fn(makeState({ streamingId: null })));
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState({ streamingId: null })),
+    );
 
-    handleMessageEvent(set as never, { type: 'message', content: 'New msg', thinking: 'think', role: 'assistant', agent_name: 'Bot', round_number: 1 });
+    handleMessageEvent(set as never, {
+      type: 'message',
+      content: 'New msg',
+      thinking: 'think',
+      role: 'assistant',
+      agent_name: 'Bot',
+      round_number: 1,
+    });
 
-    const result = set.mock.results[0].value as { messages: Array<{ content: string }> };
+    const result = set.mock.results[0].value as {
+      messages: Array<{ content: string }>;
+    };
     expect(result.messages).toHaveLength(2);
     expect(result.messages[1].content).toBe('New msg');
   });
@@ -57,16 +86,26 @@ describe('handleMessageEvent', { tags: ['unit'] }, () => {
 
 describe('handleInfoEvent', { tags: ['unit'] }, () => {
   it('appends info to streaming message', () => {
-    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) => fn(makeState()));
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState()),
+    );
 
-    handleInfoEvent(set as never, { type: 'info', content: 'Fetching data...', data: 'extra' });
+    handleInfoEvent(set as never, {
+      type: 'info',
+      content: 'Fetching data...',
+      data: 'extra',
+    });
 
-    const result = set.mock.results[0].value as { messages: Array<{ content: string }> };
+    const result = set.mock.results[0].value as {
+      messages: Array<{ content: string }>;
+    };
     expect(result.messages[0].content).toContain('[extra]');
   });
 
   it('returns empty state when no streamingId', () => {
-    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) => fn(makeState({ streamingId: null })));
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState({ streamingId: null })),
+    );
 
     handleInfoEvent(set as never, { type: 'info', content: 'note' });
 
@@ -75,28 +114,42 @@ describe('handleInfoEvent', { tags: ['unit'] }, () => {
   });
 
   it('uses data string when content is not set', () => {
-    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) => fn(makeState()));
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState()),
+    );
 
     handleInfoEvent(set as never, { type: 'info', data: 'raw-data' });
 
-    const result = set.mock.results[0].value as { messages: Array<{ content: string }> };
+    const result = set.mock.results[0].value as {
+      messages: Array<{ content: string }>;
+    };
     expect(result.messages[0].content).toContain('[raw-data]');
   });
 });
 
 describe('handleErrorEvent', { tags: ['unit'] }, () => {
   it('sets status to error with message', () => {
-    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) => fn(makeState()));
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState()),
+    );
 
-    handleErrorEvent(set as never, { type: 'error', content: 'Something broke' });
+    handleErrorEvent(set as never, {
+      type: 'error',
+      content: 'Something broke',
+    });
 
-    const result = set.mock.results[0].value as { status: string; error: string };
+    const result = set.mock.results[0].value as {
+      status: string;
+      error: string;
+    };
     expect(result.status).toBe('error');
     expect(result.error).toBe('Something broke');
   });
 
   it('defaults error message when content is missing', () => {
-    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) => fn(makeState()));
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState()),
+    );
 
     handleErrorEvent(set as never, { type: 'error' });
 
@@ -107,17 +160,27 @@ describe('handleErrorEvent', { tags: ['unit'] }, () => {
 
 describe('handleBalanceWarningEvent', { tags: ['unit'] }, () => {
   it('sets status to error with balance warning', () => {
-    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) => fn(makeState()));
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState()),
+    );
 
-    handleBalanceWarningEvent(set as never, { type: 'balance_warning', content: 'Low balance' });
+    handleBalanceWarningEvent(set as never, {
+      type: 'balance_warning',
+      content: 'Low balance',
+    });
 
-    const result = set.mock.results[0].value as { status: string; error: string };
+    const result = set.mock.results[0].value as {
+      status: string;
+      error: string;
+    };
     expect(result.status).toBe('error');
     expect(result.error).toBe('Low balance');
   });
 
   it('defaults to Chinese message when no content', () => {
-    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) => fn(makeState()));
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState()),
+    );
 
     handleBalanceWarningEvent(set as never, { type: 'balance_warning' });
 
@@ -129,7 +192,8 @@ describe('handleBalanceWarningEvent', { tags: ['unit'] }, () => {
 describe('handleOpenUrlEvent', { tags: ['unit'] }, () => {
   it('dispatches browser-open-url event with the URL', () => {
     const dispatched: string[] = [];
-    const listener = (e: Event) => dispatched.push((e as CustomEvent<string>).detail);
+    const listener = (e: Event) =>
+      dispatched.push((e as CustomEvent<string>).detail);
     window.addEventListener('browser-open-url', listener);
 
     handleOpenUrlEvent({ type: 'open_url', url: 'https://example.com' });
@@ -140,7 +204,8 @@ describe('handleOpenUrlEvent', { tags: ['unit'] }, () => {
 
   it('does nothing when url is empty', () => {
     const dispatched: string[] = [];
-    const listener = (e: Event) => dispatched.push((e as CustomEvent<string>).detail);
+    const listener = (e: Event) =>
+      dispatched.push((e as CustomEvent<string>).detail);
     window.addEventListener('browser-open-url', listener);
 
     handleOpenUrlEvent({ type: 'open_url' });

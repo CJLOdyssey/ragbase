@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import {
+  ApiError,
+  NetworkError,
+  normalizeError,
+  TimeoutError,
+} from '../errors';
 import { AxiosError, AxiosHeaders } from 'axios';
-
-import { ApiError, NetworkError, TimeoutError, normalizeError } from '../errors';
+import { describe, expect, it } from 'vitest';
 
 describe('ApiError', { tags: ['unit'] }, () => {
   it('constructs with name Apierror', () => {
@@ -47,10 +51,18 @@ describe('normalizeError', { tags: ['unit'] }, () => {
       'ERR_BAD_RESPONSE',
       undefined,
       undefined,
-      { status: 401, data: { detail: 'Invalid token' }, headers: {}, statusText: 'Unauthorized', config: { headers: new AxiosHeaders() } },
+      {
+        status: 401,
+        data: { detail: 'Invalid token' },
+        headers: {},
+        statusText: 'Unauthorized',
+        config: { headers: new AxiosHeaders() },
+      },
     );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       const apiErr = e as ApiError;
       expect(apiErr.code).toBe('UNAUTHORIZED');
       expect(apiErr.status).toBe(401);
@@ -63,10 +75,18 @@ describe('normalizeError', { tags: ['unit'] }, () => {
       'ERR_BAD_RESPONSE',
       undefined,
       undefined,
-      { status: 403, data: { detail: 'No access' }, headers: {}, statusText: 'Forbidden', config: { headers: new AxiosHeaders() } },
+      {
+        status: 403,
+        data: { detail: 'No access' },
+        headers: {},
+        statusText: 'Forbidden',
+        config: { headers: new AxiosHeaders() },
+      },
     );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       const apiErr = e as ApiError;
       expect(apiErr.code).toBe('FORBIDDEN');
     }
@@ -78,10 +98,18 @@ describe('normalizeError', { tags: ['unit'] }, () => {
       'ERR_BAD_RESPONSE',
       undefined,
       undefined,
-      { status: 404, data: { message: 'Not found' }, headers: {}, statusText: 'Not Found', config: { headers: new AxiosHeaders() } },
+      {
+        status: 404,
+        data: { message: 'Not found' },
+        headers: {},
+        statusText: 'Not Found',
+        config: { headers: new AxiosHeaders() },
+      },
     );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       const apiErr = e as ApiError;
       expect(apiErr.code).toBe('NOT_FOUND');
     }
@@ -93,10 +121,18 @@ describe('normalizeError', { tags: ['unit'] }, () => {
       'ERR_BAD_RESPONSE',
       undefined,
       undefined,
-      { status: 422, data: { detail: 'Invalid input' }, headers: {}, statusText: 'Unprocessable', config: { headers: new AxiosHeaders() } },
+      {
+        status: 422,
+        data: { detail: 'Invalid input' },
+        headers: {},
+        statusText: 'Unprocessable',
+        config: { headers: new AxiosHeaders() },
+      },
     );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       const apiErr = e as ApiError;
       expect(apiErr.code).toBe('VALIDATION_ERROR');
     }
@@ -110,10 +146,18 @@ describe('normalizeError', { tags: ['unit'] }, () => {
       'ERR_BAD_RESPONSE',
       undefined,
       undefined,
-      { status: 429, data: { detail: 'Rate limited' }, headers, statusText: 'Too Many', config: { headers: new AxiosHeaders() } },
+      {
+        status: 429,
+        data: { detail: 'Rate limited' },
+        headers,
+        statusText: 'Too Many',
+        config: { headers: new AxiosHeaders() },
+      },
     );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       const apiErr = e as ApiError;
       expect(apiErr.code).toBe('RATE_LIMITED');
     }
@@ -125,51 +169,107 @@ describe('normalizeError', { tags: ['unit'] }, () => {
       'ERR_BAD_RESPONSE',
       undefined,
       undefined,
-      { status: 500, data: { detail: 'Boom' }, headers: {}, statusText: 'Error', config: { headers: new AxiosHeaders() } },
+      {
+        status: 500,
+        data: { detail: 'Boom' },
+        headers: {},
+        statusText: 'Error',
+        config: { headers: new AxiosHeaders() },
+      },
     );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       const apiErr = e as ApiError;
       expect(apiErr.code).toBe('SERVER_ERROR');
     }
   });
 
   it('throws ApiError with SERVER_ERROR for 502', () => {
-    const axiosErr = new AxiosError('', 'ERR_BAD_RESPONSE', undefined, undefined, {
-      status: 502, data: { detail: 'Bad Gateway' }, headers: {}, statusText: 'Bad Gateway', config: { headers: new AxiosHeaders() },
-    });
+    const axiosErr = new AxiosError(
+      '',
+      'ERR_BAD_RESPONSE',
+      undefined,
+      undefined,
+      {
+        status: 502,
+        data: { detail: 'Bad Gateway' },
+        headers: {},
+        statusText: 'Bad Gateway',
+        config: { headers: new AxiosHeaders() },
+      },
+    );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       expect((e as ApiError).code).toBe('SERVER_ERROR');
     }
   });
 
   it('throws ApiError with SERVER_ERROR for 503', () => {
-    const axiosErr = new AxiosError('', 'ERR_BAD_RESPONSE', undefined, undefined, {
-      status: 503, data: {}, headers: {}, statusText: 'Unavailable', config: { headers: new AxiosHeaders() },
-    });
+    const axiosErr = new AxiosError(
+      '',
+      'ERR_BAD_RESPONSE',
+      undefined,
+      undefined,
+      {
+        status: 503,
+        data: {},
+        headers: {},
+        statusText: 'Unavailable',
+        config: { headers: new AxiosHeaders() },
+      },
+    );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       expect((e as ApiError).code).toBe('SERVER_ERROR');
     }
   });
 
   it('throws ApiError with SERVER_ERROR for 504', () => {
-    const axiosErr = new AxiosError('', 'ERR_BAD_RESPONSE', undefined, undefined, {
-      status: 504, data: {}, headers: {}, statusText: 'Gateway Timeout', config: { headers: new AxiosHeaders() },
-    });
+    const axiosErr = new AxiosError(
+      '',
+      'ERR_BAD_RESPONSE',
+      undefined,
+      undefined,
+      {
+        status: 504,
+        data: {},
+        headers: {},
+        statusText: 'Gateway Timeout',
+        config: { headers: new AxiosHeaders() },
+      },
+    );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       expect((e as ApiError).code).toBe('SERVER_ERROR');
     }
   });
 
   it('throws ApiError with UNKNOWN for unhandled status', () => {
-    const axiosErr = new AxiosError('', 'ERR_BAD_RESPONSE', undefined, undefined, {
-      status: 418, data: {}, headers: {}, statusText: "I'm a teapot", config: { headers: new AxiosHeaders() },
-    });
+    const axiosErr = new AxiosError(
+      '',
+      'ERR_BAD_RESPONSE',
+      undefined,
+      undefined,
+      {
+        status: 418,
+        data: {},
+        headers: {},
+        statusText: "I'm a teapot",
+        config: { headers: new AxiosHeaders() },
+      },
+    );
     expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try { normalizeError(axiosErr); } catch (e) {
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       expect((e as ApiError).code).toBe('UNKNOWN');
     }
   });
@@ -185,20 +285,43 @@ describe('normalizeError', { tags: ['unit'] }, () => {
   });
 
   it('prefers detail over message in response data', () => {
-    const axiosErr = new AxiosError('', 'ERR_BAD_RESPONSE', undefined, undefined, {
-      status: 400, data: { detail: 'custom detail', message: 'custom message' },
-      headers: {}, statusText: 'Bad', config: { headers: new AxiosHeaders() },
-    });
-    try { normalizeError(axiosErr); } catch (e) {
+    const axiosErr = new AxiosError(
+      '',
+      'ERR_BAD_RESPONSE',
+      undefined,
+      undefined,
+      {
+        status: 400,
+        data: { detail: 'custom detail', message: 'custom message' },
+        headers: {},
+        statusText: 'Bad',
+        config: { headers: new AxiosHeaders() },
+      },
+    );
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       expect((e as ApiError).message).toBe('custom detail');
     }
   });
 
   it('falls back to axios error message when no response data', () => {
-    const axiosErr = new AxiosError('fallback msg', 'ERR_BAD_RESPONSE', undefined, undefined, {
-      status: 400, data: undefined, headers: {}, statusText: 'Bad', config: { headers: new AxiosHeaders() },
-    });
-    try { normalizeError(axiosErr); } catch (e) {
+    const axiosErr = new AxiosError(
+      'fallback msg',
+      'ERR_BAD_RESPONSE',
+      undefined,
+      undefined,
+      {
+        status: 400,
+        data: undefined,
+        headers: {},
+        statusText: 'Bad',
+        config: { headers: new AxiosHeaders() },
+      },
+    );
+    try {
+      normalizeError(axiosErr);
+    } catch (e) {
       expect((e as ApiError).message).toBe('fallback msg');
     }
   });

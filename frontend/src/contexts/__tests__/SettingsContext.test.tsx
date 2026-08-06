@@ -1,8 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
-import { SettingsProvider, useSettings, useNotificationSound } from '@/contexts/SettingsContext';
+import {
+  SettingsProvider,
+  useNotificationSound,
+  useSettings,
+} from '@/contexts/SettingsContext';
+import { act, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-function TestConsumer({ onRender }: { onRender?: (s: ReturnType<typeof useSettings>) => void }) {
+function TestConsumer({
+  onRender,
+}: {
+  onRender?: (s: ReturnType<typeof useSettings>) => void;
+}) {
   const settings = useSettings();
   onRender?.(settings);
   return (
@@ -11,7 +19,9 @@ function TestConsumer({ onRender }: { onRender?: (s: ReturnType<typeof useSettin
       <span data-testid="fontSize">{settings.settings.fontSize}</span>
       <span data-testid="sendMode">{settings.settings.sendMode}</span>
       <span data-testid="autoSave">{String(settings.settings.autoSave)}</span>
-      <span data-testid="streamOutput">{String(settings.settings.streamOutput)}</span>
+      <span data-testid="streamOutput">
+        {String(settings.settings.streamOutput)}
+      </span>
     </div>
   );
 }
@@ -51,11 +61,16 @@ describe('SettingsContext', { tags: ['unit'] }, () => {
         <TestConsumer />
       </SettingsProvider>,
     );
-    expect(document.documentElement.style.getPropertyValue('--body-font-size')).toBe('16px');
+    expect(
+      document.documentElement.style.getPropertyValue('--body-font-size'),
+    ).toBe('16px');
   });
 
   it('loads settings from localStorage', () => {
-    localStorage.setItem('agentstudio-settings', JSON.stringify({ theme: 'light', fontSize: 18, sendMode: 'ctrl-enter' }));
+    localStorage.setItem(
+      'agentstudio-settings',
+      JSON.stringify({ theme: 'light', fontSize: 18, sendMode: 'ctrl-enter' }),
+    );
     render(
       <SettingsProvider>
         <TestConsumer />
@@ -70,13 +85,19 @@ describe('SettingsContext', { tags: ['unit'] }, () => {
     let settings!: ReturnType<typeof useSettings>;
     render(
       <SettingsProvider>
-        <TestConsumer onRender={(s) => { settings = s; }} />
+        <TestConsumer
+          onRender={(s) => {
+            settings = s;
+          }}
+        />
       </SettingsProvider>,
     );
     act(() => {
       settings.updateSettings({ theme: 'light', fontSize: 20 });
     });
-    const saved = JSON.parse(localStorage.getItem('agentstudio-settings') || '{}');
+    const saved = JSON.parse(
+      localStorage.getItem('agentstudio-settings') || '{}',
+    );
     expect(saved.theme).toBe('light');
     expect(saved.fontSize).toBe(20);
   });
@@ -96,7 +117,11 @@ describe('SettingsContext', { tags: ['unit'] }, () => {
     let settings!: ReturnType<typeof useSettings>;
     render(
       <SettingsProvider>
-        <TestConsumer onRender={(s) => { settings = s; }} />
+        <TestConsumer
+          onRender={(s) => {
+            settings = s;
+          }}
+        />
       </SettingsProvider>,
     );
     act(() => {
@@ -110,7 +135,11 @@ describe('SettingsContext', { tags: ['unit'] }, () => {
     let settings!: ReturnType<typeof useSettings>;
     render(
       <SettingsProvider>
-        <TestConsumer onRender={(s) => { settings = s; }} />
+        <TestConsumer
+          onRender={(s) => {
+            settings = s;
+          }}
+        />
       </SettingsProvider>,
     );
     act(() => {
@@ -155,7 +184,9 @@ describe('SettingsContext', { tags: ['unit'] }, () => {
         useSettings();
         return null;
       }
-      expect(() => render(<BadConsumer />)).toThrow('useSettings must be used within SettingsProvider');
+      expect(() => render(<BadConsumer />)).toThrow(
+        'useSettings must be used within SettingsProvider',
+      );
     });
   });
 });

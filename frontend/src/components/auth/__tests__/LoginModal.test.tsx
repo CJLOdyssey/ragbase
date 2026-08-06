@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { axe } from 'vitest-axe';
-import LoginModal from '@/components/auth/LoginModal';
 import { type AuthModalView } from '@/components/auth/AuthContext';
+import LoginModal from '@/components/auth/LoginModal';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { axe } from 'vitest-axe';
 
 const mockUseAuth = {
   loginModalView: 'login' as AuthModalView,
@@ -10,7 +10,9 @@ const mockUseAuth = {
   register: vi.fn().mockResolvedValue(undefined),
   forgotPassword: vi.fn().mockResolvedValue(undefined),
   resetPassword: vi.fn().mockResolvedValue(undefined),
-  sendRegisterCode: vi.fn().mockResolvedValue({ emailHint: 't***@example.com' }),
+  sendRegisterCode: vi
+    .fn()
+    .mockResolvedValue({ emailHint: 't***@example.com' }),
   setLoginModalView: vi.fn(),
   setLoginModalEmail: vi.fn(),
   closeLoginModal: vi.fn(),
@@ -69,13 +71,20 @@ describe('LoginModal', { tags: ['unit'] }, () => {
 
   it('calls login on form submit with valid inputs', async () => {
     render(<LoginModal onClose={onClose} />);
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'user@test.com' } });
-    fireEvent.change(screen.getByPlaceholderText('密码'), { target: { value: 'pass123' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'user@test.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('密码'), {
+      target: { value: 'pass123' },
+    });
     const form = document.querySelector('form')!;
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(mockUseAuth.login).toHaveBeenCalledWith('user@test.com', 'pass123');
+      expect(mockUseAuth.login).toHaveBeenCalledWith(
+        'user@test.com',
+        'pass123',
+      );
       expect(mockUseAuth.closeLoginModal).toHaveBeenCalled();
     });
   });
@@ -89,7 +98,9 @@ describe('LoginModal', { tags: ['unit'] }, () => {
 
   it('shows error when password is empty on login', async () => {
     render(<LoginModal onClose={onClose} />);
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'user@test.com' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'user@test.com' },
+    });
     const form = document.querySelector('form')!;
     fireEvent.submit(form);
     expect(await screen.findByText('请输入密码')).toBeInTheDocument();
@@ -98,8 +109,12 @@ describe('LoginModal', { tags: ['unit'] }, () => {
   it('shows login error from API', async () => {
     mockUseAuth.login.mockRejectedValueOnce(new Error('Invalid credentials'));
     render(<LoginModal onClose={onClose} />);
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'user@test.com' } });
-    fireEvent.change(screen.getByPlaceholderText('密码'), { target: { value: 'pass123' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'user@test.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('密码'), {
+      target: { value: 'pass123' },
+    });
     const form = document.querySelector('form')!;
     fireEvent.submit(form);
 
@@ -141,7 +156,9 @@ describe('LoginModal', { tags: ['unit'] }, () => {
     mockUseAuth.loginModalView = 'forgot';
     render(<LoginModal onClose={onClose} />);
     expect(screen.getByText('重置密码')).toBeInTheDocument();
-    expect(screen.getByText('输入注册邮箱，我们将发送验证码')).toBeInTheDocument();
+    expect(
+      screen.getByText('输入注册邮箱，我们将发送验证码'),
+    ).toBeInTheDocument();
   });
 
   describe('无障碍访问', () => {

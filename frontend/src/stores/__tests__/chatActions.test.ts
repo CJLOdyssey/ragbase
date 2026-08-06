@@ -1,12 +1,32 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  continueGeneration,
+  editMessage,
+  regenerateMessage,
+  retry,
+} from '../chatActions';
 import { useChatStore } from '../chatStore';
-import { editMessage, regenerateMessage, retry, continueGeneration } from '../chatActions';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatMessage } from '../../types';
 
 const { mockListKeys, mockSubmitReq, mockResumeRun } = vi.hoisted(() => ({
-  mockListKeys: vi.fn().mockResolvedValue([{ id: 'key-1', is_default: true, is_active: true, models: ['deepseek-chat'] }]),
-  mockSubmitReq: vi.fn().mockResolvedValue({ run_id: 'run-1', status: 'running', session_id: 'sess-1' }),
-  mockResumeRun: vi.fn().mockResolvedValue({ run_id: 'run-2', status: 'running', session_id: 'sess-1' }),
+  mockListKeys: vi.fn().mockResolvedValue([
+    {
+      id: 'key-1',
+      is_default: true,
+      is_active: true,
+      models: ['deepseek-chat'],
+    },
+  ]),
+  mockSubmitReq: vi.fn().mockResolvedValue({
+    run_id: 'run-1',
+    status: 'running',
+    session_id: 'sess-1',
+  }),
+  mockResumeRun: vi.fn().mockResolvedValue({
+    run_id: 'run-2',
+    status: 'running',
+    session_id: 'sess-1',
+  }),
 }));
 
 vi.mock('../../api/websocket', () => ({
@@ -21,7 +41,9 @@ vi.mock('../../api/client', () => ({
   listAgents: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('../chatStreaming', () => ({ createStreamHandler: vi.fn(() => vi.fn()) }));
+vi.mock('../chatStreaming', () => ({
+  createStreamHandler: vi.fn(() => vi.fn()),
+}));
 
 function makeMsg(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return {
@@ -60,9 +82,24 @@ const initialState = {
 beforeEach(() => {
   useChatStore.setState(initialState);
   vi.clearAllMocks();
-  mockListKeys.mockResolvedValue([{ id: 'key-1', is_default: true, is_active: true, models: ['deepseek-chat'] }]);
-  mockSubmitReq.mockResolvedValue({ run_id: 'run-1', status: 'running', session_id: 'sess-1' });
-  mockResumeRun.mockResolvedValue({ run_id: 'run-2', status: 'running', session_id: 'sess-1' });
+  mockListKeys.mockResolvedValue([
+    {
+      id: 'key-1',
+      is_default: true,
+      is_active: true,
+      models: ['deepseek-chat'],
+    },
+  ]);
+  mockSubmitReq.mockResolvedValue({
+    run_id: 'run-1',
+    status: 'running',
+    session_id: 'sess-1',
+  });
+  mockResumeRun.mockResolvedValue({
+    run_id: 'run-2',
+    status: 'running',
+    session_id: 'sess-1',
+  });
   localStorage.clear();
 });
 
@@ -92,7 +129,8 @@ describe('editMessage', { tags: ['unit'] }, () => {
 });
 
 describe('regenerateMessage', { tags: ['unit'] }, () => {
-  it('does nothing if msgIndex < 1', async () => {    const msg = makeMsg({ id: 'm2', content: 'hello' });
+  it('does nothing if msgIndex < 1', async () => {
+    const msg = makeMsg({ id: 'm2', content: 'hello' });
     useChatStore.setState({ messages: [msg], currentSessionId: 'sess-1' });
 
     await regenerateMessage(0);
@@ -136,8 +174,18 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
   it('routes to the key whose models contain the UI-selected model (SiliconFlow case)', async () => {
     // Two active keys, neither default: an earlier DeepSeek key and a newer SiliconFlow key.
     mockListKeys.mockResolvedValue([
-      { id: 'deepseek-key', is_default: false, is_active: true, models: ['deepseek-v4-flash'] },
-      { id: 'siliconflow-key', is_default: false, is_active: true, models: ['Qwen/Qwen3-8B', 'deepseek-ai/DeepSeek-V4-Flash'] },
+      {
+        id: 'deepseek-key',
+        is_default: false,
+        is_active: true,
+        models: ['deepseek-v4-flash'],
+      },
+      {
+        id: 'siliconflow-key',
+        is_default: false,
+        is_active: true,
+        models: ['Qwen/Qwen3-8B', 'deepseek-ai/DeepSeek-V4-Flash'],
+      },
     ]);
     localStorage.setItem('agentstudio-selected-model', 'Qwen/Qwen3-8B');
 
@@ -161,8 +209,13 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
   });
 });
 
-describe('editAndRegenerate', { tags: ['unit'] }, () => {  it('merges into the following agent answer and keeps the user edit history', async () => {
-    const userMsg = makeMsg({ id: 'u1', role: 'user', content: 'old question' });
+describe('editAndRegenerate', { tags: ['unit'] }, () => {
+  it('merges into the following agent answer and keeps the user edit history', async () => {
+    const userMsg = makeMsg({
+      id: 'u1',
+      role: 'user',
+      content: 'old question',
+    });
     const agentMsg = makeMsg({ id: 'a1', role: 'pm', content: 'old answer' });
     useChatStore.setState({
       messages: [userMsg, agentMsg],
@@ -181,7 +234,13 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {  it('merges into the f
     expect(updatedUser.currentUserVersion).toBe(0);
     // The old answer is NOT deleted — it stays as the merge target for the stream.
     expect(s.messages.map((m) => m.id)).toEqual(['u1', 'a1']);
-    expect(mockSubmitReq).toHaveBeenCalledWith('new question', 'sess-1', 'key-1', 'deepseek-chat', undefined);
+    expect(mockSubmitReq).toHaveBeenCalledWith(
+      'new question',
+      'sess-1',
+      'key-1',
+      'deepseek-chat',
+      undefined,
+    );
   });
 
   it('regenerates even when the edited user message has no following agent answer', async () => {
@@ -197,7 +256,13 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {  it('merges into the f
     expect(s.editTargetId).toBeNull();
     expect(s.messages[0].content).toBe('edited solo');
     expect(s.messages[0].userVersions).toEqual(['solo']);
-    expect(mockSubmitReq).toHaveBeenCalledWith('edited solo', 'sess-1', 'key-1', 'deepseek-chat', undefined);
+    expect(mockSubmitReq).toHaveBeenCalledWith(
+      'edited solo',
+      'sess-1',
+      'key-1',
+      'deepseek-chat',
+      undefined,
+    );
   });
 
   it('does nothing when content is unchanged', async () => {
@@ -215,14 +280,22 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {  it('merges into the f
 
   it('parses parent_run_id from the synthetic user message id', async () => {
     useChatStore.setState({
-      messages: [makeMsg({ id: 'run-abc123-requirement', role: 'user', content: 'old' })],
+      messages: [
+        makeMsg({ id: 'run-abc123-requirement', role: 'user', content: 'old' }),
+      ],
       currentSessionId: 'sess-1',
     });
 
     const { editAndRegenerate } = await import('../chatActions');
     await editAndRegenerate('run-abc123-requirement', 'edited');
 
-    expect(mockSubmitReq).toHaveBeenCalledWith('edited', 'sess-1', 'key-1', 'deepseek-chat', 'abc123');
+    expect(mockSubmitReq).toHaveBeenCalledWith(
+      'edited',
+      'sess-1',
+      'key-1',
+      'deepseek-chat',
+      'abc123',
+    );
   });
 });
 
@@ -232,7 +305,11 @@ describe('submitRequirement user-message binding', { tags: ['unit'] }, () => {
       messages: [makeMsg({ id: 'existing', role: 'agent', content: 'prev' })],
       currentSessionId: 'sess-1',
     });
-    mockSubmitReq.mockResolvedValue({ run_id: 'e69b278c-1234-4b6c-994c-f83084d5b4f3', status: 'running', session_id: 'sess-1' });
+    mockSubmitReq.mockResolvedValue({
+      run_id: 'e69b278c-1234-4b6c-994c-f83084d5b4f3',
+      status: 'running',
+      session_id: 'sess-1',
+    });
 
     const { submitRequirement } = await import('../chatActions');
     await submitRequirement('hello new session');
@@ -240,7 +317,9 @@ describe('submitRequirement user-message binding', { tags: ['unit'] }, () => {
     const msgs = useChatStore.getState().messages;
     const last = msgs[msgs.length - 1];
     expect(last.role).toBe('user');
-    expect(last.id).toBe('run-e69b278c-1234-4b6c-994c-f83084d5b4f3-requirement');
+    expect(last.id).toBe(
+      'run-e69b278c-1234-4b6c-994c-f83084d5b4f3-requirement',
+    );
   });
 });
 
@@ -252,7 +331,9 @@ describe('retry', { tags: ['unit'] }, () => {
 
     const state = useChatStore.getState();
     expect(state.status).toBe('error');
-    expect(state.error).toBe('\u6ca1\u6709\u627e\u5230\u7528\u6237\u6d88\u606f\uff0c\u65e0\u6cd5\u91cd\u8bd5');
+    expect(state.error).toBe(
+      '\u6ca1\u6709\u627e\u5230\u7528\u6237\u6d88\u606f\uff0c\u65e0\u6cd5\u91cd\u8bd5',
+    );
   });
 
   it('re-submits the last user message', async () => {
@@ -271,10 +352,7 @@ describe('retry', { tags: ['unit'] }, () => {
     const state = useChatStore.getState();
     expect(state.currentRunId).toBe('run-1');
     expect(state.status).toBe('running');
-    expect(mockSubmitReq).toHaveBeenCalledWith(
-      'follow-up',
-      'sess-1',
-    );
+    expect(mockSubmitReq).toHaveBeenCalledWith('follow-up', 'sess-1');
     expect(connectRun).toHaveBeenCalled();
   });
 
@@ -334,7 +412,11 @@ describe('continueGeneration', { tags: ['unit'] }, () => {
 
     await continueGeneration();
 
-    expect(mockResumeRun).toHaveBeenCalledWith('partial response', 'sess-1', 'some thinking');
+    expect(mockResumeRun).toHaveBeenCalledWith(
+      'partial response',
+      'sess-1',
+      'some thinking',
+    );
     const state = useChatStore.getState();
     expect(state.currentRunId).toBe('run-2');
     expect(state.status).toBe('running');
@@ -364,7 +446,11 @@ describe('continueGeneration', { tags: ['unit'] }, () => {
 
   it('handles error during resume', async () => {
     mockResumeRun.mockRejectedValueOnce(new Error('Resume failed'));
-    const interrupted = makeMsg({ id: 'int-3', role: 'agent', content: 'partial' });
+    const interrupted = makeMsg({
+      id: 'int-3',
+      role: 'agent',
+      content: 'partial',
+    });
     useChatStore.setState({
       interruptedMessageId: 'int-3',
       messages: [interrupted],
@@ -380,7 +466,11 @@ describe('continueGeneration', { tags: ['unit'] }, () => {
 
   it('handles non-Error error during resume', async () => {
     mockResumeRun.mockRejectedValueOnce('string error');
-    const interrupted = makeMsg({ id: 'int-4', role: 'agent', content: 'partial' });
+    const interrupted = makeMsg({
+      id: 'int-4',
+      role: 'agent',
+      content: 'partial',
+    });
     useChatStore.setState({
       interruptedMessageId: 'int-4',
       messages: [interrupted],

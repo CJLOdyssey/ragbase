@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Logger, { debug, info, warn, error } from '../logger';
+import Logger, { debug, error, info, warn } from '../logger';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@sentry/browser', () => ({
   default: { captureMessage: vi.fn(), captureException: vi.fn() },
@@ -47,7 +47,11 @@ describe('Logger', { tags: ['unit'] }, () => {
     it('error passes through optional params', () => {
       const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
       error('test error', 'detail1', 'detail2');
-      expect(spy).toHaveBeenCalledWith('[ERROR] test error', 'detail1', 'detail2');
+      expect(spy).toHaveBeenCalledWith(
+        '[ERROR] test error',
+        'detail1',
+        'detail2',
+      );
     });
 
     it('error with Error object still logs', () => {

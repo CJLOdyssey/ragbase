@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { TestProviders } from '@/test/setup';
 import Modal from '@/components/shared/Modal';
+import { TestProviders } from '@/test/setup';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('Modal', { tags: ['unit'] }, () => {
   const onClose = vi.fn();
@@ -96,7 +96,9 @@ describe('Modal', { tags: ['unit'] }, () => {
         </Modal>
       </TestProviders>,
     );
-    const overlay = screen.getByText('Test').closest('[role="dialog"]')?.parentElement;
+    const overlay = screen
+      .getByText('Test')
+      .closest('[role="dialog"]')?.parentElement;
     if (!overlay) throw new Error('dialog overlay not found');
     fireEvent.click(overlay);
     expect(onClose).toHaveBeenCalled();
@@ -146,7 +148,9 @@ describe('Modal', { tags: ['unit'] }, () => {
       </TestProviders>,
     );
     // Footer div has border-t class; should not exist when footer is not provided
-    expect(container.querySelector('[role="dialog"] > [class*="border-t"]')).toBeNull();
+    expect(
+      container.querySelector('[role="dialog"] > [class*="border-t"]'),
+    ).toBeNull();
   });
 
   it('applies custom className', () => {
@@ -222,7 +226,10 @@ describe('Modal', { tags: ['unit'] }, () => {
         </Modal>
       </TestProviders>,
     );
-    expect(screen.getByRole('dialog')).toHaveAttribute('aria-label', 'Custom Dialog');
+    expect(screen.getByRole('dialog')).toHaveAttribute(
+      'aria-label',
+      'Custom Dialog',
+    );
   });
 
   it('applies width style when provided', () => {

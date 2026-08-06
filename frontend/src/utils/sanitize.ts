@@ -33,6 +33,15 @@ export function sanitizeHtml(dirty: string): string {
       'div',
       'img',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'width', 'height'],
+    ALLOWED_ATTR: [
+      'href',
+      'target',
+      'rel',
+      'src',
+      'alt',
+      'class',
+      'width',
+      'height',
+    ],
   });
 }

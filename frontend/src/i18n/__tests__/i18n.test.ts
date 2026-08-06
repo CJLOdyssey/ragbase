@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
   return Object.entries(obj).flatMap(([k, v]) => {
     const key = prefix ? `${prefix}.${k}` : k;
-    return typeof v === 'object' && v !== null ? flattenKeys(v as Record<string, unknown>, key) : [key];
+    return typeof v === 'object' && v !== null
+      ? flattenKeys(v as Record<string, unknown>, key)
+      : [key];
   });
 }
 

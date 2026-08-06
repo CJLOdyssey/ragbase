@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { createStreamHandler } from '../chatStreaming';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../utils/logger', () => ({
   default: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -9,8 +10,6 @@ vi.mock('../utils/logger', () => ({
 }));
 
 vi.mock('./uid', () => ({ uid: vi.fn(() => 'test-uid') }));
-
-import { createStreamHandler } from '../chatStreaming';
 
 describe('chatStreaming', { tags: ['unit'] }, () => {
   function makeBasicState() {
@@ -41,7 +40,9 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
 
   function getUpdater(set: ReturnType<typeof vi.fn>) {
     const updater = set.mock.calls[0]?.[0];
-    return typeof updater === 'function' ? updater(makeBasicState()) : updater || {};
+    return typeof updater === 'function'
+      ? updater(makeBasicState())
+      : updater || {};
   }
 
   describe('stream event', () => {
@@ -83,7 +84,15 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
         ...makeBasicState(),
         streamingId: 'stream-1',
         messages: [
-          { id: 'stream-1', role: 'agent', content: 'Hello', thinking: '', agent_name: 'Agent', round_number: 0, created_at: new Date().toISOString() },
+          {
+            id: 'stream-1',
+            role: 'agent',
+            content: 'Hello',
+            thinking: '',
+            agent_name: 'Agent',
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
         ],
         currentRunId: 'run-1',
         continuingId: null,
@@ -92,13 +101,25 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
       }));
 
       const handler = createStreamHandler(set as never, get as never);
-      handler({ type: 'thinking_stream', content: 'thinking chunk', agent_name: 'Bot' });
+      handler({
+        type: 'thinking_stream',
+        content: 'thinking chunk',
+        agent_name: 'Bot',
+      });
 
       const updater = set.mock.calls[0]?.[0];
       if (typeof updater === 'function') {
         const state = {
           streamingId: 'stream-1',
-          messages: [{ id: 'stream-1', role: 'agent', content: 'Hello', thinking: '', agent_name: 'Agent' }],
+          messages: [
+            {
+              id: 'stream-1',
+              role: 'agent',
+              content: 'Hello',
+              thinking: '',
+              agent_name: 'Agent',
+            },
+          ],
           currentRunId: 'run-1',
           continuingId: null,
           pendingVersions: null,
@@ -116,13 +137,22 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
       const get = vi.fn(() => makeBasicState());
 
       const handler = createStreamHandler(set as never, get as never);
-      handler({ type: 'message', content: 'Updated', thinking: 'new thinking', role: 'agent' });
+      handler({
+        type: 'message',
+        content: 'Updated',
+        thinking: 'new thinking',
+        role: 'agent',
+      });
 
       const updater = set.mock.calls[0]?.[0];
       if (typeof updater === 'function') {
         const s = makeBasicState();
         const result = updater(s);
-        const msgs = result.messages as Array<{ id: string; content: string; thinking: string }>;
+        const msgs = result.messages as Array<{
+          id: string;
+          content: string;
+          thinking: string;
+        }>;
         expect(msgs.find((m) => m.id === 'stream-1')?.content).toBe('Updated');
         expect(result.currentRole).toBe('agent');
         expect(result.wsStatus).toBe('connected');
@@ -134,13 +164,24 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
       const get = vi.fn(() => ({ ...makeBasicState(), streamingId: null }));
 
       const handler = createStreamHandler(set as never, get as never);
-      handler({ type: 'message', content: 'New msg', thinking: undefined, role: 'assistant', agent_name: 'Bot', round_number: 1 });
+      handler({
+        type: 'message',
+        content: 'New msg',
+        thinking: undefined,
+        role: 'assistant',
+        agent_name: 'Bot',
+        round_number: 1,
+      });
 
       const updater = set.mock.calls[0]?.[0];
       if (typeof updater === 'function') {
         const s = { ...makeBasicState(), streamingId: null };
         const result = updater(s);
-        const msgs = result.messages as Array<{ role: string; content: string; agent_name: string }>;
+        const msgs = result.messages as Array<{
+          role: string;
+          content: string;
+          agent_name: string;
+        }>;
         expect(msgs).toHaveLength(2);
         expect(msgs[1].role).toBe('assistant');
         expect(msgs[1].content).toBe('New msg');
@@ -160,7 +201,10 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
       if (typeof updater === 'function') {
         const s = makeBasicState();
         const result = updater(s);
-        const msgs = result.messages as Array<{ id: string; thinkingDone?: boolean }>;
+        const msgs = result.messages as Array<{
+          id: string;
+          thinkingDone?: boolean;
+        }>;
         expect(msgs.find((m) => m.id === 'stream-1')?.thinkingDone).toBe(true);
       }
     });
@@ -172,7 +216,11 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
       const get = vi.fn(() => makeBasicState());
 
       const handler = createStreamHandler(set as never, get as never);
-      handler({ type: 'info', content: 'Fetching data...', data: 'extra info' });
+      handler({
+        type: 'info',
+        content: 'Fetching data...',
+        data: 'extra info',
+      });
 
       const updater = set.mock.calls[0]?.[0];
       if (typeof updater === 'function') {
@@ -247,4 +295,3 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
     });
   });
 });
-

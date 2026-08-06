@@ -1,10 +1,14 @@
-import type { ChatMessage } from '../types';
+import {
+  listKeys,
+  resumeRun,
+  submitRequirement as submitRequirementExternal,
+} from '../api/client';
 import { connectRun, disconnectRun } from '../api/websocket';
-import { submitRequirement as submitRequirementExternal, resumeRun, listKeys } from '../api/client';
-import { uid } from './uid';
-import { createStreamHandler } from './chatStreaming';
-import { useChatStore } from './chatStore';
+import type { ChatMessage } from '../types';
 import Logger from '../utils/logger';
+import { useChatStore } from './chatStore';
+import { createStreamHandler } from './chatStreaming';
+import { uid } from './uid';
 
 type KeyItem = Awaited<ReturnType<typeof listKeys>>[number];
 
@@ -14,15 +18,21 @@ function resolveKey(
 ): { keyId?: string; model?: string } {
   // Route to the key whose models contain the model the user actually selected in the UI,
   // so a SiliconFlow/Groq model is never sent to a DeepSeek base URL.
-  const owningKey = persistedModel ? activeKeys.find((k) => k.models.includes(persistedModel)) : undefined;
+  const owningKey = persistedModel
+    ? activeKeys.find((k) => k.models.includes(persistedModel))
+    : undefined;
   if (owningKey) {
     return { keyId: owningKey.id, model: persistedModel ?? undefined };
   }
-  const defaultKey = activeKeys.find((k) => k.is_default && k.is_active) || activeKeys[0];
+  const defaultKey =
+    activeKeys.find((k) => k.is_default && k.is_active) || activeKeys[0];
   if (defaultKey) {
     return {
       keyId: defaultKey.id,
-      model: persistedModel && defaultKey.models.includes(persistedModel) ? persistedModel : defaultKey.models[0],
+      model:
+        persistedModel && defaultKey.models.includes(persistedModel)
+          ? persistedModel
+          : defaultKey.models[0],
     };
   }
   return {};
@@ -56,7 +66,11 @@ export async function submitRequirement(
   }
 
   if (!keyId) {
-    useChatStore.setState({ status: 'error', error: '请先在设置中配置 API Key', wsStatus: 'disconnected' });
+    useChatStore.setState({
+      status: 'error',
+      error: '请先在设置中配置 API Key',
+      wsStatus: 'disconnected',
+    });
     return;
   }
 
@@ -73,16 +87,29 @@ export async function submitRequirement(
     status: 'loading',
     error: null,
     result: null,
-    messages: skipAddUserMessage ? useChatStore.getState().messages : [...useChatStore.getState().messages, userMsg],
+    messages: skipAddUserMessage
+      ? useChatStore.getState().messages
+      : [...useChatStore.getState().messages, userMsg],
     currentRole: null,
   });
 
   try {
     Logger.info('[chat] submitRequirement — session_id=%s', effectiveSessionId);
-    const resp = await submitRequirementExternal(requirement, effectiveSessionId, keyId, model, parent_run_id);
+    const resp = await submitRequirementExternal(
+      requirement,
+      effectiveSessionId,
+      keyId,
+      model,
+      parent_run_id,
+    );
     const run_id = resp.run_id;
     const returnedSessionId = resp.session_id || effectiveSessionId || null;
-    useChatStore.setState({ currentRunId: run_id, currentSessionId: returnedSessionId, status: 'running', wsStatus: 'connecting' });
+    useChatStore.setState({
+      currentRunId: run_id,
+      currentSessionId: returnedSessionId,
+      status: 'running',
+      wsStatus: 'connecting',
+    });
     // Bind the freshly-added user message to its run so edit-regenerate can
     // resolve the parent_run_id from "run-{run_id}-requirement" on a later edit.
     if (!skipAddUserMessage) {
@@ -95,7 +122,12 @@ export async function submitRequirement(
         return { messages: msgs };
       });
     }
-    connectRun(run_id, { onMessage: createStreamHandler(useChatStore.setState, useChatStore.getState) });
+    connectRun(run_id, {
+      onMessage: createStreamHandler(
+        useChatStore.setState,
+        useChatStore.getState,
+      ),
+    });
   } catch (err: unknown) {
     Logger.error('[chat] submitRequirement failed:', err);
     const errMsg = err instanceof Error ? err.message : String(err);
@@ -119,8 +151,17 @@ export async function regenerateMessage(msgIndex: number) {
   const userMsg = s.messages[msgIndex - 1];
   if (!userMsg) return;
   if (s.currentRunId) disconnectRun(s.currentRunId);
-  useChatStore.setState({ status: 'loading', error: null, result: null, messages: s.messages.slice(0, msgIndex) });
-  await submitRequirement(userMsg.content, s.currentSessionId ?? undefined, true);
+  useChatStore.setState({
+    status: 'loading',
+    error: null,
+    result: null,
+    messages: s.messages.slice(0, msgIndex),
+  });
+  await submitRequirement(
+    userMsg.content,
+    s.currentSessionId ?? undefined,
+    true,
+  );
 }
 
 /**
@@ -152,7 +193,9 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
   if (old.content !== trimmed) userVersions.push(old.content);
 
   // First non-user message after the edit is the merge target.
-  const nextAgentIdx = s.messages.findIndex((m, i) => i > idx && m.role !== 'user');
+  const nextAgentIdx = s.messages.findIndex(
+    (m, i) => i > idx && m.role !== 'user',
+  );
   const editTargetId = nextAgentIdx >= 0 ? s.messages[nextAgentIdx].id : null;
 
   useChatStore.setState({
@@ -166,11 +209,24 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
     pendingThinkingVersions: null,
     skipThinking: false,
     messages: s.messages.map((m, i) =>
-      i === idx ? { ...m, content: trimmed, userVersions, currentUserVersion: userVersions.length - 1 } : m,
+      i === idx
+        ? {
+            ...m,
+            content: trimmed,
+            userVersions,
+            currentUserVersion: userVersions.length - 1,
+          }
+        : m,
     ),
   });
 
-  await submitRequirement(trimmed, s.currentSessionId ?? undefined, true, null, parentRunId);
+  await submitRequirement(
+    trimmed,
+    s.currentSessionId ?? undefined,
+    true,
+    null,
+    parentRunId,
+  );
 }
 
 export async function retry() {
@@ -182,14 +238,30 @@ export async function retry() {
   }
   const lastUserMsg = [...s.messages].reverse().find((m) => m.role === 'user');
   if (!lastUserMsg) {
-    useChatStore.setState({ status: 'error', error: '没有找到用户消息，无法重试' });
+    useChatStore.setState({
+      status: 'error',
+      error: '没有找到用户消息，无法重试',
+    });
     return;
   }
   useChatStore.setState({ currentRunId: null });
   try {
-    const resp = await submitRequirementExternal(lastUserMsg.content, s.currentSessionId ?? undefined);
-    useChatStore.setState({ currentRunId: resp.run_id, currentSessionId: resp.session_id || s.currentSessionId || null, status: 'running', wsStatus: 'connecting' });
-    connectRun(resp.run_id, { onMessage: createStreamHandler(useChatStore.setState, useChatStore.getState) });
+    const resp = await submitRequirementExternal(
+      lastUserMsg.content,
+      s.currentSessionId ?? undefined,
+    );
+    useChatStore.setState({
+      currentRunId: resp.run_id,
+      currentSessionId: resp.session_id || s.currentSessionId || null,
+      status: 'running',
+      wsStatus: 'connecting',
+    });
+    connectRun(resp.run_id, {
+      onMessage: createStreamHandler(
+        useChatStore.setState,
+        useChatStore.getState,
+      ),
+    });
   } catch (err: unknown) {
     Logger.error('[chat] retry failed:', err);
     const errMsg = err instanceof Error ? err.message : String(err);
@@ -206,24 +278,45 @@ export async function continueGeneration() {
     useChatStore.setState({ interruptedMessageId: null });
     return;
   }
-  Logger.info('[chat] continueGeneration — continuing from interrupted msg %s', intId);
+  Logger.info(
+    '[chat] continueGeneration — continuing from interrupted msg %s',
+    intId,
+  );
   const interruptedMsg = s.messages[idx];
   useChatStore.setState({
     continuingId: intId,
     skipThinking: false,
     pendingVersions: interruptedMsg.versions || [interruptedMsg.content],
-    pendingThinkingVersions: interruptedMsg.thinkingVersions?.length ? interruptedMsg.thinkingVersions : (interruptedMsg.thinking ? [interruptedMsg.thinking] : null),
+    pendingThinkingVersions: interruptedMsg.thinkingVersions?.length
+      ? interruptedMsg.thinkingVersions
+      : interruptedMsg.thinking
+        ? [interruptedMsg.thinking]
+        : null,
   });
   const continuation = interruptedMsg.content;
   const prevRunId = s.currentRunId;
   if (prevRunId) disconnectRun(prevRunId);
   useChatStore.setState({ status: 'loading', error: null, result: null });
   try {
-    const resp = await resumeRun(continuation, s.currentSessionId || undefined, interruptedMsg.thinking);
+    const resp = await resumeRun(
+      continuation,
+      s.currentSessionId || undefined,
+      interruptedMsg.thinking,
+    );
     const run_id = resp.run_id;
     const returnedSessionId = resp.session_id || s.currentSessionId || null;
-    useChatStore.setState({ currentRunId: run_id, currentSessionId: returnedSessionId, status: 'running', wsStatus: 'connecting' });
-    connectRun(run_id, { onMessage: createStreamHandler(useChatStore.setState, useChatStore.getState) });
+    useChatStore.setState({
+      currentRunId: run_id,
+      currentSessionId: returnedSessionId,
+      status: 'running',
+      wsStatus: 'connecting',
+    });
+    connectRun(run_id, {
+      onMessage: createStreamHandler(
+        useChatStore.setState,
+        useChatStore.getState,
+      ),
+    });
   } catch (err: unknown) {
     Logger.error('[chat] continueGeneration failed:', err);
     const errMsg = err instanceof Error ? err.message : String(err);

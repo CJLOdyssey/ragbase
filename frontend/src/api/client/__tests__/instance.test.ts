@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockAxiosInstance = {
   interceptors: {
@@ -14,8 +14,21 @@ vi.mock('axios', () => ({
   AxiosError: class AxiosError extends Error {
     code?: string;
     config?: Record<string, unknown>;
-    response?: { status: number; data: unknown; headers: Record<string, string> };
-    constructor(message: string, code?: string, response?: { status: number; data: unknown; headers: Record<string, string> }, config?: Record<string, unknown>) {
+    response?: {
+      status: number;
+      data: unknown;
+      headers: Record<string, string>;
+    };
+    constructor(
+      message: string,
+      code?: string,
+      response?: {
+        status: number;
+        data: unknown;
+        headers: Record<string, string>;
+      },
+      config?: Record<string, unknown>,
+    ) {
       super(message);
       this.name = 'AxiosError';
       this.code = code;
@@ -103,10 +116,14 @@ describe('instance', { tags: ['unit'] }, () => {
 
   describe('request interceptor', () => {
     it('does not add Authorization header (access token is httpOnly cookie)', async () => {
-      let capturedInterceptor: ((config: Record<string, unknown>) => Record<string, unknown>) | null = null;
-      mockAxiosInstance.interceptors.request.use.mockImplementation((fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
-        capturedInterceptor = fn;
-      });
+      let capturedInterceptor:
+        ((config: Record<string, unknown>) => Record<string, unknown>) | null =
+        null;
+      mockAxiosInstance.interceptors.request.use.mockImplementation(
+        (fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
+          capturedInterceptor = fn;
+        },
+      );
 
       await import('../instance');
 
@@ -117,28 +134,44 @@ describe('instance', { tags: ['unit'] }, () => {
     });
 
     it('adds X-User-ID header', async () => {
-      let capturedInterceptor: ((config: Record<string, unknown>) => Record<string, unknown>) | null = null;
-      mockAxiosInstance.interceptors.request.use.mockImplementation((fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
-        capturedInterceptor = fn;
-      });
+      let capturedInterceptor:
+        ((config: Record<string, unknown>) => Record<string, unknown>) | null =
+        null;
+      mockAxiosInstance.interceptors.request.use.mockImplementation(
+        (fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
+          capturedInterceptor = fn;
+        },
+      );
 
       await import('../instance');
 
-      const config = { headers: {} as Record<string, string>, method: 'GET', url: '/test' };
+      const config = {
+        headers: {} as Record<string, string>,
+        method: 'GET',
+        url: '/test',
+      };
       const result = capturedInterceptor!(config);
 
       expect(result.headers['X-User-ID']).toBeDefined();
     });
 
     it('generates user ID when none exists', async () => {
-      let capturedInterceptor: ((config: Record<string, unknown>) => Record<string, unknown>) | null = null;
-      mockAxiosInstance.interceptors.request.use.mockImplementation((fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
-        capturedInterceptor = fn;
-      });
+      let capturedInterceptor:
+        ((config: Record<string, unknown>) => Record<string, unknown>) | null =
+        null;
+      mockAxiosInstance.interceptors.request.use.mockImplementation(
+        (fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
+          capturedInterceptor = fn;
+        },
+      );
 
       await import('../instance');
 
-      const config = { headers: {} as Record<string, string>, method: 'GET', url: '/test' };
+      const config = {
+        headers: {} as Record<string, string>,
+        method: 'GET',
+        url: '/test',
+      };
       const result = capturedInterceptor!(config);
 
       const uid = result.headers['X-User-ID'] as string;
@@ -150,10 +183,14 @@ describe('instance', { tags: ['unit'] }, () => {
     it('reuses existing user ID', async () => {
       localStorage.setItem('agentstudio_user_id', 'existing-uid');
 
-      let capturedInterceptor: ((config: Record<string, unknown>) => Record<string, unknown>) | null = null;
-      mockAxiosInstance.interceptors.request.use.mockImplementation((fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
-        capturedInterceptor = fn;
-      });
+      let capturedInterceptor:
+        ((config: Record<string, unknown>) => Record<string, unknown>) | null =
+        null;
+      mockAxiosInstance.interceptors.request.use.mockImplementation(
+        (fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
+          capturedInterceptor = fn;
+        },
+      );
 
       await import('../instance');
 
@@ -167,9 +204,11 @@ describe('instance', { tags: ['unit'] }, () => {
   describe('response interceptor', () => {
     it('returns successful response as-is', async () => {
       let successHandler: ((response: unknown) => unknown) | null = null;
-      mockAxiosInstance.interceptors.response.use.mockImplementation((s: (response: unknown) => unknown) => {
-        successHandler = s;
-      });
+      mockAxiosInstance.interceptors.response.use.mockImplementation(
+        (s: (response: unknown) => unknown) => {
+          successHandler = s;
+        },
+      );
 
       await import('../instance');
 
@@ -186,7 +225,10 @@ describe('instance', { tags: ['unit'] }, () => {
     it('rejects non-401 errors', async () => {
       let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
       mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (_s: (response: unknown) => unknown, e: (error: unknown) => Promise<unknown>) => {
+        (
+          _s: (response: unknown) => unknown,
+          e: (error: unknown) => Promise<unknown>,
+        ) => {
           errorHandler = e;
         },
       );
@@ -195,10 +237,26 @@ describe('instance', { tags: ['unit'] }, () => {
 
       const axiosErr = new (await import('axios')).AxiosError(
         'Not Found',
-      ) as Error & { code?: string; config?: { method: string; url: string; _retry?: boolean }; response?: { status: number; data: unknown; headers: Record<string, string> } };
+      ) as Error & {
+        code?: string;
+        config?: { method: string; url: string; _retry?: boolean };
+        response?: {
+          status: number;
+          data: unknown;
+          headers: Record<string, string>;
+        };
+      };
       (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
-      (axiosErr as Record<string, unknown>).config = { method: 'GET', url: '/missing', _retry: false };
-      (axiosErr as Record<string, unknown>).response = { status: 404, data: { detail: 'Not Found' }, headers: {} };
+      (axiosErr as Record<string, unknown>).config = {
+        method: 'GET',
+        url: '/missing',
+        _retry: false,
+      };
+      (axiosErr as Record<string, unknown>).response = {
+        status: 404,
+        data: { detail: 'Not Found' },
+        headers: {},
+      };
 
       try {
         await errorHandler!(axiosErr);
@@ -211,7 +269,10 @@ describe('instance', { tags: ['unit'] }, () => {
     it('rejects 401 errors when no refresh token', async () => {
       let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
       mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (_s: (response: unknown) => unknown, e: (error: unknown) => Promise<unknown>) => {
+        (
+          _s: (response: unknown) => unknown,
+          e: (error: unknown) => Promise<unknown>,
+        ) => {
           errorHandler = e;
         },
       );
@@ -224,10 +285,26 @@ describe('instance', { tags: ['unit'] }, () => {
 
       const axiosErr = new (await import('axios')).AxiosError(
         'Unauthorized',
-      ) as Error & { code?: string; config?: { method: string; url: string; _retry?: boolean }; response?: { status: number; data: unknown; headers: Record<string, string> } };
+      ) as Error & {
+        code?: string;
+        config?: { method: string; url: string; _retry?: boolean };
+        response?: {
+          status: number;
+          data: unknown;
+          headers: Record<string, string>;
+        };
+      };
       (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
-      (axiosErr as Record<string, unknown>).config = { method: 'GET', url: '/private', _retry: false };
-      (axiosErr as Record<string, unknown>).response = { status: 401, data: { detail: 'Unauthorized' }, headers: {} };
+      (axiosErr as Record<string, unknown>).config = {
+        method: 'GET',
+        url: '/private',
+        _retry: false,
+      };
+      (axiosErr as Record<string, unknown>).response = {
+        status: 401,
+        data: { detail: 'Unauthorized' },
+        headers: {},
+      };
 
       try {
         await errorHandler!(axiosErr);
@@ -245,7 +322,10 @@ describe('instance', { tags: ['unit'] }, () => {
 
       let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
       mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (_s: (response: unknown) => unknown, e: (error: unknown) => Promise<unknown>) => {
+        (
+          _s: (response: unknown) => unknown,
+          e: (error: unknown) => Promise<unknown>,
+        ) => {
           errorHandler = e;
         },
       );
@@ -261,10 +341,22 @@ describe('instance', { tags: ['unit'] }, () => {
 
       const axiosErr = new (await import('axios')).AxiosError(
         'Unauthorized',
-      ) as Error & { code?: string; config?: typeof config; response?: { status: number; data: unknown; headers: Record<string, string> } };
+      ) as Error & {
+        code?: string;
+        config?: typeof config;
+        response?: {
+          status: number;
+          data: unknown;
+          headers: Record<string, string>;
+        };
+      };
       (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
       (axiosErr as Record<string, unknown>).config = config;
-      (axiosErr as Record<string, unknown>).response = { status: 401, data: { detail: 'Unauthorized' }, headers: {} };
+      (axiosErr as Record<string, unknown>).response = {
+        status: 401,
+        data: { detail: 'Unauthorized' },
+        headers: {},
+      };
 
       try {
         await errorHandler!(axiosErr);
@@ -278,14 +370,19 @@ describe('instance', { tags: ['unit'] }, () => {
       localStorage.setItem(REFRESH_KEY, 'my-refresh-token');
 
       const mockRefresh = await import('../auth');
-      (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockResolvedValue({
-        access_token: 'new-access',
-        refresh_token: 'new-refresh',
-      });
+      (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockResolvedValue(
+        {
+          access_token: 'new-access',
+          refresh_token: 'new-refresh',
+        },
+      );
 
       let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
       mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (_s: (response: unknown) => unknown, e: (error: unknown) => Promise<unknown>) => {
+        (
+          _s: (response: unknown) => unknown,
+          e: (error: unknown) => Promise<unknown>,
+        ) => {
           errorHandler = e;
         },
       );
@@ -294,7 +391,20 @@ describe('instance', { tags: ['unit'] }, () => {
 
       const axiosErr = new (await import('axios')).AxiosError(
         'Unauthorized',
-      ) as Error & { code?: string; config?: { method: string; url: string; _retry?: boolean; headers: Record<string, string> }; response?: { status: number; data: unknown; headers: Record<string, string> } };
+      ) as Error & {
+        code?: string;
+        config?: {
+          method: string;
+          url: string;
+          _retry?: boolean;
+          headers: Record<string, string>;
+        };
+        response?: {
+          status: number;
+          data: unknown;
+          headers: Record<string, string>;
+        };
+      };
       (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
       (axiosErr as Record<string, unknown>).config = {
         method: 'GET',
@@ -302,25 +412,35 @@ describe('instance', { tags: ['unit'] }, () => {
         _retry: false,
         headers: {} as Record<string, string>,
       };
-      (axiosErr as Record<string, unknown>).response = { status: 401, data: { detail: 'Unauthorized' }, headers: {} };
+      (axiosErr as Record<string, unknown>).response = {
+        status: 401,
+        data: { detail: 'Unauthorized' },
+        headers: {},
+      };
 
       try {
         await errorHandler!(axiosErr);
-      } catch {
-      }
+      } catch {}
 
-      expect(mockRefresh.refreshTokens).toHaveBeenCalledWith('my-refresh-token');
+      expect(mockRefresh.refreshTokens).toHaveBeenCalledWith(
+        'my-refresh-token',
+      );
     });
 
     it('dispatches auth:unauthorized when refresh fails', async () => {
       localStorage.setItem(REFRESH_KEY, 'bad-refresh');
 
       const mockRefresh = await import('../auth');
-      (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Refresh failed'));
+      (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Refresh failed'),
+      );
 
       let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
       mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (_s: (response: unknown) => unknown, e: (error: unknown) => Promise<unknown>) => {
+        (
+          _s: (response: unknown) => unknown,
+          e: (error: unknown) => Promise<unknown>,
+        ) => {
           errorHandler = e;
         },
       );
@@ -332,7 +452,20 @@ describe('instance', { tags: ['unit'] }, () => {
 
       const axiosErr = new (await import('axios')).AxiosError(
         'Unauthorized',
-      ) as Error & { code?: string; config?: { method: string; url: string; _retry?: boolean; headers: Record<string, string> }; response?: { status: number; data: unknown; headers: Record<string, string> } };
+      ) as Error & {
+        code?: string;
+        config?: {
+          method: string;
+          url: string;
+          _retry?: boolean;
+          headers: Record<string, string>;
+        };
+        response?: {
+          status: number;
+          data: unknown;
+          headers: Record<string, string>;
+        };
+      };
       (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
       (axiosErr as Record<string, unknown>).config = {
         method: 'GET',
@@ -340,7 +473,11 @@ describe('instance', { tags: ['unit'] }, () => {
         _retry: false,
         headers: {} as Record<string, string>,
       };
-      (axiosErr as Record<string, unknown>).response = { status: 401, data: { detail: 'Unauthorized' }, headers: {} };
+      (axiosErr as Record<string, unknown>).response = {
+        status: 401,
+        data: { detail: 'Unauthorized' },
+        headers: {},
+      };
 
       try {
         await errorHandler!(axiosErr);

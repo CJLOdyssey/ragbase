@@ -8,10 +8,15 @@ enum LogLevel {
   ERROR = 3,
 }
 
-const CURRENT_LOG_LEVEL = import.meta.env.MODE === 'production' ? LogLevel.WARN : LogLevel.DEBUG;
+const CURRENT_LOG_LEVEL =
+  import.meta.env.MODE === 'production' ? LogLevel.WARN : LogLevel.DEBUG;
 const IS_PRODUCTION = import.meta.env.MODE === 'production';
 
-const log = (level: LogLevel, message: string, ...optionalParams: unknown[]): void => {
+const log = (
+  level: LogLevel,
+  message: string,
+  ...optionalParams: unknown[]
+): void => {
   if (IS_PRODUCTION && level < CURRENT_LOG_LEVEL) return;
 
   switch (level) {
@@ -28,7 +33,8 @@ const log = (level: LogLevel, message: string, ...optionalParams: unknown[]): vo
     case LogLevel.ERROR:
       console.error(`[ERROR] ${message}`, ...optionalParams);
       if (IS_PRODUCTION) {
-        const error = optionalParams.find((p) => p instanceof Error) as Error | undefined;
+        const error = optionalParams.find((p) => p instanceof Error) as
+          Error | undefined;
         if (error) Sentry.captureException(error);
         else Sentry.captureMessage(message, 'error');
       }

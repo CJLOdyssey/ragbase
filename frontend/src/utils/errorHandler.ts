@@ -11,7 +11,10 @@ export function installGlobalErrorHandlers() {
   window.onunhandledrejection = (event) => {
     const reason = event.reason;
     const msg = reason?.message || '';
-    if (msg.startsWith('Transition was skipped') || msg.startsWith('Transition was aborted')) {
+    if (
+      msg.startsWith('Transition was skipped') ||
+      msg.startsWith('Transition was aborted')
+    ) {
       event.preventDefault();
       return;
     }

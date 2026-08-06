@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { listModels } from '../models';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: { get: vi.fn() },

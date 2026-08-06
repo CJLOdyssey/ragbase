@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  listPrompts,
   createPrompt,
-  updatePrompt,
   deletePrompt,
   generatePrompt,
+  listPrompts,
+  updatePrompt,
   validatePrompt,
 } from '../prompts';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -25,7 +25,18 @@ beforeEach(() => {
 
 describe('listPrompts', { tags: ['unit'] }, () => {
   it('calls GET /prompts', async () => {
-    const mockData = [{ id: '1', name: 'prompt1', category: 'general', content: 'Hello', model: null, status: 'active', version: '1.0', created_at: '2024-01-01' }];
+    const mockData = [
+      {
+        id: '1',
+        name: 'prompt1',
+        category: 'general',
+        content: 'Hello',
+        model: null,
+        status: 'active',
+        version: '1.0',
+        created_at: '2024-01-01',
+      },
+    ];
     mockApi.get.mockResolvedValue({ data: mockData });
 
     const result = await listPrompts();
@@ -38,7 +49,16 @@ describe('listPrompts', { tags: ['unit'] }, () => {
 describe('createPrompt', { tags: ['unit'] }, () => {
   it('calls POST /prompts with payload', async () => {
     const payload = { name: 'prompt1', category: 'general', content: 'Hello' };
-    const mockData = { id: '1', name: 'prompt1', category: 'general', content: 'Hello', model: null, status: 'active', version: '1.0', created_at: '2024-01-01' };
+    const mockData = {
+      id: '1',
+      name: 'prompt1',
+      category: 'general',
+      content: 'Hello',
+      model: null,
+      status: 'active',
+      version: '1.0',
+      created_at: '2024-01-01',
+    };
     mockApi.post.mockResolvedValue({ data: mockData });
 
     const result = await createPrompt(payload);
@@ -50,7 +70,16 @@ describe('createPrompt', { tags: ['unit'] }, () => {
 
 describe('updatePrompt', { tags: ['unit'] }, () => {
   it('calls PUT /prompts/:id with payload', async () => {
-    const mockData = { id: '1', name: 'updated', category: 'general', content: 'Hello', model: null, status: 'active', version: '1.0', created_at: '2024-01-01' };
+    const mockData = {
+      id: '1',
+      name: 'updated',
+      category: 'general',
+      content: 'Hello',
+      model: null,
+      status: 'active',
+      version: '1.0',
+      created_at: '2024-01-01',
+    };
     mockApi.put.mockResolvedValue({ data: mockData });
 
     const result = await updatePrompt('1', { name: 'updated' });
@@ -72,12 +101,21 @@ describe('deletePrompt', { tags: ['unit'] }, () => {
 
 describe('generatePrompt', { tags: ['unit'] }, () => {
   it('calls POST /prompts/generate with description and category', async () => {
-    const mockData = { id: '1', name: 'gen-prompt', content: 'Generated content', category: 'general', is_valid: true };
+    const mockData = {
+      id: '1',
+      name: 'gen-prompt',
+      content: 'Generated content',
+      category: 'general',
+      is_valid: true,
+    };
     mockApi.post.mockResolvedValue({ data: mockData });
 
     const result = await generatePrompt('create a prompt', 'marketing');
 
-    expect(mockApi.post).toHaveBeenCalledWith('/prompts/generate', { description: 'create a prompt', category: 'marketing' });
+    expect(mockApi.post).toHaveBeenCalledWith('/prompts/generate', {
+      description: 'create a prompt',
+      category: 'marketing',
+    });
     expect(result).toEqual(mockData);
   });
 
@@ -86,7 +124,10 @@ describe('generatePrompt', { tags: ['unit'] }, () => {
 
     await generatePrompt('description');
 
-    expect(mockApi.post).toHaveBeenCalledWith('/prompts/generate', { description: 'description', category: 'general' });
+    expect(mockApi.post).toHaveBeenCalledWith('/prompts/generate', {
+      description: 'description',
+      category: 'general',
+    });
   });
 });
 
@@ -97,12 +138,18 @@ describe('validatePrompt', { tags: ['unit'] }, () => {
 
     const result = await validatePrompt('content to validate');
 
-    expect(mockApi.post).toHaveBeenCalledWith('/prompts/validate', { content: 'content to validate' });
+    expect(mockApi.post).toHaveBeenCalledWith('/prompts/validate', {
+      content: 'content to validate',
+    });
     expect(result).toEqual(mockData);
   });
 
   it('returns validation errors', async () => {
-    const mockData = { is_valid: false, error_message: 'Invalid syntax', suggestions: ['Fix syntax'] };
+    const mockData = {
+      is_valid: false,
+      error_message: 'Invalid syntax',
+      suggestions: ['Fix syntax'],
+    };
     mockApi.post.mockResolvedValue({ data: mockData });
 
     const result = await validatePrompt('bad content');

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { installGlobalErrorHandlers } from '../errorHandler';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: {
@@ -47,14 +47,23 @@ describe('installGlobalErrorHandlers', { tags: ['unit'] }, () => {
 
   it('handles unhandled rejection with a reason that has a message', () => {
     installGlobalErrorHandlers();
-    const event = { reason: new Error('network failure'), preventDefault: vi.fn() } as unknown as PromiseRejectionEvent;
+    const event = {
+      reason: new Error('network failure'),
+      preventDefault: vi.fn(),
+    } as unknown as PromiseRejectionEvent;
     window.onunhandledrejection?.(event);
-    expect(mockLogger.error).toHaveBeenCalledWith('Unhandled promise rejection', { reason: event.reason });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Unhandled promise rejection',
+      { reason: event.reason },
+    );
   });
 
   it('prevents default for Transition was skipped rejection', () => {
     installGlobalErrorHandlers();
-    const event = { reason: new Error('Transition was skipped'), preventDefault: vi.fn() } as unknown as PromiseRejectionEvent;
+    const event = {
+      reason: new Error('Transition was skipped'),
+      preventDefault: vi.fn(),
+    } as unknown as PromiseRejectionEvent;
     window.onunhandledrejection?.(event);
     expect(event.preventDefault).toHaveBeenCalled();
     expect(mockLogger.error).not.toHaveBeenCalled();
@@ -62,7 +71,10 @@ describe('installGlobalErrorHandlers', { tags: ['unit'] }, () => {
 
   it('prevents default for Transition was aborted rejection', () => {
     installGlobalErrorHandlers();
-    const event = { reason: new Error('Transition was aborted'), preventDefault: vi.fn() } as unknown as PromiseRejectionEvent;
+    const event = {
+      reason: new Error('Transition was aborted'),
+      preventDefault: vi.fn(),
+    } as unknown as PromiseRejectionEvent;
     window.onunhandledrejection?.(event);
     expect(event.preventDefault).toHaveBeenCalled();
     expect(mockLogger.error).not.toHaveBeenCalled();
@@ -70,23 +82,41 @@ describe('installGlobalErrorHandlers', { tags: ['unit'] }, () => {
 
   it('handles rejection with string reason (no message property)', () => {
     installGlobalErrorHandlers();
-    const event = { reason: 'some string error', preventDefault: vi.fn() } as unknown as PromiseRejectionEvent;
+    const event = {
+      reason: 'some string error',
+      preventDefault: vi.fn(),
+    } as unknown as PromiseRejectionEvent;
     window.onunhandledrejection?.(event);
-    expect(mockLogger.error).toHaveBeenCalledWith('Unhandled promise rejection', { reason: 'some string error' });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Unhandled promise rejection',
+      { reason: 'some string error' },
+    );
   });
 
   it('handles rejection with null reason', () => {
     installGlobalErrorHandlers();
-    const event = { reason: null, preventDefault: vi.fn() } as unknown as PromiseRejectionEvent;
+    const event = {
+      reason: null,
+      preventDefault: vi.fn(),
+    } as unknown as PromiseRejectionEvent;
     window.onunhandledrejection?.(event);
-    expect(mockLogger.error).toHaveBeenCalledWith('Unhandled promise rejection', { reason: null });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Unhandled promise rejection',
+      { reason: null },
+    );
   });
 
   it('handles rejection with undefined reason', () => {
     installGlobalErrorHandlers();
-    const event = { reason: undefined, preventDefault: vi.fn() } as unknown as PromiseRejectionEvent;
+    const event = {
+      reason: undefined,
+      preventDefault: vi.fn(),
+    } as unknown as PromiseRejectionEvent;
     window.onunhandledrejection?.(event);
-    expect(mockLogger.error).toHaveBeenCalledWith('Unhandled promise rejection', { reason: undefined });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Unhandled promise rejection',
+      { reason: undefined },
+    );
   });
 
   it('returns early when window is undefined (SSR guard)', () => {

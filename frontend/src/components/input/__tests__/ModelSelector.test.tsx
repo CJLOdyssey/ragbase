@@ -1,10 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { TestProviders } from '@/test/setup';
 import ModelSelector from '@/components/input/ModelSelector';
+import { TestProviders } from '@/test/setup';
 import type { ModelOption } from '@/types/input';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
-function makeModel(id: string, overrides: Partial<ModelOption> = {}): ModelOption {
+function makeModel(
+  id: string,
+  overrides: Partial<ModelOption> = {},
+): ModelOption {
   return {
     id,
     label: 'Model ' + id,
@@ -24,7 +27,12 @@ describe('ModelSelector', { tags: ['unit'] }, () => {
     const onConfigure = vi.fn();
     render(
       <TestProviders>
-        <ModelSelector models={[]} selectedModel="" onChange={onChange} onConfigure={onConfigure} />
+        <ModelSelector
+          models={[]}
+          selectedModel=""
+          onChange={onChange}
+          onConfigure={onConfigure}
+        />
       </TestProviders>,
     );
     fireEvent.click(screen.getByRole('button'));

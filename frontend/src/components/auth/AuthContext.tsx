@@ -1,16 +1,23 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import {
+  forgotPassword as apiForgotPassword,
+  login as apiLogin,
+  mergeGuestData as apiMergeGuestData,
+  register as apiRegister,
+  resendVerification as apiResendVerification,
+  resetPassword as apiResetPassword,
+  sendRegisterCode as apiSendRegisterCode,
+  verify as apiVerify,
   getAuthConfig,
   getMe,
-  mergeGuestData as apiMergeGuestData,
   refreshTokens,
-  login as apiLogin,
-  register as apiRegister,
-  verify as apiVerify,
-  forgotPassword as apiForgotPassword,
-  resetPassword as apiResetPassword,
-  resendVerification as apiResendVerification,
-  sendRegisterCode as apiSendRegisterCode,
 } from '../../api/client/auth';
 import { clearTokens, setTokens } from '../../api/client/instance';
 import { useChatStore } from '../../stores/chatStore';
@@ -26,10 +33,13 @@ async function mergeGuest() {
   try {
     const guestId = localStorage.getItem('agentstudio_user_id');
     if (guestId) await apiMergeGuestData(guestId);
-  } catch { /* merge is best-effort */ }
+  } catch {
+    /* merge is best-effort */
+  }
 }
 
-export type AuthModalView = 'login' | 'register' | 'verify' | 'forgot' | 'reset';
+export type AuthModalView =
+  'login' | 'register' | 'verify' | 'forgot' | 'reset';
 
 interface AuthUser {
   userId: string;
@@ -46,11 +56,19 @@ interface AuthContextValue {
   loginModalOpen: boolean;
   loginModalView: AuthModalView;
   loginModalEmail: string;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    rememberMe?: boolean,
+  ) => Promise<void>;
   register: (email: string, code: string, password: string) => Promise<void>;
   verify: (email: string, code: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
+  resetPassword: (
+    email: string,
+    code: string,
+    newPassword: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
   sendRegisterCode: (email: string) => Promise<{ emailHint: string }>;
@@ -76,7 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     function applySession(me: Awaited<ReturnType<typeof getMe>>) {
       authenticated = true;
-      setUser({ userId: me.id, email: me.email, username: me.username, roles: me.roles });
+      setUser({
+        userId: me.id,
+        email: me.email,
+        username: me.username,
+        roles: me.roles,
+      });
       localStorage.setItem('agentstudio_user_id', me.id);
       window.dispatchEvent(new CustomEvent('auth:login'));
     }
@@ -178,31 +201,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = user !== null;
 
-  const login = useCallback(async (email: string, password: string, rememberMe?: boolean) => {
-    const res = await apiLogin(email, password, rememberMe);
-    setTokens(res.access_token, res.refresh_token);
-    setLoading(false);
-    setUser({ userId: res.user.id, email: res.user.email, username: res.user.username, roles: res.user.roles });
-    localStorage.setItem('agentstudio_user_id', res.user.id);
-    window.dispatchEvent(new CustomEvent('auth:login'));
-    void mergeGuest();
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string, rememberMe?: boolean) => {
+      const res = await apiLogin(email, password, rememberMe);
+      setTokens(res.access_token, res.refresh_token);
+      setLoading(false);
+      setUser({
+        userId: res.user.id,
+        email: res.user.email,
+        username: res.user.username,
+        roles: res.user.roles,
+      });
+      localStorage.setItem('agentstudio_user_id', res.user.id);
+      window.dispatchEvent(new CustomEvent('auth:login'));
+      void mergeGuest();
+    },
+    [],
+  );
 
-  const register = useCallback(async (email: string, code: string, password: string) => {
-    const res = await apiRegister(email, code, password);
-    setTokens(res.access_token, res.refresh_token);
-    setLoading(false);
-    setUser({ userId: res.user.id, email: res.user.email, username: res.user.username, roles: res.user.roles });
-    localStorage.setItem('agentstudio_user_id', res.user.id);
-    window.dispatchEvent(new CustomEvent('auth:login'));
-    void mergeGuest();
-  }, []);
+  const register = useCallback(
+    async (email: string, code: string, password: string) => {
+      const res = await apiRegister(email, code, password);
+      setTokens(res.access_token, res.refresh_token);
+      setLoading(false);
+      setUser({
+        userId: res.user.id,
+        email: res.user.email,
+        username: res.user.username,
+        roles: res.user.roles,
+      });
+      localStorage.setItem('agentstudio_user_id', res.user.id);
+      window.dispatchEvent(new CustomEvent('auth:login'));
+      void mergeGuest();
+    },
+    [],
+  );
 
   const verify = useCallback(async (email: string, code: string) => {
     const res = await apiVerify(email, code);
     setTokens(res.access_token, res.refresh_token);
     setLoading(false);
-    setUser({ userId: res.user.id, email: res.user.email, username: res.user.username, roles: res.user.roles });
+    setUser({
+      userId: res.user.id,
+      email: res.user.email,
+      username: res.user.username,
+      roles: res.user.roles,
+    });
     localStorage.setItem('agentstudio_user_id', res.user.id);
     window.dispatchEvent(new CustomEvent('auth:login'));
     void mergeGuest();
@@ -212,9 +256,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiForgotPassword(email);
   }, []);
 
-  const resetPassword = useCallback(async (email: string, code: string, newPassword: string) => {
-    await apiResetPassword(email, code, newPassword);
-  }, []);
+  const resetPassword = useCallback(
+    async (email: string, code: string, newPassword: string) => {
+      await apiResetPassword(email, code, newPassword);
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     setUser(null);

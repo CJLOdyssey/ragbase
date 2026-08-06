@@ -1,16 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  listSessions,
-  getSessionDetail,
   createSession,
-  renameSession,
-  deleteSession,
   deleteMemory,
+  deleteSession,
   exportSessionMemories,
   getRun,
-  listRuns,
+  getSessionDetail,
   healthCheck,
+  listRuns,
+  listSessions,
+  renameSession,
 } from '../sessions';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -33,7 +33,9 @@ describe('listSessions', { tags: ['unit'] }, () => {
 
     await listSessions();
 
-    expect(mockApi.get).toHaveBeenCalledWith('/sessions', { params: { limit: 50 } });
+    expect(mockApi.get).toHaveBeenCalledWith('/sessions', {
+      params: { limit: 50 },
+    });
   });
 });
 
@@ -65,7 +67,9 @@ describe('renameSession', { tags: ['unit'] }, () => {
 
     await renameSession('s1', 'New Title');
 
-    expect(mockApi.put).toHaveBeenCalledWith('/sessions/s1', { title: 'New Title' });
+    expect(mockApi.put).toHaveBeenCalledWith('/sessions/s1', {
+      title: 'New Title',
+    });
   });
 });
 
@@ -96,7 +100,10 @@ describe('exportSessionMemories', { tags: ['unit'] }, () => {
 
     const result = await exportSessionMemories('s1', 'json');
 
-    expect(mockApi.get).toHaveBeenCalledWith('/sessions/s1/memories/export', { params: { format: 'json' }, responseType: 'blob' });
+    expect(mockApi.get).toHaveBeenCalledWith('/sessions/s1/memories/export', {
+      params: { format: 'json' },
+      responseType: 'blob',
+    });
     expect(result).toBe(blob);
   });
 
@@ -105,7 +112,10 @@ describe('exportSessionMemories', { tags: ['unit'] }, () => {
 
     await exportSessionMemories('s1', 'md');
 
-    expect(mockApi.get).toHaveBeenCalledWith('/sessions/s1/memories/export', { params: { format: 'md' }, responseType: 'blob' });
+    expect(mockApi.get).toHaveBeenCalledWith('/sessions/s1/memories/export', {
+      params: { format: 'md' },
+      responseType: 'blob',
+    });
   });
 });
 
@@ -126,7 +136,9 @@ describe('listRuns', { tags: ['unit'] }, () => {
 
     await listRuns();
 
-    expect(mockApi.get).toHaveBeenCalledWith('/runs', { params: { limit: 20 } });
+    expect(mockApi.get).toHaveBeenCalledWith('/runs', {
+      params: { limit: 20 },
+    });
   });
 
   it('passes custom limit and offset', async () => {
@@ -134,7 +146,9 @@ describe('listRuns', { tags: ['unit'] }, () => {
 
     await listRuns(10, 5);
 
-    expect(mockApi.get).toHaveBeenCalledWith('/runs', { params: { limit: 10, offset: 5 } });
+    expect(mockApi.get).toHaveBeenCalledWith('/runs', {
+      params: { limit: 10, offset: 5 },
+    });
   });
 });
 

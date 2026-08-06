@@ -1,7 +1,8 @@
 import Logger from '../utils/logger';
 
 export type WsCallback = (data: Record<string, unknown>) => void;
-export type WsConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+export type WsConnectionStatus =
+  'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
 export interface ConnectOptions {
   onMessage: WsCallback;
@@ -41,7 +42,9 @@ function connect(runId: string, options: ConnectOptions): ConnState {
   const state: ConnState = {
     ws,
     listeners: new Set([options.onMessage]),
-    statusListeners: new Set(options.onStatusChange ? [options.onStatusChange] : []),
+    statusListeners: new Set(
+      options.onStatusChange ? [options.onStatusChange] : [],
+    ),
     runId,
     reconnectCount: 0,
   };
@@ -57,13 +60,19 @@ function connect(runId: string, options: ConnectOptions): ConnState {
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      if (data.type === 'thinking_stream' || data.type === 'thinking_done' || data.type === 'stream') {
-        Logger.info('[WS] %s content: %s thinking: %s | len: %d thinking_len: %d',
+      if (
+        data.type === 'thinking_stream' ||
+        data.type === 'thinking_done' ||
+        data.type === 'stream'
+      ) {
+        Logger.info(
+          '[WS] %s content: %s thinking: %s | len: %d thinking_len: %d',
           data.type,
           (data.content || '').substring(0, 40),
           (data.thinking || '').substring(0, 40),
           (data.content || '').length,
-          (data.thinking || '').length);
+          (data.thinking || '').length,
+        );
       }
       state.listeners.forEach((cb) => cb(data));
     } catch {
@@ -106,9 +115,14 @@ function connect(runId: string, options: ConnectOptions): ConnState {
   return state;
 }
 
-export function connectRun(runId: string, onMessageOrOptions: WsCallback | ConnectOptions): () => void {
+export function connectRun(
+  runId: string,
+  onMessageOrOptions: WsCallback | ConnectOptions,
+): () => void {
   const options: ConnectOptions =
-    typeof onMessageOrOptions === 'function' ? { onMessage: onMessageOrOptions } : onMessageOrOptions;
+    typeof onMessageOrOptions === 'function'
+      ? { onMessage: onMessageOrOptions }
+      : onMessageOrOptions;
 
   const existing = connections.get(runId);
   if (existing) {

@@ -1,6 +1,5 @@
-import { useRef, useEffect } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
-import type { ReactNode } from 'react';
 
 interface Props {
   title: string | ReactNode;
@@ -15,7 +14,18 @@ interface Props {
   width?: number;
 }
 
-export default function Modal({ title, onClose, children, footer, className = '', hideHeaderBorder, hideFooterBorder, bodyClassName, ariaLabel, width }: Props) {
+export default function Modal({
+  title,
+  onClose,
+  children,
+  footer,
+  className = '',
+  hideHeaderBorder,
+  hideFooterBorder,
+  bodyClassName,
+  ariaLabel,
+  width,
+}: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,7 +67,10 @@ export default function Modal({ title, onClose, children, footer, className = ''
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-[var(--color-overlay)] flex items-center justify-center z-[var(--z-modal-backdrop)] backdrop-blur-[4px]" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-[var(--color-overlay)] flex items-center justify-center z-[var(--z-modal-backdrop)] backdrop-blur-[4px]"
+      onClick={onClose}
+    >
       <div
         className={`bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] ${className}`}
         style={width ? { maxWidth: width } : undefined}
@@ -67,16 +80,36 @@ export default function Modal({ title, onClose, children, footer, className = ''
         aria-modal="true"
         aria-label={ariaLabel}
       >
-        <div className={`flex items-center justify-between px-6 py-4 ${hideHeaderBorder ? '' : 'border-b border-[var(--color-border)]'}`}>
-          {typeof title === 'string'
-            ? <h3 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">{title}</h3>
-            : title}
-          <button className="bg-transparent border-none text-[var(--color-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded-md transition-[background,color] duration-150 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]" onClick={onClose} aria-label="关闭">
+        <div
+          className={`flex items-center justify-between px-6 py-4 ${hideHeaderBorder ? '' : 'border-b border-[var(--color-border)]'}`}
+        >
+          {typeof title === 'string' ? (
+            <h3 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
+              {title}
+            </h3>
+          ) : (
+            title
+          )}
+          <button
+            className="bg-transparent border-none text-[var(--color-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded-md transition-[background,color] duration-150 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+            onClick={onClose}
+            aria-label="关闭"
+          >
             <X size={18} />
           </button>
         </div>
-        <div className={`overflow-y-auto flex-1 min-h-0 flex flex-col ${bodyClassName || 'p-5'}`}>{children}</div>
-        {footer && <div className={`flex items-center justify-end gap-2 px-6 py-4 ${hideFooterBorder ? '' : 'border-t border-[var(--color-border)]'}`}>{footer}</div>}
+        <div
+          className={`overflow-y-auto flex-1 min-h-0 flex flex-col ${bodyClassName || 'p-5'}`}
+        >
+          {children}
+        </div>
+        {footer && (
+          <div
+            className={`flex items-center justify-end gap-2 px-6 py-4 ${hideFooterBorder ? '' : 'border-t border-[var(--color-border)]'}`}
+          >
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

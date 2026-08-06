@@ -1,22 +1,27 @@
-import { describe, it, expect } from 'vitest';
 import type {
-  WsStreamEvent,
-  WsThinkingStreamEvent,
-  WsMessageEvent,
-  WsThinkingDoneEvent,
-  WsInfoEvent,
-  WsErrorEvent,
   WsBalanceWarningEvent,
+  WsErrorEvent,
+  WsEvent,
+  WsInfoEvent,
+  WsMessageEvent,
   WsOpenUrlEvent,
   WsResultEvent,
+  WsStreamEvent,
   WsTeamResultEvent,
+  WsThinkingDoneEvent,
+  WsThinkingStreamEvent,
   WsThumbsEvent,
-  WsEvent,
 } from '../wsEvents';
+import { describe, expect, it } from 'vitest';
 
 describe('wsEvents types', { tags: ['unit'] }, () => {
   it('creates a WsStreamEvent', () => {
-    const event: WsStreamEvent = { type: 'stream', content: 'hello', thinking: 'thinking', agent_name: 'agent1' };
+    const event: WsStreamEvent = {
+      type: 'stream',
+      content: 'hello',
+      thinking: 'thinking',
+      agent_name: 'agent1',
+    };
     expect(event.type).toBe('stream');
     expect(event.content).toBe('hello');
     expect(event.thinking).toBe('thinking');
@@ -24,47 +29,78 @@ describe('wsEvents types', { tags: ['unit'] }, () => {
   });
 
   it('creates a WsThinkingStreamEvent', () => {
-    const event: WsThinkingStreamEvent = { type: 'thinking_stream', content: 'thinking...', agent_name: 'agent2' };
+    const event: WsThinkingStreamEvent = {
+      type: 'thinking_stream',
+      content: 'thinking...',
+      agent_name: 'agent2',
+    };
     expect(event.type).toBe('thinking_stream');
     expect(event.content).toBe('thinking...');
   });
 
   it('creates a WsMessageEvent with round_number', () => {
-    const event: WsMessageEvent = { type: 'message', content: 'msg', role: 'assistant', round_number: 2, agent_name: 'a1' };
+    const event: WsMessageEvent = {
+      type: 'message',
+      content: 'msg',
+      role: 'assistant',
+      round_number: 2,
+      agent_name: 'a1',
+    };
     expect(event.type).toBe('message');
     expect(event.round_number).toBe(2);
     expect(event.role).toBe('assistant');
   });
 
   it('creates a WsThinkingDoneEvent', () => {
-    const event: WsThinkingDoneEvent = { type: 'thinking_done', thinking: 'done thinking', agent_name: 'a1' };
+    const event: WsThinkingDoneEvent = {
+      type: 'thinking_done',
+      thinking: 'done thinking',
+      agent_name: 'a1',
+    };
     expect(event.type).toBe('thinking_done');
     expect(event.thinking).toBe('done thinking');
   });
 
   it('creates a WsInfoEvent', () => {
-    const event: WsInfoEvent = { type: 'info', content: 'info msg', data: 'some data' };
+    const event: WsInfoEvent = {
+      type: 'info',
+      content: 'info msg',
+      data: 'some data',
+    };
     expect(event.type).toBe('info');
     expect(event.data).toBe('some data');
   });
 
   it('creates a WsErrorEvent', () => {
-    const event: WsErrorEvent = { type: 'error', content: 'something went wrong' };
+    const event: WsErrorEvent = {
+      type: 'error',
+      content: 'something went wrong',
+    };
     expect(event.type).toBe('error');
   });
 
   it('creates a WsBalanceWarningEvent', () => {
-    const event: WsBalanceWarningEvent = { type: 'balance_warning', content: 'low balance' };
+    const event: WsBalanceWarningEvent = {
+      type: 'balance_warning',
+      content: 'low balance',
+    };
     expect(event.type).toBe('balance_warning');
   });
 
   it('creates a WsOpenUrlEvent', () => {
-    const event: WsOpenUrlEvent = { type: 'open_url', url: 'https://example.com' };
+    const event: WsOpenUrlEvent = {
+      type: 'open_url',
+      url: 'https://example.com',
+    };
     expect(event.url).toBe('https://example.com');
   });
 
   it('creates a WsResultEvent with dynamic keys', () => {
-    const event: WsResultEvent = { type: 'result', run_id: 'r1', status: 'done' };
+    const event: WsResultEvent = {
+      type: 'result',
+      run_id: 'r1',
+      status: 'done',
+    };
     expect(event.type).toBe('result');
     expect(event.run_id).toBe('r1');
     expect(event.status).toBe('done');

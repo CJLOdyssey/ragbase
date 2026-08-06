@@ -1,9 +1,9 @@
-import { create } from 'zustand';
-import type { AppStatus, ChatMessage, RunResult } from '../types';
-import type { ChatState } from './chatTypes';
 import { disconnectRun } from '../api/websocket';
-import { uid } from './uid';
+import type { AppStatus, ChatMessage, RunResult } from '../types';
 import Logger from '../utils/logger';
+import { create } from 'zustand';
+import type { ChatState } from './chatTypes';
+import { uid } from './uid';
 
 export type { WsConnectionStatus, ChatState } from './chatTypes';
 
@@ -31,18 +31,54 @@ const INITIAL_STATE = {
 export const useChatStore = create<ChatState>((set, get) => ({
   ...INITIAL_STATE,
 
-  restoreSession: (sessionId: string, runId: string, messages: ChatMessage[], result: RunResult | null, status: AppStatus) => {
-    set({ currentSessionId: sessionId, currentRunId: runId, messages, result, status, error: null, currentRole: messages.length > 0 ? messages[messages.length - 1].role : null });
+  restoreSession: (
+    sessionId: string,
+    runId: string,
+    messages: ChatMessage[],
+    result: RunResult | null,
+    status: AppStatus,
+  ) => {
+    set({
+      currentSessionId: sessionId,
+      currentRunId: runId,
+      messages,
+      result,
+      status,
+      error: null,
+      currentRole:
+        messages.length > 0 ? messages[messages.length - 1].role : null,
+    });
   },
 
-  loadConversation: (messages: ChatMessage[], convId?: string | null, sessionId?: string | null) => {
+  loadConversation: (
+    messages: ChatMessage[],
+    convId?: string | null,
+    sessionId?: string | null,
+  ) => {
     const s = get();
     const prevRunId = s.currentRunId;
     if (prevRunId) {
-      Logger.info('[chat] loadConversation — disconnecting previous run %s', prevRunId);
+      Logger.info(
+        '[chat] loadConversation — disconnecting previous run %s',
+        prevRunId,
+      );
       disconnectRun(prevRunId);
     }
-    set({ messages, currentConvId: convId ?? null, currentSessionId: sessionId ?? null, currentRunId: null, streamingId: null, status: 'idle', wsStatus: 'disconnected', lastAbandonedRunId: prevRunId, error: null, skipThinking: false, continuingId: null, interruptedMessageId: null, submissionConvId: null });
+    set({
+      messages,
+      currentConvId: convId ?? null,
+      currentSessionId: sessionId ?? null,
+      currentRunId: null,
+      streamingId: null,
+      status: 'idle',
+      wsStatus: 'disconnected',
+      lastAbandonedRunId: prevRunId,
+      error: null,
+      skipThinking: false,
+      continuingId: null,
+      interruptedMessageId: null,
+      submissionConvId: null,
+    });
   },
 
   cancelRun: () => {
@@ -53,11 +89,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
       Logger.info('[chat] cancelRun — disconnecting run %s', prevRunId);
       disconnectRun(prevRunId);
     }
-    set({ currentRunId: null, streamingId: null, status: 'idle', wsStatus: 'disconnected', interruptedMessageId: sid, continuingId: null, skipThinking: false });
+    set({
+      currentRunId: null,
+      streamingId: null,
+      status: 'idle',
+      wsStatus: 'disconnected',
+      interruptedMessageId: sid,
+      continuingId: null,
+      skipThinking: false,
+    });
   },
 
   addMessage: (msg) => {
-    set((s) => ({ messages: [...s.messages, { id: msg.id || uid(), role: msg.role!, agent_name: msg.agent_name || 'Agent', content: msg.content || '', thinking: msg.thinking, round_number: msg.round_number ?? 0, created_at: new Date().toISOString() }], currentRole: msg.role! || 'Agent' }));
+    set((s) => ({
+      messages: [
+        ...s.messages,
+        {
+          id: msg.id || uid(),
+          role: msg.role!,
+          agent_name: msg.agent_name || 'Agent',
+          content: msg.content || '',
+          thinking: msg.thinking,
+          round_number: msg.round_number ?? 0,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      currentRole: msg.role! || 'Agent',
+    }));
   },
 
   setResult: (result) => set({ result }),
@@ -72,28 +130,50 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   switchVersion: (msgId, direction) => {
-    set((s) => ({ messages: s.messages.map((m) => {
-      if (m.id !== msgId || !m.versions) return m;
-      const max = m.versions.length - 1;
-      const cv = m.currentVersion ?? max;
-      const nv = direction === 'prev' ? Math.max(0, cv - 1) : Math.min(max, cv + 1);
-      return { ...m, currentVersion: nv, content: m.versions[nv], thinking: m.thinkingVersions?.[nv] ?? m.thinking ?? '' };
-    }) }));
+    set((s) => ({
+      messages: s.messages.map((m) => {
+        if (m.id !== msgId || !m.versions) return m;
+        const max = m.versions.length - 1;
+        const cv = m.currentVersion ?? max;
+        const nv =
+          direction === 'prev' ? Math.max(0, cv - 1) : Math.min(max, cv + 1);
+        return {
+          ...m,
+          currentVersion: nv,
+          content: m.versions[nv],
+          thinking: m.thinkingVersions?.[nv] ?? m.thinking ?? '',
+        };
+      }),
+    }));
   },
 
   switchUserVersion: (msgId, direction) => {
-    set((s) => ({ messages: s.messages.map((m) => {
-      if (m.id !== msgId || !m.userVersions) return m;
-      const max = m.userVersions.length - 1;
-      const cv = m.currentUserVersion ?? max;
-      const nv = direction === 'prev' ? Math.max(0, cv - 1) : Math.min(max, cv + 1);
-      return { ...m, currentUserVersion: nv, content: m.userVersions[nv] };
-    }) }));
+    set((s) => ({
+      messages: s.messages.map((m) => {
+        if (m.id !== msgId || !m.userVersions) return m;
+        const max = m.userVersions.length - 1;
+        const cv = m.currentUserVersion ?? max;
+        const nv =
+          direction === 'prev' ? Math.max(0, cv - 1) : Math.min(max, cv + 1);
+        return { ...m, currentUserVersion: nv, content: m.userVersions[nv] };
+      }),
+    }));
   },
 
   setThumbsFeedback: (msgId, value) => {
-    set((s) => ({ messages: s.messages.map((m) => m.id === msgId ? { ...m, thumbs: value } : m) }));
+    set((s) => ({
+      messages: s.messages.map((m) =>
+        m.id === msgId ? { ...m, thumbs: value } : m,
+      ),
+    }));
   },
 }));
 
-export { submitRequirement, editMessage, editAndRegenerate, regenerateMessage, retry, continueGeneration } from './chatActions';
+export {
+  submitRequirement,
+  editMessage,
+  editAndRegenerate,
+  regenerateMessage,
+  retry,
+  continueGeneration,
+} from './chatActions';

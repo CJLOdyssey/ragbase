@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle2, AlertCircle, X } from 'lucide-react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
+import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 
 interface Toast {
   id: number;
@@ -18,20 +18,26 @@ export const useToast = () => useContext(ToastContext);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const toast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
-  }, []);
+  const toast = useCallback(
+    (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+      const id = Date.now();
+      setToasts((prev) => [...prev, { id, message, type }]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 3000);
+    },
+    [],
+  );
 
-  const remove = (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id));
+  const remove = (id: number) =>
+    setToasts((prev) => prev.filter((t) => t.id !== id));
 
   const iconMap = {
     success: <CheckCircle2 size={16} className="text-green-500" />,
     error: <AlertCircle size={16} className="text-red-500" />,
-    info: <CheckCircle2 size={16} className="text-[var(--da-text-secondary)]" />,
+    info: (
+      <CheckCircle2 size={16} className="text-[var(--da-text-secondary)]" />
+    ),
   };
 
   const borderColor = {

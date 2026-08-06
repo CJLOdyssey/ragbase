@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ModelOption } from '../types/input';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './client';
 
 // ---- Sessions ----
@@ -96,7 +96,13 @@ export function useAvailableModels(): ModelOption[] {
   if (keys) {
     const fromKeys = keys
       .filter((k) => k.is_active)
-      .flatMap((k) => k.models.map((modelId) => ({ id: modelId, label: modelId, provider: k.provider })));
+      .flatMap((k) =>
+        k.models.map((modelId) => ({
+          id: modelId,
+          label: modelId,
+          provider: k.provider,
+        })),
+      );
     for (const m of fromKeys) {
       if (seen.has(m.id)) continue;
       seen.add(m.id);

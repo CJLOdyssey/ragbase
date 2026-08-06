@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { changeLanguage, getCurrentLanguage } from '@/i18n/index';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('i18n runtime', { tags: ['unit'] }, () => {
   beforeEach(() => {

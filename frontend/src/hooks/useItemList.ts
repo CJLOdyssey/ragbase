@@ -12,7 +12,10 @@ export function useItemList<T extends Item>(presets: T[]) {
   const toggle = (id: string) => {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === id);
-      if (existing) return prev.map((i) => (i.id === id ? { ...i, enabled: !i.enabled } : i));
+      if (existing)
+        return prev.map((i) =>
+          i.id === id ? { ...i, enabled: !i.enabled } : i,
+        );
       const preset = presets.find((p) => p.id === id);
       return preset ? [...prev, { ...preset, enabled: true }] : prev;
     });
@@ -26,7 +29,9 @@ export function useItemList<T extends Item>(presets: T[]) {
   };
 
   const update = (id: string, updates: Partial<T>) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } : i)));
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, ...updates } : i)),
+    );
   };
 
   const remove = (id: string) => {
@@ -36,5 +41,15 @@ export function useItemList<T extends Item>(presets: T[]) {
 
   const getEnabledCount = (): number => items.filter((i) => i.enabled).length;
 
-  return { items, setItems, editingId, setEditingId, toggle, addCustom, update, remove, getEnabledCount };
+  return {
+    items,
+    setItems,
+    editingId,
+    setEditingId,
+    toggle,
+    addCustom,
+    update,
+    remove,
+    getEnabledCount,
+  };
 }

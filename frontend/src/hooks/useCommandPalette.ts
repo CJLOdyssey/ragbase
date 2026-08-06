@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
-import type { CommandOption } from '../types/input';
+import { useCallback, useMemo, useState } from 'react';
 import type * as React from 'react';
+import type { CommandOption } from '../types/input';
 
 interface UseCommandPaletteReturn {
   open: boolean;
@@ -8,7 +8,10 @@ interface UseCommandPaletteReturn {
   filtered: CommandOption[];
   activeIndex: number;
   /** Call from the textarea's onKeyDown — returns true if the event was handled */
-  handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>, value: string) => boolean;
+  handleKeyDown: (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+    value: string,
+  ) => boolean;
   /** Select a command by index — returns the replacement text */
   selectCommand: (index: number) => string;
   /** Set active index on mouse hover */
@@ -26,7 +29,9 @@ interface UseCommandPaletteReturn {
  * Filters commands as the user types, supports keyboard navigation,
  * and returns replacement text to be set in the textarea.
  */
-export function useCommandPalette(commands: CommandOption[]): UseCommandPaletteReturn {
+export function useCommandPalette(
+  commands: CommandOption[],
+): UseCommandPaletteReturn {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -36,7 +41,9 @@ export function useCommandPalette(commands: CommandOption[]): UseCommandPaletteR
     if (!query) return commands;
     const q = query.toLowerCase();
     return commands.filter(
-      (c) => c.name.toLowerCase().includes(q) || (c.description && c.description.toLowerCase().includes(q)),
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.description && c.description.toLowerCase().includes(q)),
     );
   }, [commands, query]);
 

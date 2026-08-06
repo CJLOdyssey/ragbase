@@ -1,4 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { createStreamHandler } from '../chatStreaming';
+import { useApprovalStore } from '../streamHandler';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../utils/logger', () => ({
   default: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -9,9 +11,6 @@ vi.mock('../utils/logger', () => ({
 }));
 
 vi.mock('./uid', () => ({ uid: vi.fn(() => 'test-uid') }));
-
-import { createStreamHandler } from '../chatStreaming';
-import { useApprovalStore } from '../streamHandler';
 
 describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
   function makeBasicState() {
@@ -45,7 +44,8 @@ describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
       const set = vi.fn();
       const get = vi.fn(() => makeBasicState());
       const dispatched: string[] = [];
-      const listener = (e: Event) => dispatched.push((e as CustomEvent<string>).detail);
+      const listener = (e: Event) =>
+        dispatched.push((e as CustomEvent<string>).detail);
       window.addEventListener('browser-open-url', listener);
 
       const handler = createStreamHandler(set as never, get as never);
@@ -59,7 +59,8 @@ describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
       const set = vi.fn();
       const get = vi.fn(() => makeBasicState());
       const dispatched: string[] = [];
-      const listener = (e: Event) => dispatched.push((e as CustomEvent<string>).detail);
+      const listener = (e: Event) =>
+        dispatched.push((e as CustomEvent<string>).detail);
       window.addEventListener('browser-open-url', listener);
 
       const handler = createStreamHandler(set as never, get as never);
@@ -91,15 +92,17 @@ describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
           ...makeBasicState(),
           streamingId: 'stream-1',
           currentRunId: 'run-1',
-          messages: [{
-            id: 'stream-1',
-            role: 'agent' as const,
-            content: 'Hello',
-            thinking: '',
-            agent_name: 'Agent',
-            round_number: 0,
-            created_at: new Date().toISOString(),
-          }],
+          messages: [
+            {
+              id: 'stream-1',
+              role: 'agent' as const,
+              content: 'Hello',
+              thinking: '',
+              agent_name: 'Agent',
+              round_number: 0,
+              created_at: new Date().toISOString(),
+            },
+          ],
           continuingId: null,
           pendingVersions: null,
           pendingThinkingVersions: null,
@@ -133,15 +136,17 @@ describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
           ...makeBasicState(),
           streamingId: 'stream-1',
           currentRunId: 'run-1',
-          messages: [{
-            id: 'stream-1',
-            role: 'agent' as const,
-            content: 'Hello',
-            thinking: '',
-            agent_name: 'Agent',
-            round_number: 0,
-            created_at: new Date().toISOString(),
-          }],
+          messages: [
+            {
+              id: 'stream-1',
+              role: 'agent' as const,
+              content: 'Hello',
+              thinking: '',
+              agent_name: 'Agent',
+              round_number: 0,
+              created_at: new Date().toISOString(),
+            },
+          ],
           continuingId: null,
           pendingVersions: null,
           pendingThinkingVersions: null,
@@ -204,8 +209,18 @@ describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
         const s = {
           ...makeBasicState(),
           messages: [
-            { id: 'other-msg', role: 'agent', content: 'Other', agent_name: 'Agent' },
-            { id: 'stream-1', role: 'agent', content: 'Hello', agent_name: 'Agent' },
+            {
+              id: 'other-msg',
+              role: 'agent',
+              content: 'Other',
+              agent_name: 'Agent',
+            },
+            {
+              id: 'stream-1',
+              role: 'agent',
+              content: 'Hello',
+              agent_name: 'Agent',
+            },
           ],
           currentRunId: 'run-1',
           streamingId: 'stream-1',
@@ -216,8 +231,15 @@ describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
         };
         const result = updater(s);
         const msgs = result.messages as Array<{ id: string; thumbs?: string }>;
-        expect(msgs.find((m: { id: string; thumbs?: string }) => m.id === 'other-msg')?.thumbs).toBeUndefined();
-        expect(msgs.find((m: { id: string; thumbs?: string }) => m.id === 'stream-1')?.thumbs).toBe('down');
+        expect(
+          msgs.find(
+            (m: { id: string; thumbs?: string }) => m.id === 'other-msg',
+          )?.thumbs,
+        ).toBeUndefined();
+        expect(
+          msgs.find((m: { id: string; thumbs?: string }) => m.id === 'stream-1')
+            ?.thumbs,
+        ).toBe('down');
       }
     });
   });
@@ -247,11 +269,29 @@ describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
         const s = {
           ...makeBasicState(),
           streamingId: null,
-          messages: [{ id: 'stream-1', role: 'agent' as const, content: 'done', agent_name: 'writer', round_number: 0, created_at: new Date().toISOString() }],
+          messages: [
+            {
+              id: 'stream-1',
+              role: 'agent' as const,
+              content: 'done',
+              agent_name: 'writer',
+              round_number: 0,
+              created_at: new Date().toISOString(),
+            },
+          ],
         };
         const result = updater(s);
-        const msgs = result.messages as Array<{ id: string; verdicts?: Record<string, { role: string; approved: boolean; rounds: number }>; round?: number }>;
-        expect(msgs.find((m) => m.id === 'stream-1')?.verdicts?.writer).toEqual({ role: 'writer', approved: true, rounds: 2 });
+        const msgs = result.messages as Array<{
+          id: string;
+          verdicts?: Record<
+            string,
+            { role: string; approved: boolean; rounds: number }
+          >;
+          round?: number;
+        }>;
+        expect(msgs.find((m) => m.id === 'stream-1')?.verdicts?.writer).toEqual(
+          { role: 'writer', approved: true, rounds: 2 },
+        );
         expect(msgs.find((m) => m.id === 'stream-1')?.round).toBe(2);
       }
     });
@@ -282,13 +322,22 @@ describe('chatStreaming terminal events', { tags: ['unit'] }, () => {
       const handler = createStreamHandler(set as never, get as never);
       handler({ type: 'approval_request', run_id: 'run-1', node: 'reviewer' });
 
-      expect(useApprovalStore.getState().request).toEqual({ runId: 'run-1', node: 'reviewer' });
+      expect(useApprovalStore.getState().request).toEqual({
+        runId: 'run-1',
+        node: 'reviewer',
+      });
       const updater = set.mock.calls[0]?.[0];
       if (typeof updater === 'function') {
         const s = { ...makeBasicState(), streamingId: 'stream-1' };
         const result = updater(s);
-        const msgs = result.messages as Array<{ id: string; approvalRequest?: { runId: string; node: string } }>;
-        expect(msgs.find((m) => m.id === 'stream-1')?.approvalRequest).toEqual({ runId: 'run-1', node: 'reviewer' });
+        const msgs = result.messages as Array<{
+          id: string;
+          approvalRequest?: { runId: string; node: string };
+        }>;
+        expect(msgs.find((m) => m.id === 'stream-1')?.approvalRequest).toEqual({
+          runId: 'run-1',
+          node: 'reviewer',
+        });
       }
       useApprovalStore.getState().setRequest(null);
     });

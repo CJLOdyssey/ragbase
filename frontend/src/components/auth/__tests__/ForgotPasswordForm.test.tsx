@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('ForgotPasswordForm', { tags: ['unit'] }, () => {
   const defaultProps = {
@@ -29,7 +29,9 @@ describe('ForgotPasswordForm', { tags: ['unit'] }, () => {
 
   it('calls onSendCode with email', async () => {
     render(<ForgotPasswordForm {...defaultProps} />);
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'test@example.com' },
+    });
     fireEvent.click(screen.getByText('发送验证码'));
     await waitFor(() => {
       expect(defaultProps.onSendCode).toHaveBeenCalledWith('test@example.com');
@@ -38,17 +40,23 @@ describe('ForgotPasswordForm', { tags: ['unit'] }, () => {
 
   it('transitions to code step after successful send', async () => {
     render(<ForgotPasswordForm {...defaultProps} />);
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'test@example.com' },
+    });
     fireEvent.click(screen.getByText('发送验证码'));
     await waitFor(() => {
-      expect(screen.getByText(/验证码已发送至 test@example.com/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/验证码已发送至 test@example.com/),
+      ).toBeInTheDocument();
     });
   });
 
   it('shows local error when onSendCode fails', async () => {
     const onSendCode = vi.fn().mockRejectedValue(new Error('fail'));
     render(<ForgotPasswordForm {...defaultProps} onSendCode={onSendCode} />);
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'test@example.com' },
+    });
     fireEvent.click(screen.getByText('发送验证码'));
     expect(await screen.findByText('发送失败')).toBeInTheDocument();
   });
@@ -57,13 +65,21 @@ describe('ForgotPasswordForm', { tags: ['unit'] }, () => {
     const onSendCode = vi.fn().mockResolvedValue(undefined);
     render(<ForgotPasswordForm {...defaultProps} onSendCode={onSendCode} />);
 
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'test@example.com' },
+    });
     fireEvent.click(screen.getByText('发送验证码'));
     await screen.findByText(/验证码已发送/);
 
-    fireEvent.change(screen.getByPlaceholderText('验证码'), { target: { value: '123456' } });
-    fireEvent.change(screen.getByPlaceholderText('新密码 (至少8位)'), { target: { value: 'NewPass1!' } });
-    fireEvent.change(screen.getByPlaceholderText('确认新密码'), { target: { value: 'DifferentPass1!' } });
+    fireEvent.change(screen.getByPlaceholderText('验证码'), {
+      target: { value: '123456' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('新密码 (至少8位)'), {
+      target: { value: 'NewPass1!' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('确认新密码'), {
+      target: { value: 'DifferentPass1!' },
+    });
     fireEvent.click(screen.getByText('重置密码'));
 
     expect(await screen.findByText('两次密码输入不一致')).toBeInTheDocument();
@@ -73,17 +89,29 @@ describe('ForgotPasswordForm', { tags: ['unit'] }, () => {
     const onSendCode = vi.fn().mockResolvedValue(undefined);
     render(<ForgotPasswordForm {...defaultProps} onSendCode={onSendCode} />);
 
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'test@example.com' },
+    });
     fireEvent.click(screen.getByText('发送验证码'));
     await screen.findByText(/验证码已发送/);
 
-    fireEvent.change(screen.getByPlaceholderText('验证码'), { target: { value: '123456' } });
-    fireEvent.change(screen.getByPlaceholderText('新密码 (至少8位)'), { target: { value: 'NewPass1!' } });
-    fireEvent.change(screen.getByPlaceholderText('确认新密码'), { target: { value: 'NewPass1!' } });
+    fireEvent.change(screen.getByPlaceholderText('验证码'), {
+      target: { value: '123456' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('新密码 (至少8位)'), {
+      target: { value: 'NewPass1!' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('确认新密码'), {
+      target: { value: 'NewPass1!' },
+    });
     fireEvent.click(screen.getByText('重置密码'));
 
     await waitFor(() => {
-      expect(defaultProps.onReset).toHaveBeenCalledWith('test@example.com', '123456', 'NewPass1!');
+      expect(defaultProps.onReset).toHaveBeenCalledWith(
+        'test@example.com',
+        '123456',
+        'NewPass1!',
+      );
     });
   });
 
@@ -91,13 +119,21 @@ describe('ForgotPasswordForm', { tags: ['unit'] }, () => {
     const onSendCode = vi.fn().mockResolvedValue(undefined);
     render(<ForgotPasswordForm {...defaultProps} onSendCode={onSendCode} />);
 
-    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+      target: { value: 'test@example.com' },
+    });
     fireEvent.click(screen.getByText('发送验证码'));
     await screen.findByText(/验证码已发送/);
 
-    fireEvent.change(screen.getByPlaceholderText('验证码'), { target: { value: '123456' } });
-    fireEvent.change(screen.getByPlaceholderText('新密码 (至少8位)'), { target: { value: 'NewPass1!' } });
-    fireEvent.change(screen.getByPlaceholderText('确认新密码'), { target: { value: 'NewPass1!' } });
+    fireEvent.change(screen.getByPlaceholderText('验证码'), {
+      target: { value: '123456' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('新密码 (至少8位)'), {
+      target: { value: 'NewPass1!' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('确认新密码'), {
+      target: { value: 'NewPass1!' },
+    });
     fireEvent.click(screen.getByText('重置密码'));
 
     await waitFor(() => {

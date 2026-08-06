@@ -29,10 +29,14 @@ export class TimeoutError extends Error {
   }
 }
 
-function extractErrorMessage(data: Record<string, unknown> | undefined, fallback: string): string {
+function extractErrorMessage(
+  data: Record<string, unknown> | undefined,
+  fallback: string,
+): string {
   const detail = data?.detail;
   if (typeof detail === 'string') return detail;
-  const nested = (detail as { error?: { message?: string } } | undefined)?.error?.message;
+  const nested = (detail as { error?: { message?: string } } | undefined)?.error
+    ?.message;
   if (nested) return nested;
   if (data?.message) return data.message as string;
   return fallback;
@@ -46,7 +50,9 @@ function toApiError(
 ): never {
   switch (status) {
     case 401: {
-      window.dispatchEvent(new CustomEvent('auth:unauthorized', { detail: { status: 401 } }));
+      window.dispatchEvent(
+        new CustomEvent('auth:unauthorized', { detail: { status: 401 } }),
+      );
       throw new ApiError(message, status, 'UNAUTHORIZED', data);
     }
     case 403:
@@ -56,7 +62,10 @@ function toApiError(
     case 422:
       throw new ApiError(message, status, 'VALIDATION_ERROR', data);
     case 429:
-      throw new ApiError(message, status, 'RATE_LIMITED', { ...data, retryAfter });
+      throw new ApiError(message, status, 'RATE_LIMITED', {
+        ...data,
+        retryAfter,
+      });
     case 500:
     case 502:
     case 503:
@@ -80,7 +89,8 @@ export function normalizeError(err: unknown): never {
     const status = err.response.status;
     const data = err.response.data as Record<string, unknown> | undefined;
     const message = extractErrorMessage(data, err.message);
-    const retryAfter = status === 429 ? err.response.headers['retry-after'] : undefined;
+    const retryAfter =
+      status === 429 ? err.response.headers['retry-after'] : undefined;
     return toApiError(status, message, data, retryAfter);
   }
   throw err;

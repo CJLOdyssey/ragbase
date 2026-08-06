@@ -1,9 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useMessageComposer } from '../useMessageComposer';
 import type * as React from 'react';
+import { useMessageComposer } from '../useMessageComposer';
+import { act, renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
-function keyEvent(partial: Partial<React.KeyboardEvent<HTMLTextAreaElement>>): React.KeyboardEvent<HTMLTextAreaElement> {
+function keyEvent(
+  partial: Partial<React.KeyboardEvent<HTMLTextAreaElement>>,
+): React.KeyboardEvent<HTMLTextAreaElement> {
   return {
     key: 'Enter',
     shiftKey: false,
@@ -21,7 +23,9 @@ describe('useMessageComposer', { tags: ['unit'] }, () => {
     const { result } = renderHook(() => useMessageComposer({ onSend }));
     act(() => result.current.setValue('  hello  '));
     let ok = false;
-    act(() => { ok = result.current.submit(); });
+    act(() => {
+      ok = result.current.submit();
+    });
     expect(ok).toBe(true);
     expect(onSend).toHaveBeenCalledWith('hello');
     expect(result.current.value).toBe('');
@@ -32,7 +36,9 @@ describe('useMessageComposer', { tags: ['unit'] }, () => {
     const { result } = renderHook(() => useMessageComposer({ onSend }));
     act(() => result.current.setValue('   '));
     let ok = true;
-    act(() => { ok = result.current.submit(); });
+    act(() => {
+      ok = result.current.submit();
+    });
     expect(ok).toBe(false);
     expect(onSend).not.toHaveBeenCalled();
     expect(result.current.value).toBe('');
@@ -40,7 +46,9 @@ describe('useMessageComposer', { tags: ['unit'] }, () => {
 
   it('Enter sends in enter mode', () => {
     const onSend = vi.fn();
-    const { result } = renderHook(() => useMessageComposer({ onSend, sendMode: 'enter' }));
+    const { result } = renderHook(() =>
+      useMessageComposer({ onSend, sendMode: 'enter' }),
+    );
     act(() => result.current.setValue('hi'));
     act(() => result.current.handleKeyDown(keyEvent({ shiftKey: false })));
     expect(onSend).toHaveBeenCalledWith('hi');
@@ -48,7 +56,9 @@ describe('useMessageComposer', { tags: ['unit'] }, () => {
 
   it('Shift+Enter inserts newline instead of sending', () => {
     const onSend = vi.fn();
-    const { result } = renderHook(() => useMessageComposer({ onSend, sendMode: 'enter' }));
+    const { result } = renderHook(() =>
+      useMessageComposer({ onSend, sendMode: 'enter' }),
+    );
     act(() => result.current.setValue('hi'));
     act(() => result.current.handleKeyDown(keyEvent({ shiftKey: true })));
     expect(onSend).not.toHaveBeenCalled();
@@ -56,7 +66,9 @@ describe('useMessageComposer', { tags: ['unit'] }, () => {
 
   it('Ctrl+Enter sends in ctrl-enter mode, plain Enter does not', () => {
     const onSend = vi.fn();
-    const { result } = renderHook(() => useMessageComposer({ onSend, sendMode: 'ctrl-enter' }));
+    const { result } = renderHook(() =>
+      useMessageComposer({ onSend, sendMode: 'ctrl-enter' }),
+    );
     act(() => result.current.setValue('hi'));
     act(() => result.current.handleKeyDown(keyEvent({ ctrlKey: true })));
     expect(onSend).toHaveBeenCalledTimes(1);
@@ -68,12 +80,18 @@ describe('useMessageComposer', { tags: ['unit'] }, () => {
     const onSend = vi.fn();
     const { result } = renderHook(() => useMessageComposer({ onSend }));
     act(() => result.current.setValue('hi'));
-    act(() => result.current.handleKeyDown(keyEvent({ nativeEvent: { isComposing: true } })));
+    act(() =>
+      result.current.handleKeyDown(
+        keyEvent({ nativeEvent: { isComposing: true } }),
+      ),
+    );
     expect(onSend).not.toHaveBeenCalled();
   });
 
   it('reports hasContent and charCount', () => {
-    const { result } = renderHook(() => useMessageComposer({ onSend: vi.fn(), maxLength: 50 }));
+    const { result } = renderHook(() =>
+      useMessageComposer({ onSend: vi.fn(), maxLength: 50 }),
+    );
     expect(result.current.hasContent).toBe(false);
     expect(result.current.charCount).toBe(0);
     expect(result.current.maxLength).toBe(50);

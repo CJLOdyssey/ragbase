@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { expectNoA11yViolations } from '../../test/a11y-setup';
+import Header from '../Header';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Header from '../Header';
-import { expectNoA11yViolations } from '../../test/a11y-setup';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('Header', { tags: ['unit'] }, () => {
   it('renders sidebar toggle button', () => {

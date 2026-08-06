@@ -18,11 +18,20 @@ const RESERVED_NAMES = ['新建', '默认', 'new', 'default'];
 /** 危险字符（XSS 风险） */
 const DANGEROUS_CHARS = /[<>&"'/]/;
 
-export function validateInput(input: string): { valid: boolean; sanitized: string; error?: string } {
+export function validateInput(input: string): {
+  valid: boolean;
+  sanitized: string;
+  error?: string;
+} {
   const trimmed = input.trim();
-  if (!trimmed) return { valid: false, sanitized: '', error: 'Input cannot be empty' };
+  if (!trimmed)
+    return { valid: false, sanitized: '', error: 'Input cannot be empty' };
   if (trimmed.length > MAX_INPUT_LENGTH) {
-    return { valid: false, sanitized: '', error: `Input too long (max ${MAX_INPUT_LENGTH} characters)` };
+    return {
+      valid: false,
+      sanitized: '',
+      error: `Input too long (max ${MAX_INPUT_LENGTH} characters)`,
+    };
   }
   const sanitized = trimmed.replace(CONTROL_CHARS, '');
   return { valid: true, sanitized };
@@ -84,7 +93,10 @@ export function validateName(
 /**
  * 检查团队数量是否超限
  */
-export function checkTeamLimit(teamCount: number): { valid: boolean; error?: string } {
+export function checkTeamLimit(teamCount: number): {
+  valid: boolean;
+  error?: string;
+} {
   if (teamCount >= MAX_TEAMS) {
     return { valid: false, error: `最多只能创建 ${MAX_TEAMS} 个团队` };
   }
@@ -94,9 +106,15 @@ export function checkTeamLimit(teamCount: number): { valid: boolean; error?: str
 /**
  * 检查每团队 Agent 数量是否超限
  */
-export function checkAgentLimit(agentCount: number): { valid: boolean; error?: string } {
+export function checkAgentLimit(agentCount: number): {
+  valid: boolean;
+  error?: string;
+} {
   if (agentCount >= MAX_AGENTS_PER_TEAM) {
-    return { valid: false, error: `每个团队最多 ${MAX_AGENTS_PER_TEAM} 个 Agent` };
+    return {
+      valid: false,
+      error: `每个团队最多 ${MAX_AGENTS_PER_TEAM} 个 Agent`,
+    };
   }
   return { valid: true };
 }

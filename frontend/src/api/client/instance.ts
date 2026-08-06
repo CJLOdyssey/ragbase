@@ -1,6 +1,10 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
-import { normalizeError } from './errors';
+import axios, {
+  type AxiosError,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import { refreshTokens } from './auth';
+import { normalizeError } from './errors';
 import Logger from '../../utils/logger';
 
 const api = axios.create({
@@ -15,7 +19,11 @@ const api = axios.create({
 const REFRESH_KEY = 'agentstudio_refresh_token';
 
 function getRefreshToken(): string | null {
-  try { return localStorage.getItem(REFRESH_KEY); } catch { return null; }
+  try {
+    return localStorage.getItem(REFRESH_KEY);
+  } catch {
+    return null;
+  }
 }
 let refreshToken: string | null = getRefreshToken();
 
@@ -62,7 +70,11 @@ if (api.interceptors?.request) {
     // Access token is in httpOnly cookie (auto-sent via withCredentials), no Authorization header needed
     let uid = localStorage.getItem('agentstudio_user_id');
     if (!uid) {
-      uid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+      uid =
+        'u_' +
+        Date.now().toString(36) +
+        '_' +
+        Math.random().toString(36).slice(2, 8);
       localStorage.setItem('agentstudio_user_id', uid);
     }
     config.headers['X-User-ID'] = uid;
@@ -74,7 +86,12 @@ if (api.interceptors?.request) {
 if (api.interceptors?.response) {
   api.interceptors.response.use(
     (response: AxiosResponse) => {
-      Logger.debug('[API] %s %s -> %s', response.config.method?.toUpperCase(), response.config.url, response.status);
+      Logger.debug(
+        '[API] %s %s -> %s',
+        response.config.method?.toUpperCase(),
+        response.config.url,
+        response.status,
+      );
       return response;
     },
     async (error: unknown) => {
@@ -84,7 +101,13 @@ if (api.interceptors?.response) {
       const method = retryConfig?.method?.toUpperCase() ?? '?';
       const url = retryConfig?.url ?? '?';
       if (status !== 401) {
-        Logger.error('[API] %s %s -> %s %s', method, url, status, axiosError.message);
+        Logger.error(
+          '[API] %s %s -> %s %s',
+          method,
+          url,
+          status,
+          axiosError.message,
+        );
       }
       if (!retryConfig || retryConfig._retry || status !== 401) {
         return Promise.reject(normalizeError(error));

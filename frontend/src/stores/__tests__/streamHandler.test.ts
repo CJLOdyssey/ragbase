@@ -1,4 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import {
+  handleStreamEvent,
+  handleStreamStart,
+  handleThinkingStreamEvent,
+  handleThinkingStreamNew,
+} from '../streamHandler';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../utils/logger', () => ({
   default: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -9,13 +15,6 @@ vi.mock('../utils/logger', () => ({
 }));
 
 vi.mock('./uid', () => ({ uid: vi.fn(() => 'uid-fixed') }));
-
-import {
-  handleStreamStart,
-  handleStreamEvent,
-  handleThinkingStreamNew,
-  handleThinkingStreamEvent,
-} from '../streamHandler';
 
 function makeMsg(id: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -68,10 +67,16 @@ describe('handleStreamStart', { tags: ['unit'] }, () => {
   it('replaces continuing message when continuingId present', () => {
     const s = makeState({
       continuingId: 'msg-1',
-      messages: [makeMsg('msg-1', { content: 'interrupted', thinking: 'was thinking' })],
+      messages: [
+        makeMsg('msg-1', { content: 'interrupted', thinking: 'was thinking' }),
+      ],
     });
 
-    const result = handleStreamStart(s as never, { type: 'stream', agent_name: 'Bot' }, ' continues');
+    const result = handleStreamStart(
+      s as never,
+      { type: 'stream', agent_name: 'Bot' },
+      ' continues',
+    );
 
     expect(result.continuingId).toBeNull();
     expect(result.messages![0].content).toBe('interrupted continues');
@@ -115,7 +120,11 @@ describe('handleStreamStart', { tags: ['unit'] }, () => {
       ],
     });
 
-    const result = handleStreamStart(s as never, { type: 'stream', agent_name: 'Bot' }, ' fresh');
+    const result = handleStreamStart(
+      s as never,
+      { type: 'stream', agent_name: 'Bot' },
+      ' fresh',
+    );
 
     expect(result.editTargetId).toBeNull();
     // Old answer archived as a version; the new stream starts FRESH (not old+new).
@@ -124,7 +133,11 @@ describe('handleStreamStart', { tags: ['unit'] }, () => {
     expect(result.messages![1].thinking).toBe('');
     expect(result.messages![1].currentVersion).toBe(0);
     // Other messages preserved — nothing deleted.
-    expect(result.messages!.map((m) => m.id)).toEqual(['u1', result.messages![1].id, 'a2']);
+    expect(result.messages!.map((m) => m.id)).toEqual([
+      'u1',
+      result.messages![1].id,
+      'a2',
+    ]);
   });
 });
 
@@ -139,9 +152,14 @@ describe('handleStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>(['run-1']);
 
-    handleStreamEvent(set as never, get, activeStreams, { type: 'stream', content: ' world' } as never);
+    handleStreamEvent(set as never, get, activeStreams, {
+      type: 'stream',
+      content: ' world',
+    } as never);
 
-    const updateFn = set.mock.calls[0][0] as (state: typeof s) => Partial<typeof s>;
+    const updateFn = set.mock.calls[0][0] as (
+      state: typeof s,
+    ) => Partial<typeof s>;
     const result = updateFn(s) as { messages: Array<{ content: string }> };
     expect(result.messages![0].content).toBe('Hello world');
   });
@@ -152,7 +170,10 @@ describe('handleStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn();
     const activeStreams = new Set<string>();
 
-    handleStreamEvent(set as never, get, activeStreams, { type: 'stream', content: '' } as never);
+    handleStreamEvent(set as never, get, activeStreams, {
+      type: 'stream',
+      content: '',
+    } as never);
 
     expect(set).not.toHaveBeenCalled();
   });
@@ -166,11 +187,16 @@ describe('handleStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>();
 
-    handleStreamEvent(set as never, get, activeStreams, { type: 'stream', content: 'hi' } as never);
+    handleStreamEvent(set as never, get, activeStreams, {
+      type: 'stream',
+      content: 'hi',
+    } as never);
 
     expect(activeStreams.has('run-1')).toBe(true);
 
-    const updateFn = set.mock.calls[0][0] as (state: typeof s) => Partial<typeof s>;
+    const updateFn = set.mock.calls[0][0] as (
+      state: typeof s,
+    ) => Partial<typeof s>;
     const result = updateFn(s) as { messages: Array<{ content: string }> };
     expect(result.messages![0].content).toBe('hi');
   });
@@ -183,9 +209,14 @@ describe('handleStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>(['run-1']);
 
-    handleStreamEvent(set as never, get, activeStreams, { type: 'stream', content: 'x' } as never);
+    handleStreamEvent(set as never, get, activeStreams, {
+      type: 'stream',
+      content: 'x',
+    } as never);
 
-    const updateFn = set.mock.calls[0][0] as (state: typeof s) => Partial<typeof s>;
+    const updateFn = set.mock.calls[0][0] as (
+      state: typeof s,
+    ) => Partial<typeof s>;
     const result = updateFn(s) as { messages: Array<{ content: string }> };
     expect(result.messages![0].content).toBe('x');
   });
@@ -194,7 +225,11 @@ describe('handleStreamEvent', { tags: ['unit'] }, () => {
 describe('handleThinkingStreamNew', { tags: ['unit'] }, () => {
   it('creates new message with thinking chunk', () => {
     const s = makeState();
-    const result = handleThinkingStreamNew(s as never, { type: 'thinking_stream', agent_name: 'Bot' }, 'think content');
+    const result = handleThinkingStreamNew(
+      s as never,
+      { type: 'thinking_stream', agent_name: 'Bot' },
+      'think content',
+    );
 
     expect(result.messages![0].thinking).toBe('think content');
     expect(result.messages![0].content).toBe('');
@@ -207,7 +242,11 @@ describe('handleThinkingStreamNew', { tags: ['unit'] }, () => {
       messages: [makeMsg('msg-1', { thinking: 'old-think' })],
     });
 
-    const result = handleThinkingStreamNew(s as never, { type: 'thinking_stream' }, ' more');
+    const result = handleThinkingStreamNew(
+      s as never,
+      { type: 'thinking_stream' },
+      ' more',
+    );
 
     expect(result.continuingId).toBeNull();
     expect(result.messages![0].thinking).toBe('old-think more');
@@ -219,7 +258,11 @@ describe('handleThinkingStreamNew', { tags: ['unit'] }, () => {
       pendingThinkingVersions: ['t0'],
     });
 
-    const result = handleThinkingStreamNew(s as never, { type: 'thinking_stream' }, 'new-think');
+    const result = handleThinkingStreamNew(
+      s as never,
+      { type: 'thinking_stream' },
+      'new-think',
+    );
 
     expect(result.messages![0].versions).toBeDefined();
     expect(result.messages![0].thinkingVersions).toBeDefined();
@@ -236,7 +279,11 @@ describe('handleThinkingStreamNew', { tags: ['unit'] }, () => {
       ],
     });
 
-    const result = handleThinkingStreamNew(s as never, { type: 'thinking_stream' }, ' new think');
+    const result = handleThinkingStreamNew(
+      s as never,
+      { type: 'thinking_stream' },
+      ' new think',
+    );
 
     expect(result.editTargetId).toBeNull();
     // New thinking starts fresh; old thinking archived into thinkingVersions.
@@ -244,7 +291,11 @@ describe('handleThinkingStreamNew', { tags: ['unit'] }, () => {
     expect(result.messages![1].versions).toEqual(['old answer']);
     expect(result.messages![1].thinkingVersions).toEqual(['old think']);
     expect(result.messages![1].content).toBe('');
-    expect(result.messages!.map((m) => m.id)).toEqual(['u1', result.messages![1].id, 'a2']);
+    expect(result.messages!.map((m) => m.id)).toEqual([
+      'u1',
+      result.messages![1].id,
+      'a2',
+    ]);
   });
 });
 
@@ -259,9 +310,14 @@ describe('handleThinkingStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>(['run-1']);
 
-    handleThinkingStreamEvent(set as never, get, activeStreams, { type: 'thinking_stream', content: ' more' } as never);
+    handleThinkingStreamEvent(set as never, get, activeStreams, {
+      type: 'thinking_stream',
+      content: ' more',
+    } as never);
 
-    const updateFn = set.mock.calls[0][0] as (state: typeof s) => Partial<typeof s>;
+    const updateFn = set.mock.calls[0][0] as (
+      state: typeof s,
+    ) => Partial<typeof s>;
     const result = updateFn(s) as { messages: Array<{ thinking: string }> };
     expect(result.messages![0].thinking).toBe('existing more');
   });
@@ -272,7 +328,10 @@ describe('handleThinkingStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn();
     const activeStreams = new Set<string>();
 
-    handleThinkingStreamEvent(set as never, get, activeStreams, { type: 'thinking_stream', content: '' } as never);
+    handleThinkingStreamEvent(set as never, get, activeStreams, {
+      type: 'thinking_stream',
+      content: '',
+    } as never);
 
     expect(set).not.toHaveBeenCalled();
   });
@@ -287,7 +346,10 @@ describe('handleThinkingStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>();
 
-    handleThinkingStreamEvent(set as never, get, activeStreams, { type: 'thinking_stream', content: 'think' } as never);
+    handleThinkingStreamEvent(set as never, get, activeStreams, {
+      type: 'thinking_stream',
+      content: 'think',
+    } as never);
 
     expect(activeStreams.has('run-1')).toBe(true);
   });
@@ -302,9 +364,14 @@ describe('handleThinkingStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>(['run-1']);
 
-    handleThinkingStreamEvent(set as never, get, activeStreams, { type: 'thinking_stream', content: 'new' } as never);
+    handleThinkingStreamEvent(set as never, get, activeStreams, {
+      type: 'thinking_stream',
+      content: 'new',
+    } as never);
 
-    const updateFn = set.mock.calls[0][0] as (state: typeof s) => Partial<typeof s>;
+    const updateFn = set.mock.calls[0][0] as (
+      state: typeof s,
+    ) => Partial<typeof s>;
     const result = updateFn(s) as { messages: Array<{ thinking: string }> };
     expect(result.messages![0].thinking).toBe('new');
   });
@@ -319,10 +386,15 @@ describe('handleThinkingStreamEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>(); // not active
 
-    handleThinkingStreamEvent(set as never, get, activeStreams, { type: 'thinking_stream', content: 'chunk' } as never);
+    handleThinkingStreamEvent(set as never, get, activeStreams, {
+      type: 'thinking_stream',
+      content: 'chunk',
+    } as never);
 
     expect(activeStreams.has('run-1')).toBe(true);
-    const updateFn = set.mock.calls[0][0] as (state: typeof s) => Partial<typeof s>;
+    const updateFn = set.mock.calls[0][0] as (
+      state: typeof s,
+    ) => Partial<typeof s>;
     const result = updateFn(s) as { messages: Array<{ thinking: string }> };
     expect(result.messages![0].thinking).toBe('oldchunk');
   });

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ModelOption } from '../../types/input';
@@ -24,11 +24,15 @@ function ModelOptionButton({
 }) {
   const { t } = useTranslation();
   const badge =
-    m.status === 'deprecated'
-      ? <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">{t('model.statusDeprecated')}</span>
-      : m.status === 'sunset'
-        ? <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">{t('model.statusSunset')}</span>
-        : null;
+    m.status === 'deprecated' ? (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">
+        {t('model.statusDeprecated')}
+      </span>
+    ) : m.status === 'sunset' ? (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-danger)_15%,transparent)] text-[var(--color-danger)]">
+        {t('model.statusSunset')}
+      </span>
+    ) : null;
   return (
     <button
       data-model-option
@@ -48,7 +52,12 @@ function modelsReady(models: ModelOption[], selectedModel: string): boolean {
   return models.length > 0 || models.some((m) => m.id === selectedModel);
 }
 
-function SelectorLabel({ hasLoadedOnce, isEmpty, current, selectedModel }: {
+function SelectorLabel({
+  hasLoadedOnce,
+  isEmpty,
+  current,
+  selectedModel,
+}: {
   hasLoadedOnce: boolean;
   isEmpty: boolean;
   current: ModelOption | undefined;
@@ -63,10 +72,20 @@ function SelectorLabel({ hasLoadedOnce, isEmpty, current, selectedModel }: {
       </span>
     );
   }
-  return <>{isEmpty ? t('model.configure') : (current?.label ?? t('model.noModels'))}</>;
+  return (
+    <>
+      {isEmpty ? t('model.configure') : (current?.label ?? t('model.noModels'))}
+    </>
+  );
 }
 
-function OptionsList({ providers, models, selectedModel, focusIdx, onSelect }: {
+function OptionsList({
+  providers,
+  models,
+  selectedModel,
+  focusIdx,
+  onSelect,
+}: {
   providers: [string, ModelOption[]][];
   models: ModelOption[];
   selectedModel: string;
@@ -79,7 +98,9 @@ function OptionsList({ providers, models, selectedModel, focusIdx, onSelect }: {
       {providers.length > 1
         ? providers.map(([provider, list]) => (
             <div key={provider} className="flex flex-col">
-              <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{provider}</div>
+              <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                {provider}
+              </div>
               {list.map((m) => (
                 <ModelOptionButton
                   key={m.id}
@@ -104,7 +125,12 @@ function OptionsList({ providers, models, selectedModel, focusIdx, onSelect }: {
   );
 }
 
-export default function ModelSelector({ models, selectedModel, onChange, onConfigure }: Props) {
+export default function ModelSelector({
+  models,
+  selectedModel,
+  onChange,
+  onConfigure,
+}: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -135,7 +161,10 @@ export default function ModelSelector({ models, selectedModel, onChange, onConfi
   }, [models]);
 
   // All options flattened for keyboard navigation
-  const allOptions = useMemo(() => providers.flatMap(([, list]) => list), [providers]);
+  const allOptions = useMemo(
+    () => providers.flatMap(([, list]) => list),
+    [providers],
+  );
 
   // Close on outside click
   useEffect(() => {
@@ -215,14 +244,34 @@ export default function ModelSelector({ models, selectedModel, onChange, onConfi
         aria-haspopup={isEmpty ? undefined : 'listbox'}
       >
         <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-          <SelectorLabel hasLoadedOnce={hasLoadedOnce} isEmpty={isEmpty} current={current} selectedModel={selectedModel} />
+          <SelectorLabel
+            hasLoadedOnce={hasLoadedOnce}
+            isEmpty={isEmpty}
+            current={current}
+            selectedModel={selectedModel}
+          />
         </span>
-        {hasLoadedOnce && <ChevronDown size={10} className={`flex-shrink-0 text-[var(--color-text-muted)] transition-transform duration-150 ease ${open ? 'rotate-180' : ''}`} />}
+        {hasLoadedOnce && (
+          <ChevronDown
+            size={10}
+            className={`flex-shrink-0 text-[var(--color-text-muted)] transition-transform duration-150 ease ${open ? 'rotate-180' : ''}`}
+          />
+        )}
       </button>
 
       {open && !isEmpty && (
-        <div className="absolute bottom-[calc(100%+8px)] left-0 min-w-[200px] max-h-[280px] overflow-y-auto bg-[var(--color-surface-raised)] rounded-[10px] shadow-[0_12px_40px_rgba(0,0,0,0.25)] z-[500] p-1" ref={listRef} role="listbox">
-          <OptionsList providers={providers} models={models} selectedModel={selectedModel} focusIdx={focusIdx} onSelect={handleSelect} />
+        <div
+          className="absolute bottom-[calc(100%+8px)] left-0 min-w-[200px] max-h-[280px] overflow-y-auto bg-[var(--color-surface-raised)] rounded-[10px] shadow-[0_12px_40px_rgba(0,0,0,0.25)] z-[500] p-1"
+          ref={listRef}
+          role="listbox"
+        >
+          <OptionsList
+            providers={providers}
+            models={models}
+            selectedModel={selectedModel}
+            focusIdx={focusIdx}
+            onSelect={handleSelect}
+          />
         </div>
       )}
     </div>

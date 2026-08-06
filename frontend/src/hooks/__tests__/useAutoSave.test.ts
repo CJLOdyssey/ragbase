@@ -1,11 +1,14 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
 import { useAutoSave } from '../useAutoSave';
+import { renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let mockAutoSave = true;
 
 vi.mock('../../contexts/SettingsContext', () => ({
-  useSettings: () => ({ settings: { autoSave: mockAutoSave }, updateSettings: vi.fn() }),
+  useSettings: () => ({
+    settings: { autoSave: mockAutoSave },
+    updateSettings: vi.fn(),
+  }),
 }));
 
 describe('useAutoSave', { tags: ['unit'] }, () => {
@@ -40,8 +43,15 @@ describe('useAutoSave', { tags: ['unit'] }, () => {
   });
 
   it('survives localStorage quota errors', () => {
-    const setItem = vi.fn(() => { throw new Error('QuotaExceeded'); });
-    vi.stubGlobal('localStorage', { getItem: vi.fn(), setItem, clear: vi.fn(), removeItem: vi.fn() });
+    const setItem = vi.fn(() => {
+      throw new Error('QuotaExceeded');
+    });
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(),
+      setItem,
+      clear: vi.fn(),
+      removeItem: vi.fn(),
+    });
     renderHook(() => useAutoSave('draft', { text: 'hi' }));
     vi.advanceTimersByTime(2000);
     expect(setItem).toHaveBeenCalled();
@@ -49,7 +59,9 @@ describe('useAutoSave', { tags: ['unit'] }, () => {
   });
 
   it('resets the timer when data changes', () => {
-    const { rerender } = renderHook(({ data }) => useAutoSave('draft', data), { initialProps: { data: { v: 1 } } });
+    const { rerender } = renderHook(({ data }) => useAutoSave('draft', data), {
+      initialProps: { data: { v: 1 } },
+    });
     vi.advanceTimersByTime(1000);
     rerender({ data: { v: 2 } });
     vi.advanceTimersByTime(1000);

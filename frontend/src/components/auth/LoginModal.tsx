@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { useAuth, type AuthModalView } from './AuthContext';
 import ForgotPasswordForm from './ForgotPasswordForm';
 import { LoginFormFields, RegisterFormFields } from './LoginFormFields';
@@ -47,7 +47,10 @@ export default function LoginModal({ onClose }: Props) {
   }
 
   async function handleSendCode() {
-    if (!email) { setError('请先输入邮箱'); return; }
+    if (!email) {
+      setError('请先输入邮箱');
+      return;
+    }
     if (codeCooldown > 0) return;
     setError('');
     setSubmitting(true);
@@ -56,7 +59,10 @@ export default function LoginModal({ onClose }: Props) {
       setCodeCooldown(60);
       const id = setInterval(() => {
         setCodeCooldown((c) => {
-          if (c <= 1) { clearInterval(id); return 0; }
+          if (c <= 1) {
+            clearInterval(id);
+            return 0;
+          }
           return c - 1;
         });
       }, 1000);
@@ -69,10 +75,22 @@ export default function LoginModal({ onClose }: Props) {
 
   async function handleRegister() {
     setError('');
-    if (!password) { setError('请输入密码'); return; }
-    if (password !== confirmPassword) { setError('两次密码输入不一致'); return; }
-    if (!email) { setError('请输入邮箱'); return; }
-    if (!code) { setError('请输入验证码'); return; }
+    if (!password) {
+      setError('请输入密码');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('两次密码输入不一致');
+      return;
+    }
+    if (!email) {
+      setError('请输入邮箱');
+      return;
+    }
+    if (!code) {
+      setError('请输入验证码');
+      return;
+    }
     setSubmitting(true);
     try {
       await register(email, code, password);
@@ -86,8 +104,14 @@ export default function LoginModal({ onClose }: Props) {
 
   async function handleLogin() {
     setError('');
-    if (!email) { setError('请输入邮箱'); return; }
-    if (!password) { setError('请输入密码'); return; }
+    if (!email) {
+      setError('请输入邮箱');
+      return;
+    }
+    if (!password) {
+      setError('请输入密码');
+      return;
+    }
     setSubmitting(true);
     try {
       await login(email, password);
@@ -110,19 +134,41 @@ export default function LoginModal({ onClose }: Props) {
 
   if (view === 'forgot' || view === 'reset') {
     return (
-      <div className="fixed inset-0 bg-[var(--color-overlay)] flex items-center justify-center z-[var(--z-modal-backdrop)] backdrop-blur-[4px]" onClick={onClose} style={{ animation: 'fadeIn 0.15s ease' }}>
-        <div className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] max-w-[400px] p-0 overflow-hidden"
-          onClick={(e) => e.stopPropagation()}>
+      <div
+        className="fixed inset-0 bg-[var(--color-overlay)] flex items-center justify-center z-[var(--z-modal-backdrop)] backdrop-blur-[4px]"
+        onClick={onClose}
+        style={{ animation: 'fadeIn 0.15s ease' }}
+      >
+        <div
+          className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] max-w-[400px] p-0 overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center justify-center relative px-6 py-4 border-b border-[var(--color-border)]">
             <h3 className="m-0 text-lg font-bold">重置密码</h3>
-<button className="bg-transparent border-none text-[var(--color-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded-md transition-[background,color] duration-150 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]" onClick={onClose} aria-label="关闭" style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)' }}>
-            <X size={18} />
-          </button>
+            <button
+              className="bg-transparent border-none text-[var(--color-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded-md transition-[background,color] duration-150 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+              onClick={onClose}
+              aria-label="关闭"
+              style={{
+                position: 'absolute',
+                right: 16,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+            >
+              <X size={18} />
+            </button>
           </div>
           <div className="p-6 overflow-y-auto flex-1 min-h-0 flex flex-col">
             <ForgotPasswordForm
-              onSendCode={async (email) => { await forgotPassword(email); setEmail(email); }}
-              onReset={async (email, code, newPassword) => { await resetPassword(email, code, newPassword); switchView('login'); }}
+              onSendCode={async (email) => {
+                await forgotPassword(email);
+                setEmail(email);
+              }}
+              onReset={async (email, code, newPassword) => {
+                await resetPassword(email, code, newPassword);
+                switchView('login');
+              }}
               onBack={() => switchView('login')}
               error={error}
             />
@@ -135,7 +181,11 @@ export default function LoginModal({ onClose }: Props) {
   const isRegister = view === 'register';
 
   return (
-    <div className="fixed inset-0 bg-[var(--color-overlay)] flex items-center justify-center z-[var(--z-modal-backdrop)] backdrop-blur-[4px]" onClick={onClose} style={{ animation: 'fadeIn 0.15s ease' }}>
+    <div
+      className="fixed inset-0 bg-[var(--color-overlay)] flex items-center justify-center z-[var(--z-modal-backdrop)] backdrop-blur-[4px]"
+      onClick={onClose}
+      style={{ animation: 'fadeIn 0.15s ease' }}
+    >
       <div
         className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] max-w-[400px] p-0 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -152,8 +202,14 @@ export default function LoginModal({ onClose }: Props) {
               onClick={() => switchView(t.key)}
               className="flex-1 py-2 border-none rounded-[var(--radius-btn)] text-sm cursor-pointer transition-all duration-200"
               style={{
-                background: view === t.key ? 'var(--color-surface-raised)' : 'transparent',
-                color: view === t.key ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                background:
+                  view === t.key
+                    ? 'var(--color-surface-raised)'
+                    : 'transparent',
+                color:
+                  view === t.key
+                    ? 'var(--color-text-primary)'
+                    : 'var(--color-text-tertiary)',
                 fontWeight: view === t.key ? 600 : 400,
                 boxShadow: view === t.key ? 'var(--shadow-sm)' : 'none',
               }}
@@ -178,7 +234,10 @@ export default function LoginModal({ onClose }: Props) {
                 showPassword={showPassword}
                 onToggleShowPassword={() => setShowPassword(!showPassword)}
                 passwordTouched={passwordTouched}
-                onPasswordBlur={() => { setFocusedField(null); setPasswordTouched(true); }}
+                onPasswordBlur={() => {
+                  setFocusedField(null);
+                  setPasswordTouched(true);
+                }}
                 codeCooldown={codeCooldown}
                 onSendCode={handleSendCode}
                 submitting={submitting}
@@ -211,14 +270,26 @@ export default function LoginModal({ onClose }: Props) {
               disabled={submitting}
               className="w-full py-[11px] rounded-[var(--radius-btn)] border-none text-white text-base font-semibold flex items-center justify-center gap-2 transition-all duration-150"
               style={{
-                background: submitting ? 'var(--color-border)' : 'var(--color-accent)',
+                background: submitting
+                  ? 'var(--color-border)'
+                  : 'var(--color-accent)',
                 color: submitting ? 'var(--color-text-tertiary)' : '#fff',
                 cursor: submitting ? 'default' : 'pointer',
               }}
-              onMouseEnter={(e) => { if (!submitting) (e.target as HTMLElement).style.opacity = '0.9'; }}
-              onMouseLeave={(e) => { if (!submitting) (e.target as HTMLElement).style.opacity = '1'; }}
+              onMouseEnter={(e) => {
+                if (!submitting)
+                  (e.target as HTMLElement).style.opacity = '0.9';
+              }}
+              onMouseLeave={(e) => {
+                if (!submitting) (e.target as HTMLElement).style.opacity = '1';
+              }}
             >
-              {submitting && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+              {submitting && (
+                <Loader2
+                  size={16}
+                  style={{ animation: 'spin 1s linear infinite' }}
+                />
+              )}
               {isRegister ? '注册' : '登录'}
             </button>
           </form>
@@ -228,8 +299,13 @@ export default function LoginModal({ onClose }: Props) {
               type="button"
               onClick={() => switchView('forgot')}
               className="block mx-auto mt-3.5 bg-transparent border-none text-[var(--color-text-tertiary)] cursor-pointer text-sm p-0 transition-colors duration-150"
-              onMouseEnter={(e) => (e.target as HTMLElement).style.color = 'var(--color-accent)'}
-              onMouseLeave={(e) => (e.target as HTMLElement).style.color = 'var(--color-text-tertiary)'}
+              onMouseEnter={(e) =>
+                ((e.target as HTMLElement).style.color = 'var(--color-accent)')
+              }
+              onMouseLeave={(e) =>
+                ((e.target as HTMLElement).style.color =
+                  'var(--color-text-tertiary)')
+              }
             >
               忘记密码？
             </button>
@@ -240,7 +316,9 @@ export default function LoginModal({ onClose }: Props) {
             <div className="mt-5">
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-[var(--color-border)]" />
-                <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">或</span>
+                <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
+                  或
+                </span>
                 <div className="flex-1 h-px bg-[var(--color-border)]" />
               </div>
               <div className="flex justify-center gap-3 mt-3.5">

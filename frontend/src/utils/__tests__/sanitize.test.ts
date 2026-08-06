@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import { sanitizeHtml } from '../sanitize';
+import { describe, expect, it } from 'vitest';
 
 describe('sanitizeHtml', { tags: ['unit'] }, () => {
   it('passes through safe HTML', () => {
@@ -32,7 +32,9 @@ describe('sanitizeHtml', { tags: ['unit'] }, () => {
   });
 
   it('keeps allowed attributes', () => {
-    const result = sanitizeHtml('<a href="https://example.com" target="_blank">link</a>');
+    const result = sanitizeHtml(
+      '<a href="https://example.com" target="_blank">link</a>',
+    );
     expect(result).toContain('href');
     expect(result).toContain('target');
   });

@@ -1,4 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import {
+  handleResultEvent,
+  handleTeamResultEvent,
+  handleThinkingDone,
+  handleThinkingDoneEvent,
+  handleThumbsEvent,
+} from '../resultHandler';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../utils/logger', () => ({
   default: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -9,14 +16,6 @@ vi.mock('../utils/logger', () => ({
 }));
 
 vi.mock('./uid', () => ({ uid: vi.fn(() => 'test-uid') }));
-
-import {
-  handleThinkingDone,
-  handleThinkingDoneEvent,
-  handleResultEvent,
-  handleTeamResultEvent,
-  handleThumbsEvent,
-} from '../resultHandler';
 
 function makeMsg(id: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -50,7 +49,10 @@ function makeState(overrides: Record<string, unknown> = {}) {
 describe('handleThinkingDone', { tags: ['unit'] }, () => {
   it('returns empty object when no continuingId', () => {
     const s = makeState({ continuingId: null });
-    const result = handleThinkingDone(s as never, { type: 'thinking_done', thinking: 'final thoughts' });
+    const result = handleThinkingDone(s as never, {
+      type: 'thinking_done',
+      thinking: 'final thoughts',
+    });
     expect(result).toEqual({});
   });
 
@@ -60,7 +62,11 @@ describe('handleThinkingDone', { tags: ['unit'] }, () => {
       messages: [makeMsg('msg-1')],
     });
 
-    const result = handleThinkingDone(s as never, { type: 'thinking_done', thinking: 'final thoughts', agent_name: 'Bot' });
+    const result = handleThinkingDone(s as never, {
+      type: 'thinking_done',
+      thinking: 'final thoughts',
+      agent_name: 'Bot',
+    });
 
     expect(result.streamingId).toBeDefined();
     expect(result.continuingId).toBeNull();
@@ -74,7 +80,10 @@ describe('handleThinkingDone', { tags: ['unit'] }, () => {
       messages: [makeMsg('other')],
     });
 
-    const result = handleThinkingDone(s as never, { type: 'thinking_done', thinking: 'thoughts' });
+    const result = handleThinkingDone(s as never, {
+      type: 'thinking_done',
+      thinking: 'thoughts',
+    });
 
     expect(result.messages).toBeDefined();
     expect(result.messages![0].agent_name).toBe('Agent');
@@ -85,15 +94,22 @@ describe('handleThinkingDone', { tags: ['unit'] }, () => {
       continuingId: 'msg-1',
       pendingVersions: ['v1', 'v2'],
       pendingThinkingVersions: ['tv1'],
-      messages: [makeMsg('msg-1', { content: 'old content', thinking: 'old think' })],
+      messages: [
+        makeMsg('msg-1', { content: 'old content', thinking: 'old think' }),
+      ],
     });
 
-    const result = handleThinkingDone(s as never, { type: 'thinking_done', thinking: 'new think' });
+    const result = handleThinkingDone(s as never, {
+      type: 'thinking_done',
+      thinking: 'new think',
+    });
 
     expect(result.pendingVersions).toBeNull();
     expect(result.pendingThinkingVersions).toBeNull();
     expect(result.messages![0].versions).toBeDefined();
-    expect(result.messages![0].versions![result.messages![0].versions!.length - 1]).toBe('old content');
+    expect(
+      result.messages![0].versions![result.messages![0].versions!.length - 1],
+    ).toBe('old content');
   });
 });
 
@@ -107,7 +123,9 @@ describe('handleThinkingDoneEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     handleThinkingDoneEvent(set as never, { type: 'thinking_done' });
 
-    const result = set.mock.results[0].value as { messages: Array<{ thinkingDone?: boolean }> };
+    const result = set.mock.results[0].value as {
+      messages: Array<{ thinkingDone?: boolean }>;
+    };
     expect(result.messages![0].thinkingDone).toBe(true);
   });
 
@@ -119,7 +137,10 @@ describe('handleThinkingDoneEvent', { tags: ['unit'] }, () => {
     });
 
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
-    handleThinkingDoneEvent(set as never, { type: 'thinking_done', thinking: 'done' });
+    handleThinkingDoneEvent(set as never, {
+      type: 'thinking_done',
+      thinking: 'done',
+    });
 
     const result = set.mock.results[0].value as { streamingId: string | null };
     expect(result.streamingId).toBeDefined();
@@ -136,9 +157,16 @@ describe('handleResultEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>();
 
-    handleResultEvent(set as never, get, activeStreams, { type: 'result', code: 'result code' });
+    handleResultEvent(set as never, get, activeStreams, {
+      type: 'result',
+      code: 'result code',
+    });
 
-    const result = set.mock.results[0].value as { status: string; streamingId: null; result: { code: string } };
+    const result = set.mock.results[0].value as {
+      status: string;
+      streamingId: null;
+      result: { code: string };
+    };
     expect(result.status).toBe('idle');
     expect(result.streamingId).toBeNull();
   });
@@ -152,34 +180,56 @@ describe('handleResultEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>(['run-1']);
 
-    handleResultEvent(set as never, get, activeStreams, { type: 'result', code: 'final code', run_id: 'run-1' });
+    handleResultEvent(set as never, get, activeStreams, {
+      type: 'result',
+      code: 'final code',
+      run_id: 'run-1',
+    });
 
-    const result = set.mock.results[0].value as { messages: Array<{ content: string; thinkingDone: boolean }> };
+    const result = set.mock.results[0].value as {
+      messages: Array<{ content: string; thinkingDone: boolean }>;
+    };
     expect(result.messages![0].content).toBe('final code');
     expect(result.messages![0].thinkingDone).toBe(true);
   });
 
   it('handles result without code', () => {
-    const s = makeState({ streamingId: 'msg-1', messages: [makeMsg('msg-1', { thinking: 't', content: 'old' })] });
+    const s = makeState({
+      streamingId: 'msg-1',
+      messages: [makeMsg('msg-1', { thinking: 't', content: 'old' })],
+    });
     const get = vi.fn(() => s);
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>();
 
-    handleResultEvent(set as never, get, activeStreams, { type: 'result', code: '' });
+    handleResultEvent(set as never, get, activeStreams, {
+      type: 'result',
+      code: '',
+    });
 
-    const result = set.mock.results[0].value as { messages: Array<{ content: string }> };
+    const result = set.mock.results[0].value as {
+      messages: Array<{ content: string }>;
+    };
     expect(result.messages![0].content).toBe('old');
   });
 
   it('handles empty thinking becoming undefined on result', () => {
-    const s = makeState({ streamingId: 'msg-1', messages: [makeMsg('msg-1', { thinking: '', content: 'old' })] });
+    const s = makeState({
+      streamingId: 'msg-1',
+      messages: [makeMsg('msg-1', { thinking: '', content: 'old' })],
+    });
     const get = vi.fn(() => s);
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>();
 
-    handleResultEvent(set as never, get, activeStreams, { type: 'result', code: '' });
+    handleResultEvent(set as never, get, activeStreams, {
+      type: 'result',
+      code: '',
+    });
 
-    const result = set.mock.results[0].value as { messages: Array<{ thinking: string | undefined; thinkingDone: boolean }> };
+    const result = set.mock.results[0].value as {
+      messages: Array<{ thinking: string | undefined; thinkingDone: boolean }>;
+    };
     expect(result.messages![0].thinking).toBeUndefined();
   });
 });
@@ -194,9 +244,15 @@ describe('handleTeamResultEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>(['run-1']);
 
-    handleTeamResultEvent(set as never, get, activeStreams, { type: 'team_result' });
+    handleTeamResultEvent(set as never, get, activeStreams, {
+      type: 'team_result',
+    });
 
-    const result = set.mock.results[0].value as { status: string; streamingId: null; messages: Array<{ thinkingDone: boolean }> };
+    const result = set.mock.results[0].value as {
+      status: string;
+      streamingId: null;
+      messages: Array<{ thinkingDone: boolean }>;
+    };
     expect(result.status).toBe('idle');
     expect(result.streamingId).toBeNull();
     expect(result.messages![0].thinkingDone).toBe(true);
@@ -208,9 +264,14 @@ describe('handleTeamResultEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>();
 
-    handleTeamResultEvent(set as never, get, activeStreams, { type: 'team_result' });
+    handleTeamResultEvent(set as never, get, activeStreams, {
+      type: 'team_result',
+    });
 
-    const result = set.mock.results[0].value as { status: string; streamingId: null };
+    const result = set.mock.results[0].value as {
+      status: string;
+      streamingId: null;
+    };
     expect(result.status).toBe('idle');
     expect(result.streamingId).toBeNull();
   });
@@ -250,9 +311,14 @@ describe('handleTeamResultEvent', { tags: ['unit'] }, () => {
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
     const activeStreams = new Set<string>(['run-1']);
 
-    handleTeamResultEvent(set as never, get, activeStreams, { type: 'team_result', artifacts: {} });
+    handleTeamResultEvent(set as never, get, activeStreams, {
+      type: 'team_result',
+      artifacts: {},
+    });
 
-    const result = set.mock.results[0].value as { messages: Array<{ content: string }> };
+    const result = set.mock.results[0].value as {
+      messages: Array<{ content: string }>;
+    };
     expect(result.messages![0].content).toBe('old');
     expect(result.messages![0].thinkingDone).toBe(true);
   });
@@ -265,7 +331,11 @@ describe('handleThumbsEvent', { tags: ['unit'] }, () => {
     });
     const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
 
-    handleThumbsEvent(set as never, { type: 'thumbs', msgId: 'msg-1', value: 'up' });
+    handleThumbsEvent(set as never, {
+      type: 'thumbs',
+      msgId: 'msg-1',
+      value: 'up',
+    });
 
     const updateFn = set.mock.calls[0][0];
     const result = updateFn(s) as { messages: Array<{ thumbs?: string }> };

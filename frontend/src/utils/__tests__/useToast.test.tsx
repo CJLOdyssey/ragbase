@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import { useToast, ToastProvider } from '../useToast';
+import { ToastProvider, useToast } from '../useToast';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 describe('useToast', { tags: ['unit'] }, () => {
   it('exposes toast function', () => {

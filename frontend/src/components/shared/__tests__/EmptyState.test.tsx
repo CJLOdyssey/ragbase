@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
 import EmptyState from '@/components/shared/EmptyState';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 describe('EmptyState', { tags: ['unit'] }, () => {
   it('renders default icon and title when no props provided', () => {
@@ -9,13 +9,24 @@ describe('EmptyState', { tags: ['unit'] }, () => {
   });
 
   it('renders custom icon and title', () => {
-    render(<EmptyState icon={<span data-testid="icon">X</span>} title="No items found" />);
+    render(
+      <EmptyState
+        icon={<span data-testid="icon">X</span>}
+        title="No items found"
+      />,
+    );
     expect(screen.getByTestId('icon')).toBeInTheDocument();
     expect(screen.getByText('No items found')).toBeInTheDocument();
   });
 
   it('renders description when provided', () => {
-    render(<EmptyState icon={<span>X</span>} title="Empty" description="Nothing here" />);
+    render(
+      <EmptyState
+        icon={<span>X</span>}
+        title="Empty"
+        description="Nothing here"
+      />,
+    );
     expect(screen.getByText('Nothing here')).toBeInTheDocument();
   });
 

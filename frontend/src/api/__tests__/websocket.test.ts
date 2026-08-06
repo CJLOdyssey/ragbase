@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const OriginalWebSocket = globalThis.WebSocket;
 const fakeWsInstances: FakeWebSocket[] = [];
@@ -83,7 +83,9 @@ describe('WebSocket Module', { tags: ['unit'] }, () => {
     const ws = await getWs();
     const cb = vi.fn();
     const unsub = ws.connectRun('test-run', mockOpts(cb));
-    fakeWsInstances[0].onmessage!({ data: JSON.stringify({ type: 'message', content: 'hello' }) } as MessageEvent);
+    fakeWsInstances[0].onmessage!({
+      data: JSON.stringify({ type: 'message', content: 'hello' }),
+    } as MessageEvent);
     expect(cb).toHaveBeenCalledWith({ type: 'message', content: 'hello' });
     unsub();
   });
@@ -95,7 +97,9 @@ describe('WebSocket Module', { tags: ['unit'] }, () => {
     const unsub1 = ws.connectRun('test-run', mockOpts(cb1));
     const unsub2 = ws.connectRun('test-run', mockOpts(cb2));
     expect(fakeWsInstances.length).toBe(1);
-    fakeWsInstances[0].onmessage!({ data: JSON.stringify({ msg: 'hi' }) } as MessageEvent);
+    fakeWsInstances[0].onmessage!({
+      data: JSON.stringify({ msg: 'hi' }),
+    } as MessageEvent);
     expect(cb1).toHaveBeenCalledWith({ msg: 'hi' });
     expect(cb2).toHaveBeenCalledWith({ msg: 'hi' });
     unsub1();
@@ -108,7 +112,9 @@ describe('WebSocket Module', { tags: ['unit'] }, () => {
     const unsub = ws.connectRun('test-run', mockOpts(cb));
     unsub();
     if (fakeWsInstances[0]?.onmessage) {
-      fakeWsInstances[0].onmessage!({ data: JSON.stringify({}) } as MessageEvent);
+      fakeWsInstances[0].onmessage!({
+        data: JSON.stringify({}),
+      } as MessageEvent);
     }
     expect(cb).not.toHaveBeenCalled();
   });
@@ -139,7 +145,9 @@ describe('WebSocket Module', { tags: ['unit'] }, () => {
     const runId = 'json-err-' + Date.now();
     const unsub = ws.connectRun(runId, mockOpts(cb));
     expect(fakeWsInstances.length).toBeGreaterThan(0);
-    fakeWsInstances[fakeWsInstances.length - 1].onmessage!({ data: '{invalid json' } as MessageEvent);
+    fakeWsInstances[fakeWsInstances.length - 1].onmessage!({
+      data: '{invalid json',
+    } as MessageEvent);
     expect(cb).not.toHaveBeenCalled();
     unsub();
   });

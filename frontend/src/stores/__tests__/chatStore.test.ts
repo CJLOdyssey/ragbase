@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppStatus } from '../../types';
 
 vi.mock('../../api/websocket', () => ({
@@ -8,7 +8,14 @@ vi.mock('../../api/websocket', () => ({
 
 vi.mock('../../api/client', () => ({
   submitRequirement: vi.fn(),
-  listKeys: vi.fn().mockResolvedValue([{ id: 'key-1', is_default: true, is_active: true, models: ['deepseek-chat'] }]),
+  listKeys: vi.fn().mockResolvedValue([
+    {
+      id: 'key-1',
+      is_default: true,
+      is_active: true,
+      models: ['deepseek-chat'],
+    },
+  ]),
 }));
 
 const initialState = {
@@ -91,7 +98,12 @@ describe('chatStore', { tags: ['unit'] }, () => {
   describe('addMessage', () => {
     it('添加消息到消息列表', async () => {
       const { useChatStore } = await import('../chatStore');
-      useChatStore.getState().addMessage({ type: 'message', role: 'pm', agent_name: 'PM', content: '测试' });
+      useChatStore.getState().addMessage({
+        type: 'message',
+        role: 'pm',
+        agent_name: 'PM',
+        content: '测试',
+      });
       const state = useChatStore.getState();
       expect(state.messages).toHaveLength(1);
       expect(state.messages[0].role).toBe('pm');
@@ -101,8 +113,18 @@ describe('chatStore', { tags: ['unit'] }, () => {
 
     it('添加多条消息递增列表', async () => {
       const { useChatStore } = await import('../chatStore');
-      useChatStore.getState().addMessage({ type: 'message', role: 'pm', agent_name: 'PM', content: 'msg1' });
-      useChatStore.getState().addMessage({ type: 'message', role: 'dev', agent_name: 'DEV', content: 'msg2' });
+      useChatStore.getState().addMessage({
+        type: 'message',
+        role: 'pm',
+        agent_name: 'PM',
+        content: 'msg1',
+      });
+      useChatStore.getState().addMessage({
+        type: 'message',
+        role: 'dev',
+        agent_name: 'DEV',
+        content: 'msg2',
+      });
       expect(useChatStore.getState().messages).toHaveLength(2);
     });
   });
@@ -113,7 +135,16 @@ describe('chatStore', { tags: ['unit'] }, () => {
       useChatStore.getState().restoreSession(
         'sess-1',
         'run-1',
-        [{ id: 'm1', role: 'user', agent_name: '我', content: 'hello', round_number: 0, created_at: new Date().toISOString() }],
+        [
+          {
+            id: 'm1',
+            role: 'user',
+            agent_name: '我',
+            content: 'hello',
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
         null,
         'completed',
       );
@@ -132,7 +163,16 @@ describe('chatStore', { tags: ['unit'] }, () => {
       const { useChatStore } = await import('../chatStore');
       useChatStore.setState({ currentRunId: 'old-run', status: 'running' });
       useChatStore.getState().loadConversation(
-        [{ id: 'm1', role: 'user', agent_name: '我', content: 'hi', round_number: 0, created_at: new Date().toISOString() }],
+        [
+          {
+            id: 'm1',
+            role: 'user',
+            agent_name: '我',
+            content: 'hi',
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
         'conv-1',
         'sess-1',
       );
@@ -157,7 +197,11 @@ describe('chatStore', { tags: ['unit'] }, () => {
   describe('cancelRun', () => {
     it('disconnects and clears run state', async () => {
       const { useChatStore } = await import('../chatStore');
-      useChatStore.setState({ currentRunId: 'run-1', streamingId: 'stream-1', status: 'running' });
+      useChatStore.setState({
+        currentRunId: 'run-1',
+        streamingId: 'stream-1',
+        status: 'running',
+      });
       useChatStore.getState().cancelRun();
       const state = useChatStore.getState();
       expect(state.currentRunId).toBeNull();
@@ -184,7 +228,10 @@ describe('chatStore', { tags: ['unit'] }, () => {
   describe('submitRequirement', () => {
     it('提交需求时添加用户消息到列表', async () => {
       const client = await import('../../api/client');
-      (client.submitRequirement as ReturnType<typeof vi.fn>).mockResolvedValue({ run_id: 'run-1', status: 'running' });
+      (client.submitRequirement as ReturnType<typeof vi.fn>).mockResolvedValue({
+        run_id: 'run-1',
+        status: 'running',
+      });
       const { submitRequirement } = await import('../chatStore');
       await submitRequirement('测试需求');
       const state = (await import('../chatStore')).useChatStore.getState();
@@ -199,7 +246,9 @@ describe('chatStore', { tags: ['unit'] }, () => {
 
     it('提交失败时保留用户消息并设置 wsStatus 为 disconnected', async () => {
       const client = await import('../../api/client');
-      (client.submitRequirement as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('API Error'));
+      (client.submitRequirement as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('API Error'),
+      );
       const { submitRequirement } = await import('../chatStore');
       await submitRequirement('test');
       const state = (await import('../chatStore')).useChatStore.getState();
@@ -228,18 +277,20 @@ describe('chatStore', { tags: ['unit'] }, () => {
     it('switches to next version', async () => {
       const { useChatStore } = await import('../chatStore');
       useChatStore.setState({
-        messages: [{
-          id: 'm1',
-          role: 'agent',
-          agent_name: 'Agent',
-          content: 'v1',
-          thinking: 't1',
-          versions: ['v1', 'v2'],
-          thinkingVersions: ['t1', 't2'],
-          currentVersion: 0,
-          round_number: 0,
-          created_at: new Date().toISOString(),
-        }],
+        messages: [
+          {
+            id: 'm1',
+            role: 'agent',
+            agent_name: 'Agent',
+            content: 'v1',
+            thinking: 't1',
+            versions: ['v1', 'v2'],
+            thinkingVersions: ['t1', 't2'],
+            currentVersion: 0,
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
       });
 
       useChatStore.getState().switchVersion('m1', 'next');
@@ -253,18 +304,20 @@ describe('chatStore', { tags: ['unit'] }, () => {
     it('switches to previous version', async () => {
       const { useChatStore } = await import('../chatStore');
       useChatStore.setState({
-        messages: [{
-          id: 'm1',
-          role: 'agent',
-          agent_name: 'Agent',
-          content: 'v2',
-          thinking: 't2',
-          versions: ['v1', 'v2', 'v3'],
-          thinkingVersions: ['t1', 't2', 't3'],
-          currentVersion: 2,
-          round_number: 0,
-          created_at: new Date().toISOString(),
-        }],
+        messages: [
+          {
+            id: 'm1',
+            role: 'agent',
+            agent_name: 'Agent',
+            content: 'v2',
+            thinking: 't2',
+            versions: ['v1', 'v2', 'v3'],
+            thinkingVersions: ['t1', 't2', 't3'],
+            currentVersion: 2,
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
       });
 
       useChatStore.getState().switchVersion('m1', 'prev');
@@ -277,18 +330,20 @@ describe('chatStore', { tags: ['unit'] }, () => {
     it('clamps version at bounds', async () => {
       const { useChatStore } = await import('../chatStore');
       useChatStore.setState({
-        messages: [{
-          id: 'm1',
-          role: 'agent',
-          agent_name: 'Agent',
-          content: 'v1',
-          thinking: 't1',
-          versions: ['v1', 'v2'],
-          thinkingVersions: ['t1', 't2'],
-          currentVersion: 0,
-          round_number: 0,
-          created_at: new Date().toISOString(),
-        }],
+        messages: [
+          {
+            id: 'm1',
+            role: 'agent',
+            agent_name: 'Agent',
+            content: 'v1',
+            thinking: 't1',
+            versions: ['v1', 'v2'],
+            thinkingVersions: ['t1', 't2'],
+            currentVersion: 0,
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
       });
 
       useChatStore.getState().switchVersion('m1', 'prev');
@@ -299,15 +354,17 @@ describe('chatStore', { tags: ['unit'] }, () => {
     it('ignores messages without versions', async () => {
       const { useChatStore } = await import('../chatStore');
       useChatStore.setState({
-        messages: [{
-          id: 'm1',
-          role: 'agent',
-          agent_name: 'Agent',
-          content: 'old',
-          thinking: 'thinking',
-          round_number: 0,
-          created_at: new Date().toISOString(),
-        }],
+        messages: [
+          {
+            id: 'm1',
+            role: 'agent',
+            agent_name: 'Agent',
+            content: 'old',
+            thinking: 'thinking',
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
       });
 
       useChatStore.getState().switchVersion('m1', 'next');
@@ -320,23 +377,26 @@ describe('chatStore', { tags: ['unit'] }, () => {
     it('sets thumbs feedback on a message', async () => {
       const { useChatStore } = await import('../chatStore');
       useChatStore.setState({
-        messages: [{
-          id: 'm1',
-          role: 'agent',
-          agent_name: 'Agent',
-          content: 'test',
-          thinking: '',
-          round_number: 0,
-          created_at: new Date().toISOString(),
-        }, {
-          id: 'm2',
-          role: 'agent',
-          agent_name: 'Agent',
-          content: 'other',
-          thinking: '',
-          round_number: 0,
-          created_at: new Date().toISOString(),
-        }],
+        messages: [
+          {
+            id: 'm1',
+            role: 'agent',
+            agent_name: 'Agent',
+            content: 'test',
+            thinking: '',
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: 'm2',
+            role: 'agent',
+            agent_name: 'Agent',
+            content: 'other',
+            thinking: '',
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
       });
 
       useChatStore.getState().setThumbsFeedback('m1', 'up');
@@ -348,16 +408,18 @@ describe('chatStore', { tags: ['unit'] }, () => {
     it('clears thumbs feedback when null', async () => {
       const { useChatStore } = await import('../chatStore');
       useChatStore.setState({
-        messages: [{
-          id: 'm1',
-          role: 'agent',
-          agent_name: 'Agent',
-          content: 'test',
-          thinking: '',
-          thumbs: 'up' as const,
-          round_number: 0,
-          created_at: new Date().toISOString(),
-        }],
+        messages: [
+          {
+            id: 'm1',
+            role: 'agent',
+            agent_name: 'Agent',
+            content: 'test',
+            thinking: '',
+            thumbs: 'up' as const,
+            round_number: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
       });
 
       useChatStore.getState().setThumbsFeedback('m1', null);

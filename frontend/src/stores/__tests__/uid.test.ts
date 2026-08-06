@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
 import { uid } from '../uid';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('uid', { tags: ['unit'] }, () => {
   afterEach(() => {

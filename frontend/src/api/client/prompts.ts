@@ -32,12 +32,28 @@ export async function listPrompts(): Promise<PromptItem[]> {
   return data;
 }
 
-export async function createPrompt(payload: { name: string; description?: string; category: string; content: string; model?: string; status?: string }): Promise<PromptItem> {
+export async function createPrompt(payload: {
+  name: string;
+  description?: string;
+  category: string;
+  content: string;
+  model?: string;
+  status?: string;
+}): Promise<PromptItem> {
   const { data } = await api.post('/prompts', payload);
   return data;
 }
 
-export async function updatePrompt(id: string, payload: Partial<{ name: string; description: string; category: string; content: string; status: string }>): Promise<PromptItem> {
+export async function updatePrompt(
+  id: string,
+  payload: Partial<{
+    name: string;
+    description: string;
+    category: string;
+    content: string;
+    status: string;
+  }>,
+): Promise<PromptItem> {
   const { data } = await api.put(`/prompts/${id}`, payload);
   return data;
 }
@@ -46,12 +62,20 @@ export async function deletePrompt(id: string): Promise<void> {
   await api.delete(`/prompts/${id}`);
 }
 
-export async function generatePrompt(description: string, category: string = 'general'): Promise<GeneratedPrompt> {
-  const { data } = await api.post('/prompts/generate', { description, category });
+export async function generatePrompt(
+  description: string,
+  category: string = 'general',
+): Promise<GeneratedPrompt> {
+  const { data } = await api.post('/prompts/generate', {
+    description,
+    category,
+  });
   return data;
 }
 
-export async function validatePrompt(content: string): Promise<PromptValidationResult> {
+export async function validatePrompt(
+  content: string,
+): Promise<PromptValidationResult> {
   const { data } = await api.post('/prompts/validate', { content });
   return data;
 }

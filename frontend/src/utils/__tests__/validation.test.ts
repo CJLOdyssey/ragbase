@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { validateInput, sanitizeMessageContent, validateName, checkTeamLimit, checkAgentLimit } from '../validation';
+import {
+  checkAgentLimit,
+  checkTeamLimit,
+  sanitizeMessageContent,
+  validateInput,
+  validateName,
+} from '../validation';
+import { describe, expect, it } from 'vitest';
 
 describe('validateInput', { tags: ['unit'] }, () => {
   it('rejects empty input', () => {
@@ -53,7 +59,9 @@ describe('sanitizeMessageContent', { tags: ['unit'] }, () => {
   });
 
   it('preserves newlines and tabs', () => {
-    expect(sanitizeMessageContent('line1\nline2\tindented')).toBe('line1\nline2\tindented');
+    expect(sanitizeMessageContent('line1\nline2\tindented')).toBe(
+      'line1\nline2\tindented',
+    );
   });
 });
 

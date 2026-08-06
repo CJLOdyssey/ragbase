@@ -1,6 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import * as authApi from '@/api/client/auth';
 import { AuthProvider, useAuth } from '@/components/auth/AuthContext';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/api/client/auth', () => ({
   getAuthConfig: vi.fn(),
@@ -20,8 +27,6 @@ vi.mock('@/api/client/instance', () => ({
   setTokens: vi.fn(),
   clearTokens: vi.fn(),
 }));
-
-import * as authApi from '@/api/client/auth';
 
 function AuthProbe() {
   const { user, loading } = useAuth();
@@ -47,7 +52,9 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
         <div>
           <span data-testid="loading">{String(loading)}</span>
           <span data-testid="user">{user ? user.email : 'null'}</span>
-          <button onClick={() => void login('e2e@test.com', 'Test@1234')}>login</button>
+          <button onClick={() => void login('e2e@test.com', 'Test@1234')}>
+            login
+          </button>
         </div>
       );
     }
@@ -57,7 +64,13 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
       refresh_token: 'rt',
       token_type: 'bearer',
       expires_in: 3600,
-      user: { id: 'u1', email: 'e2e@test.com', username: 'e2e', roles: ['member'], is_verified: true },
+      user: {
+        id: 'u1',
+        email: 'e2e@test.com',
+        username: 'e2e',
+        roles: ['member'],
+        is_verified: true,
+      },
     });
 
     render(
@@ -84,7 +97,11 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
         <div>
           <span data-testid="loading">{String(loading)}</span>
           <span data-testid="user">{user ? user.email : 'null'}</span>
-          <button onClick={() => void register('new@test.com', '123456', 'Pass@123')}>register</button>
+          <button
+            onClick={() => void register('new@test.com', '123456', 'Pass@123')}
+          >
+            register
+          </button>
         </div>
       );
     }
@@ -94,7 +111,13 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
       refresh_token: 'rt',
       token_type: 'bearer',
       expires_in: 3600,
-      user: { id: 'u2', email: 'new@test.com', username: 'new', roles: ['member'], is_verified: true },
+      user: {
+        id: 'u2',
+        email: 'new@test.com',
+        username: 'new',
+        roles: ['member'],
+        is_verified: true,
+      },
     });
 
     render(
@@ -115,7 +138,10 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
   });
 
   it('loading becomes false after init() completes when no refresh token exists', async () => {
-    vi.mocked(authApi.getAuthConfig).mockResolvedValue({ enabled: true, mode: 'jwt' });
+    vi.mocked(authApi.getAuthConfig).mockResolvedValue({
+      enabled: true,
+      mode: 'jwt',
+    });
 
     render(
       <AuthProvider>

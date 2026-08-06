@@ -1,15 +1,19 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
 import PasswordStrengthIndicator from '@/components/auth/PasswordStrengthIndicator';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 describe('PasswordStrengthIndicator', { tags: ['unit'] }, () => {
   it('renders nothing when password is empty', () => {
-    const { container } = render(<PasswordStrengthIndicator password="" validated={false} />);
+    const { container } = render(
+      <PasswordStrengthIndicator password="" validated={false} />,
+    );
     expect(container.innerHTML).toBe('');
   });
 
   it('renders 6 progress bars', () => {
-    const { container } = render(<PasswordStrengthIndicator password="a" validated={false} />);
+    const { container } = render(
+      <PasswordStrengthIndicator password="a" validated={false} />,
+    );
     const bars = container.querySelectorAll('div.h-\\[3px\\]');
     expect(bars.length).toBe(6);
   });
@@ -28,7 +32,9 @@ describe('PasswordStrengthIndicator', { tags: ['unit'] }, () => {
   });
 
   it('shows success message when all checks pass', () => {
-    render(<PasswordStrengthIndicator password="StrongP@ss1" validated={true} />);
+    render(
+      <PasswordStrengthIndicator password="StrongP@ss1" validated={true} />,
+    );
     expect(screen.getByText(/全部满足/)).toBeInTheDocument();
   });
 

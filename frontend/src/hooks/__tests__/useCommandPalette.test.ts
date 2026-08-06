@@ -1,15 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useCommandPalette } from '../useCommandPalette';
-import type { CommandOption } from '../../types/input';
 import type * as React from 'react';
+import { useCommandPalette } from '../useCommandPalette';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CommandOption } from '../../types/input';
 
 const commands: CommandOption[] = [
   { id: 'c1', name: 'xhs', description: '小红书笔记' },
   { id: 'c2', name: 'gzh', source: 'agent' },
 ];
 
-function keyEvent(key: string, extra: Partial<React.KeyboardEvent<HTMLTextAreaElement>> = {}): React.KeyboardEvent<HTMLTextAreaElement> {
+function keyEvent(
+  key: string,
+  extra: Partial<React.KeyboardEvent<HTMLTextAreaElement>> = {},
+): React.KeyboardEvent<HTMLTextAreaElement> {
   return {
     key,
     shiftKey: false,
@@ -72,7 +75,9 @@ describe('useCommandPalette', { tags: ['unit'] }, () => {
     const { result } = renderHook(() => useCommandPalette(commands));
     act(() => result.current.handleKeyDown(keyEvent('/'), ''));
     let handledEscape = false;
-    act(() => { handledEscape = result.current.handleKeyDown(keyEvent('Escape')); });
+    act(() => {
+      handledEscape = result.current.handleKeyDown(keyEvent('Escape'));
+    });
     expect(handledEscape).toBe(true);
     expect(result.current.open).toBe(false);
     act(() => result.current.handleKeyDown(keyEvent('/'), ''));
@@ -84,7 +89,9 @@ describe('useCommandPalette', { tags: ['unit'] }, () => {
     const { result } = renderHook(() => useCommandPalette(commands));
     act(() => result.current.handleKeyDown(keyEvent('/'), ''));
     let handled = true;
-    act(() => { handled = result.current.handleKeyDown(keyEvent('Backspace'), '/'); });
+    act(() => {
+      handled = result.current.handleKeyDown(keyEvent('Backspace'), '/');
+    });
     expect(handled).toBe(false);
     expect(result.current.open).toBe(false);
   });
@@ -101,7 +108,9 @@ describe('useCommandPalette', { tags: ['unit'] }, () => {
     const { result } = renderHook(() => useCommandPalette(commands));
     act(() => result.current.handleKeyDown(keyEvent('/'), ''));
     let replacement = '';
-    act(() => { replacement = result.current.selectCommand(1); });
+    act(() => {
+      replacement = result.current.selectCommand(1);
+    });
     expect(replacement).toBe('/gzh ');
     expect(result.current.open).toBe(false);
     expect(result.current.query).toBe('');
@@ -110,7 +119,9 @@ describe('useCommandPalette', { tags: ['unit'] }, () => {
   it('selectCommand returns empty string for invalid index', () => {
     const { result } = renderHook(() => useCommandPalette(commands));
     let replacement = 'x';
-    act(() => { replacement = result.current.selectCommand(99); });
+    act(() => {
+      replacement = result.current.selectCommand(99);
+    });
     expect(replacement).toBe('');
   });
 

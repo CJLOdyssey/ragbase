@@ -1,6 +1,7 @@
 import type { AppStatus, ChatMessage, RunResult } from '../types';
 
-export type WsConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+export type WsConnectionStatus =
+  'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
 export interface ChatState {
   currentRunId: string | null;
@@ -27,8 +28,18 @@ export interface ChatState {
   /** Conversation ID at submission time */
   submissionConvId: string | null;
 
-  restoreSession: (sessionId: string, runId: string, messages: ChatMessage[], result: RunResult | null, status: AppStatus) => void;
-  loadConversation: (messages: ChatMessage[], convId?: string | null, sessionId?: string | null) => void;
+  restoreSession: (
+    sessionId: string,
+    runId: string,
+    messages: ChatMessage[],
+    result: RunResult | null,
+    status: AppStatus,
+  ) => void;
+  loadConversation: (
+    messages: ChatMessage[],
+    convId?: string | null,
+    sessionId?: string | null,
+  ) => void;
   cancelRun: () => void;
   addMessage: (msg: import('../types').WsMessage & { id?: string }) => void;
   setStatus: (status: AppStatus) => void;

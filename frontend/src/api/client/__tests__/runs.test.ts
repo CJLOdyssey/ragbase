@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { submitRequirement, resumeRun } from '../runs';
+import { resumeRun, submitRequirement } from '../runs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -18,7 +18,9 @@ beforeEach(() => {
 
 describe('submitRequirement', { tags: ['unit'] }, () => {
   it('calls POST /runs with requirement only', async () => {
-    mockApi.post.mockResolvedValue({ data: { run_id: 'r1', status: 'queued' } });
+    mockApi.post.mockResolvedValue({
+      data: { run_id: 'r1', status: 'queued' },
+    });
 
     const result = await submitRequirement('build a website');
 
@@ -32,9 +34,17 @@ describe('submitRequirement', { tags: ['unit'] }, () => {
   });
 
   it('passes all optional params', async () => {
-    mockApi.post.mockResolvedValue({ data: { run_id: 'r1', status: 'queued', session_id: 's1' } });
+    mockApi.post.mockResolvedValue({
+      data: { run_id: 'r1', status: 'queued', session_id: 's1' },
+    });
 
-    const result = await submitRequirement('req', 's1', 'k1', 'gpt-4', 'parent-1');
+    const result = await submitRequirement(
+      'req',
+      's1',
+      'k1',
+      'gpt-4',
+      'parent-1',
+    );
 
     expect(mockApi.post).toHaveBeenCalledWith('/runs', {
       requirement: 'req',
@@ -43,13 +53,19 @@ describe('submitRequirement', { tags: ['unit'] }, () => {
       model: 'gpt-4',
       parent_run_id: 'parent-1',
     });
-    expect(result).toEqual({ run_id: 'r1', status: 'queued', session_id: 's1' });
+    expect(result).toEqual({
+      run_id: 'r1',
+      status: 'queued',
+      session_id: 's1',
+    });
   });
 });
 
 describe('resumeRun', { tags: ['unit'] }, () => {
   it('calls POST /runs/complete with content', async () => {
-    mockApi.post.mockResolvedValue({ data: { run_id: 'r2', status: 'completed' } });
+    mockApi.post.mockResolvedValue({
+      data: { run_id: 'r2', status: 'completed' },
+    });
 
     const result = await resumeRun('continue generation');
 
@@ -62,7 +78,9 @@ describe('resumeRun', { tags: ['unit'] }, () => {
   });
 
   it('passes optional thinking and session_id', async () => {
-    mockApi.post.mockResolvedValue({ data: { run_id: 'r2', status: 'completed' } });
+    mockApi.post.mockResolvedValue({
+      data: { run_id: 'r2', status: 'completed' },
+    });
 
     await resumeRun('continue', 's1', 'some thinking');
 

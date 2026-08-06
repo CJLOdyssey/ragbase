@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { TestProviders } from '@/test/setup';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -15,13 +16,16 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
-import ConfirmDialog from '@/components/shared/ConfirmDialog';
-
 describe('ConfirmDialog', { tags: ['unit'] }, () => {
   it('renders title and message', () => {
     render(
       <TestProviders>
-        <ConfirmDialog title="Delete Item" message="Are you sure?" onConfirm={vi.fn()} onCancel={vi.fn()} />
+        <ConfirmDialog
+          title="Delete Item"
+          message="Are you sure?"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
       </TestProviders>,
     );
     expect(screen.getByText('Delete Item')).toBeInTheDocument();
@@ -31,7 +35,13 @@ describe('ConfirmDialog', { tags: ['unit'] }, () => {
   it('shows danger label when danger', () => {
     render(
       <TestProviders>
-        <ConfirmDialog title="T" message="M" danger onConfirm={vi.fn()} onCancel={vi.fn()} />
+        <ConfirmDialog
+          title="T"
+          message="M"
+          danger
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
       </TestProviders>,
     );
     expect(screen.getByText('危险操作')).toBeInTheDocument();
@@ -41,7 +51,13 @@ describe('ConfirmDialog', { tags: ['unit'] }, () => {
     const onConfirm = vi.fn();
     render(
       <TestProviders>
-        <ConfirmDialog title="T" message="M" confirmLabel="Yes" onConfirm={onConfirm} onCancel={vi.fn()} />
+        <ConfirmDialog
+          title="T"
+          message="M"
+          confirmLabel="Yes"
+          onConfirm={onConfirm}
+          onCancel={vi.fn()}
+        />
       </TestProviders>,
     );
     fireEvent.click(screen.getByText('Yes'));
@@ -52,7 +68,13 @@ describe('ConfirmDialog', { tags: ['unit'] }, () => {
     const onCancel = vi.fn();
     render(
       <TestProviders>
-        <ConfirmDialog title="T" message="M" cancelLabel="No" onConfirm={vi.fn()} onCancel={onCancel} />
+        <ConfirmDialog
+          title="T"
+          message="M"
+          cancelLabel="No"
+          onConfirm={vi.fn()}
+          onCancel={onCancel}
+        />
       </TestProviders>,
     );
     fireEvent.click(screen.getByText('No'));
@@ -62,7 +84,12 @@ describe('ConfirmDialog', { tags: ['unit'] }, () => {
   it('has no header/footer border lines', () => {
     const { container } = render(
       <TestProviders>
-        <ConfirmDialog title="T" message="M" onConfirm={vi.fn()} onCancel={vi.fn()} />
+        <ConfirmDialog
+          title="T"
+          message="M"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
       </TestProviders>,
     );
     const dialog = container.querySelector('[role="dialog"]')!;
