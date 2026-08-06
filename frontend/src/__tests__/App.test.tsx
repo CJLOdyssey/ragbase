@@ -7,8 +7,12 @@ vi.mock('../components/content/ContentStudioShell', () => ({
   default: () => <div data-testid="content-studio-shell">ContentStudio</div>,
 }));
 
+vi.mock('../components/content/ComposerPage', () => ({
+  default: () => <div data-testid="composer-page">Composer</div>,
+}));
+
 describe('App', { tags: ['unit'] }, () => {
-  it('renders without crashing', async () => {
+  it('redirects root to /compose and renders ComposerPage', async () => {
     render(
       <TestProviders>
         <App />
@@ -17,7 +21,7 @@ describe('App', { tags: ['unit'] }, () => {
 
     await vi.waitFor(
       () => {
-        expect(screen.getByTestId('content-studio-shell')).toBeTruthy();
+        expect(screen.getByTestId('composer-page')).toBeTruthy();
       },
       { timeout: 5000 },
     );

@@ -139,7 +139,7 @@ describe('ComposerPage', { tags: ['unit'] }, () => {
         <ComposerPage />
       </TestProviders>,
     );
-    fireEvent.click(screen.getByText('content.contentType_wechat_article'));
+    fireEvent.click(screen.getByText('content.contentType_wechat'));
     fireEvent.change(
       screen.getByPlaceholderText('content.input.topicPlaceholder'),
       { target: { value: '营销文案' } },
@@ -150,7 +150,7 @@ describe('ComposerPage', { tags: ['unit'] }, () => {
     fireEvent.click(screen.getByText('content.generate'));
     await waitFor(() =>
       expect(mocks.createGeneration).toHaveBeenCalledWith({
-        contentType: 'wechat_article',
+        contentType: 'wechat',
         generationMode: 'generate',
         topic: '营销文案',
         additionalRequirements: '语气活泼',

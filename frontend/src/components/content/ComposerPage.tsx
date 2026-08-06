@@ -14,9 +14,9 @@ import ResultViewer from './ResultViewer';
 
 const CONTENT_TYPES = [
   'xiaohongshu',
-  'wechat_article',
-  'short_video_script',
-  'marketing_copy',
+  'wechat',
+  'shortvideo',
+  'marketing',
   'generic',
 ] as const;
 
