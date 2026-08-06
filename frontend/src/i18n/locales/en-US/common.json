@@ -51,5 +51,10 @@
     "noModelsHint": "Configure an API provider to enable models",
     "statusDeprecated": "Deprecated",
     "statusSunset": "Sunsetting"
+  },
+  "auth": {
+    "login": "Log in",
+    "register": "Sign up",
+    "logout": "Log out"
   }
 }

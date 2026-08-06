@@ -5,7 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, theme } from 'antd';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AuthProvider, LoginModal, useAuth } from './components/auth';
+import {
+  AuthProvider,
+  LoginModal,
+  LoginTrigger,
+  useAuth,
+} from './components/auth';
 import ContentStudioShell from './components/content/ContentStudioShell';
 import { useSettings } from './contexts/SettingsContext';
 import Logger from './utils/logger';
@@ -168,6 +173,7 @@ function ThemedApp() {
             <ToastProvider>
               <AuthGate>
                 <AppInit />
+                <LoginTrigger />
                 <Routes>
                   <Route
                     path="/"

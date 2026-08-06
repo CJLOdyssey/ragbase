@@ -51,5 +51,10 @@
     "noModelsHint": "请先配置 API 提供商以使用模型",
     "statusDeprecated": "已弃用",
     "statusSunset": "即将下线"
+  },
+  "auth": {
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出登录"
   }
 }
