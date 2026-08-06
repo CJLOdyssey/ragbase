@@ -117,7 +117,10 @@ async def rename_asset(asset_id: str, request: Request, name: str) -> Any:
 
 @router.delete("/api/assets/{asset_id}")
 async def remove_asset(asset_id: str, request: Request) -> Any:
-    get_user_id(request)
+    user_id = get_user_id(request)
+    asset = await get_asset(asset_id)
+    if asset is None or asset.user_id != user_id:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
     storage_path = await delete_asset(asset_id)
     if storage_path is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")

@@ -71,3 +71,51 @@ def test_assets_crud_flow(client) -> None:  # noqa: ANN001
     assert resp.status_code == 200
     assets = resp.json()
     assert len(assets) == 1 and assets[0]["name"] == "brand.md"
+
+
+def test_delete_asset_denied_for_foreign_owner(client) -> None:  # noqa: ANN001
+    from core.infra.database import AssetDB, get_session_factory
+    from sqlalchemy import select
+
+    async def _seed() -> str:
+        factory = get_session_factory()
+        async with factory() as session:
+            asset = AssetDB(
+                user_id="u2",
+                name="secret.md",
+                asset_type="document",
+                storage_path="/tmp/secret.md",
+            )
+            session.add(asset)
+            await session.commit()
+            return asset.id
+
+    async def _count() -> int:
+        factory = get_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(AssetDB).where(AssetDB.id == asset_id)
+            )
+            return len(list(result.scalars().all()))
+
+    asset_id = asyncio.run(_seed())
+    resp = client.delete(f"/api/assets/{asset_id}", headers={"X-User-ID": "u1"})
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["error"]["code"] == "ASSET_001"
+    assert asyncio.run(_count()) == 1
+
+
+def test_compose_bogus_run_returns_run_not_found(client) -> None:  # noqa: ANN001
+    resp = client.post(
+        "/api/generations/bogus/compose",
+        json={"templateId": "square"},
+        headers={"X-User-ID": "u1"},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["error"]["code"] == "RUN_001"
+
+
+def test_variations_bogus_run_returns_run_not_found(client) -> None:  # noqa: ANN001
+    resp = client.post("/api/generations/bogus/variations", headers={"X-User-ID": "u1"})
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["error"]["code"] == "RUN_001"

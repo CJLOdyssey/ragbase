@@ -98,6 +98,8 @@ async def continue_generation(run_id: str, req: ContinueRequest, request: Reques
 
 @router.post("/api/generations/{run_id}/variations")
 async def create_variations(run_id: str, request: Request) -> Any:
+    if await generation_service.get_generation(run_id) is None:
+        raise error_response(ErrorCode.RUN_NOT_FOUND, detail="未找到该次生成")
     try:
         user_id = get_user_id(request)
         result = await generation_service.create_variations(run_id, user_id)
@@ -120,6 +122,8 @@ async def generate_image(run_id: str, req: ImageRequest, request: Request) -> An
 
 @router.post("/api/generations/{run_id}/compose")
 async def compose_card(run_id: str, req: ComposeRequest) -> Any:
+    if await generation_service.get_generation(run_id) is None:
+        raise error_response(ErrorCode.RUN_NOT_FOUND, detail="未找到该次生成")
     try:
         result = await generation_service.compose_card(
             run_id, req.template_id, title=req.title, summary=req.summary
