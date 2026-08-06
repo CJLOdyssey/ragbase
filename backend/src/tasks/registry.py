@@ -25,7 +25,6 @@ def run_agent(
     requirement: str,
     run_id: str | None = None,
     session_id: str | None = None,
-    agent_id: str | None = None,
     api_key: str | None = None,
     api_base: str | None = None,
     model: str | None = None,
@@ -33,8 +32,8 @@ def run_agent(
 ) -> Any:
     t0 = time.time()
     logger.info(
-        "Celery task START | run=%s | session=%s | agent=%s | model=%s | retry=%d",
-        run_id, session_id, agent_id, model, self.request.retries,
+        "Celery task START | run=%s | session=%s | model=%s | retry=%d",
+        run_id, session_id, model, self.request.retries,
     )
     assert run_id is not None, "run_id must be provided"
 
@@ -44,7 +43,6 @@ def run_agent(
                 requirement,
                 run_id,
                 session_id,
-                agent_id,
                 api_key=api_key,
                 api_base=api_base,
                 model=model,
@@ -76,45 +74,6 @@ def run_agent(
         _report_run_error(run_id, exc)
         self.retry(exc=exc)
 
-
-@_task(bind=True, max_retries=2, default_retry_delay=5)
-def run_team(
-    self: Any,
-    requirement: str,
-    run_id: str,
-    session_id: str | None = None,
-    team_id: str | None = None,
-    key_id: str | None = None,
-    api_key: str | None = None,
-    api_base: str | None = None,
-    model: str | None = None,
-) -> Any:
-    from .team_pipeline import _run_team_pipeline
-
-    logger.info("Celery team task START | run=%s | team=%s", run_id, team_id)
-    try:
-        return _run_async(
-            _run_team_pipeline(
-                requirement=requirement,
-                run_id=run_id,
-                session_id=session_id,
-                team_id=team_id or "",
-                key_id=key_id,
-                api_key=api_key or "",
-                api_base=api_base,
-                model=model or "",
-            )
-        )
-    except Exception as exc:
-        logger.exception("Celery team task FAIL | run=%s", run_id)
-        _report_run_error(run_id, exc)
-        self.retry(exc=exc)
-
-
-# ---------------------------------------------------------------------------
-# Completion task — raw LLM streaming without LangGraph / thinking / tools
-# Used by the "继续生成" flow on the frontend.
-# ---------------------------------------------------------------------------
 
 @_task(bind=True, max_retries=2, default_retry_delay=5)
 def complete_agent(

@@ -125,8 +125,6 @@ async def startup(app: FastAPI) -> None:
     # External cleanup (startup script's pkill, _kill_stuck_child_processes)
     # handles orphan processes instead.
 
-    import thinking_tree.tools  # noqa: F401
-
     startup_log = _startup_report()
     for line in startup_log:
         logger.info("%s", line)

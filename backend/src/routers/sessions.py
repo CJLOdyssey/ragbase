@@ -56,7 +56,6 @@ async def list_sessions(request: Request, limit: int = 50) -> Any:
                     "id": s.id,
                     "title": s.title,
                     "kind": s.kind,
-                    "agent_id": s.agent_id,
                     "run_count": len(runs),
                     "created_at": s.created_at.isoformat() if s.created_at else None,
                     "updated_at": s.updated_at.isoformat() if s.updated_at else None,
@@ -123,7 +122,6 @@ async def get_session_detail(request: Request, session_id: str) -> Any:
             "id": sess.id,
             "title": sess.title,
             "kind": sess.kind,
-            "agent_id": sess.agent_id,
             "created_at": sess.created_at.isoformat() if sess.created_at else None,
             "updated_at": sess.updated_at.isoformat() if sess.updated_at else None,
             "runs": [

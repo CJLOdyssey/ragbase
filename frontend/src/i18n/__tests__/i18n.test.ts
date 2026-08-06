@@ -8,7 +8,7 @@ function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
 }
 
 async function loadLocale(lang: string): Promise<Record<string, unknown>> {
-  const ns = ['common', 'sidebar', 'chat', 'workstation'];
+  const ns = ['common', 'api'];
   const result: Record<string, unknown> = {};
   for (const n of ns) {
     const mod = await import(`@/i18n/locales/${lang}/${n}.json`);

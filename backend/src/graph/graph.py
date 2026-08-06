@@ -22,8 +22,6 @@ from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from services.thinking_chain import format_result_preview, get_tool_prefix
-from services.tool_config import ToolConfig, build_tool_definition
 from streaming.llm_stream import (
     build_llm_request_body,
     build_tool_calls_list,
@@ -48,6 +46,28 @@ def _is_balance_error(error_body: str) -> bool:
     """Check if the API error response indicates insufficient balance/quota."""
     body_lower = error_body.lower()
     return any(kw in body_lower for kw in _BALANCE_ERROR_KEYWORDS)
+
+
+class _InlineToolExecutor(ToolExecutor):
+    """Adapter that runs a ToolDescriptor through the tools node."""
+
+    def __init__(self, tc: ToolDescriptor) -> None:
+        self._tc = tc
+        self.name = tc.name
+        self.description = tc.description
+
+    async def invoke(self, args: dict[str, Any]) -> str:
+        execute = getattr(self._tc, "execute", None)
+        if execute is None:
+            return f"Unknown tool: {self.name}"
+        result = await execute(args)
+        return str(result)
+
+    def set_llm(self, llm: Any) -> None:
+        pass
+
+    def set_run_id(self, run_id: str) -> None:
+        pass
 
 
 async def _emit_balance_warning(stream_cb: Any) -> None:
@@ -235,11 +255,10 @@ class SingleAgentGraph:
 
             # ── Emit tool-call start into thinking chain ──
             if self._stream_cb:
-                prefix = get_tool_prefix(tool_name)
                 args_preview = json.dumps(tool_args, ensure_ascii=False)[:200]
                 await self._stream_cb({
                     "event": "on_custom_thinking",
-                    "data": {"content": f"{prefix} {tool_name}({args_preview})"},
+                    "data": {"content": f"[tool] {tool_name}({args_preview})"},
                 })
 
             if fn:
@@ -283,10 +302,10 @@ class SingleAgentGraph:
 
             # ── Emit tool result into thinking chain ──
             if self._stream_cb:
-                result_preview = format_result_preview(result)
+                result_str = str(result or "")[:200]
                 await self._stream_cb({
                     "event": "on_custom_thinking",
-                    "data": {"content": f"[result] {tool_name} → {result_preview}"},
+                    "data": {"content": f"[result] {tool_name} | {result_str}"},
                 })
         if self._stream_cb:
             await self._stream_cb({"event": "on_node_end", "data": {}})
@@ -315,12 +334,24 @@ class SingleAgentGraph:
         """Set the callback for streaming events."""
         self._stream_cb = cb
 
-    def bind_tools(self, tools: Sequence[ToolDescriptor | ToolConfig]) -> None:
+    def bind_tools(self, tools: Sequence[ToolDescriptor]) -> None:
         """Register tool definitions and executors with the graph."""
         for tc in tools:
-            api_name, wrapper, definition = build_tool_definition(tc, llm=self.llm)
-            self._tool_map[api_name] = wrapper
+            definition = {
+                "type": "function",
+                "function": {
+                    "name": tc.name,
+                    "description": tc.description,
+                    "parameters": tc.parameters or {"type": "object", "properties": {}},
+                },
+            }
             self._tool_definitions.append(definition)
+            self._tool_map[tc.name] = self._wrap_tool(tc)
+
+    @staticmethod
+    def _wrap_tool(tc: ToolDescriptor) -> ToolExecutor:
+        """Wrap a ToolDescriptor into a ToolExecutor for the tools node."""
+        return _InlineToolExecutor(tc)
 
     @property
     def graph(self) -> CompiledStateGraph[Any]:

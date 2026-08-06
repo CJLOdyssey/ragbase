@@ -65,14 +65,6 @@ class TestSessionRepo:
         filtered = await get_sessions(user_id="u_filter")
         assert all(s.user_id == "u_filter" for s in filtered)
 
-    async def test_get_sessions_filtered_by_agent(self, db_engine):
-        agent_id = str(uuid.uuid4())
-        await create_session(title="Agent Session", agent_id=agent_id)
-        await create_session(title="No Agent")
-        filtered = await get_sessions(agent_id=agent_id)
-        assert len(filtered) == 1
-        assert filtered[0].agent_id == agent_id
-
     async def test_get_sessions_empty(self, db_engine):
         # Use a known-nonexistent user filter
         sessions = await get_sessions(user_id="no_such_user_xyz")

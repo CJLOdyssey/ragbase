@@ -76,7 +76,6 @@ async def _run_agent_pipeline(
     requirement: str,
     run_id: str,
     session_id: str | None,
-    agent_id: str | None,
     api_key: str | None = None,
     api_base: str | None = None,
     model: str | None = None,
@@ -88,7 +87,7 @@ async def _run_agent_pipeline(
         tracemalloc.start(25)
         logger.info("[MEM] tracemalloc started")
     log_memory_diff()
-    logger.info("=== ENTER _run_agent_pipeline run=#%s | run=%s agent=%s ===", _run_counter, run_id, agent_id)
+    logger.info("=== ENTER _run_agent_pipeline run=#%s | run=%s ===", _run_counter, run_id)
     await update_run_status(run_id, "running")
     cfg = load_config()
     effective_api_key = api_key
@@ -131,40 +130,6 @@ async def _run_agent_pipeline(
         checkpointer=checkpointer,
     )
     graph.set_stream_callback(emitter)
-
-    # 内容创作场景不使用 Agent 工具/MCP 绑定
-    tool_configs: list = []
-    graph.bind_tools(tool_configs)
-
-    # ── Intent detection: direct URL open for "打开XX" patterns ──
-    # ponytail: manual mapping for common Chinese site names; expand as needed
-    _site_map = {
-        "百度": "https://www.baidu.com",
-        "谷歌": "https://www.google.com",
-        "google": "https://www.google.com",
-        "bing": "https://www.bing.com",
-        "必应": "https://www.bing.com",
-        "抖音": "https://www.douyin.com",
-        "github": "https://github.com",
-        "知乎": "https://www.zhihu.com",
-        "微博": "https://weibo.com",
-    }
-    _open_url = None
-    _clean = requirement.strip().lower()
-    for _keyword, _site_url in _site_map.items():
-        if _keyword in _clean and ("打开" in _clean or "访问" in _clean or "去" in _clean):
-            _open_url = _site_url
-            break
-    # Also try regex for full URLs / domains with dots
-    if not _open_url:
-        import re
-        _m = re.search(r'(?:https?://)?([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z0-9][-a-zA-Z0-9]*)+', requirement.strip())
-        if _m and ("打开" in _clean or "访问" in _clean or "去" in _clean):
-            _domain = _m.group(0)
-            _open_url = f"https://{_domain}" if not _domain.startswith("http") else _domain
-    if _open_url:
-        logger.info("Intent detection: open_url -> %s", _open_url)
-        await publish_run_message(run_id, {"type": "open_url", "url": _open_url})
 
     try:
         async with asyncio.timeout(_AGENT_TIMEOUT):
@@ -279,5 +244,5 @@ async def _run_agent_pipeline(
     with contextlib.suppress(Exception):
         gc.collect()
     log_memory_diff()
-    logger.info("=== EXIT _run_agent_pipeline run=#%s | run=%s agent=%s ===", _run_counter, run_id, agent_id)
+    logger.info("=== EXIT _run_agent_pipeline run=#%s | run=%s ===", _run_counter, run_id)
     return {"run_id": run_id, "status": "completed"}

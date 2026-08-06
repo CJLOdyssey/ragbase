@@ -132,19 +132,15 @@ def test_get_async_engine_with_pool_kwargs() -> None:
 def test_re_exports_are_accessible() -> None:
     """All ORM models are re-exported from database module."""
     from core.infra.database import (
-        AgentConfigDB,
         AttachmentDB,
         ChatMessage,
         PromptDB,
         SessionDB,
-        TeamDB,
         UserDB,
     )
 
-    assert AgentConfigDB is not None
     assert AttachmentDB is not None
     assert ChatMessage is not None
     assert PromptDB is not None
     assert SessionDB is not None
-    assert TeamDB is not None
     assert UserDB is not None

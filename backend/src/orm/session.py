@@ -16,12 +16,6 @@ class SessionDB(Base):
     title: Mapped[str] = mapped_column(String(256), default="新对话")
     user_id: Mapped[str] = mapped_column(String(128), default="default")
     kind: Mapped[str] = mapped_column(String(16), default="normal")
-    agent_id: Mapped[str | None] = mapped_column(
-        String(36),
-        ForeignKey("agent_configs.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

@@ -109,32 +109,6 @@ async def init_db() -> None:
     engine = get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Enterprise: add FK + index for agent_id on existing sessions table
-        await conn.execute(
-            text(
-                """
-            DO $$ BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint
-                    WHERE conname = 'sessions_agent_id_fkey'
-                ) THEN
-                    UPDATE sessions SET agent_id = NULL
-                    WHERE agent_id IS NOT NULL
-                    AND agent_id NOT IN (
-                        SELECT id FROM agent_configs
-                    );
-                    ALTER TABLE sessions
-                    ADD CONSTRAINT sessions_agent_id_fkey
-                    FOREIGN KEY (agent_id) REFERENCES agent_configs(id)
-                    ON DELETE SET NULL;
-                END IF;
-            END $$;
-        """
-            )
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS ix_sessions_agent_id ON sessions(agent_id);")
-        )
         await conn.execute(
             text(
                 """
@@ -144,7 +118,6 @@ async def init_db() -> None:
                     WHERE table_name = 'sessions' AND column_name = 'kind'
                 ) THEN
                     ALTER TABLE sessions ADD COLUMN kind VARCHAR(16) NOT NULL DEFAULT 'normal';
-                    UPDATE sessions SET kind = 'agent' WHERE agent_id IS NOT NULL;
                 END IF;
             END $$;
         """
@@ -153,9 +126,6 @@ async def init_db() -> None:
 
     from core.seed import seed_default_roles_and_admin  # noqa: F401
     await seed_default_roles_and_admin()
-    from core.seed import seed_builtin_tools  # noqa: F401
-    await seed_builtin_tools()
-
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
@@ -168,39 +138,29 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 # All ORM models moved to backend.orm package.
 # These imports keep `from core.infra.database import XxxDB` working.
 from orm import (  # noqa: F401
-    AgentConfigDB,
     AttachmentDB,
     AuditLogDB,
     ChatMessage,
     CommandLogDB,
     KeyUsageLog,
-    MCPServerDB,
     MemoryEntry,
     ProjectRun,
     PromptDB,
     RefreshTokenDB,
-    RegisteredSkillDB,
-    RegisteredToolDB,
     RoleDB,
     SessionDB,
-    TeamAgentDB,
-    TeamDB,
     UserApiKey,
     UserDB,
     UserRoleDB,
     VersionDB,
-    WorkflowConfigDB,
-    WorkflowEdgeDB,
-    WorkflowNodeDB,
 )
 
 __all__ = [
-    "AgentConfigDB", "AttachmentDB", "AuditLogDB",
+    "AttachmentDB", "AuditLogDB",
     "ChatMessage", "CommandLogDB", "KeyUsageLog",
-    "MCPServerDB", "MemoryEntry", "ProjectRun",
-    "PromptDB", "RefreshTokenDB", "RegisteredSkillDB",
-    "RegisteredToolDB", "RoleDB", "SessionDB",
-    "TeamAgentDB", "TeamDB", "UserApiKey",
+    "MemoryEntry", "ProjectRun",
+    "PromptDB", "RefreshTokenDB",
+    "RoleDB", "SessionDB",
+    "UserApiKey",
     "UserDB", "UserRoleDB", "VersionDB",
-    "WorkflowConfigDB", "WorkflowEdgeDB", "WorkflowNodeDB",
 ]

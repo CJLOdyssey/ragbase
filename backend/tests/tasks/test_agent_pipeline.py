@@ -95,7 +95,6 @@ class TestRunAgentPipeline:
             api_key="sk-test",
             api_base=None,
             model=None,
-            agent_id=None,
         )
         assert result is not None
         mock_agent_deps["SingleAgentGraph"].assert_called_once()
@@ -112,7 +111,6 @@ class TestRunAgentPipeline:
             api_key="sk-test",
             api_base=None,
             model=None,
-            agent_id=None,
         )
         graph.bind_tools.assert_called_once_with([])
 
@@ -129,7 +127,6 @@ class TestRunAgentPipeline:
             api_key="sk-test",
             api_base=None,
             model=None,
-            agent_id=None,
         )
         graph = mock_agent_deps["SingleAgentGraph"].return_value
         call_kwargs = graph.run.call_args[1]
@@ -146,7 +143,6 @@ class TestRunAgentPipeline:
             api_key="sk-test",
             api_base=None,
             model=None,
-            agent_id=None,
         )
         mock_agent_deps["_get_rag_context"].assert_awaited_once()
 
@@ -160,7 +156,6 @@ class TestRunAgentPipeline:
             api_key="sk-test",
             api_base=None,
             model=None,
-            agent_id=None,
         )
         mock_agent_deps["log_key_usage"].assert_awaited_once()
 
@@ -174,7 +169,6 @@ class TestRunAgentPipeline:
             api_key="sk-test",
             api_base=None,
             model=None,
-            agent_id=None,
         )
         mock_agent_deps["_save_output_memories"].assert_awaited_once()
 
@@ -188,7 +182,6 @@ class TestRunAgentPipeline:
             api_key="sk-test",
             api_base=None,
             model=None,
-            agent_id=None,
         )
         mock_agent_deps["update_run_status"].assert_awaited_with("run-7", "running")
         mock_agent_deps["update_run_result"].assert_awaited_once()
@@ -209,8 +202,7 @@ class TestRunAgentPipeline:
                 api_key="sk-test",
                 api_base=None,
                 model=None,
-                agent_id=None,
-            )
+                )
         mock_agent_deps["_report_run_error"] if "_report_run_error" in mock_agent_deps else None
 
     async def test_model_override(self, mock_agent_deps):
@@ -228,7 +220,6 @@ class TestRunAgentPipeline:
             api_key="sk-test",
             api_base=None,
             model="custom-model",
-            agent_id=None,
         )
         kwargs = graph.run.call_args[1]
         assert kwargs.get("model") == "custom-model" or graph.run.call_args[0] or True

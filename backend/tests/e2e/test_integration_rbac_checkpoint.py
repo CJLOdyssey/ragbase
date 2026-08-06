@@ -25,16 +25,14 @@ class TestOwnedAgentRuns:
                 os.remove("./.test_checkpoints_integration.db")
 
     def test_apply_owner_filter_exists(self):
-        """Verify the RBAC helper function is importable."""
-        # Basic sanity — function exists and returns stmt unchanged for None
         from sqlalchemy import select
 
-        from core.infra.database import AgentConfigDB
+        from core.infra.database import SessionDB
         from repository.core import apply_owner_filter
 
-        stmt = select(AgentConfigDB)
-        result = apply_owner_filter(stmt, AgentConfigDB, owner_id=None)
-        assert result is stmt  # unchanged
+        stmt = select(SessionDB)
+        result = apply_owner_filter(stmt, SessionDB, owner_id=None)
+        assert result is stmt
 
     @pytest.mark.skipif(
         os.environ.get("AUTH_MODE") != "rbac",

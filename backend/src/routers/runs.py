@@ -30,8 +30,6 @@ class RunRequest(BaseModel):
         default=None, description="Vaulted API key ID — server resolves key, never exposes it"
     )
     model: str | None = None
-    agent_id: str | None = None
-    team_id: str | None = None
     parent_run_id: str | None = None
 
 
@@ -60,8 +58,6 @@ async def create_run(req: RunRequest, request: Request) -> Any:
             session_id=req.session_id,
             user_id=user_id,
             key_id=req.key_id,
-            agent_id=req.agent_id,
-            team_id=req.team_id,
             model=req.model,
             parent_run_id=req.parent_run_id,
         )

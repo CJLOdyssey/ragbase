@@ -8,7 +8,7 @@ from sqlalchemy import desc, select
 
 
 async def create_session(
-    title: str = "新对话", user_id: str = "default", agent_id: str | None = None,
+    title: str = "新对话", user_id: str = "default",
     kind: str = "normal",
 ) -> SessionDB:
     """Create a new conversation session and return the persisted row.
@@ -16,7 +16,6 @@ async def create_session(
     Args:
         title: Display title for the session.
         user_id: Owner user ID.
-        agent_id: Optional bound agent config ID.
         kind: Session kind — normal, agent, or team.
 
     Returns:
@@ -30,7 +29,6 @@ async def create_session(
             title=title,
             user_id=user_id,
             kind=kind,
-            agent_id=agent_id,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
@@ -48,14 +46,13 @@ async def get_session(session_id: str) -> SessionDB | None:
 
 
 async def get_sessions(
-    limit: int = 50, user_id: str | None = None, agent_id: str | None = None
+    limit: int = 50, user_id: str | None = None
 ) -> list[SessionDB]:
-    """Return recent sessions, optionally filtered by user or agent.
+    """Return recent sessions, optionally filtered by user.
 
     Args:
         limit: Maximum number of sessions to return.
         user_id: If set, only return sessions owned by this user.
-        agent_id: If set, only return sessions bound to this agent config.
 
     Returns:
         A list of SessionDB rows sorted by last-updated descending.
@@ -64,8 +61,6 @@ async def get_sessions(
     factory = get_session_factory()
     async with factory() as session:
         stmt = select(SessionDB).order_by(desc(SessionDB.updated_at)).limit(limit)
-        if agent_id:
-            stmt = stmt.where(SessionDB.agent_id == agent_id)
         if user_id:
             stmt = stmt.where(SessionDB.user_id == user_id)
         result = await session.execute(stmt)

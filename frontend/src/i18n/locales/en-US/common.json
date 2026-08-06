@@ -43,5 +43,14 @@
   "app": {
     "title": "AgentStudio",
     "subtitle": "Virtual Dev Team"
+  },
+  "model": {
+    "loading": "Loading...",
+    "noCommands": "No commands available",
+    "noModels": "No models available",
+    "configure": "Configure API provider",
+    "noModelsHint": "Configure an API provider to enable models",
+    "statusDeprecated": "Deprecated",
+    "statusSunset": "Sunsetting"
   }
 }

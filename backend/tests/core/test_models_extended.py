@@ -152,29 +152,3 @@ class TestSessionDetailResponse:
         )
         assert resp.runs == []
         assert resp.memories == []
-
-
-class TestTeamOutput:
-    def test_requirement_min_length(self):
-        from core.models import TeamOutput
-
-        with pytest.raises(ValidationError):
-            TeamOutput(
-                requirement="",
-                pm_document="doc",
-                code="code",
-                review="review",
-            )
-
-    def test_valid_team_output(self):
-        from core.models import TeamOutput
-
-        output = TeamOutput(
-            requirement="Build a website",
-            pm_document="Design doc",
-            code="<div>hello</div>",
-            review="Looks good",
-            approved=True,
-        )
-        assert output.requirement == "Build a website"
-        assert output.approved is True

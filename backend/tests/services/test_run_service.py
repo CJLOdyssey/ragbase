@@ -347,11 +347,9 @@ class TestRunService:
                 session_id=None,
                 user_id="user-1",
                 key_id="key-1",
-                agent_id="agent-1",
             )
 
         assert result == {"run_id": "run-celery", "status": "pending", "session_id": "sess-celery"}
-        assert captured["agent_id"] == "agent-1"
         assert captured["user_id"] == "user-1"
         assert captured["model"] == "gpt-4"
         assert captured["run_id"] == "run-celery"
@@ -387,7 +385,6 @@ class TestRunService:
                 session_id=None,
                 user_id="user-1",
                 key_id="key-1",
-                agent_id="agent-1",
             )
 
         assert result == {"run_id": "run-thread", "status": "pending", "session_id": "sess-thread"}

@@ -57,8 +57,6 @@ class RunService:
         session_id: str | None,
         user_id: str,
         key_id: str | None = None,
-        agent_id: str | None = None,
-        team_id: str | None = None,
         model: str | None = None,
         parent_run_id: str | None = None,
     ) -> dict[str, Any]:
@@ -72,21 +70,17 @@ class RunService:
         config = load_config()
 
         # ── Session ─────────────────────────────────────────────────
-        kind = 'agent' if agent_id else 'team' if team_id else 'normal'
         if session_id is None:
-            sess = await create_session(title=requirement[:64], user_id=user_id, agent_id=agent_id, kind=kind)
+            sess = await create_session(title=requirement[:64], user_id=user_id, kind="normal")
             session_id = sess.id
         else:
             existing_sess = await get_session(session_id)
             if existing_sess is None:
                 logger.warning("session_id=%s not found, creating new session", session_id)
                 sess = await create_session(
-                    title=requirement[:64], user_id=user_id, agent_id=agent_id, kind=kind
+                    title=requirement[:64], user_id=user_id, kind="normal"
                 )
                 session_id = sess.id
-            elif agent_id is None and team_id is None and existing_sess.agent_id:
-                # 会话已绑定 agent，但前端续聊未显式传 agent_id 时从会话回退
-                agent_id = existing_sess.agent_id
 
         # ── Key resolution ──────────────────────────────────────────
         api_key: str | None = None
@@ -146,52 +140,15 @@ class RunService:
             if RUN_DISPATCH == "celery":
                 from tasks import registry as _reg
 
-                if team_id:
-                    from repository.workflows import get_workflow_config_by_team
-
-                    workflow = await get_workflow_config_by_team(team_id)
-                    if workflow:
-                        _reg.run_team.delay(
-                            requirement=requirement, run_id=run_id, session_id=session_id,
-                            team_id=team_id, key_id=key_id, api_key=api_key,
-                            api_base=api_base, model=effective_model,
-                        )
-                        logger.info("Team task -> celery | run=%s | team=%s", run_id, team_id)
-                        return {"run_id": run_id, "status": "pending", "session_id": session_id}
                 _reg.run_agent.delay(
                     requirement=requirement, run_id=run_id, session_id=session_id,
-                    agent_id=agent_id, api_key=api_key, api_base=api_base,
+                    api_key=api_key, api_base=api_base,
                     model=effective_model, user_id=user_id,
                 )
                 logger.info("Task -> celery | run=%s", run_id)
                 return {"run_id": run_id, "status": "pending", "session_id": session_id}
 
             # thread 模式：进程内后台任务
-            if team_id:
-                from repository.workflows import get_workflow_config_by_team
-
-                workflow = await get_workflow_config_by_team(team_id)
-                if workflow:
-                    from tasks.team_pipeline import _run_team_pipeline
-
-                    asyncio.create_task(
-                        _run_team_pipeline(
-                            requirement=requirement,
-                            run_id=run_id,
-                            session_id=session_id,
-                            team_id=team_id,
-                            key_id=key_id,
-                            model=effective_model,
-                            api_key=api_key,
-                            api_base=api_base,
-                        )
-                    )
-                    logger.info(
-                        "Team task started (thread) | run=%s | team=%s | nodes=%d",
-                        run_id, team_id, len(workflow.nodes),
-                    )
-                    return {"run_id": run_id, "status": "pending", "session_id": session_id}
-
             from tasks import _run_agent_pipeline
 
             asyncio.create_task(
@@ -199,7 +156,6 @@ class RunService:
                     requirement=requirement,
                     run_id=run_id,
                     session_id=session_id,
-                    agent_id=agent_id,
                     api_key=api_key,
                     api_base=api_base,
                     model=effective_model,

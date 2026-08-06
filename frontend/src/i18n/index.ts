@@ -2,15 +2,9 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 import commonZh from './locales/zh-CN/common.json';
-import sidebarZh from './locales/zh-CN/sidebar.json';
-import chatZh from './locales/zh-CN/chat.json';
-import workstationZh from './locales/zh-CN/workstation.json';
 import apiZh from './locales/zh-CN/api.json';
 
 import commonEn from './locales/en-US/common.json';
-import sidebarEn from './locales/en-US/sidebar.json';
-import chatEn from './locales/en-US/chat.json';
-import workstationEn from './locales/en-US/workstation.json';
 import apiEn from './locales/en-US/api.json';
 
 function deepMerge<T extends Record<string, unknown>>(target: T, ...sources: Partial<T>[]): T {
@@ -28,8 +22,8 @@ function deepMerge<T extends Record<string, unknown>>(target: T, ...sources: Par
   return out;
 }
 
-const zh = deepMerge({}, commonZh, sidebarZh, chatZh, workstationZh, apiZh);
-const en = deepMerge({}, commonEn, sidebarEn, chatEn, workstationEn, apiEn);
+const zh = deepMerge({}, commonZh, apiZh);
+const en = deepMerge({}, commonEn, apiEn);
 
 const saved = typeof window !== 'undefined' ? localStorage.getItem('language') : null;
 const legacyMap: Record<string, string> = { en: 'en-US' };

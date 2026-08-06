@@ -22,10 +22,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from core.infra.database import (
-    AgentConfigDB,
-    Base,
-)
+from core.infra.database import Base
 from core.infra.database import (
     _async_session_factory as _real_factory,
 )
@@ -61,22 +58,3 @@ async def _setup_db(db_engine):
     db._read_session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
     yield
     # No teardown needed — next test's setup will drop everything anyway.
-
-
-@pytest.fixture
-async def sample_agent(db_engine):
-    """Create and return a sample AgentConfigDB row for tests that need one."""
-    factory = async_sessionmaker(db_engine, expire_on_commit=False)
-    async with factory() as session:
-        agent = AgentConfigDB(
-            id=str(uuid.uuid4()),
-            name="Sample Agent",
-            role_identifier=f"sample_{uuid.uuid4().hex[:8]}",
-            system_prompt="You are a sample agent.",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
-        session.add(agent)
-        await session.commit()
-        await session.refresh(agent)
-        return agent

@@ -143,25 +143,12 @@ class CommandExecuteResponse(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
 
 
-class TeamOutput(BaseModel):
-    """Output from a team agent run — documents, code, review, and status."""
-
-    requirement: str = Field(min_length=1)
-    pm_document: str
-    code: str
-    review: str
-    approved: bool = False
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    conversation_rounds: list[ConversationRound] = Field(default_factory=list)
-
-
 class SessionSummary(BaseModel):
     """Lightweight session summary for list views."""
 
     id: str
     title: str
     kind: str = "normal"
-    agent_id: str | None = None
     run_count: int = 0
     created_at: str | None = None
     updated_at: str | None = None
@@ -221,7 +208,6 @@ class SessionDetailResponse(BaseModel):
     id: str
     title: str
     kind: str = "normal"
-    agent_id: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
     runs: list[RunSummary] = Field(default_factory=list)
