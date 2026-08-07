@@ -47,9 +47,6 @@ export interface Message {
   artifactType?: string;
   artifactTitle?: string;
   isTyping?: boolean;
-  versions?: string[];
-  thinkingVersions?: string[];
-  currentVersion?: number;
   userVersions?: string[];
   currentUserVersion?: number;
   thumbsFeedback?: 'up' | 'down' | null;

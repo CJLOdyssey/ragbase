@@ -60,9 +60,6 @@ export interface ChatMessage {
   thinkingDone?: boolean;
   round_number: number;
   created_at: string | null;
-  versions?: string[];
-  thinkingVersions?: string[];
-  currentVersion?: number;
   /** User-message edit history (older edits first; content is the active one) */
   userVersions?: string[];
   currentUserVersion?: number;

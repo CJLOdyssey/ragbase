@@ -273,32 +273,29 @@ describe('chatStore', { tags: ['unit'] }, () => {
     });
   });
 
-  describe('switchVersion', () => {
+  describe('switchUserVersion', () => {
     it('switches to next version', async () => {
       const { useChatStore } = await import('../chatStore');
       useChatStore.setState({
         messages: [
           {
             id: 'm1',
-            role: 'agent',
-            agent_name: 'Agent',
+            role: 'user',
+            agent_name: 'User',
             content: 'v1',
-            thinking: 't1',
-            versions: ['v1', 'v2'],
-            thinkingVersions: ['t1', 't2'],
-            currentVersion: 0,
+            userVersions: ['v1', 'v2'],
+            currentUserVersion: 0,
             round_number: 0,
             created_at: new Date().toISOString(),
           },
         ],
       });
 
-      useChatStore.getState().switchVersion('m1', 'next');
+      useChatStore.getState().switchUserVersion('m1', 'next');
       const msg = useChatStore.getState().messages[0];
 
       expect(msg.content).toBe('v2');
-      expect(msg.thinking).toBe('t2');
-      expect(msg.currentVersion).toBe(1);
+      expect(msg.currentUserVersion).toBe(1);
     });
 
     it('switches to previous version', async () => {
@@ -307,24 +304,22 @@ describe('chatStore', { tags: ['unit'] }, () => {
         messages: [
           {
             id: 'm1',
-            role: 'agent',
-            agent_name: 'Agent',
+            role: 'user',
+            agent_name: 'User',
             content: 'v2',
-            thinking: 't2',
-            versions: ['v1', 'v2', 'v3'],
-            thinkingVersions: ['t1', 't2', 't3'],
-            currentVersion: 2,
+            userVersions: ['v1', 'v2', 'v3'],
+            currentUserVersion: 2,
             round_number: 0,
             created_at: new Date().toISOString(),
           },
         ],
       });
 
-      useChatStore.getState().switchVersion('m1', 'prev');
+      useChatStore.getState().switchUserVersion('m1', 'prev');
       const msg = useChatStore.getState().messages[0];
 
       expect(msg.content).toBe('v2');
-      expect(msg.currentVersion).toBe(1);
+      expect(msg.currentUserVersion).toBe(1);
     });
 
     it('clamps version at bounds', async () => {
@@ -333,22 +328,20 @@ describe('chatStore', { tags: ['unit'] }, () => {
         messages: [
           {
             id: 'm1',
-            role: 'agent',
-            agent_name: 'Agent',
+            role: 'user',
+            agent_name: 'User',
             content: 'v1',
-            thinking: 't1',
-            versions: ['v1', 'v2'],
-            thinkingVersions: ['t1', 't2'],
-            currentVersion: 0,
+            userVersions: ['v1', 'v2'],
+            currentUserVersion: 0,
             round_number: 0,
             created_at: new Date().toISOString(),
           },
         ],
       });
 
-      useChatStore.getState().switchVersion('m1', 'prev');
+      useChatStore.getState().switchUserVersion('m1', 'prev');
       const msg = useChatStore.getState().messages[0];
-      expect(msg.currentVersion).toBe(0);
+      expect(msg.currentUserVersion).toBe(0);
     });
 
     it('ignores messages without versions', async () => {
@@ -357,17 +350,16 @@ describe('chatStore', { tags: ['unit'] }, () => {
         messages: [
           {
             id: 'm1',
-            role: 'agent',
-            agent_name: 'Agent',
+            role: 'user',
+            agent_name: 'User',
             content: 'old',
-            thinking: 'thinking',
             round_number: 0,
             created_at: new Date().toISOString(),
           },
         ],
       });
 
-      useChatStore.getState().switchVersion('m1', 'next');
+      useChatStore.getState().switchUserVersion('m1', 'next');
       const msg = useChatStore.getState().messages[0];
       expect(msg.content).toBe('old');
     });
