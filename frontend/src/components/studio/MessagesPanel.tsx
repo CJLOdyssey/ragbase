@@ -58,11 +58,36 @@ export default function MessagesPanel({
           ? Math.max(0, cur - 1)
           : Math.min(versions.length - 1, cur + 1);
       if (nv === cur) return;
-      // 分支语义：切版本 = 切分支，视图整体切换到目标 run 所在分支。
       const versionRunId = userMsg?.versionRunIds?.[nv];
-      if (versionRunId) {
+      // 目标 run 不在当前视图（另一分支）→ 加载该分支完整内容。
+      if (versionRunId && !s.runTurns[versionRunId]) {
         void onSwitchBranch(versionRunId);
+        return;
       }
+      // 同分支/线性：本地版本切换，数字 2/2→1/2，内容 + 回答联动，后续轮次保留。
+      const turn = versionRunId ? s.runTurns[versionRunId] : undefined;
+      useChatStore.setState((prev) => {
+        const uIdx = prev.messages.findIndex((m) => m.id === msgId);
+        const aIdx =
+          uIdx >= 0
+            ? prev.messages.findIndex((m, i) => i > uIdx && m.role !== 'user')
+            : -1;
+        return {
+          messages: prev.messages.map((m, i) => {
+            if (i === uIdx) {
+              return {
+                ...m,
+                content: versions[nv],
+                currentUserVersion: nv,
+              };
+            }
+            if (i === aIdx && turn) {
+              return { ...m, content: turn.content, thinking: turn.thinking };
+            }
+            return m;
+          }),
+        };
+      });
     },
     [onSwitchBranch],
   );
