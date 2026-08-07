@@ -56,14 +56,22 @@ export default function MessagesPanel({
           ? Math.max(0, cur - 1)
           : Math.min(versions.length - 1, cur + 1);
       if (nv === cur) return;
-      // 更新本地 user 消息内容（乐观），后端 run 树不变
-      useChatStore.setState((prev) => ({
-        messages: prev.messages.map((m) =>
-          m.id === msgId
-            ? { ...m, content: versions[nv], currentUserVersion: nv }
-            : m,
-        ),
-      }));
+      // 分支语义：切版本 = 切分支，视图只保留本 turn（该 user 消息 + 其回答），
+      // 分支点之后的轮次截断隐藏（DB 留存）。
+      useChatStore.setState((prev) => {
+        const uIdx = prev.messages.findIndex((m) => m.id === msgId);
+        const aIdx = prev.messages.findIndex(
+          (m, i) => i > uIdx && m.role !== 'user',
+        );
+        const end = aIdx >= 0 ? aIdx + 1 : prev.messages.length;
+        return {
+          messages: prev.messages.slice(0, end).map((m) =>
+            m.id === msgId
+              ? { ...m, content: versions[nv], currentUserVersion: nv }
+              : m,
+          ),
+        };
+      });
     },
     [],
   );

@@ -233,9 +233,11 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
     pendingVersions: null,
     pendingThinkingVersions: null,
     skipThinking: false,
-    messages: s.messages.map((m, i) =>
-      i === idx ? { ...m, content: trimmed } : m,
-    ),
+    // 分支语义：编辑 = 切到新分支，分支点之后的轮次（后续 turn）从视图
+    // 截断隐藏（DB 留存），只保留本 turn 供流式替换。
+    messages: s.messages
+      .slice(0, nextAgentIdx >= 0 ? nextAgentIdx + 1 : s.messages.length)
+      .map((m, i) => (i === idx ? { ...m, content: trimmed } : m)),
   });
 
   await submitRequirement(
