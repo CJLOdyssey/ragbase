@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type * as React from 'react';
-import { ChevronRight, Pencil } from 'lucide-react';
+import { ChevronRight, GitBranch, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types/studio';
+import { switchBranch } from '../../stores/chatActions';
+import { useChatStore } from '../../stores/chatStore';
 import { CopyBtn } from './messages';
 import { sanitizeHtml } from '../../utils/sanitize';
 
@@ -20,9 +22,19 @@ export default function UserMessage({
   const { t, i18n } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const [isBranchOpen, setIsBranchOpen] = useState(false);
+
+  const allRuns = useChatStore((s) => s.allRuns);
+  const activeRunId = useChatStore((s) => s.activeRunId);
 
   const userVersions = msg.userVersions || [msg.content];
   const currentUserVersion = msg.currentUserVersion ?? 0;
+  // 分支点：当前 run 的子节点 > 1（续聊 + 编辑分支并存）
+  const currentRunId = msg.runId ?? activeRunId ?? '';
+  const children = Object.values(allRuns).filter(
+    (r) => r.parent_run_id === currentRunId && r.id !== currentRunId,
+  );
+  const hasBranches = children.length > 1;
   const time = msg.timestamp
     ? new Date(msg.timestamp).toLocaleTimeString(
         i18n.language === 'en-US' ? 'en-US' : 'zh-CN',
@@ -129,6 +141,45 @@ export default function UserMessage({
                 >
                   <ChevronRight size={12} />
                 </button>
+              </div>
+            )}
+            {hasBranches && (
+              <div className="relative">
+                <button
+                  className="flex items-center justify-center w-6 h-6 bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-0 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]"
+                  onClick={() => setIsBranchOpen(!isBranchOpen)}
+                  aria-label="Switch branch"
+                  title={t('teamMessage.switchBranch') || '切换分支'}
+                >
+                  <GitBranch size={12} />
+                </button>
+                {isBranchOpen && (
+                  <div className="absolute right-0 top-7 z-20 min-w-[220px] max-w-[320px] bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-lg shadow-lg p-1">
+                    {children.map((child) => {
+                      const isActive = child.id === activeRunId;
+                      return (
+                        <button
+                          key={child.id}
+                          className={`flex items-center gap-2 w-full px-2 py-1.5 border-none rounded-md bg-transparent text-left text-xs cursor-pointer transition-colors duration-150 hover:bg-[var(--color-surface-hover)] ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'}`}
+                          onClick={() => {
+                            switchBranch(child.id);
+                            setIsBranchOpen(false);
+                          }}
+                        >
+                          <GitBranch size={10} className="flex-shrink-0" />
+                          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+                            {child.requirement || '(未命名分支)'}
+                          </span>
+                          {isActive && (
+                            <span className="ml-auto text-[var(--color-accent)]">
+                              ●
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
             {time && (

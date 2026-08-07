@@ -3,6 +3,15 @@ import type { AppStatus, ChatMessage, RunResult } from '../types';
 export type WsConnectionStatus =
   'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
+/** run 树节点元数据（分支导航用） */
+export interface RunMeta {
+  id: string;
+  requirement: string;
+  parent_run_id: string | null;
+  requirement_versions: string[] | null;
+  created_at: string | null;
+}
+
 export interface ChatState {
   currentRunId: string | null;
   currentSessionId: string | null;
@@ -52,5 +61,8 @@ export interface ChatState {
   setRunTurns: (
     turns: Record<string, { content: string; thinking: string }>,
   ) => void;
+  /** 会话全量 run 树（分支导航） */
+  allRuns: Record<string, RunMeta>;
+  setAllRuns: (runs: RunMeta[]) => void;
   reset: () => void;
 }

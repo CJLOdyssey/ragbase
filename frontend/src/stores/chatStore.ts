@@ -2,7 +2,7 @@ import { disconnectRun } from '../api/websocket';
 import type { AppStatus, ChatMessage, RunResult } from '../types';
 import Logger from '../utils/logger';
 import { create } from 'zustand';
-import type { ChatState } from './chatTypes';
+import type { ChatState, RunMeta } from './chatTypes';
 import { uid } from './uid';
 
 export type { WsConnectionStatus, ChatState } from './chatTypes';
@@ -11,6 +11,7 @@ const INITIAL_STATE = {
   currentRunId: null,
   activeRunId: null,
   runTurns: {},
+  allRuns: {},
   currentSessionId: null,
   currentConvId: null,
   messages: [],
@@ -69,6 +70,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({
       messages,
       runTurns: {},
+      allRuns: {},
       currentConvId: convId ?? null,
       currentSessionId: sessionId ?? null,
       currentRunId: null,
@@ -156,6 +158,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setRunTurns: (turns) => set({ runTurns: turns }),
+
+  setAllRuns: (runs) =>
+    set({
+      allRuns: Object.fromEntries(runs.map((r) => [r.id, r])) as Record<
+        string,
+        RunMeta
+      >,
+    }),
 }));
 
 export {
@@ -165,4 +175,5 @@ export {
   regenerateMessage,
   retry,
   continueGeneration,
+  switchBranch,
 } from './chatActions';
