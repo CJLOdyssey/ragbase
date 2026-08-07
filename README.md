@@ -9,6 +9,7 @@
 ## 技术栈
 
 - 后端：Python 3.12 + FastAPI + SQLAlchemy(async) + PostgreSQL(pgvector) + Redis + Celery
+- 依赖管理：uv（`pyproject.toml` 单一声明 + `uv.lock` 锁定）
 - 前端：React 18 + Vite + TypeScript + Ant Design
 - RAG：DashScope text-embedding-v3 + pgvector HNSW + 语义切块
 - 质量：ruff + mypy strict + pytest（unit/integration/e2e 分层）+ vitest
