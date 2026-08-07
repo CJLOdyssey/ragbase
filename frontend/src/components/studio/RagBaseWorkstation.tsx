@@ -28,6 +28,8 @@ export default function RagBaseWorkstation() {
           setActiveConvId={s.setActiveConvId}
           setInputValue={() => {}}
           onDeleteConversation={s.handleDeleteConversation}
+          onRenameConversation={s.handleRenameConversation}
+          onPinConversation={s.handlePinConversation}
           onNewChat={s.handleNewChat}
           isSidebarOpen={s.isSidebarOpen}
           onToggleSidebar={() => s.setIsSidebarOpen(false)}
@@ -76,12 +78,10 @@ export default function RagBaseWorkstation() {
                   <MessagesPanel
                     showAgentChat
                     hasMessages={s.hasMessages}
-                    selectedAgentId={null}
-                    welcomeDismissed={false}
                     allAgents={[]}
                     displayMessages={s.displayMessages}
                     messagesEndRef={messagesEndRef}
-                    onDismissWelcome={() => {}}
+                    onSwitchBranch={s.handleSwitchBranch}
                   />
                 ) : (
                   <HomeScreen
@@ -94,6 +94,7 @@ export default function RagBaseWorkstation() {
                     onConfigureModels={() => s.setIsApiOpen(true)}
                     inputToolbarRef={inputToolbarRef}
                     isRunning={s.isRunning}
+                    onStop={s.handleStop}
                   />
                 )}
               </div>
@@ -109,6 +110,7 @@ export default function RagBaseWorkstation() {
                   commands={[]}
                   onConfigureModels={() => s.setIsApiOpen(true)}
                   isRunning={s.isRunning}
+                  onStop={s.handleStop}
                 />
               )}
             </div>

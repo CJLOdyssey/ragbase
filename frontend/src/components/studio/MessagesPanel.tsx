@@ -16,6 +16,7 @@ interface Props {
   allAgents: Agent[];
   displayMessages: Message[];
   messagesEndRef: RefObject<HTMLDivElement>;
+  onSwitchBranch: (runId: string) => void;
 }
 
 export default function MessagesPanel({
@@ -24,6 +25,7 @@ export default function MessagesPanel({
   allAgents,
   displayMessages,
   messagesEndRef,
+  onSwitchBranch,
 }: Props) {
   const reduce = useReducedMotion();
   const interruptedMessageId = useChatStore((s) => s.interruptedMessageId);
@@ -56,34 +58,13 @@ export default function MessagesPanel({
           ? Math.max(0, cur - 1)
           : Math.min(versions.length - 1, cur + 1);
       if (nv === cur) return;
-      // 分支语义：切版本 = 切分支，视图只保留本 turn（该 user 消息 + 其回答），
-      // 分支点之后的轮次截断隐藏（DB 留存）；模型消息联动切换到对应 run 的回答。
-      useChatStore.setState((prev) => {
-        const uIdx = prev.messages.findIndex((m) => m.id === msgId);
-        const aIdx = prev.messages.findIndex(
-          (m, i) => i > uIdx && m.role !== 'user',
-        );
-        const end = aIdx >= 0 ? aIdx + 1 : prev.messages.length;
-        const versionRunId = userMsg?.versionRunIds?.[nv];
-        const turn = versionRunId ? prev.runTurns[versionRunId] : undefined;
-        return {
-          messages: prev.messages.slice(0, end).map((m, i) => {
-            if (i === uIdx) {
-              return {
-                ...m,
-                content: versions[nv],
-                currentUserVersion: nv,
-              };
-            }
-            if (i === aIdx && turn) {
-              return { ...m, content: turn.content, thinking: turn.thinking };
-            }
-            return m;
-          }),
-        };
-      });
+      // 分支语义：切版本 = 切分支，加载该分支的完整父链路径（全部消息）。
+      const versionRunId = userMsg?.versionRunIds?.[nv];
+      if (versionRunId) {
+        void onSwitchBranch(versionRunId);
+      }
     },
-    [],
+    [onSwitchBranch],
   );
 
   const handleThumbsFeedback = useCallback(
