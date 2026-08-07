@@ -180,9 +180,6 @@ class MessageItem(BaseModel):
     thinking: str | None = None
     round_number: int = 1
     created_at: str | None = None
-    versions: list[str] | None = None
-    thinking_versions: list[str] | None = None
-    user_versions: list[str] | None = None
 
 
 class RunDetail(RunSummary):

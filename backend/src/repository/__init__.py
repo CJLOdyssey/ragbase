@@ -74,7 +74,6 @@ from repository.message_repo import (
     get_session_messages,
     save_message,
     update_message_content,
-    update_message_versions,
 )
 
 from repository.prompts import (
@@ -184,7 +183,6 @@ __all__ = [
     "set_asset_indexed",
     "test_api_key_connection",
     "update_message_content",
-    "update_message_versions",
     "update_api_key",
     "update_password",
     "update_prompt",

@@ -9,10 +9,9 @@ names, so `from services import run_service` still yields the run_service *modul
 import services.run_service  # noqa: F401  (keeps the module importable via the package)
 import services.session_service  # noqa: F401
 from services.run_service import RunService
-from services.session_service import merge_edit_chains, with_requirement_message
+from services.session_service import with_requirement_message
 
 __all__ = [
     "RunService",
-    "merge_edit_chains",
     "with_requirement_message",
 ]

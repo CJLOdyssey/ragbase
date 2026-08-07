@@ -13,17 +13,15 @@ from repository import (
     create_session,
     delete_memory_entry,
     delete_session,
-    get_messages,
     get_runs_by_session_ids,
     get_session,
     get_session_memories,
     get_session_messages,
     get_session_runs,
     get_sessions,
-    update_message_versions,
     update_session_title,
 )
-from services.session_service import merge_edit_chains, with_requirement_message
+from services.session_service import with_requirement_message
 from services.text_utils import parse_json_list
 from starlette.responses import Response
 
@@ -112,11 +110,11 @@ async def get_session_detail(request: Request, session_id: str) -> Any:
                 "thinking": m.thinking,
                 "round_number": m.round_number,
                 "created_at": m.created_at.isoformat() if m.created_at else None,
-                "versions": parse_json_list(m.versions),
-                "thinking_versions": parse_json_list(m.thinking_versions),
             })
 
-        merged = merge_edit_chains(runs, messages_by_run)
+        # 分支树模型：不折叠。每个 run 独立返回（parent_run_id 为树指针），
+        # 前端按"根→选中 run 路径"渲染视图。
+        merged = [(r, with_requirement_message(r, messages_by_run.get(r.id, []))) for r in runs]
 
         return {
             "id": sess.id,
@@ -309,24 +307,3 @@ async def export_session_memories(request: Request, session_id: str, format: str
         logger.error("Error exporting memories for %s: %s", session_id, e, exc_info=True)
         raise error_response(ErrorCode.INTERNAL_ERROR) from e
 
-
-class AnswerVersionsRequest(BaseModel):
-    versions: list[str]
-    thinking_versions: list[str] | None = None
-
-
-@router.put("/api/runs/{run_id}/answer-versions")
-async def update_run_answer_versions(run_id: str, req: AnswerVersionsRequest, request: Request) -> Any:
-    """Persist an edit-regenerate's answer version history on the run's final answer."""
-    user_id = get_user_id(request)
-    msgs = await get_messages(run_id)
-    agent_msgs = [m for m in msgs if m.role != "user"]
-    if not agent_msgs:
-        raise HTTPException(status_code=404, detail="Run has no answer messages yet")
-    target = agent_msgs[-1]
-    await update_message_versions(target.id, req.versions, req.thinking_versions)
-    logger.info(
-        "Answer versions persisted | run=%s | message=%s | versions=%d | user=%s",
-        run_id, target.id, len(req.versions), user_id,
-    )
-    return {"ok": True, "versions": len(req.versions)}

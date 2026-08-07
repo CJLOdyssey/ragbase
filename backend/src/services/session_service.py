@@ -31,8 +31,6 @@ def with_requirement_message(run: Any, messages: list[dict[str, Any]]) -> list[d
         *messages,
     ]
 
-
-def merge_edit_chains(
     runs: list[Any], messages_by_run: dict[str, list[dict[str, Any]]]
 ) -> list[tuple[Any, list[dict[str, Any]]]]:
     """Fold edit-regenerate runs so only the newest run of each chain is shown.

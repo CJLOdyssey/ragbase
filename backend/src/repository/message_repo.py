@@ -1,6 +1,5 @@
 """Chat message repository — persistence for conversation messages."""
 
-import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -34,24 +33,6 @@ async def update_message_content(message_id: str, content: str) -> None:
         if msg is not None:
             msg.content = content
             await session.commit()
-
-
-async def update_message_versions(
-    message_id: str,
-    versions: list[str] | None = None,
-    thinking_versions: list[str] | None = None,
-) -> None:
-    """Persist an agent message's answer version history (JSON-encoded)."""
-    factory = get_session_factory()
-    async with factory() as session:
-        msg = await session.get(ChatMessage, message_id)
-        if msg is None:
-            return
-        if versions is not None:
-            msg.versions = json.dumps(versions, ensure_ascii=False)
-        if thinking_versions is not None:
-            msg.thinking_versions = json.dumps(thinking_versions, ensure_ascii=False)
-        await session.commit()
 
 
 async def get_messages(run_id: str) -> list[ChatMessage]:
