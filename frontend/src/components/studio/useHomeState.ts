@@ -174,6 +174,7 @@ export function useHomeState() {
         thinkingDone: m.thinkingDone,
         userVersions: m.userVersions,
         currentUserVersion: m.currentUserVersion,
+        runId: m.runId,
       })),
     [messages],
   );
@@ -219,16 +220,6 @@ export function useHomeState() {
         useChatStore.getState().loadConversation(loaded, convId, convId);
         useChatStore.getState().setActiveRunId(active);
         useChatStore.getState().setRunTurns(runTurns);
-        // 全量 run 树（分支导航）
-        useChatStore.getState().setAllRuns(
-          (detail.runs ?? []).map((r) => ({
-            id: r.id,
-            requirement: r.requirement ?? '',
-            parent_run_id: r.parent_run_id ?? null,
-            requirement_versions: r.requirement_versions ?? null,
-            created_at: r.created_at ?? null,
-          })),
-        );
       } catch (err) {
         Logger.warn('[useHomeState] failed to load conversation', err);
       }

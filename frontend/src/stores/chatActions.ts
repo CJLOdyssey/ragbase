@@ -8,7 +8,6 @@ import type { ChatMessage } from '../types';
 import Logger from '../utils/logger';
 import { useChatStore } from './chatStore';
 import { createStreamHandler } from './chatStreaming';
-import type { RunMeta } from './chatTypes';
 import { uid } from './uid';
 
 type KeyItem = Awaited<ReturnType<typeof listKeys>>[number];
@@ -142,21 +141,7 @@ export async function submitRequirement(
         if (last && last.role === 'user' && !last.id.startsWith('run-')) {
           msgs[msgs.length - 1] = { ...last, id: `run-${run_id}-requirement` };
         }
-        // 新发送 = 续聊：run 挂到当前 active 下（树节点）
-        const parentId = prev.activeRunId;
-        const meta: RunMeta = {
-          id: run_id,
-          requirement,
-          parent_run_id: parentId,
-          requirement_versions: null,
-          created_at: new Date().toISOString(),
-        };
-        return {
-          messages: msgs,
-          allRuns: parentId
-            ? { ...prev.allRuns, [run_id]: meta }
-            : prev.allRuns,
-        };
+        return { messages: msgs };
       });
     } else {
       // Edit-regenerate: rebind the EDITED user message to the new run, or the
@@ -177,15 +162,7 @@ export async function submitRequirement(
             versionRunIds: [...(u.versionRunIds ?? []), run_id],
           };
         }
-        // 编辑 = 新分支：run 挂到被编辑 run 下
-        const meta: RunMeta = {
-          id: run_id,
-          requirement,
-          parent_run_id: parent_run_id ?? null,
-          requirement_versions: null,
-          created_at: new Date().toISOString(),
-        };
-        return { messages: msgs, allRuns: { ...prev.allRuns, [run_id]: meta } };
+        return { messages: msgs };
       });
     }
     connectRun(run_id, {
@@ -404,61 +381,4 @@ export async function continueGeneration() {
     const errMsg = err instanceof Error ? err.message : String(err);
     useChatStore.setState({ status: 'error', error: errMsg });
   }
-}
-
-/**
- * 分支切换：activeRun 改为 targetRunId，视图重建为根→target 的路径 turns。
- * 切换后该分支点之后的轮次隐藏（DB 留存），切回其他分支时其后续恢复。
- */
-export function switchBranch(targetRunId: string): void {
-  const s = useChatStore.getState();
-  const runs = s.allRuns;
-  const target = runs[targetRunId];
-  if (!target) return;
-
-  const path: RunMeta[] = [];
-  const seen = new Set<string>();
-  let cur: RunMeta | undefined = target;
-  while (cur && !seen.has(cur.id)) {
-    seen.add(cur.id);
-    path.unshift(cur);
-    cur = cur.parent_run_id ? runs[cur.parent_run_id] : undefined;
-  }
-
-  const messages: ChatMessage[] = [];
-  for (let i = 0; i < path.length; i++) {
-    const run = path[i];
-    messages.push({
-      id: `run-${run.id}-requirement`,
-      role: 'user',
-      agent_name: '我',
-      content: run.requirement,
-      round_number: 0,
-      created_at: run.created_at,
-      userVersions: run.requirement_versions ?? undefined,
-      versionRunIds: path.slice(0, i + 1).map((r) => r.id),
-      currentUserVersion: run.requirement_versions
-        ? run.requirement_versions.length - 1
-        : undefined,
-    });
-    const turn = s.runTurns[run.id];
-    if (turn) {
-      messages.push({
-        id: `run-${run.id}-answer`,
-        role: 'agent',
-        agent_name: 'Agent',
-        content: turn.content,
-        thinking: turn.thinking,
-        thinkingDone: true,
-        round_number: 0,
-        created_at: run.created_at,
-        runId: run.id,
-      });
-    }
-  }
-
-  useChatStore
-    .getState()
-    .loadConversation(messages, s.currentConvId, s.currentSessionId);
-  useChatStore.getState().setActiveRunId(targetRunId);
 }
