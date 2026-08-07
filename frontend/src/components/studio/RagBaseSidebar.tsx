@@ -20,7 +20,6 @@ interface RagBaseSidebarProps {
   onNewChat: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
-  onOpenWorkstation: () => void;
 }
 
 const RagBaseSidebar = memo(function RagBaseSidebar({
@@ -38,7 +37,6 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
   onNewChat,
   isSidebarOpen,
   onToggleSidebar,
-  onOpenWorkstation,
 }: RagBaseSidebarProps) {
   const { t } = useTranslation();
 
@@ -120,7 +118,6 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
         setIsUserMenuOpen={setIsUserMenuOpen}
         setIsSettingsOpen={setIsSettingsOpen}
         setIsApiOpen={setIsApiOpen}
-        onOpenWorkstation={onOpenWorkstation}
       />
     </aside>
   );

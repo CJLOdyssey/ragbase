@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type * as React from 'react';
 import { useAuth } from '../../auth';
-import {
-  HelpCircle,
-  Key,
-  LayoutDashboard,
-  Lock,
-  LogIn,
-  LogOut,
-  Settings,
-  User,
-} from 'lucide-react';
+import { HelpCircle, Key, LogIn, LogOut, Settings, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
@@ -18,7 +9,6 @@ interface Props {
   setIsUserMenuOpen: (v: boolean) => void;
   setIsSettingsOpen: (v: boolean) => void;
   setIsApiOpen: (v: boolean) => void;
-  onOpenWorkstation: () => void;
 }
 
 function PopoverItem({
@@ -50,7 +40,6 @@ export default function UserMenu({
   setIsUserMenuOpen,
   setIsSettingsOpen,
   setIsApiOpen,
-  onOpenWorkstation,
 }: Props) {
   const { t } = useTranslation();
   const {
@@ -107,18 +96,6 @@ export default function UserMenu({
             icon={<Settings size={16} className="w-4 h-4 mr-1" />}
             label={t('sidebar.settings')}
             onClick={() => handleItemClick(() => setIsSettingsOpen(true))}
-          />
-          <PopoverItem
-            icon={
-              isAuthenticated ? (
-                <LayoutDashboard size={16} className="w-4 h-4 mr-1" />
-              ) : (
-                <Lock size={16} className="w-4 h-4 mr-1" />
-              )
-            }
-            label={t('sidebar.workstation')}
-            disabled={!isAuthenticated}
-            onClick={() => handleItemClick(onOpenWorkstation)}
           />
           <PopoverItem
             icon={<HelpCircle size={16} className="w-4 h-4 mr-1" />}

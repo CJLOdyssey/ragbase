@@ -31,7 +31,6 @@ export default function RagBaseWorkstation() {
           onNewChat={s.handleNewChat}
           isSidebarOpen={s.isSidebarOpen}
           onToggleSidebar={() => s.setIsSidebarOpen(false)}
-          onOpenWorkstation={() => {}}
         />
 
         <div className="flex flex-col flex-1 overflow-hidden">
