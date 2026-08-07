@@ -18,22 +18,10 @@ export function handleMessageEvent(set: SetFn, msg: WsMessageEvent): void {
       return {
         messages: s.messages.map((m) => {
           if (m.id !== s.streamingId) return m;
-          const newThinking = msg.thinking ?? m.thinking;
-          const cv = m.currentVersion ?? 0;
-          const tvBase = m.thinkingVersions?.length
-            ? m.thinkingVersions
-            : m.thinking
-              ? [m.thinking]
-              : [];
-          const newTV = [...tvBase];
-          if (newTV[cv] !== undefined) {
-            newTV[cv] = newThinking ?? '';
-          }
           return {
             ...m,
             content: msg.content!,
-            thinking: newThinking,
-            thinkingVersions: newTV,
+            thinking: msg.thinking ?? m.thinking,
           };
         }),
         currentRole: msg.role!,

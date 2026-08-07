@@ -122,6 +122,21 @@ export async function submitRequirement(
         }
         return { messages: msgs };
       });
+    } else {
+      // Edit-regenerate: rebind the EDITED user message to the new run, or the
+      // next edit resolves parent_run_id to the stale first run and the backend
+      // requirement_versions chain silently drops intermediate versions.
+      useChatStore.setState((prev) => {
+        const msgs = [...prev.messages];
+        const targetIdx = msgs.findIndex((m) => m.id === prev.editTargetId);
+        const userIdx = targetIdx > 0 ? targetIdx - 1 : -1;
+        const u =
+          userIdx >= 0 && msgs[userIdx].role === 'user' ? msgs[userIdx] : null;
+        if (u && u.id.startsWith('run-') && u.id.endsWith('-requirement')) {
+          msgs[userIdx] = { ...u, id: `run-${run_id}-requirement` };
+        }
+        return { messages: msgs };
+      });
     }
     connectRun(run_id, {
       onMessage: createStreamHandler(
@@ -152,6 +167,16 @@ export async function regenerateMessage(msgIndex: number) {
   const userMsg = s.messages[msgIndex - 1];
   if (!userMsg) return;
   if (s.currentRunId) disconnectRun(s.currentRunId);
+
+  // The synthetic user message id is "run-{run_id}-requirement" — parse the run
+  // this regeneration replaces so the backend links the edit chain
+  // (parent_run_id); merge_edit_chains then folds the old answer into versions
+  // instead of leaving an orphan run (stale reply + duplicated user message).
+  let parentRunId: string | undefined;
+  if (userMsg.id?.startsWith('run-') && userMsg.id.endsWith('-requirement')) {
+    parentRunId = userMsg.id.slice(4, -'-requirement'.length);
+  }
+
   useChatStore.setState({
     status: 'loading',
     error: null,
@@ -162,6 +187,8 @@ export async function regenerateMessage(msgIndex: number) {
     userMsg.content,
     s.currentSessionId ?? undefined,
     true,
+    null,
+    parentRunId,
   );
 }
 
@@ -277,12 +304,8 @@ export async function continueGeneration() {
   useChatStore.setState({
     continuingId: intId,
     skipThinking: false,
-    pendingVersions: interruptedMsg.versions || [interruptedMsg.content],
-    pendingThinkingVersions: interruptedMsg.thinkingVersions?.length
-      ? interruptedMsg.thinkingVersions
-      : interruptedMsg.thinking
-        ? [interruptedMsg.thinking]
-        : null,
+    pendingVersions: null,
+    pendingThinkingVersions: null,
   });
   const continuation = interruptedMsg.content;
   const prevRunId = s.currentRunId;

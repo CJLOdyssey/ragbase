@@ -23,23 +23,11 @@ function makeRunResult(code: string): RunResult {
 type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 type GetFn = () => ChatState;
 
-function bumpLastVersion(
-  versions: string[] | null | undefined,
-  replacement: string,
-): string[] | undefined {
-  if (!versions || versions.length === 0) return versions ?? undefined;
-  const next = [...versions];
-  next[next.length - 1] = replacement;
-  return next;
-}
-
 function buildReplacementMessage(
   newId: string,
   agentName: string,
   content: string,
   thinking: string,
-  versions: string[] | undefined,
-  thinkingVersions: string[] | undefined,
 ): ChatMessage {
   return {
     id: newId,
@@ -49,9 +37,6 @@ function buildReplacementMessage(
     thinking,
     round_number: 0,
     created_at: new Date().toISOString(),
-    versions,
-    thinkingVersions,
-    currentVersion: versions ? versions.length - 1 : undefined,
   };
 }
 
@@ -96,8 +81,6 @@ export function handleThinkingDone(
         oldMsg?.agent_name || msg.agent_name || 'Agent',
         oldContent,
         thinking,
-        bumpLastVersion(s.pendingVersions, oldContent),
-        bumpLastVersion(s.pendingThinkingVersions, thinking),
       ),
     ],
     currentRole: msg.agent_name || 'Agent',
