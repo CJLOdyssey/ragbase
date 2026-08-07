@@ -27,6 +27,7 @@ export interface Conversation {
   kind?: 'normal' | 'agent';
   agentId?: string;
   sessionId?: string;
+  isPinned?: boolean;
 }
 
 // 消息类型
@@ -53,6 +54,7 @@ export interface Message {
   currentUserVersion?: number;
   thumbsFeedback?: 'up' | 'down' | null;
   interrupted?: boolean;
+  runId?: string;
 }
 
 // 计划步骤

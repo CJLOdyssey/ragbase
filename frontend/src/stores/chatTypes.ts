@@ -23,6 +23,8 @@ export interface ChatState {
   pendingThinkingVersions: string[] | null;
   switchVersion: (msgId: string, direction: 'prev' | 'next') => void;
   switchUserVersion: (msgId: string, direction: 'prev' | 'next') => void;
+  /** Set the linked agent answer to an absolute version index (aligned with the user's edit version) */
+  setAgentVersion: (msgId: string, versionIndex: number) => void;
   setThumbsFeedback: (msgId: string, value: 'up' | 'down' | null) => void;
   wsStatus: WsConnectionStatus;
   /** Conversation ID at submission time */
@@ -46,5 +48,7 @@ export interface ChatState {
   setResult: (result: RunResult | null) => void;
   setError: (error: string | null) => void;
   setWsStatus: (wsStatus: WsConnectionStatus) => void;
+  activeRunId: string | null;
+  setActiveRunId: (runId: string | null) => void;
   reset: () => void;
 }

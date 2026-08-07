@@ -427,3 +427,25 @@ describe('chatStore', { tags: ['unit'] }, () => {
     });
   });
 });
+
+describe('branch state', () => {
+  beforeEach(async () => {
+    const { useChatStore } = await import('../chatStore');
+    useChatStore.getState().reset();
+  });
+
+  it('setActiveRunId updates activeRunId', async () => {
+    const { useChatStore } = await import('../chatStore');
+    useChatStore.getState().setActiveRunId('run-1');
+    expect(useChatStore.getState().activeRunId).toBe('run-1');
+    useChatStore.getState().setActiveRunId(null);
+    expect(useChatStore.getState().activeRunId).toBeNull();
+  });
+
+  it('loadConversation clears activeRunId', async () => {
+    const { useChatStore } = await import('../chatStore');
+    useChatStore.getState().setActiveRunId('run-1');
+    useChatStore.getState().loadConversation([]);
+    expect(useChatStore.getState().activeRunId).toBeNull();
+  });
+});

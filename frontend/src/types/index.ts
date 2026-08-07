@@ -68,6 +68,7 @@ export interface ChatMessage {
   currentUserVersion?: number;
   thumbsFeedback?: 'up' | 'down' | null;
   interrupted?: boolean;
+  runId?: string;
 }
 
 export interface ProjectRun {
@@ -81,6 +82,8 @@ export interface ProjectRun {
   status: string;
   created_at: string | null;
   updated_at: string | null;
+  parent_run_id?: string | null;
+  requirement_versions?: string[] | null;
   messages?: ChatMessage[];
 }
 
@@ -89,6 +92,7 @@ export interface SessionItem {
   title: string;
   kind: string;
   run_count: number;
+  is_pinned?: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
