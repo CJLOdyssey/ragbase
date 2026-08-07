@@ -59,6 +59,7 @@ function makeMsg(overrides: Partial<ChatMessage> = {}): ChatMessage {
 
 const initialState = {
   currentRunId: null as string | null,
+  activeRunId: null as string | null,
   currentSessionId: null as string | null,
   currentConvId: null as string | null,
   messages: [] as ChatMessage[],
@@ -228,10 +229,11 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
 
     const s = useChatStore.getState();
     expect(s.editTargetId).toBe('a1');
+    expect(s.activeRunId).toBe('run-1');
     const updatedUser = s.messages[0];
     expect(updatedUser.content).toBe('new question');
-    expect(updatedUser.userVersions).toEqual(['old question']);
-    expect(updatedUser.currentUserVersion).toBe(0);
+    expect(updatedUser.userVersions).toBeUndefined();
+    expect(updatedUser.currentUserVersion).toBeUndefined();
     // The old answer is NOT deleted — it stays as the merge target for the stream.
     expect(s.messages.map((m) => m.id)).toEqual(['u1', 'a1']);
     expect(mockSubmitReq).toHaveBeenCalledWith(
@@ -254,8 +256,10 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
 
     const s = useChatStore.getState();
     expect(s.editTargetId).toBeNull();
+    expect(s.activeRunId).toBe('run-1');
     expect(s.messages[0].content).toBe('edited solo');
-    expect(s.messages[0].userVersions).toEqual(['solo']);
+    expect(s.messages[0].userVersions).toBeUndefined();
+    expect(s.messages[0].currentUserVersion).toBeUndefined();
     expect(mockSubmitReq).toHaveBeenCalledWith(
       'edited solo',
       'sess-1',
@@ -276,6 +280,30 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
 
     expect(mockSubmitReq).not.toHaveBeenCalled();
     expect(useChatStore.getState().messages[0].userVersions).toBeUndefined();
+  });
+
+  it('does not write userVersions on a second edit', async () => {
+    // Branch model: user messages carry no per-edit version history, even if
+    // one was seeded before this refactor.
+    useChatStore.setState({
+      messages: [
+        makeMsg({
+          id: 'u1',
+          role: 'user',
+          content: 'v2 content',
+          userVersions: ['v1 content', 'v2 content'],
+        }),
+      ],
+      currentSessionId: 'sess-1',
+    });
+
+    const { editAndRegenerate } = await import('../chatActions');
+    await editAndRegenerate('u1', 'v3 content');
+
+    const msg = useChatStore.getState().messages[0];
+    expect(msg.content).toBe('v3 content');
+    expect(msg.userVersions).toBeUndefined();
+    expect(msg.currentUserVersion).toBeUndefined();
   });
 
   it('parses parent_run_id from the synthetic user message id', async () => {

@@ -106,6 +106,7 @@ export async function submitRequirement(
     const returnedSessionId = resp.session_id || effectiveSessionId || null;
     useChatStore.setState({
       currentRunId: run_id,
+      activeRunId: run_id,
       currentSessionId: returnedSessionId,
       status: 'running',
       wsStatus: 'connecting',
@@ -189,9 +190,6 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
     parentRunId = old.id.slice(4, -'-requirement'.length);
   }
 
-  const userVersions = old.userVersions ? [...old.userVersions] : [];
-  if (old.content !== trimmed) userVersions.push(old.content);
-
   // First non-user message after the edit is the merge target.
   const nextAgentIdx = s.messages.findIndex(
     (m, i) => i > idx && m.role !== 'user',
@@ -209,14 +207,7 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
     pendingThinkingVersions: null,
     skipThinking: false,
     messages: s.messages.map((m, i) =>
-      i === idx
-        ? {
-            ...m,
-            content: trimmed,
-            userVersions,
-            currentUserVersion: userVersions.length - 1,
-          }
-        : m,
+      i === idx ? { ...m, content: trimmed } : m,
     ),
   });
 

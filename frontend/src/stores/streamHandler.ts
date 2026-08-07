@@ -75,18 +75,8 @@ export function handleApprovalRequest(
 
 type StreamBranchMsg = { agent_name?: string };
 
-function bumpLastVersion(
-  versions: string[] | null | undefined,
-  replacement: string,
-): string[] | undefined {
-  if (!versions || versions.length === 0) return versions ?? undefined;
-  const next = [...versions];
-  next[next.length - 1] = replacement;
-  return next;
-}
-
-// Edit-regenerate: the new answer REPLACES the target message. Old content
-// is archived into versions; the stream starts fresh (not old+new).
+// Edit-regenerate: the new answer REPLACES the target message. The old message
+// keeps its id remapped to the new run's message id; the stream starts fresh.
 function startEditBranch(
   s: ChatState,
   msg: StreamBranchMsg,
@@ -94,18 +84,6 @@ function startEditBranch(
   newId: string,
   chunkInContent: boolean,
 ): Partial<ChatState> {
-  const targetIdx = s.messages.findIndex((m) => m.id === s.editTargetId);
-  const oldMsg = targetIdx >= 0 ? s.messages[targetIdx] : null;
-  const oldContent = oldMsg?.content || '';
-  const oldThinking = oldMsg?.thinking || '';
-  const newVersions = oldMsg?.versions
-    ? [...oldMsg.versions, oldContent]
-    : [oldContent];
-  const newThinkingVersions = oldMsg?.thinkingVersions
-    ? [...oldMsg.thinkingVersions, oldThinking]
-    : oldThinking
-      ? [oldThinking]
-      : undefined;
   return {
     streamingId: newId,
     editTargetId: null,
@@ -120,9 +98,7 @@ function startEditBranch(
         id: newId,
         content: chunkInContent ? chunk : '',
         thinking: chunkInContent ? '' : chunk,
-        versions: newVersions,
-        thinkingVersions: newThinkingVersions,
-        currentVersion: newVersions.length - 1,
+        runId: s.currentRunId ?? m.runId,
       };
     }),
     currentRole: msg.agent_name || 'Agent',
@@ -159,14 +135,6 @@ function startContinueBranch(
         thinking: chunkInContent ? oldThinking : oldThinking + chunk,
         round_number: 0,
         created_at: new Date().toISOString(),
-        versions: bumpLastVersion(s.pendingVersions, oldContent),
-        thinkingVersions: bumpLastVersion(
-          s.pendingThinkingVersions,
-          chunkInContent ? oldThinking : oldThinking + chunk,
-        ),
-        currentVersion: s.pendingVersions
-          ? s.pendingVersions.length - 1
-          : undefined,
       },
     ],
     currentRole: msg.agent_name || 'Agent',
@@ -180,8 +148,6 @@ function startFreshStream(
   chunk: string,
   newId: string,
 ): Partial<ChatState> {
-  const pending = s.pendingVersions;
-  const pendingThinking = s.pendingThinkingVersions;
   return {
     streamingId: newId,
     pendingVersions: null,
@@ -197,11 +163,7 @@ function startFreshStream(
         thinking: '',
         round_number: 0,
         created_at: new Date().toISOString(),
-        versions: pending ? [...pending, chunk] : undefined,
-        thinkingVersions: pendingThinking
-          ? [...pendingThinking, '']
-          : undefined,
-        currentVersion: pending ? pending.length : undefined,
+        runId: s.currentRunId ?? undefined,
       },
     ],
     currentRole: msg.agent_name || 'Agent',
@@ -215,8 +177,6 @@ function startFreshThinking(
   chunk: string,
   newId: string,
 ): Partial<ChatState> {
-  const pending = s.pendingVersions;
-  const pendingThinking = s.pendingThinkingVersions;
   return {
     streamingId: newId,
     continuingId: null,
@@ -232,11 +192,7 @@ function startFreshThinking(
         thinking: chunk,
         round_number: 0,
         created_at: new Date().toISOString(),
-        versions: pending ? [...pending, ''] : undefined,
-        thinkingVersions: pendingThinking
-          ? [...pendingThinking, chunk]
-          : undefined,
-        currentVersion: pending ? pending.length : undefined,
+        runId: s.currentRunId ?? undefined,
       },
     ],
     currentRole: msg.agent_name || 'Agent',
