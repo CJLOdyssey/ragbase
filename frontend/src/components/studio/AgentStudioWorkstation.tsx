@@ -1,0 +1,128 @@
+import { useRef } from 'react';
+import { InputToolbar, type InputToolbarHandle } from '../input';
+import { Moon, PanelLeft, Sun } from 'lucide-react';
+import AgentStudioSidebar from './AgentStudioSidebar';
+import HomeScreen from './HomeScreen';
+import MessagesPanel from './MessagesPanel';
+import Modals from './Modals';
+import { useHomeState } from './useHomeState';
+
+export default function AgentStudioWorkstation() {
+  const s = useHomeState();
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputToolbarRef = useRef<InputToolbarHandle>(null);
+
+  return (
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+      <div className="flex flex-1 overflow-hidden relative">
+        <AgentStudioSidebar
+          conversations={s.conversations}
+          activeConvId={s.activeConvId}
+          selectedAgentId={null}
+          isUserMenuOpen={s.isUserMenuOpen}
+          setIsUserMenuOpen={s.setIsUserMenuOpen}
+          setIsSettingsOpen={s.setIsSettingsOpen}
+          setIsApiOpen={s.setIsApiOpen}
+          setSelectedAgentId={() => {}}
+          setActiveConvId={s.setActiveConvId}
+          setInputValue={() => {}}
+          onDeleteConversation={s.handleDeleteConversation}
+          onNewChat={s.handleNewChat}
+          isSidebarOpen={s.isSidebarOpen}
+          onToggleSidebar={() => s.setIsSidebarOpen(false)}
+          onOpenWorkstation={() => {}}
+        />
+
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <header className="h-14 flex items-center justify-between px-4 flex-shrink-0 z-40 bg-[var(--color-surface)]">
+            <div className="flex items-center gap-3">
+              {!s.isSidebarOpen && (
+                <button
+                  type="button"
+                  className="flex items-center justify-center w-8 h-8 bg-transparent border-none rounded-md text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
+                  onClick={() => s.setIsSidebarOpen(true)}
+                  aria-label="Expand sidebar"
+                >
+                  <PanelLeft size={18} />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex items-center justify-center w-8 h-8 bg-transparent border-none rounded-md text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
+                onClick={() =>
+                  s.updateSettings({
+                    theme: s.isDarkMode ? 'light' : 'dark',
+                  })
+                }
+                aria-label="Toggle dark mode"
+              >
+                {s.isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            </div>
+          </header>
+
+          <main
+            className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[var(--color-surface)]"
+            id="main-content"
+          >
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div
+                className="flex-1 overflow-y-auto flex flex-col bg-[var(--color-surface)]"
+                ref={messagesContainerRef}
+              >
+                {s.hasMessages ? (
+                  <MessagesPanel
+                    showAgentChat
+                    hasMessages={s.hasMessages}
+                    selectedAgentId={null}
+                    welcomeDismissed={false}
+                    allAgents={[]}
+                    displayMessages={s.displayMessages}
+                    messagesEndRef={messagesEndRef}
+                    onDismissWelcome={() => {}}
+                  />
+                ) : (
+                  <HomeScreen
+                    conversationKey={0}
+                    models={s.models}
+                    selectedModel={s.selectedModel}
+                    onModelChange={s.setSelectedModel}
+                    commands={[]}
+                    onSend={(text) => s.handleSend(text)}
+                    onConfigureModels={() => s.setIsApiOpen(true)}
+                    inputToolbarRef={inputToolbarRef}
+                    isRunning={s.isRunning}
+                  />
+                )}
+              </div>
+
+              {s.hasMessages && (
+                <InputToolbar
+                  ref={inputToolbarRef}
+                  onSend={(text) => s.handleSend(text)}
+                  models={s.models}
+                  selectedModel={s.selectedModel}
+                  onModelChange={s.setSelectedModel}
+                  placeholder={s.t('home.placeholder')}
+                  commands={[]}
+                  onConfigureModels={() => s.setIsApiOpen(true)}
+                  isRunning={s.isRunning}
+                />
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <Modals
+        isSettingsOpen={s.isSettingsOpen}
+        isApiOpen={s.isApiOpen}
+        onCloseSettings={() => s.setIsSettingsOpen(false)}
+        onCloseApi={() => s.setIsApiOpen(false)}
+      />
+    </div>
+  );
+}

@@ -4,19 +4,13 @@ import { StyleProvider } from '@ant-design/cssinjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, theme } from 'antd';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import {
-  AuthProvider,
-  LoginModal,
-  LoginTrigger,
-  useAuth,
-} from './components/auth';
-import ContentStudioShell from './components/content/ContentStudioShell';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { AuthProvider, LoginModal, useAuth } from './components/auth';
+import AgentStudioWorkstation from './components/studio/AgentStudioWorkstation';
 import { useSettings } from './contexts/SettingsContext';
 import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
 
-const ComposerPage = lazy(() => import('./components/content/ComposerPage'));
 const AssetsPage = lazy(() => import('./components/assets/AssetsPage'));
 const HistoryPage = lazy(() => import('./components/history/HistoryPage'));
 const SettingsPage = lazy(() => import('./components/settings/SettingsPage'));
@@ -174,20 +168,8 @@ function ThemedApp() {
             <ToastProvider>
               <AuthGate>
                 <AppInit />
-                <LoginTrigger />
                 <Routes>
-                  <Route
-                    path="/"
-                    element={<Navigate to="/compose" replace />}
-                  />
-                  <Route
-                    path="/compose"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <ComposerPage />
-                      </Suspense>
-                    }
-                  />
+                  <Route path="/" element={<AgentStudioWorkstation />} />
                   <Route
                     path="/assets"
                     element={
@@ -219,7 +201,7 @@ function ThemedApp() {
                         FallbackComponent={Fallback}
                         onError={logError}
                       >
-                        <ContentStudioShell />
+                        <AgentStudioWorkstation />
                       </ErrorBoundary>
                     }
                   />
