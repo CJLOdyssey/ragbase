@@ -95,9 +95,9 @@ CI 用 `pytest --requirement-coverage`（`tests/requirement_coverage.py` 插件�
 
 ---
 
-## 底座保留模块（agent-studio 裁剪，非 ragbase 核心业务）
+## 底座保留模块（非 ragbase 核心业务）
 
-以下模块由 agent-studio 底座保留，e2e 回归测试存在但**不计入 ragbase 核心需求**：
+以下模块的 e2e 回归测试存在，但**不计入 ragbase 核心需求**：
 
 | 模块 | e2e 回归测试 |
 |---|---|
