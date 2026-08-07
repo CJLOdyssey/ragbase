@@ -11,6 +11,8 @@ RAG 知识库问答平台：上传私有文档构建知识库，检索增强生�
 
 ```
 feat/ragbase-migration ←（当前）
+6d6a092 fix: load canonical .env from backend root instead of src (dedupe env files)
+107a080 feat: migrate content-studio to ragbase — rename stack, drop content-generation layer, add p9g3n002 migration
 88b06e7 wip: settings/studio workspace baseline（迁移前未提交变更入库）
 44848df fix: settings keys query waits for auth
 ...（此前 36 个 commit：内容创作时代）
@@ -61,13 +63,14 @@ cd frontend && npm run dev
 - agent-studio → `backend` 库（共享实例 5432/6379，**不再触碰**）
 - 已授权范围：不得修改 agent-studio 的代码/数据/进程/配置
 
-## 六、迁移遗留（待办）
+## 六、迁移遗留（已完成）
 
 | 项 | 内容 | 状态 |
 |---|---|---|
-| 迁移执行 | DB `p9g3n002`（drop compose_templates + 5 列）尚未在真实库执行 | ⚠️ 验证门后执行 |
-| 现有数据 | content_studio 旧库数据不迁移（新库 ragbase 从迁移链全新构建） | ⚠️ 旧数据废弃 |
-| 目录改名 | 项目目录 `content-studio` → `ragbase`（git mv 或文件系统级） | ⚠️ 待执行 |
+| 迁移执行 | DB `p9g3n002`（drop compose_templates + 5 列）在真实库执行 | ✅ 2026-08-07：旧容器 `content-studio-db/redis` 移除，`ragbase-db`(5433)/`ragbase-redis`(6380) 重建，alembic upgrade head 全链跑通，`alembic current = p9g3n002 (head)`；旧库备份 `/tmp/opencode/ragbase-backup/content_studio_20260807.dump` |
+| 现有数据 | content_studio 旧库数据不迁移（新库 ragbase 从迁移链全新构建） | ✅ 已执行（旧库数据废弃） |
+| 目录改名 | 项目目录 `content-studio` → `ragbase` | ✅ 已完成（git mv 入库，提交 107a080） |
+| env 文件合并 | `backend/src/.env` 与 `backend/.env` 重复 | ✅ 2026-08-07：规范位置定为 `backend/.env`（应用根），config.py/database.py 加载路径修正（提交 6d6a092），`backend/src/.env` 已删除 |
 
 ## 七、配置文档
 

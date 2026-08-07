@@ -22,7 +22,7 @@ from repository.assets import (
 logger = get_logger(__name__)
 router = APIRouter(tags=["assets"])
 
-ASSET_DIR = Path(os.environ.get("UPLOAD_DIR", "./uploads")) / "assets"
+ASSET_DIR = Path(os.environ.get("UPLOAD_DIR", str(Path(__file__).resolve().parents[1] / "uploads"))) / "assets"
 ASSET_DIR.mkdir(parents=True, exist_ok=True)
 
 _MAX_IMAGE_MB = 10

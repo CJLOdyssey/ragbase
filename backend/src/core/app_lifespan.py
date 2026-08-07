@@ -7,6 +7,7 @@ import contextlib
 import gc
 import os
 import platform
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from broker import BROKER_URL, REDIS_URL, get_redis
@@ -69,7 +70,7 @@ def _startup_report() -> list[str]:
     _add(lines, "redis_url: %s", _mask_url(REDIS_URL))
     _add(lines, "celery_broker: %s", _mask_url(BROKER_URL))
     _add(lines, "email: backend=%s | from=%s", _env("EMAIL_BACKEND", "log"), _env("EMAIL_FROM", "not set"))
-    _add(lines, "upload_dir: %s", _env("UPLOAD_DIR", "./uploads"))
+    _add(lines, "upload_dir: %s", _env("UPLOAD_DIR", str(Path(__file__).resolve().parents[1] / "uploads")))
     _add(lines, "logging: format=%s | level=%s", _env("LOG_FORMAT", "text"), _env("LOG_LEVEL", "INFO"))
     has_deepseek = bool(_env("DEEPSEEK_API_KEY"))
     has_openai = bool(_env("OPENAI_API_KEY"))

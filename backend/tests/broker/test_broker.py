@@ -55,7 +55,7 @@ class TestBrokerRedis:
     def test_broker_url_default(self):
         from broker import BROKER_URL
 
-        assert BROKER_URL == "redis://localhost:6379/0"
+        assert BROKER_URL == "redis://localhost:6380/0"
 
     def test_channel_format(self):
         from broker import _channel
@@ -157,11 +157,11 @@ import pytest
 class TestBrokerFull:
     def test_broker_url_default_value(self):
         from broker import BROKER_URL
-        assert BROKER_URL == "redis://localhost:6379/0"
+        assert BROKER_URL == "redis://localhost:6380/0"
 
     def test_result_backend_default_value(self):
         from broker import RESULT_BACKEND
-        assert RESULT_BACKEND == "redis://localhost:6379/0"
+        assert RESULT_BACKEND == "redis://localhost:6380/0"
 
     def test_channel_prefix(self):
         from broker import CHANNEL_PREFIX

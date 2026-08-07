@@ -38,7 +38,8 @@ ALLOWED_CONTENT_TYPES = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/json",
 }
-UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", "./uploads"))
+DEFAULT_UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
+UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", str(DEFAULT_UPLOAD_DIR)))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 

@@ -15,7 +15,7 @@ from redis.asyncio.sentinel import Sentinel
 SENTINEL_ENABLED = os.environ.get("REDIS_SENTINEL_ENABLED", "").lower() in ("1", "true", "yes")
 SENTINEL_HOSTS_STR = os.environ.get("REDIS_SENTINEL_HOSTS", "sentinel-1:26379,sentinel-2:26380,sentinel-3:26381")
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "")
-SERVICE_NAME = os.environ.get("REDIS_SENTINEL_SERVICE", "agent-studio-redis")
+SERVICE_NAME = os.environ.get("REDIS_SENTINEL_SERVICE", "ragbase-redis")
 SENTINEL_DB = int(os.environ.get("REDIS_SENTINEL_DB", "0"))
 
 _sentinel: Sentinel | None = None

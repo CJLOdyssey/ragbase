@@ -13,7 +13,7 @@ from tests.conftest import Api
 
 def _clear_limits():
     import subprocess
-    for container in ["virtual-team-redis", "agent-studio-redis"]:
+    for container in ["ragbase-redis"]:
         try:
             out = subprocess.run(
                 ["docker", "exec", container, "redis-cli", "-n", "1", "KEYS", "ratelimit:*"],
