@@ -1,38 +1,6 @@
 // RagBase 类型定义（不含 Team 树相关类型）
 import type { LucideIcon } from 'lucide-react';
 
-// Agent 工具配置
-export interface AgentTool {
-  id: string;
-  name: string;
-  description: string;
-  type?: string;
-  enabled: boolean;
-  parameters?: string;
-  archived?: boolean;
-}
-
-// Agent MCP 配置
-export interface AgentMCP {
-  id: string;
-  name: string;
-  description: string;
-  serverUrl: string;
-  type?: string;
-  enabled: boolean;
-  archived?: boolean;
-}
-
-// Agent Skills 配置
-export interface AgentSkill {
-  id: string;
-  name: string;
-  description: string;
-  type?: string;
-  enabled: boolean;
-  archived?: boolean;
-}
-
 // Agent 配置
 export interface Agent {
   id: string;
@@ -46,9 +14,6 @@ export interface Agent {
   systemPrompt?: string;
   outputConstraints?: string;
   responseFormat?: Record<string, unknown>;
-  tools?: AgentTool[];
-  mcp?: AgentMCP[];
-  skills?: AgentSkill[];
   isConfigured?: boolean;
 }
 
