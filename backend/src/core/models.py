@@ -150,6 +150,7 @@ class SessionSummary(BaseModel):
     title: str
     kind: str = "normal"
     run_count: int = 0
+    is_pinned: bool = False
     created_at: str | None = None
     updated_at: str | None = None
 
@@ -165,6 +166,8 @@ class RunSummary(BaseModel):
     review: str = ""
     approved: bool = False
     status: str = "pending"
+    parent_run_id: str | None = None
+    requirement_versions: list[str] | None = None
     created_at: str | None = None
     updated_at: str | None = None
     messages: list["MessageItem"] = Field(default_factory=list)
