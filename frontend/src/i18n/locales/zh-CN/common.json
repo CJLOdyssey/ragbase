@@ -41,7 +41,9 @@
     "stop": "停止",
     "maxFiles": "最多附加 {{count}} 个文件",
     "fileTooLarge": "\"{{name}}\" 超过 50MB 限制",
-    "fileTypeDenied": "\"{{name}}\" 格式不支持"
+    "fileTypeDenied": "\"{{name}}\" 格式不支持",
+    "greeting": "你好，有什么可以帮你？",
+    "subtitle": "从知识库中获取准确答案"
   },
   "model": {
     "loading": "加载中...",
@@ -56,5 +58,69 @@
     "login": "登录",
     "register": "注册",
     "logout": "退出登录"
+  },
+  "sidebar": {
+    "newChat": "新建对话",
+    "recentConversations": "最近对话",
+    "today": "今天",
+    "yesterday": "昨天",
+    "sevenDays": "7 天内",
+    "threeDays": "3 天内",
+    "older": "更早",
+    "month": "本月",
+    "pendingReply": "等待回复",
+    "replied": "已回复",
+    "workstation": "管理工作台",
+    "settings": "设置",
+    "help": "帮助",
+    "logout": "退出登录"
+  },
+  "teamMessage": {
+    "copy": "复制",
+    "copied": "已复制",
+    "edit": "编辑",
+    "continue": "继续",
+    "continuing": "继续生成中…",
+    "regenerate": "重新生成",
+    "interrupted": "已中断",
+    "system": "系统",
+    "thumbsUp": "有用",
+    "thumbsDown": "没用",
+    "removeFeedback": "移除反馈",
+    "collapse": "收起",
+    "expand": "展开",
+    "seconds": "秒",
+    "unknownAgent": "未知助手",
+    "executeTask": "执行 {{count}} 个步骤"
+  },
+  "agent": {
+    "welcome": "你好！我可以帮你解答知识库问题。"
+  },
+  "providerEdit": {
+    "provider": "提供商",
+    "name": "名称",
+    "nameOptional": "名称（可选）",
+    "apiKey": "API Key",
+    "baseUrl": "Base URL",
+    "add": "添加",
+    "edit": "编辑",
+    "save": "保存",
+    "supportedModels": "支持模型",
+    "noModelsWithKey": "该 API Key 未返回模型",
+    "enterApiKeyToFetch": "输入 API Key 后获取模型",
+    "fetchFromApi": "从 API 获取模型"
+  },
+  "fileAttach": {
+    "attach": "附加文件"
+  },
+  "history": {
+    "loading": "加载中…"
+  },
+  "features": {
+    "search": "语义检索",
+    "data": "多格式文档",
+    "document": "pdf/txt/md",
+    "image": "图片素材",
+    "more": "更多"
   }
 }

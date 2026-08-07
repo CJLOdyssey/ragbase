@@ -47,7 +47,7 @@ export default function ModelSection({
             <span>
               {apiKey
                 ? t('providerEdit.noModelsWithKey')
-                : t('workstation.enterApiKeyToFetch')}
+                : t('providerEdit.enterApiKeyToFetch')}
             </span>
           </div>
         )}
@@ -55,7 +55,7 @@ export default function ModelSection({
           type="button"
           onClick={onFetchModels}
           disabled={!apiKey.trim() || fetching}
-          title={t('workstation.fetchFromApi')}
+          title={t('providerEdit.fetchFromApi')}
           className="inline-flex items-center justify-center w-[36px] h-[36px] rounded-md cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
         >
           {fetching ? (

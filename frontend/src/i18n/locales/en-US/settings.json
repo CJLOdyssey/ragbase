@@ -30,6 +30,25 @@
     "default": "default",
     "active": "active",
     "inactive": "inactive",
-    "settings": "Settings"
+    "settings": "Settings",
+    "about": "About",
+    "appearance": "Appearance",
+    "autoSave": "Auto-save",
+    "autoSaveDesc": "Automatically save changes while editing",
+    "dark": "Dark",
+    "enterSend": "Enter to send",
+    "fontSize": "Font size",
+    "fontSizeDesc": "Interface font size",
+    "general": "General",
+    "language": "Language",
+    "languageDesc": "Display language",
+    "light": "Light",
+    "sendMode": "Send mode",
+    "sendModeDesc": "Shortcut for sending messages",
+    "streamOutput": "Stream output",
+    "streamOutputDesc": "Stream output as it generates",
+    "system": "System",
+    "theme": "Theme",
+    "themeDesc": "Interface theme"
   }
 }

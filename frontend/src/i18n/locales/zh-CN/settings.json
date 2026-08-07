@@ -30,6 +30,25 @@
     "default": "默认",
     "active": "启用",
     "inactive": "停用",
-    "settings": "设置"
+    "settings": "设置",
+    "about": "关于",
+    "appearance": "外观",
+    "autoSave": "自动保存",
+    "autoSaveDesc": "编辑时自动保存更改",
+    "dark": "深色",
+    "enterSend": "Enter 发送",
+    "fontSize": "字体大小",
+    "fontSizeDesc": "界面字体大小",
+    "general": "通用",
+    "language": "语言",
+    "languageDesc": "界面显示语言",
+    "light": "浅色",
+    "sendMode": "发送方式",
+    "sendModeDesc": "选择消息发送的快捷键方式",
+    "streamOutput": "流式输出",
+    "streamOutputDesc": "生成时实时显示输出",
+    "system": "跟随系统",
+    "theme": "主题",
+    "themeDesc": "界面主题"
   }
 }

@@ -66,18 +66,3 @@ interface MessageAction {
   type: string;
   label: string;
 }
-
-// 工作区标签
-export type WorkspaceTab =
-  | 'code'
-  | 'preview'
-  | 'ui-code'
-  | 'ui-preview'
-  | 'frontend-code'
-  | 'frontend-test'
-  | 'frontend-preview'
-  | 'backend-code'
-  | 'backend-test';
-
-// Agent 类型
-export type AgentType = 'ui' | 'frontend' | 'backend';

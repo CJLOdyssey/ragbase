@@ -41,7 +41,9 @@
     "stop": "Stop",
     "maxFiles": "You can attach up to {{count}} files",
     "fileTooLarge": "\"{{name}}\" exceeds the 50MB limit",
-    "fileTypeDenied": "File type not supported: \"{{name}}\""
+    "fileTypeDenied": "File type not supported: \"{{name}}\"",
+    "greeting": "Hi, how can I help?",
+    "subtitle": "Get accurate answers from your knowledge base"
   },
   "model": {
     "loading": "Loading...",
@@ -56,5 +58,69 @@
     "login": "Log in",
     "register": "Sign up",
     "logout": "Log out"
+  },
+  "sidebar": {
+    "newChat": "New chat",
+    "recentConversations": "Recent conversations",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "sevenDays": "7 days",
+    "threeDays": "3 days",
+    "older": "Older",
+    "month": "This month",
+    "pendingReply": "Pending reply",
+    "replied": "Replied",
+    "workstation": "Workspace",
+    "settings": "Settings",
+    "help": "Help",
+    "logout": "Log out"
+  },
+  "teamMessage": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "edit": "Edit",
+    "continue": "Continue",
+    "continuing": "Continuing…",
+    "regenerate": "Regenerate",
+    "interrupted": "Interrupted",
+    "system": "System",
+    "thumbsUp": "Helpful",
+    "thumbsDown": "Not helpful",
+    "removeFeedback": "Remove feedback",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "seconds": "s",
+    "unknownAgent": "Unknown agent",
+    "executeTask": "Execute {{count}} steps"
+  },
+  "agent": {
+    "welcome": "Hi! I can help answer questions from your knowledge base."
+  },
+  "providerEdit": {
+    "provider": "Provider",
+    "name": "Name",
+    "nameOptional": "Name (optional)",
+    "apiKey": "API Key",
+    "baseUrl": "Base URL",
+    "add": "Add",
+    "edit": "Edit",
+    "save": "Save",
+    "supportedModels": "Supported models",
+    "noModelsWithKey": "No models returned for this API key",
+    "enterApiKeyToFetch": "Enter an API key to fetch models",
+    "fetchFromApi": "Fetch models from API"
+  },
+  "fileAttach": {
+    "attach": "Attach files"
+  },
+  "history": {
+    "loading": "Loading…"
+  },
+  "features": {
+    "search": "Semantic search",
+    "data": "Multi-format docs",
+    "document": "pdf/txt/md",
+    "image": "Image assets",
+    "more": "More"
   }
 }
