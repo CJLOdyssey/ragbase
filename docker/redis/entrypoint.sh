@@ -16,7 +16,7 @@ cp "$CONF" "$TMP"
 if [ -n "${REDIS_PASSWORD}" ]; then
     case "${REDIS_MODE}" in
         sentinel)
-            echo "sentinel auth-pass virtual-team-redis ${REDIS_PASSWORD}" >> "$TMP"
+            echo "sentinel auth-pass ragbase-redis ${REDIS_PASSWORD}" >> "$TMP"
             ;;
         server)
             echo "requirepass ${REDIS_PASSWORD}" >> "$TMP"

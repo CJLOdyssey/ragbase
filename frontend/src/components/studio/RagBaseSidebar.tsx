@@ -1,11 +1,11 @@
 import { memo, useCallback } from 'react';
 import { Bot, PanelLeft, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { Conversation } from '../../types/AgentStudio';
+import type { Conversation } from '../../types/studio';
 import ConversationsList from './sidebar/ConversationsList';
 import UserMenu from './sidebar/UserMenu';
 
-interface AgentStudioSidebarProps {
+interface RagBaseSidebarProps {
   conversations: Conversation[];
   activeConvId: string | null;
   selectedAgentId: string | null;
@@ -23,7 +23,7 @@ interface AgentStudioSidebarProps {
   onOpenWorkstation: () => void;
 }
 
-const AgentStudioSidebar = memo(function AgentStudioSidebar({
+const RagBaseSidebar = memo(function RagBaseSidebar({
   conversations,
   activeConvId,
   selectedAgentId,
@@ -39,7 +39,7 @@ const AgentStudioSidebar = memo(function AgentStudioSidebar({
   isSidebarOpen,
   onToggleSidebar,
   onOpenWorkstation,
-}: AgentStudioSidebarProps) {
+}: RagBaseSidebarProps) {
   const { t } = useTranslation();
 
   const handleConvSelect = useCallback(
@@ -69,7 +69,7 @@ const AgentStudioSidebar = memo(function AgentStudioSidebar({
             <Bot size={22} />
           </div>
           <span className="font-semibold text-lg text-[var(--color-text-primary)] tracking-[-0.02em] truncate">
-            AgentStudio
+            RagBase
           </span>
         </div>
         <button
@@ -126,4 +126,4 @@ const AgentStudioSidebar = memo(function AgentStudioSidebar({
   );
 });
 
-export default AgentStudioSidebar;
+export default RagBaseSidebar;

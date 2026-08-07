@@ -25,7 +25,7 @@ describe('AttachmentList', { tags: ['unit'] }, () => {
         <AttachmentList files={[]} onRemove={vi.fn()} />
       </TestProviders>,
     );
-    expect(container.querySelector('.agentstudio-attached-files')).toBeNull();
+    expect(container.querySelector('.ragbase-attached-files')).toBeNull();
   });
 
   it('renders file names', () => {

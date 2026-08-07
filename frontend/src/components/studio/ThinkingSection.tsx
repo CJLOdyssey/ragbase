@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type * as React from 'react';
 import { ChevronDown, ChevronUp, Loader2, Sparkles } from 'lucide-react';
-import type { Message } from '../../types/AgentStudio';
+import type { Message } from '../../types/studio';
 import { groupThinkingNodes, ThinkingNodeItem } from './thinking';
 
 const THINKING_STATE_META = {

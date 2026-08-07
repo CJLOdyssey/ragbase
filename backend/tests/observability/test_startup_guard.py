@@ -18,7 +18,7 @@ from observability.startup_guard import (
 def temp_marker_dir():
     """Redirect marker dir to a temp location."""
     with tempfile.TemporaryDirectory() as td:
-        marker_dir = Path(td) / "agentstudio"
+        marker_dir = Path(td) / "ragbase"
         marker_file = marker_dir / "startup.marker"
         crash_log = marker_dir / "startup_crash.log"
         with patch("observability.startup_guard._MARKER_DIR", marker_dir), \

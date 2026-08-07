@@ -68,7 +68,7 @@ describe('SettingsContext', { tags: ['unit'] }, () => {
 
   it('loads settings from localStorage', () => {
     localStorage.setItem(
-      'agentstudio-settings',
+      'ragbase-settings',
       JSON.stringify({ theme: 'light', fontSize: 18, sendMode: 'ctrl-enter' }),
     );
     render(
@@ -95,15 +95,13 @@ describe('SettingsContext', { tags: ['unit'] }, () => {
     act(() => {
       settings.updateSettings({ theme: 'light', fontSize: 20 });
     });
-    const saved = JSON.parse(
-      localStorage.getItem('agentstudio-settings') || '{}',
-    );
+    const saved = JSON.parse(localStorage.getItem('ragbase-settings') || '{}');
     expect(saved.theme).toBe('light');
     expect(saved.fontSize).toBe(20);
   });
 
   it('handles corrupted localStorage gracefully', () => {
-    localStorage.setItem('agentstudio-settings', 'invalid-json{{{');
+    localStorage.setItem('ragbase-settings', 'invalid-json{{{');
     render(
       <SettingsProvider>
         <TestConsumer />

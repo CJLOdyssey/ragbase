@@ -1,7 +1,7 @@
 """Tests for backend.tasks.agent_pipeline — single-agent content generation pipeline.
 
 Mock all external dependencies: Redis, LLM APIs, LangGraph, repositories.
-ContentStudio 场景无 Agent 配置/工具/MCP 绑定，管线直接以默认提示词运行。
+ragbase 场景无 Agent 配置/工具/MCP 绑定，管线直接以默认提示词运行。
 """
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -100,7 +100,7 @@ class TestRunAgentPipeline:
         mock_agent_deps["SingleAgentGraph"].assert_called_once()
 
     async def test_runs_without_tools_binding(self, mock_agent_deps):
-        """ContentStudio 无工具生态：管线不绑定任何工具，直接以默认图运行。"""
+        """ragbase 无工具生态：管线不绑定任何工具，直接以默认图运行。"""
         graph = _default_mocks(mock_agent_deps)
         result = await _run_agent_pipeline(
             run_id="run-2",

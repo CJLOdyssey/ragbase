@@ -2,7 +2,7 @@
    Modal Overlay & Container — 遮罩、弹窗容器、header、关闭按钮、内容区
    ============================================ */
 
-.agentstudio-modal-overlay {
+.ragbase-modal-overlay {
   position: fixed;
   inset: 0;
   background: var(--color-overlay);
@@ -16,8 +16,12 @@
 }
 
 @keyframes antModalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes antModalZoomIn {
@@ -31,7 +35,7 @@
   }
 }
 
-.agentstudio-modal {
+.ragbase-modal {
   background: var(--color-surface-elevated);
   border: none;
   border-radius: var(--radius-card);
@@ -44,7 +48,7 @@
   overflow: hidden;
 }
 
-.agentstudio-modal-header {
+.ragbase-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -53,7 +57,7 @@
   flex-shrink: 0;
 }
 
-.agentstudio-modal-header h3 {
+.ragbase-modal-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
@@ -62,7 +66,7 @@
   letter-spacing: -0.01em;
 }
 
-.agentstudio-modal-close {
+.ragbase-modal-close {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -78,16 +82,16 @@
   transition: all 0.15s ease;
 }
 
-.agentstudio-modal-close:hover {
+.ragbase-modal-close:hover {
   background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
 
-.agentstudio-modal-content {
+.ragbase-modal-content {
   padding: 16px 20px;
 }
 
-.agentstudio-modal-content p {
+.ragbase-modal-content p {
   margin: 0;
   color: var(--color-text-secondary);
   font-size: 14px;

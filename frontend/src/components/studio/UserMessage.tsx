@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type * as React from 'react';
 import { ChevronRight, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { Message } from '../../types/AgentStudio';
+import type { Message } from '../../types/studio';
 import { CopyBtn } from './messages';
 import { sanitizeHtml } from '../../utils/sanitize';
 

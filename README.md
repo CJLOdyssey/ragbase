@@ -1,10 +1,10 @@
 # RagBase — RAG 知识库问答平台
 
-上传私有文档构建知识库，基于检索增强生成（RAG）提供带来源引用的问答。原 content-studio（内容创作助手）迁移而来：内容生成/图文合成层已移除，保留并强化知识库底座（文档上传 → 语义切块 → 向量索引 → 混合检索 → 生成）。
+上传私有文档构建知识库，基于检索增强生成（RAG）提供带来源引用的问答。由前身项目（内容创作助手）迁移而来：内容生成/图文合成层已移除，保留并强化知识库底座（文档上传 → 语义切块 → 向量索引 → 混合检索 → 生成）。
 
 ## 与 agent-studio 的关系
 
-独立项目、独立仓库。技术底座（auth/keys/sessions/runs/streaming/prompts/versions/rag）从 [agent-studio](../agent-studio) 裁剪而来，业务领域为文档知识库问答（vs 软件虚拟团队）。规范见 [docs/SPEC.md](docs/SPEC.md)（规范驱动开发）。
+独立项目、独立仓库。技术底座（auth/keys/sessions/runs/streaming/prompts/versions/rag）为自研裁剪体系，业务领域为文档知识库问答。规范见 [docs/SPEC.md](docs/SPEC.md)（规范驱动开发）。
 
 ## 技术栈
 
@@ -69,4 +69,4 @@ frontend/src/
 
 ## License
 
-MIT（同 agent-studio）
+MIT

@@ -2,7 +2,7 @@ import { RefObject, useCallback } from 'react';
 import { Cpu } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import type { Agent, Message } from '../../types/AgentStudio';
+import type { Agent, Message } from '../../types/studio';
 import {
   continueGeneration,
   editAndRegenerate,

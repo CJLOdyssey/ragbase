@@ -46,7 +46,7 @@ print(f"✅ Repository: {actual_repos}")
 
 # ── 4. Workstation modules ────────────────────────────────────────────────
 modules = [
-    d for d in root.joinpath("frontend/src/components/AgentStudio/workstation").iterdir()
+    d for d in root.joinpath("frontend/src/components/studio/workspace").iterdir()
     if d.is_dir() and d.name != "shared" and d.name != "__tests__"
 ]
 print(f"✅ Workstation modules: {len(modules)}")

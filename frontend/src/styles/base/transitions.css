@@ -1,11 +1,11 @@
 /* ── Theme transition (background, color, border) ── */
-.agentstudio-app,
-.agentstudio-sidebar,
-.agentstudio-global-header,
-.agentstudio-main,
-.agentstudio-home,
-.agentstudio-messages,
-.agentstudio-modal,
+.ragbase-app,
+.ragbase-sidebar,
+.ragbase-global-header,
+.ragbase-main,
+.ragbase-home,
+.ragbase-messages,
+.ragbase-modal,
 .wsta-root,
 .wsta-modal,
 .wsta-table,
@@ -36,7 +36,7 @@
 /* ── Reduced transparency (accessibility) ──
    Intentional !important: user transparency preference must override component styles. */
 @media (prefers-reduced-transparency: reduce) {
-  .agentstudio-modal-overlay,
+  .ragbase-modal-overlay,
   .backdrop-blur-\[4px\] {
     backdrop-filter: none !important;
     background: rgba(0, 0, 0, 0.85) !important;

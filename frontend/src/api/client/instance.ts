@@ -35,14 +35,14 @@ let pendingQueue: Array<() => void> = [];
 if (api.interceptors?.request) {
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     // Access token is in httpOnly cookie (auto-sent via withCredentials), no Authorization header needed
-    let uid = localStorage.getItem('agentstudio_user_id');
+    let uid = localStorage.getItem('ragbase_user_id');
     if (!uid) {
       uid =
         'u_' +
         Date.now().toString(36) +
         '_' +
         Math.random().toString(36).slice(2, 8);
-      localStorage.setItem('agentstudio_user_id', uid);
+      localStorage.setItem('ragbase_user_id', uid);
     }
     config.headers['X-User-ID'] = uid;
     Logger.debug('[API] %s %s', config.method?.toUpperCase(), config.url);

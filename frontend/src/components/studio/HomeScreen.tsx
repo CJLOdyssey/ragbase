@@ -55,7 +55,7 @@ export default function HomeScreen({
               className="w-[72px] h-[72px] mx-auto mb-6 bg-[var(--color-surface-raised)] rounded-xl flex items-center justify-center"
               role="img"
               tabIndex={-1}
-              aria-label="AgentStudio Logo"
+              aria-label="RagBase Logo"
             >
               <Bot size={48} className="text-[var(--color-accent)]" />
             </div>

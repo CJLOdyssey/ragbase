@@ -6,10 +6,10 @@ interface Props {
 
 export default function Header({ onToggleSidebar }: Props) {
   return (
-    <header className="agentstudio-header">
-      <div className="agentstudio-header-left">
+    <header className="ragbase-header">
+      <div className="ragbase-header-left">
         <button
-          className="agentstudio-header-btn"
+          className="ragbase-header-btn"
           onClick={onToggleSidebar}
           aria-label="Toggle sidebar"
         >

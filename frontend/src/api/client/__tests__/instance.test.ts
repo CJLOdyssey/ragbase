@@ -139,11 +139,11 @@ describe('instance', { tags: ['unit'] }, () => {
       const uid = result.headers['X-User-ID'] as string;
       expect(uid).toBeDefined();
       expect(uid.startsWith('u_')).toBe(true);
-      expect(localStorage.getItem('agentstudio_user_id')).toBe(uid);
+      expect(localStorage.getItem('ragbase_user_id')).toBe(uid);
     });
 
     it('reuses existing user ID', async () => {
-      localStorage.setItem('agentstudio_user_id', 'existing-uid');
+      localStorage.setItem('ragbase_user_id', 'existing-uid');
 
       let capturedInterceptor:
         ((config: Record<string, unknown>) => Record<string, unknown>) | null =

@@ -34,7 +34,7 @@ export default function ApiManagementModal({ onClose }: Props) {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     try {
-      return localStorage.getItem('agentstudio-selected-model') || '';
+      return localStorage.getItem('ragbase-selected-model') || '';
     } catch {
       return '';
     }
@@ -219,8 +219,8 @@ export default function ApiManagementModal({ onClose }: Props) {
 
   const handleModelSelect = (model: string) => {
     setSelectedModel(model);
-    localStorage.setItem('agentstudio-selected-model', model);
-    window.dispatchEvent(new Event('agentstudio-model-changed'));
+    localStorage.setItem('ragbase-selected-model', model);
+    window.dispatchEvent(new Event('ragbase-model-changed'));
   };
 
   const TABS = ['keys', 'models', 'usage'] as const;

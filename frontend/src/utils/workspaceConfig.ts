@@ -1,4 +1,4 @@
-import type { AgentType, WorkspaceTab } from '../types/AgentStudio';
+import type { AgentType, WorkspaceTab } from '../types/studio';
 import { Code2, Folder, Play, TestTube2, type LucideIcon } from 'lucide-react';
 
 export const getAgentType = (agentId: string): AgentType => {

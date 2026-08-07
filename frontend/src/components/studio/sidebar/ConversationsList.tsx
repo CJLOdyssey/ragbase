@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import type { Agent, Conversation } from '../../../types/AgentStudio';
+import type { Agent, Conversation } from '../../../types/studio';
 import {
   Cpu,
   MessageSquare,
@@ -26,7 +26,7 @@ interface ConversationsListProps {
 // when React state propagation fails through memo boundaries), read directly.
 function readLocalConversations(): Conversation[] | null {
   try {
-    const saved = localStorage.getItem('agentstudio-conversations');
+    const saved = localStorage.getItem('ragbase-conversations');
     if (!saved) return null;
     const parsed = JSON.parse(saved) as Conversation[];
     return parsed.length > 0 ? parsed : null;

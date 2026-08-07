@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-const CACHE = 'agentstudio-v1';
+const CACHE = 'ragbase-v1';
 
 const PRECACHE_URLS = ['/'];
 

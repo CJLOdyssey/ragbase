@@ -93,7 +93,7 @@ class ResendApiMailer:
             headers={
                 "Authorization": f"Bearer {RESEND_API_KEY}",
                 "Content-Type": "application/json",
-                "User-Agent": "AgentStudio/1.0",
+                "User-Agent": "RagBase/1.0",
             },
         )
         resp = urlopen(req, timeout=15)  # nosec B310
@@ -120,7 +120,7 @@ async def send_email(to: str, subject: str, html: str) -> None:
 
 def build_verification_email(code: str, ttl_minutes: int = 5) -> tuple[str, str]:
     """Build a verification email with a numeric code."""
-    subject = f"【AgentStudio】您的验证码是 {code}"
+    subject = f"【RagBase】您的验证码是 {code}"
     html = f"""<p>您好，</p>
 <p>您的邮箱验证码为：</p>
 <h2 style="letter-spacing:8px;font-size:32px;text-align:center;">{code}</h2>
@@ -131,7 +131,7 @@ def build_verification_email(code: str, ttl_minutes: int = 5) -> tuple[str, str]
 
 def build_reset_email(code: str, ttl_minutes: int = 15) -> tuple[str, str]:
     """Build a password reset verification email."""
-    subject = "【AgentStudio】密码重置验证码"
+    subject = "【RagBase】密码重置验证码"
     html = f"""<p>您好，</p>
 <p>您的密码重置验证码为：</p>
 <h2 style="letter-spacing:8px;font-size:32px;text-align:center;">{code}</h2>
@@ -142,7 +142,7 @@ def build_reset_email(code: str, ttl_minutes: int = 15) -> tuple[str, str]:
 
 def build_password_changed_email() -> tuple[str, str]:
     """Build a password changed confirmation email."""
-    subject = "【AgentStudio】您的密码已被修改"
+    subject = "【RagBase】您的密码已被修改"
     html = """<p>您好，</p>
 <p>您的账户密码已被修改。</p>
 <p>如果这不是您本人的操作，请立即重置密码或联系管理员。</p>"""

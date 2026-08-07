@@ -35,7 +35,7 @@ describe('FileAttach', { tags: ['unit'] }, () => {
         <FileAttach onAdd={onAdd} fileCount={0} />
       </TestProviders>,
     );
-    expect(container.querySelector('.agentstudio-attach-badge')).toBeNull();
+    expect(container.querySelector('.ragbase-attach-badge')).toBeNull();
   });
 
   it('opens file dialog on click', () => {
@@ -182,7 +182,7 @@ describe('FileAttach', { tags: ['unit'] }, () => {
       </TestProviders>,
     );
     const wrapper = document.createElement('div');
-    wrapper.className = 'agentstudio-input-wrapper';
+    wrapper.className = 'ragbase-input-wrapper';
     const inner = document.createElement('span');
     wrapper.appendChild(inner);
     document.body.appendChild(wrapper);

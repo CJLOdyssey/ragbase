@@ -192,7 +192,7 @@ export default function LoginModal({ onClose }: Props) {
       >
         <div className="text-center pt-[28px] pb-1">
           <span className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            ✦ ContentStudio
+            ✦ RagBase
           </span>
         </div>
         <div className="flex gap-1 mx-6 mt-4 mb-0 bg-[var(--color-surface-overlay)] rounded-[var(--radius-card)] p-[3px]">

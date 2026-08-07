@@ -2,14 +2,14 @@
    Confirm Dialog — 确认框 body、icon、text
    ============================================ */
 
-.agentstudio-confirm-body {
+.ragbase-confirm-body {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 4px 0;
 }
 
-.agentstudio-confirm-icon {
+.ragbase-confirm-icon {
   flex-shrink: 0;
   width: 22px;
   height: 22px;
@@ -18,26 +18,26 @@
   justify-content: center;
 }
 
-.agentstudio-confirm-icon svg {
+.ragbase-confirm-icon svg {
   width: 20px;
   height: 20px;
   display: block;
 }
 
-.agentstudio-confirm-icon.warning {
+.ragbase-confirm-icon.warning {
   color: var(--color-warning);
 }
 
-.agentstudio-confirm-icon.danger {
+.ragbase-confirm-icon.danger {
   color: var(--color-danger);
 }
 
-.agentstudio-confirm-text {
+.ragbase-confirm-text {
   flex: 1;
   min-width: 0;
 }
 
-.agentstudio-confirm-text p {
+.ragbase-confirm-text p {
   margin: 0;
   color: var(--color-text-secondary);
   font-size: 14px;

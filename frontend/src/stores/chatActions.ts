@@ -57,7 +57,7 @@ export async function submitRequirement(
   try {
     const keys = await listKeys();
     const activeKeys = keys.filter((k) => k.is_active);
-    const persistedModel = localStorage.getItem('agentstudio-selected-model');
+    const persistedModel = localStorage.getItem('ragbase-selected-model');
     const resolved = resolveKey(activeKeys, persistedModel ?? undefined);
     keyId = resolved.keyId;
     model = resolved.model;

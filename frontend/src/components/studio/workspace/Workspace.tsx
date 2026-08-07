@@ -1,5 +1,5 @@
 import React from 'react';
-import type { WorkspaceTab } from '../../../types/AgentStudio';
+import type { WorkspaceTab } from '../../../types/studio';
 import { getAgentType, getWorkspaceTabs } from '../../../utils/workspaceConfig';
 import {
   FileCode,

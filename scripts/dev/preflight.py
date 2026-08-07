@@ -130,7 +130,7 @@ def check_port(port: int, label: str = "Port") -> bool:
 
 def main() -> int:
     print("=" * 50)
-    print("  AgentStudio Preflight Check")
+    print("  RagBase Preflight Check")
     print("=" * 50)
     print()
 

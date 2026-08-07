@@ -1,4 +1,4 @@
-"""Test data factories for AgentStudio backend tests."""
+"""Test data factories for RagBase backend tests."""
 
 import uuid
 from dataclasses import dataclass, field

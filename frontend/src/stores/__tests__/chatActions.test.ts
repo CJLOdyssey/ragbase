@@ -187,7 +187,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
         models: ['Qwen/Qwen3-8B', 'deepseek-ai/DeepSeek-V4-Flash'],
       },
     ]);
-    localStorage.setItem('agentstudio-selected-model', 'Qwen/Qwen3-8B');
+    localStorage.setItem('ragbase-selected-model', 'Qwen/Qwen3-8B');
 
     const userMsg = makeMsg({ id: 'u1', role: 'user', content: 'original' });
     const agentMsg = makeMsg({ id: 'a1', role: 'agent', content: 'response' });

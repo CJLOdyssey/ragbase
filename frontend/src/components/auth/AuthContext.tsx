@@ -24,14 +24,14 @@ import { useChatStore } from '../../stores/chatStore';
 
 function clearLocalConversations() {
   try {
-    localStorage.removeItem('agentstudio-conversations');
-    window.dispatchEvent(new Event('agentstudio-conversations-updated'));
+    localStorage.removeItem('ragbase-conversations');
+    window.dispatchEvent(new Event('ragbase-conversations-updated'));
   } catch {}
 }
 
 async function mergeGuest() {
   try {
-    const guestId = localStorage.getItem('agentstudio_user_id');
+    const guestId = localStorage.getItem('ragbase_user_id');
     if (guestId) await apiMergeGuestData(guestId);
   } catch {
     /* merge is best-effort */
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: me.username,
         roles: me.roles,
       });
-      localStorage.setItem('agentstudio_user_id', me.id);
+      localStorage.setItem('ragbase_user_id', me.id);
       window.dispatchEvent(new CustomEvent('auth:login'));
     }
 
@@ -175,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: res.user.username,
         roles: res.user.roles,
       });
-      localStorage.setItem('agentstudio_user_id', res.user.id);
+      localStorage.setItem('ragbase_user_id', res.user.id);
       window.dispatchEvent(new CustomEvent('auth:login'));
       void mergeGuest();
     },
@@ -192,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: res.user.username,
         roles: res.user.roles,
       });
-      localStorage.setItem('agentstudio_user_id', res.user.id);
+      localStorage.setItem('ragbase_user_id', res.user.id);
       window.dispatchEvent(new CustomEvent('auth:login'));
       void mergeGuest();
     },
@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: res.user.username,
       roles: res.user.roles,
     });
-    localStorage.setItem('agentstudio_user_id', res.user.id);
+    localStorage.setItem('ragbase_user_id', res.user.id);
     window.dispatchEvent(new CustomEvent('auth:login'));
     void mergeGuest();
   }, []);
@@ -233,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     clearLocalConversations();
-    localStorage.removeItem('agentstudio_user_id');
+    localStorage.removeItem('ragbase_user_id');
     useChatStore.getState().reset();
     window.dispatchEvent(new CustomEvent('auth:logout'));
   }, []);

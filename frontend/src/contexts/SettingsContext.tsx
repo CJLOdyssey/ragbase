@@ -56,7 +56,7 @@ function playBeep() {
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(() => {
     try {
-      const saved = localStorage.getItem('agentstudio-settings');
+      const saved = localStorage.getItem('ragbase-settings');
       return saved
         ? { ...defaultSettings, ...JSON.parse(saved) }
         : defaultSettings;
@@ -66,7 +66,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    localStorage.setItem('agentstudio-settings', JSON.stringify(settings));
+    localStorage.setItem('ragbase-settings', JSON.stringify(settings));
   }, [settings]);
 
   useEffect(() => {

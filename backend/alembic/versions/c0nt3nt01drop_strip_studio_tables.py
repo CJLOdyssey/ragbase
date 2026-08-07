@@ -1,10 +1,10 @@
-"""Drop stripped agent-studio tables.
+"""Drop stripped studio tables.
 
 Revision ID: c0nt3nt01drop
 Revises: f7c3d9a1b2e4
 Create Date: 2026-08-06
 
-Drops tables removed from content-studio: teams, team_agents, agent_configs,
+Drops tables stripped from the shared base: teams, team_agents, agent_configs,
 registered_tools, mcp_servers, registered_skills, workflow_configs,
 workflow_nodes, workflow_edges, and the sessions.agent_id column.
 """

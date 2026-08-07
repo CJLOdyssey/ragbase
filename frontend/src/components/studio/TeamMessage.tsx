@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import type { Agent, Message } from '../../types/AgentStudio';
+import type { Agent, Message } from '../../types/studio';
 import { CopyBtn } from './messages';
 import { markdownComponents, rehypeLinkify } from './thinking';
 import { ThinkingSection } from './ThinkingSection';

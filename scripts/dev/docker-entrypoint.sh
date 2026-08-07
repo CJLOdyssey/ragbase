@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ── Docker entrypoint for virtual-team backend ──────────────────────────────
+# ── Docker entrypoint for ragbase backend ──────────────────────────────
 #  1. Wait for Postgres (up to 60s)
 #  2. Run alembic migrations
 #  3. Exec CMD (uvicorn)

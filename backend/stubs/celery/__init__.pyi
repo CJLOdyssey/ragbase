@@ -1,4 +1,4 @@
-"""Minimal type stubs for celery — covers only APIs used by AgentStudio."""
+"""Minimal type stubs for celery — covers only APIs used by RagBase."""
 
 from __future__ import annotations
 

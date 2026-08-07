@@ -6,7 +6,7 @@ import { ConfigProvider, theme } from 'antd';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider, LoginModal, useAuth } from './components/auth';
-import AgentStudioWorkstation from './components/studio/AgentStudioWorkstation';
+import RagBaseWorkstation from './components/studio/RagBaseWorkstation';
 import { useSettings } from './contexts/SettingsContext';
 import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
@@ -168,7 +168,7 @@ function ThemedApp() {
               <AuthGate>
                 <AppInit />
                 <Routes>
-                  <Route path="/" element={<AgentStudioWorkstation />} />
+                  <Route path="/" element={<RagBaseWorkstation />} />
                   <Route
                     path="/assets"
                     element={
@@ -192,7 +192,7 @@ function ThemedApp() {
                         FallbackComponent={Fallback}
                         onError={logError}
                       >
-                        <AgentStudioWorkstation />
+                        <RagBaseWorkstation />
                       </ErrorBoundary>
                     }
                   />

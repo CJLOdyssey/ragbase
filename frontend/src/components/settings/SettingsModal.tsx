@@ -261,7 +261,7 @@ export default function SettingsModal({ onClose }: Props) {
                         letterSpacing: '-0.02em',
                       }}
                     >
-                      ContentStudio
+                      RagBase
                     </div>
                     <div
                       style={{

@@ -12,7 +12,7 @@ import tempfile
 import time
 from pathlib import Path
 
-_MARKER_DIR = Path(tempfile.gettempdir()) / "agentstudio"
+_MARKER_DIR = Path(tempfile.gettempdir()) / "ragbase"
 _MARKER_FILE = _MARKER_DIR / "startup.marker"
 _CRASH_LOG = _MARKER_DIR / "startup_crash.log"
 

@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 def _derive_fernet_key(secret: str) -> bytes:
     """Derive a 32-byte Fernet key from any-length secret via PBKDF2."""
-    salt = b"agent-studio-key-vault-v2"  # static salt — secret provides the entropy
+    salt = b"ragbase-key-vault-v2"  # static salt — secret provides the entropy
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,

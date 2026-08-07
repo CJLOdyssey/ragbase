@@ -1,4 +1,4 @@
-// AgentStudio 类型定义（content-studio 裁剪版：不含 Team 树相关类型）
+// RagBase 类型定义（不含 Team 树相关类型）
 import type { LucideIcon } from 'lucide-react';
 
 // Agent 工具配置

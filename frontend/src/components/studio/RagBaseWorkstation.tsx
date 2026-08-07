@@ -1,13 +1,13 @@
 import { useRef } from 'react';
 import { InputToolbar, type InputToolbarHandle } from '../input';
 import { Moon, PanelLeft, Sun } from 'lucide-react';
-import AgentStudioSidebar from './AgentStudioSidebar';
 import HomeScreen from './HomeScreen';
 import MessagesPanel from './MessagesPanel';
 import Modals from './Modals';
+import RagBaseSidebar from './RagBaseSidebar';
 import { useHomeState } from './useHomeState';
 
-export default function AgentStudioWorkstation() {
+export default function RagBaseWorkstation() {
   const s = useHomeState();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -16,7 +16,7 @@ export default function AgentStudioWorkstation() {
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
       <div className="flex flex-1 overflow-hidden relative">
-        <AgentStudioSidebar
+        <RagBaseSidebar
           conversations={s.conversations}
           activeConvId={s.activeConvId}
           selectedAgentId={null}

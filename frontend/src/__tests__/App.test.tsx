@@ -3,7 +3,7 @@ import { TestProviders } from '../test/setup';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../components/studio/AgentStudioWorkstation', () => ({
+vi.mock('../components/studio/RagBaseWorkstation', () => ({
   default: () => <div data-testid="workstation">Workstation</div>,
 }));
 
