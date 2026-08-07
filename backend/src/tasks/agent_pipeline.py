@@ -17,6 +17,7 @@ from graph.graph import SingleAgentGraph
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from repository import (
     get_messages,
+    get_run_ancestors,
     get_session_memories,
     get_session_messages,
     list_attachments_by_run,
@@ -108,18 +109,25 @@ async def _run_agent_pipeline(
         except Exception:
             logger.warning("Failed to load RAG context for session %s", session_id)
 
-    # ── Short-term memory: collect previous conversation messages ──
+    # ── Short-term memory: parent-chain turns (branch-aware) ──
     chat_history: list[BaseMessage] = []
     if session_id:
         try:
-            prev_msgs = await get_session_messages(session_id, exclude_run_id=run_id)
-            for m in prev_msgs:
-                if m.role == "user":
-                    chat_history.append(HumanMessage(content=m.content))
-                elif m.role == "agent":
-                    chat_history.append(AIMessage(content=m.content))
+            # 分支树：只回溯当前 run 的 parent 链（编辑分叉/续聊节点），
+            # 不注入兄弟分支与选中节点之后的轮次。
+            chain = await get_run_ancestors(run_id)
+            for cr in chain[:-1]:  # 不含自身（自身 requirement 由 graph.run 追加）
+                hist = await get_messages(cr.id)
+                req = (cr.requirement or "").strip()
+                if req:
+                    chat_history.append(HumanMessage(content=req))
+                for m in hist:
+                    if m.role == "user":
+                        chat_history.append(HumanMessage(content=m.content))
+                    elif m.role == "agent":
+                        chat_history.append(AIMessage(content=m.content))
         except Exception:
-            logger.warning("Failed to load chat history for session %s", session_id)
+            logger.warning("Failed to load branch history for run %s", run_id)
 
     checkpointer = await create_checkpointer_async()
     emitter = StreamEmitter(run_id)

@@ -160,3 +160,24 @@ async def count_runs_by_parent(parent_run_id: str) -> int:
             select(func.count(ProjectRun.id)).where(ProjectRun.parent_run_id == parent_run_id)
         )
         return int(result.scalar_one() or 0)
+
+
+async def get_run_ancestors(run_id: str) -> list[ProjectRun]:
+    """Return the run and all its ancestors via parent_run_id, root-first.
+
+    Guards against cycles (corrupt data) by capping the walk at the run count.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        rows: list[ProjectRun] = []
+        seen: set[str] = set()
+        current_id: str | None = run_id
+        while current_id and current_id not in seen:
+            seen.add(current_id)
+            run = await session.get(ProjectRun, current_id)
+            if run is None:
+                break
+            rows.append(run)
+            current_id = run.parent_run_id or None
+        rows.reverse()
+        return rows
