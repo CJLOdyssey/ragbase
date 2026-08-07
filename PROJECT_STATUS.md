@@ -4,7 +4,7 @@
 
 RAG 知识库问答平台：上传私有文档构建知识库，检索增强生成（RAG）提供带来源引用的问答。
 由前身项目（内容创作助手）迁移而来：内容生成/图文合成层已移除，知识库底座保留并成为核心。
-独立项目、独立仓库。技术底座（auth/keys/sessions/runs/streaming/prompts/versions/rag）从 agent-studio 裁剪而来。
+独立项目、独立仓库。技术底座（auth/keys/sessions/runs/streaming/prompts/versions/rag）为自研裁剪体系。
 规范驱动开发，规范见 `docs/SPEC.md`。
 
 ## 二、git 历史
