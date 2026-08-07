@@ -10,8 +10,10 @@ FROM python:3.12-slim AS builder
 ARG PIP_INDEX_URL
 ARG PIP_TRUSTED_HOST
 RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
-COPY requirements-prod.txt .
-RUN pip install --prefix=/install --no-cache-dir -r requirements-prod.txt \
+COPY pyproject.toml uv.lock ./
+RUN pip install --no-cache-dir uv \
+    && uv export --frozen --no-dev --format requirements.txt -o /tmp/prod-requirements.txt \
+    && pip install --prefix=/install --no-cache-dir -r /tmp/prod-requirements.txt \
     --index-url ${PIP_INDEX_URL} \
     --trusted-host ${PIP_TRUSTED_HOST}
 
