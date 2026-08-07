@@ -10,6 +10,7 @@ export type { WsConnectionStatus, ChatState } from './chatTypes';
 const INITIAL_STATE = {
   currentRunId: null,
   activeRunId: null,
+  runTurns: {},
   currentSessionId: null,
   currentConvId: null,
   messages: [],
@@ -67,6 +68,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
     set({
       messages,
+      runTurns: {},
       currentConvId: convId ?? null,
       currentSessionId: sessionId ?? null,
       currentRunId: null,
@@ -152,6 +154,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ),
     }));
   },
+
+  setRunTurns: (turns) => set({ runTurns: turns }),
 }));
 
 export {

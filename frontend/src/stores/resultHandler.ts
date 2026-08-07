@@ -129,8 +129,21 @@ export function handleResultEvent(
         return { ...m, ...updated, thinkingDone: true } as ChatMessage;
       });
     }
+    // 流式结束：记录当前 run 的 agent turn（分页版本切换时模型消息联动）
+    const done = msgs.find((m) => m.id === _s.streamingId);
+    const runTurns =
+      done && runId
+        ? {
+            ..._s.runTurns,
+            [runId]: {
+              content: done.content ?? '',
+              thinking: done.thinking ?? '',
+            },
+          }
+        : _s.runTurns;
     return {
       messages: msgs,
+      runTurns,
       status: 'idle' as ChatState['status'],
       streamingId: null,
       result: makeRunResult(codeContent),

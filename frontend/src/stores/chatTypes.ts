@@ -47,5 +47,10 @@ export interface ChatState {
   setWsStatus: (wsStatus: WsConnectionStatus) => void;
   activeRunId: string | null;
   setActiveRunId: (runId: string | null) => void;
+  /** runId → agent turn (content/thinking) — 分页版本切换时模型消息联动 */
+  runTurns: Record<string, { content: string; thinking: string }>;
+  setRunTurns: (
+    turns: Record<string, { content: string; thinking: string }>,
+  ) => void;
   reset: () => void;
 }

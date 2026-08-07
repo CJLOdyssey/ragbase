@@ -62,6 +62,43 @@ function buildRunPath(runs: ProjectRun[]): {
   return { path, active: latest?.id ?? null };
 }
 
+// 路径 turns：平铺消息 + runTurns（runId → agent turn）+ 版本映射（versionRunIds）
+function buildPathTurns(path: ProjectRun[]): {
+  loaded: ChatMessage[];
+  runTurns: Record<string, { content: string; thinking: string }>;
+} {
+  const loaded: ChatMessage[] = [];
+  const runTurns: Record<string, { content: string; thinking: string }> = {};
+  for (let i = 0; i < path.length; i++) {
+    const run = path[i];
+    for (const m of run.messages ?? []) {
+      loaded.push({ ...m, runId: run.id });
+    }
+    // 版本计数：user 消息带 requirement_versions（run 层）
+    const uIdx = loaded.findIndex(
+      (m) => m.runId === run.id && m.role === 'user',
+    );
+    if (uIdx >= 0 && run.requirement_versions?.length) {
+      loaded[uIdx] = {
+        ...loaded[uIdx],
+        userVersions: run.requirement_versions,
+        // 版本 i 的 run = 路径上第 i 个 run（parent 链，根在前）
+        versionRunIds: path.slice(0, i + 1).map((r) => r.id),
+        currentUserVersion: run.requirement_versions.length - 1,
+      };
+    }
+    // runTurns：runId → agent turn（分页切换时模型消息联动）
+    const agentMsg = (run.messages ?? []).find((m) => m.role !== 'user');
+    if (agentMsg) {
+      runTurns[run.id] = {
+        content: agentMsg.content ?? '',
+        thinking: agentMsg.thinking ?? '',
+      };
+    }
+  }
+  return { loaded, runTurns };
+}
+
 export function useHomeState() {
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
@@ -170,24 +207,8 @@ export function useHomeState() {
       try {
         const detail = await getSessionDetail(convId);
         const { path, active } = buildRunPath(detail.runs ?? []);
+        const { loaded, runTurns } = buildPathTurns(path);
 
-        const loaded: ChatMessage[] = [];
-        for (const run of path) {
-          for (const m of run.messages ?? []) {
-            loaded.push({ ...m, runId: run.id });
-          }
-          // 版本计数：user 消息带 requirement_versions（run 层）
-          const uIdx = loaded.findIndex(
-            (m) => m.runId === run.id && m.role === 'user',
-          );
-          if (uIdx >= 0 && run.requirement_versions?.length) {
-            loaded[uIdx] = {
-              ...loaded[uIdx],
-              userVersions: run.requirement_versions,
-              currentUserVersion: run.requirement_versions.length - 1,
-            };
-          }
-        }
         // Persisted messages are completed turns — mark agent thinking as done
         // so the ThinkingSection shows "已思考" instead of a stuck spinner.
         for (const m of loaded) {
@@ -197,6 +218,7 @@ export function useHomeState() {
         }
         useChatStore.getState().loadConversation(loaded, convId, convId);
         useChatStore.getState().setActiveRunId(active);
+        useChatStore.getState().setRunTurns(runTurns);
       } catch (err) {
         Logger.warn('[useHomeState] failed to load conversation', err);
       }

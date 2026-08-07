@@ -12,6 +12,27 @@ import { uid } from './uid';
 
 type KeyItem = Awaited<ReturnType<typeof listKeys>>[number];
 
+function buildEditVersions(
+  old: ChatMessage,
+  trimmed: string,
+  parentRunId: string | undefined,
+): { userVersions: string[]; baseRunIds: string[] } {
+  // 本地版本链（乐观）：与新 run 的 requirement_versions 对应，驱动分页切换。
+  const history = old.userVersions ? [...old.userVersions] : [];
+  const userVersions =
+    history.length === 0 || history[history.length - 1] !== old.content
+      ? [...history, old.content, trimmed]
+      : [...history, trimmed];
+  // 版本 → runId：旧版本继承祖先链，新版本 run 在 submitRequirement 返回后追加
+  // （编辑 rebind 时补 versionRunIds 的最后一跳）。
+  const baseRunIds = old.versionRunIds
+    ? [...old.versionRunIds]
+    : parentRunId
+      ? [parentRunId]
+      : [];
+  return { userVersions, baseRunIds };
+}
+
 function resolveKey(
   activeKeys: KeyItem[],
   persistedModel: string | undefined,
@@ -133,7 +154,13 @@ export async function submitRequirement(
         const u =
           userIdx >= 0 && msgs[userIdx].role === 'user' ? msgs[userIdx] : null;
         if (u && u.id.startsWith('run-') && u.id.endsWith('-requirement')) {
-          msgs[userIdx] = { ...u, id: `run-${run_id}-requirement` };
+          msgs[userIdx] = {
+            ...u,
+            id: `run-${run_id}-requirement`,
+            runId: run_id,
+            // 版本链最后一跳 = 新 run
+            versionRunIds: [...(u.versionRunIds ?? []), run_id],
+          };
         }
         return { messages: msgs };
       });
@@ -223,6 +250,12 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
   );
   const editTargetId = nextAgentIdx >= 0 ? s.messages[nextAgentIdx].id : null;
 
+  const { userVersions, baseRunIds } = buildEditVersions(
+    old,
+    trimmed,
+    parentRunId,
+  );
+
   useChatStore.setState({
     status: 'loading',
     error: null,
@@ -237,7 +270,17 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
     // 截断隐藏（DB 留存），只保留本 turn 供流式替换。
     messages: s.messages
       .slice(0, nextAgentIdx >= 0 ? nextAgentIdx + 1 : s.messages.length)
-      .map((m, i) => (i === idx ? { ...m, content: trimmed } : m)),
+      .map((m, i) =>
+        i === idx
+          ? {
+              ...m,
+              content: trimmed,
+              userVersions,
+              versionRunIds: baseRunIds,
+              currentUserVersion: userVersions.length - 1,
+            }
+          : m,
+      ),
   });
 
   await submitRequirement(

@@ -62,6 +62,8 @@ export interface ChatMessage {
   created_at: string | null;
   /** User-message edit history (older edits first; content is the active one) */
   userVersions?: string[];
+  /** 版本 → runId 映射（userVersions[i] 对应 versionRunIds[i] 的 run turn） */
+  versionRunIds?: string[];
   currentUserVersion?: number;
   thumbsFeedback?: 'up' | 'down' | null;
   interrupted?: boolean;
