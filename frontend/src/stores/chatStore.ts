@@ -132,24 +132,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ ...INITIAL_STATE, submissionConvId: null });
   },
 
-  switchVersion: (msgId, direction) => {
-    set((s) => ({
-      messages: s.messages.map((m) => {
-        if (m.id !== msgId || !m.versions) return m;
-        const max = m.versions.length - 1;
-        const cv = m.currentVersion ?? max;
-        const nv =
-          direction === 'prev' ? Math.max(0, cv - 1) : Math.min(max, cv + 1);
-        return {
-          ...m,
-          currentVersion: nv,
-          content: m.versions[nv],
-          thinking: m.thinkingVersions?.[nv] ?? m.thinking ?? '',
-        };
-      }),
-    }));
-  },
-
   switchUserVersion: (msgId, direction) => {
     set((s) => ({
       messages: s.messages.map((m) => {
@@ -159,35 +141,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const nv =
           direction === 'prev' ? Math.max(0, cv - 1) : Math.min(max, cv + 1);
         return { ...m, currentUserVersion: nv, content: m.userVersions[nv] };
-      }),
-    }));
-  },
-
-  setAgentVersion: (msgId, nv) => {
-    set((s) => ({
-      messages: s.messages.map((m) => {
-        if (m.id !== msgId) return m;
-        // nv === -1 means "show the live content" (the newest answer), which lives
-        // in m.content rather than the folded versions list.
-        if (nv === -1) {
-          return {
-            ...m,
-            currentVersion: -1,
-            content: m.content,
-            thinking: m.thinking,
-          };
-        }
-        const max = m.versions?.length ? m.versions.length - 1 : 0;
-        const idx = Math.max(0, Math.min(nv, max));
-        return {
-          ...m,
-          currentVersion: idx,
-          // ponytail: never fall back to the live (newest) content/thinking here —
-          // a missing historical version renders blank rather than showing the
-          // newest answer against an older user message (version mismatch bug).
-          content: m.versions?.[idx] ?? '',
-          thinking: m.thinkingVersions?.[idx] ?? '',
-        };
       }),
     }));
   },

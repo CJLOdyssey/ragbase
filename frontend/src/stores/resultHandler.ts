@@ -1,4 +1,3 @@
-import { updateAnswerVersions } from '../api/client/sessions';
 import type { ChatMessage, RunResult } from '../types';
 import Logger from '../utils/logger';
 import type { ChatState } from './chatTypes';
@@ -135,7 +134,6 @@ export function handleResultEvent(
   msg: WsResultEvent,
 ): void {
   const runId = get().currentRunId;
-  const streamMsgId = get().streamingId;
   const codeContent: string = msg.code ? String(msg.code) : '';
   set((_s) => {
     let msgs = _s.messages;
@@ -156,21 +154,6 @@ export function handleResultEvent(
       skipThinking: false,
     };
   });
-  // Edit-regenerate: persist the merged answer versions so they survive a reload.
-  if (streamMsgId && runId) {
-    const done = get().messages.find((m) => m.id === streamMsgId);
-    if (done && done.versions && done.versions.length > 0) {
-      updateAnswerVersions(runId, done.versions, done.thinkingVersions).catch(
-        (err) => {
-          Logger.warn(
-            '[chat] failed to persist answer versions for run %s: %s',
-            runId,
-            String(err),
-          );
-        },
-      );
-    }
-  }
   Logger.info('[chat] result received — status set to idle');
   activeStreamMsgIds.delete(runId || '');
 }
