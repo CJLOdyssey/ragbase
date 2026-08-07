@@ -95,18 +95,6 @@ CI 用 `pytest --requirement-coverage`（`tests/requirement_coverage.py` 插件�
 
 ---
 
-## 底座保留模块（非 ragbase 核心业务）
-
-以下模块的 e2e 回归测试存在，但**不计入 ragbase 核心需求**：
-
-| 模块 | e2e 回归测试 |
-|---|---|
-| agents（graph 单 agent 引擎的资源层） | `tests/e2e/test_agent_crud.py` |
-| tools / mcp / skills | `tests/e2e/test_tool_crud.py`、`tests/e2e/test_mcp_crud.py`、`tests/e2e/test_mcp_invocation.py`、`tests/e2e/test_skill_crud.py` |
-| workflows | `tests/e2e/test_workflow_crud.py` |
-| teams | `tests/e2e/test_team_crud.py` |
-
----
 
 ## 统计摘要
 
