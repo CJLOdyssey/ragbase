@@ -19,11 +19,13 @@ RAG 知识库问答平台：上传私有文档构建知识库，检索增强生�
 
 ```bash
 docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
-DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5433/ragbase" make dev-backend
+systemctl --user restart ragbase-backend   # 后端：systemd user service 守护（已 enable 开机自启）
 cd frontend && npm run dev
+# 服务文件：~/.config/systemd/user/ragbase-backend.service
+# 重启/状态/日志：systemctl --user restart|status ragbase-backend ; journalctl --user -u ragbase-backend -f
 ```
 
-> 注意：DATABASE_URL 必须显式注入（run-backend.sh 不读 .env 兜底；opencode 沙箱会泄漏 `DATABASE_URL=file:...` 覆盖 .env）。
+> 备用（无 systemd 环境）：`make dev-backend`（脚本 `scripts/dev/run-backend.sh`，单实例 + 端口杀 + setsid 脱离，日志 `/tmp/ragbase-backend.log`）。`run-backend.sh` 与 systemd 服务文件均已强制正确 `DATABASE_URL`（自动重置被 opencode 沙箱泄漏的 `file:...sqlite` 污染值）。
 
 ## 三、数据库与依赖环境
 

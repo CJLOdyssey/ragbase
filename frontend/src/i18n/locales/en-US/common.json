@@ -51,6 +51,7 @@
     "noModels": "No models available",
     "configure": "Configure API provider",
     "noModelsHint": "Configure an API provider to enable models",
+    "recent": "Recent",
     "statusDeprecated": "Deprecated",
     "statusSunset": "Sunsetting"
   },
@@ -62,6 +63,7 @@
   "sidebar": {
     "newChat": "New chat",
     "recentConversations": "Recent conversations",
+    "pinned": "Pinned",
     "today": "Today",
     "yesterday": "Yesterday",
     "sevenDays": "7 days",
@@ -90,10 +92,15 @@
     "expand": "Expand",
     "seconds": "s",
     "unknownAgent": "Unknown agent",
+    "thinkingComplete": "Thought",
+    "thinkingPending": "Thinking...",
+    "thinkingStopped": "Thinking stopped",
     "executeTask": "Execute {{count}} steps"
   },
   "agent": {
-    "welcome": "Hi! I can help answer questions from your knowledge base."
+    "welcome": "Hi! I can help answer questions from your knowledge base.",
+    "startChat": "Start a chat with {{name}}",
+    "thinking": "{{name}} is thinking..."
   },
   "providerEdit": {
     "provider": "Provider",

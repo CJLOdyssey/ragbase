@@ -110,7 +110,11 @@ function buildPathTurns(path: ProjectRun[]): {
   for (let i = 0; i < path.length; i++) {
     const run = path[i];
     for (const m of run.messages ?? []) {
-      loaded.push({ ...m, runId: run.id });
+      loaded.push({
+        ...m,
+        runId: run.id,
+        parentRunId: run.parent_run_id ?? null,
+      });
     }
     // 版本计数：user 消息带 requirement_versions（run 层）
     const uIdx = loaded.findIndex(

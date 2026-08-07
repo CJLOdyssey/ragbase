@@ -89,7 +89,7 @@ export default function UserMenu({
         <div className="absolute bottom-[calc(100%+8px)] left-4 right-4 bg-[var(--color-surface-card)] border border-[var(--color-border)] rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.18)] z-[var(--z-modal)] flex flex-col p-1 origin-bottom animate-[popoverScaleIn_0.15s_cubic-bezier(0.16,1,0.3,1)]">
           <PopoverItem
             icon={<Key size={16} className="w-4 h-4 mr-1" />}
-            label="API 管理"
+            label="API"
             onClick={() => handleItemClick(() => setIsApiOpen(true))}
           />
           <PopoverItem

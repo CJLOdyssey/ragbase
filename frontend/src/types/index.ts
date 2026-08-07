@@ -64,6 +64,8 @@ export interface ChatMessage {
   userVersions?: string[];
   /** 版本 → runId 映射（userVersions[i] 对应 versionRunIds[i] 的 run turn） */
   versionRunIds?: string[];
+  /** 本消息对应 run 的 parent_run_id（编辑产生兄弟分支时使用） */
+  parentRunId?: string | null;
   currentUserVersion?: number;
   thumbsFeedback?: 'up' | 'down' | null;
   interrupted?: boolean;

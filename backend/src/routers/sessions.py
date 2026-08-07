@@ -19,6 +19,7 @@ from repository import (
     get_session_messages,
     get_session_runs,
     get_sessions,
+    update_session_pin,
     update_session_title,
 )
 from services.session_service import with_requirement_message
@@ -38,6 +39,10 @@ class SessionUpdateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=256)
 
 
+class SessionPinRequest(BaseModel):
+    is_pinned: bool = True
+
+
 @router.get("/api/sessions", response_model=list[SessionSummary])
 async def list_sessions(request: Request, limit: int = 50) -> Any:
     """List sessions for the current user."""
@@ -55,6 +60,7 @@ async def list_sessions(request: Request, limit: int = 50) -> Any:
                     "title": s.title,
                     "kind": s.kind,
                     "run_count": len(runs),
+                    "is_pinned": s.is_pinned,
                     "created_at": s.created_at.isoformat() if s.created_at else None,
                     "updated_at": s.updated_at.isoformat() if s.updated_at else None,
                 }
@@ -176,6 +182,27 @@ async def rename_session(request: Request, session_id: str, req: SessionUpdateRe
         raise
     except Exception as e:
         logger.error("Error renaming session %s: %s", session_id, e, exc_info=True)
+        raise error_response(ErrorCode.INTERNAL_ERROR) from e
+
+
+@router.put("/api/sessions/{session_id}/pin")
+async def pin_session(request: Request, session_id: str, req: SessionPinRequest) -> Any:
+    """Pin or unpin a session for sidebar pin-to-top."""
+    try:
+        user_id = get_user_id(request)
+        sess = await get_session(session_id)
+        if not sess:
+            raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        if sess.user_id != user_id:
+            raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权修改该对话")
+        sess = await update_session_pin(session_id, req.is_pinned)
+        if not sess:
+            raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        return {"id": sess.id, "is_pinned": sess.is_pinned, "status": "updated"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error pinning session %s: %s", session_id, e, exc_info=True)
         raise error_response(ErrorCode.INTERNAL_ERROR) from e
 
 
@@ -306,4 +333,3 @@ async def export_session_memories(request: Request, session_id: str, format: str
     except Exception as e:
         logger.error("Error exporting memories for %s: %s", session_id, e, exc_info=True)
         raise error_response(ErrorCode.INTERNAL_ERROR) from e
-

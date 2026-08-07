@@ -208,10 +208,34 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       undefined,
     );
   });
+
+  it('passes parent_run_id parsed from the synthetic user message id', async () => {
+    const userMsg = makeMsg({
+      id: 'run-run-abc-requirement',
+      role: 'user',
+      content: 'original',
+    });
+    const agentMsg = makeMsg({ id: 'a1', role: 'agent', content: 'response' });
+    useChatStore.setState({
+      messages: [userMsg, agentMsg],
+      currentSessionId: 'sess-1',
+      currentRunId: 'old-run',
+    });
+
+    await regenerateMessage(1);
+
+    expect(mockSubmitReq).toHaveBeenCalledWith(
+      'original',
+      'sess-1',
+      'key-1',
+      'deepseek-chat',
+      'run-abc',
+    );
+  });
 });
 
 describe('editAndRegenerate', { tags: ['unit'] }, () => {
-  it('merges into the following agent answer and keeps the user edit history', async () => {
+  it('merges into the following agent answer and activates the new run', async () => {
     const userMsg = makeMsg({
       id: 'u1',
       role: 'user',

@@ -112,8 +112,14 @@ class RunService:
             if parent_run_id:
                 parent = await get_run(parent_run_id)
                 if parent:
+                    # Version list INCLUDES the current requirement (enhanced chain).
+                    # parent_versions, when present, already ends with parent.requirement,
+                    # so only append this run's requirement. On the FIRST edit
+                    # parent_versions is empty — seed it with parent.requirement (the
+                    # previous version) so the history isn't lost and nothing duplicates.
                     parent_versions = parse_json_list(parent.requirement_versions)
-                    req_versions = (parent_versions or []) + [parent.requirement]
+                    base = parent_versions if parent_versions else [parent.requirement]
+                    req_versions = base + [requirement]
             run_id = await db_create_run(
                 requirement,
                 session_id=session_id,

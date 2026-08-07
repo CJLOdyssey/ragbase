@@ -33,11 +33,11 @@ export default function ModelSelector({
   }, [models, search]);
 
   return (
-    <div className="">
-      <div className="flex items-center justify-between mb-4">
+    <div className="h-full min-h-0 flex flex-col">
+      <div className="flex items-center justify-between mb-4 shrink-0">
         <h4>{t('api.defaultModel')}</h4>
       </div>
-      <div className="relative mb-4">
+      <div className="relative mb-4 shrink-0">
         <Search
           size={14}
           className="absolute text-[var(--color-text-muted)] pointer-events-none"
@@ -57,7 +57,7 @@ export default function ModelSelector({
           style={{ paddingLeft: 36 }}
         />
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
         {filtered.map(({ model, keyLabel }) => (
           <label
             key={model}

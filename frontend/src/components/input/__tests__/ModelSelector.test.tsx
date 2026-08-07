@@ -21,6 +21,7 @@ describe('ModelSelector', { tags: ['unit'] }, () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   it('renders configure button when no models', () => {
@@ -121,5 +122,37 @@ describe('ModelSelector', { tags: ['unit'] }, () => {
     expect(screen.getByText('Model m2')).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Model m2')).not.toBeInTheDocument();
+  });
+
+  it('shows recent models group at top without duplicates', () => {
+    localStorage.setItem('ragbase-recent-models', JSON.stringify(['m2', 'm1']));
+    const models = [makeModel('m1'), makeModel('m2'), makeModel('m3')];
+    render(
+      <TestProviders>
+        <ModelSelector models={models} selectedModel="m1" onChange={onChange} />
+      </TestProviders>,
+    );
+    fireEvent.click(screen.getByRole('button'));
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(3);
+    expect(screen.getByText('最近使用')).toBeInTheDocument();
+    const recent = screen.getByText('最近使用').parentElement!;
+    expect(recent.textContent).toContain('Model m2');
+    expect(recent.textContent).toContain('Model m1');
+    expect(recent.textContent).not.toContain('Model m3');
+  });
+
+  it('records selection into recent list', () => {
+    const models = [makeModel('m1'), makeModel('m2'), makeModel('m3')];
+    render(
+      <TestProviders>
+        <ModelSelector models={models} selectedModel="m1" onChange={onChange} />
+      </TestProviders>,
+    );
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByText('Model m3'));
+    expect(JSON.parse(localStorage.getItem('ragbase-recent-models')!)).toEqual([
+      'm3',
+    ]);
   });
 });

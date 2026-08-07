@@ -18,7 +18,7 @@ interface ConversationsListProps {
   agents?: Agent[];
   onSelect: (conv: Conversation) => void;
   onDelete: (convId: string) => void;
-  onRename?: (convId: string) => void;
+  onRename?: (convId: string, title: string) => void;
   onPin?: (convId: string) => void;
 }
 
@@ -47,6 +47,9 @@ const ConversationsList = memo(function ConversationsList({
 }: ConversationsListProps) {
   const { t, i18n } = useTranslation();
   const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
+  const [editingConvId, setEditingConvId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on outside click
@@ -127,15 +130,25 @@ const ConversationsList = memo(function ConversationsList({
   }, [agents]);
 
   const nonEmptyGroups = useMemo(() => {
-    return [
+    const pinnedIds = new Set(
+      conversations.filter((c) => c.isPinned).map((c) => c.id),
+    );
+    const timeGroups = [
       { label: t('sidebar.today'), items: groupedConversations.today },
       { label: t('sidebar.yesterday'), items: groupedConversations.yesterday },
       { label: t('sidebar.threeDays'), items: groupedConversations.threeDays },
       { label: t('sidebar.sevenDays'), items: groupedConversations.sevenDays },
       { label: t('sidebar.month'), items: groupedConversations.month },
       { label: t('sidebar.older'), items: groupedConversations.older },
-    ].filter((g) => g.items.length > 0);
-  }, [groupedConversations, t]);
+    ].map((g) => ({
+      ...g,
+      items: g.items.filter((c) => !pinnedIds.has(c.id)),
+    }));
+    const pinned = conversations.filter((c) => c.isPinned);
+    const pinnedGroup =
+      pinned.length > 0 ? [{ label: t('sidebar.pinned'), items: pinned }] : [];
+    return [...pinnedGroup, ...timeGroups].filter((g) => g.items.length > 0);
+  }, [groupedConversations, conversations, t]);
 
   if (nonEmptyGroups.length === 0) return null;
 
@@ -144,9 +157,69 @@ const ConversationsList = memo(function ConversationsList({
     ...g.items.map((conv) => ({ type: 'item' as const, conv })),
   ]);
 
-  const renderConversationItem = (conv: Conversation) => {
+  const startRename = (conv: Conversation) => {
+    setEditingConvId(conv.id);
+    setEditName(conv.title);
+    setOpenMenuConvId(null);
+    requestAnimationFrame(() => {
+      editInputRef.current?.focus();
+      editInputRef.current?.select();
+    });
+  };
+
+  const saveRename = (convId: string) => {
+    const name = editName.trim();
+    setEditingConvId(null);
+    if (name) onRename?.(convId, name);
+  };
+
+  const renderTitle = (conv: Conversation) => {
     const agent = conv.agentId ? agentMap.get(conv.agentId) : undefined;
     const AgentIcon = agent?.icon;
+    const isEditing = editingConvId === conv.id;
+    return (
+      <div className="text-base text-[var(--color-text-primary)] leading-[1.3] overflow-hidden text-ellipsis whitespace-nowrap flex items-center gap-1.5">
+        {!isEditing &&
+          (conv.kind === 'agent' ? (
+            <span
+              className="shrink-0 flex items-center"
+              style={{ color: agent?.color || 'var(--color-accent)' }}
+            >
+              {agent && AgentIcon ? <AgentIcon size={14} /> : <Cpu size={14} />}
+            </span>
+          ) : (
+            <span
+              className="shrink-0 flex items-center"
+              style={{ color: 'var(--color-text-tertiary)' }}
+            >
+              <MessageSquare size={14} />
+            </span>
+          ))}
+        {isEditing ? (
+          <input
+            ref={editInputRef}
+            className="flex-1 min-w-0 w-full px-2 py-1.5 bg-[var(--color-surface-raised)] border border-[var(--color-accent)] rounded-md text-sm text-[var(--color-text-primary)] outline-none"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={() => saveRename(conv.id)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') saveRename(conv.id);
+              if (e.key === 'Escape') setEditingConvId(null);
+            }}
+          />
+        ) : Array.from(conv.title).length > 28 ? (
+          Array.from(conv.title).slice(0, 28).join('') + '...'
+        ) : (
+          conv.title
+        )}
+      </div>
+    );
+  };
+
+  const renderConversationItem = (conv: Conversation) => {
+    const agent = conv.agentId ? agentMap.get(conv.agentId) : undefined;
     const isActive = activeConvId === conv.id && !selectedAgentId;
     return (
       <div
@@ -164,30 +237,7 @@ const ConversationsList = memo(function ConversationsList({
         aria-selected={isActive}
       >
         <div className="flex-1 min-w-0">
-          <div className="text-base text-[var(--color-text-primary)] leading-[1.3] overflow-hidden text-ellipsis whitespace-nowrap flex items-center gap-1.5">
-            {conv.kind === 'agent' ? (
-              <span
-                className="shrink-0 flex items-center"
-                style={{ color: agent?.color || 'var(--color-accent)' }}
-              >
-                {agent && AgentIcon ? (
-                  <AgentIcon size={14} />
-                ) : (
-                  <Cpu size={14} />
-                )}
-              </span>
-            ) : (
-              <span
-                className="shrink-0 flex items-center"
-                style={{ color: 'var(--color-text-tertiary)' }}
-              >
-                <MessageSquare size={14} />
-              </span>
-            )}
-            {Array.from(conv.title).length > 28
-              ? Array.from(conv.title).slice(0, 28).join('') + '...'
-              : conv.title}
-          </div>
+          {renderTitle(conv)}
           <div className="text-sm text-[var(--color-text-tertiary)] mt-1 flex items-center gap-1">
             {agent && (
               <span className="text-[var(--color-text-secondary)] font-medium">
@@ -223,10 +273,7 @@ const ConversationsList = memo(function ConversationsList({
             >
               <button
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-[var(--color-text-primary)] bg-transparent border-none rounded-md cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-surface-hover)]"
-                onClick={() => {
-                  setOpenMenuConvId(null);
-                  onRename?.(conv.id);
-                }}
+                onClick={() => startRename(conv)}
               >
                 <Pencil size={13} />
                 重命名
@@ -239,7 +286,7 @@ const ConversationsList = memo(function ConversationsList({
                 }}
               >
                 <Pin size={13} />
-                顶置
+                {conv.isPinned ? '取消顶置' : '顶置'}
               </button>
               <div className="h-px bg-[var(--color-border-subtle)] mx-2 my-1" />
               <button

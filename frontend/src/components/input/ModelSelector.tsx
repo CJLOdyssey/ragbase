@@ -3,6 +3,29 @@ import { ChevronDown, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ModelOption } from '../../types/input';
 
+const RECENT_KEY = 'ragbase-recent-models';
+const RECENT_LIMIT = 5;
+
+function readRecentModels(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is string => typeof x === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentModels(ids: string[]) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(ids));
+  } catch {
+    // storage unavailable — recent list applies for this session only
+  }
+}
+
 interface Props {
   models: ModelOption[];
   selectedModel: string;
@@ -81,46 +104,59 @@ function SelectorLabel({
 
 function OptionsList({
   providers,
-  models,
+  recentModels,
   selectedModel,
   focusIdx,
   onSelect,
 }: {
   providers: [string, ModelOption[]][];
-  models: ModelOption[];
+  recentModels: ModelOption[];
   selectedModel: string;
   focusIdx: number;
   onSelect: (id: string) => void;
 }) {
-  const allOptions = providers.flatMap(([, list]) => list);
+  const { t } = useTranslation();
+  const allOptions = [
+    ...recentModels,
+    ...providers.flatMap(([, list]) => list),
+  ];
   return (
     <>
-      {providers.length > 1
-        ? providers.map(([provider, list]) => (
-            <div key={provider} className="flex flex-col">
-              <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                {provider}
-              </div>
-              {list.map((m) => (
-                <ModelOptionButton
-                  key={m.id}
-                  m={m}
-                  isSelected={m.id === selectedModel}
-                  isFocused={allOptions.indexOf(m) === focusIdx}
-                  onSelect={() => onSelect(m.id)}
-                />
-              ))}
-            </div>
-          ))
-        : models.map((m, idx) => (
+      {recentModels.length > 0 && (
+        <div key="__recent" className="flex flex-col">
+          <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+            {t('model.recent')}
+          </div>
+          {recentModels.map((m) => (
             <ModelOptionButton
               key={m.id}
               m={m}
               isSelected={m.id === selectedModel}
-              isFocused={idx === focusIdx}
+              isFocused={allOptions.indexOf(m) === focusIdx}
               onSelect={() => onSelect(m.id)}
             />
           ))}
+          <div className="h-px bg-[var(--color-border-subtle)] mx-2 my-1" />
+        </div>
+      )}
+      {providers.map(([provider, list]) => (
+        <div key={provider} className="flex flex-col">
+          {providers.length > 1 && (
+            <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+              {provider}
+            </div>
+          )}
+          {list.map((m) => (
+            <ModelOptionButton
+              key={m.id}
+              m={m}
+              isSelected={m.id === selectedModel}
+              isFocused={allOptions.indexOf(m) === focusIdx}
+              onSelect={() => onSelect(m.id)}
+            />
+          ))}
+        </div>
+      ))}
     </>
   );
 }
@@ -135,6 +171,7 @@ export default function ModelSelector({
   const [open, setOpen] = useState(false);
   const [focusIdx, setFocusIdx] = useState(-1);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [recentIds, setRecentIds] = useState<string[]>(readRecentModels);
   const ref = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const current = models.find((m) => m.id === selectedModel);
@@ -160,10 +197,35 @@ export default function ModelSelector({
     return Object.entries(g);
   }, [models]);
 
+  // Recent models (user's last picks) shown at top of the list
+  const recentModels = useMemo(() => {
+    const byId = new Map(models.map((m) => [m.id, m]));
+    return recentIds
+      .map((id) => byId.get(id))
+      .filter((m): m is ModelOption => !!m);
+  }, [models, recentIds]);
+
+  // Full list minus recent entries (no duplicates)
+  const recentSet = useMemo(
+    () => new Set(recentModels.map((m) => m.id)),
+    [recentModels],
+  );
+  const fullProviders = useMemo(
+    () =>
+      providers.map(
+        ([provider, list]) =>
+          [provider, list.filter((m) => !recentSet.has(m.id))] as [
+            string,
+            ModelOption[],
+          ],
+      ),
+    [providers, recentSet],
+  );
+
   // All options flattened for keyboard navigation
   const allOptions = useMemo(
-    () => providers.flatMap(([, list]) => list),
-    [providers],
+    () => [...recentModels, ...fullProviders.flatMap(([, list]) => list)],
+    [recentModels, fullProviders],
   );
 
   // Close on outside click
@@ -178,6 +240,14 @@ export default function ModelSelector({
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [open]);
+
+  const recordRecent = useCallback((id: string) => {
+    setRecentIds((prev) => {
+      const next = [id, ...prev.filter((x) => x !== id)].slice(0, RECENT_LIMIT);
+      writeRecentModels(next);
+      return next;
+    });
+  }, []);
 
   // Keyboard navigation + Escape close
   useEffect(() => {
@@ -199,6 +269,7 @@ export default function ModelSelector({
         case 'Enter':
           e.preventDefault();
           if (focusIdx >= 0 && focusIdx < allOptions.length) {
+            recordRecent(allOptions[focusIdx].id);
             onChange(allOptions[focusIdx].id);
             setOpen(false);
             setFocusIdx(-1);
@@ -208,7 +279,7 @@ export default function ModelSelector({
     };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
-  }, [open, focusIdx, allOptions, onChange]);
+  }, [open, focusIdx, allOptions, onChange, recordRecent]);
 
   // Scroll focused item into view
   useEffect(() => {
@@ -220,10 +291,11 @@ export default function ModelSelector({
   const handleSelect = useCallback(
     (id: string) => {
       onChange(id);
+      recordRecent(id);
       setOpen(false);
       setFocusIdx(-1);
     },
-    [onChange],
+    [onChange, recordRecent],
   );
 
   return (
@@ -266,8 +338,8 @@ export default function ModelSelector({
           role="listbox"
         >
           <OptionsList
-            providers={providers}
-            models={models}
+            providers={fullProviders}
+            recentModels={recentModels}
             selectedModel={selectedModel}
             focusIdx={focusIdx}
             onSelect={handleSelect}

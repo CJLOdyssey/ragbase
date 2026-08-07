@@ -15,7 +15,7 @@ type KeyItem = Awaited<ReturnType<typeof listKeys>>[number];
 function buildEditVersions(
   old: ChatMessage,
   trimmed: string,
-  parentRunId: string | undefined,
+  editedRunId: string | null | undefined,
 ): { userVersions: string[]; baseRunIds: string[] } {
   // 本地版本链（乐观）：与新 run 的 requirement_versions 对应，驱动分页切换。
   const history = old.userVersions ? [...old.userVersions] : [];
@@ -23,12 +23,12 @@ function buildEditVersions(
     history.length === 0 || history[history.length - 1] !== old.content
       ? [...history, old.content, trimmed]
       : [...history, trimmed];
-  // 版本 → runId：旧版本继承祖先链，新版本 run 在 submitRequirement 返回后追加
-  // （编辑 rebind 时补 versionRunIds 的最后一跳）。
+  // 版本 → runId：旧版本继承已加载的版本链；缺失时兜底为被编辑 turn 自身，
+  // 使切回（←）能定位到被编辑 turn 所在分支，而非停在当前分支。
   const baseRunIds = old.versionRunIds
     ? [...old.versionRunIds]
-    : parentRunId
-      ? [parentRunId]
+    : editedRunId
+      ? [editedRunId]
       : [];
   return { userVersions, baseRunIds };
 }
@@ -64,11 +64,14 @@ export async function submitRequirement(
   session_id?: string,
   skipAddUserMessage?: boolean,
   submissionConvId?: string | null,
-  parent_run_id?: string,
+  parent_run_id?: string | null,
 ) {
   const s = useChatStore.getState();
   const effectiveSessionId = session_id || s.currentSessionId || undefined;
-  const effectiveParentRunId = parent_run_id ?? s.activeRunId;
+  // 显式传 parent_run_id（编辑分支，含 null=根）时按传入值；未传（正常续聊）
+  // 才回退到 activeRunId。
+  const effectiveParentRunId =
+    parent_run_id === undefined ? s.activeRunId : parent_run_id;
   if (s.currentRunId) {
     disconnectRun(s.currentRunId);
   }
@@ -103,6 +106,9 @@ export async function submitRequirement(
     content: requirement,
     round_number: 0,
     created_at: new Date().toISOString(),
+    // 携带本 run 的 parent（流式生成时也记录，编辑时用于产生兄弟分支；
+    // 若缺失会回退到 activeRunId，导致编辑根 turn 误成续写）
+    parentRunId: effectiveParentRunId,
   };
 
   useChatStore.setState({
@@ -238,12 +244,18 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
   if (!trimmed || old.content === trimmed) return;
   if (s.currentRunId) disconnectRun(s.currentRunId);
 
-  // The synthetic user message id is "run-{run_id}-requirement" — parse the run
-  // this edit replaces so the backend can link the edit chain (parent_run_id).
-  let parentRunId: string | undefined;
-  if (old.id && old.id.startsWith('run-') && old.id.endsWith('-requirement')) {
-    parentRunId = old.id.slice(4, -'-requirement'.length);
-  }
+  // The edited user message carries its run's parent_run_id (set at load time).
+  // Editing branches a sibling: the new run's parent is the edited turn's parent,
+  // so the result sits alongside (not as a continuation of) the edited turn.
+  // null = edited a root turn → new run is a fresh root (parent explicitly null).
+  const parentRunId = old.parentRunId ?? null;
+
+  // The run this edit replaces (for version navigation back to it). Prefer the
+  // synthetic id "run-{runId}-requirement", fall back to the stored runId.
+  const editedRunId =
+    old.id && old.id.startsWith('run-') && old.id.endsWith('-requirement')
+      ? old.id.slice(4, -'-requirement'.length)
+      : (old.runId ?? null);
 
   // First non-user message after the edit is the merge target.
   const nextAgentIdx = s.messages.findIndex(
@@ -254,7 +266,7 @@ export async function editAndRegenerate(userMsgId: string, newContent: string) {
   const { userVersions, baseRunIds } = buildEditVersions(
     old,
     trimmed,
-    parentRunId,
+    editedRunId,
   );
 
   useChatStore.setState({

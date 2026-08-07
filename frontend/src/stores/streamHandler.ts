@@ -262,6 +262,7 @@ export function handleStreamEvent(
             ...m,
             content: m.content + chunk,
             thinking: m.thinking ?? '',
+            thinkingDone: m.thinking ? true : m.thinkingDone,
           };
         }),
         currentRole: msg.agent_name || 'Agent',
@@ -283,6 +284,7 @@ export function handleStreamEvent(
             ...m,
             content: m.content + chunk,
             thinking: m.thinking ?? '',
+            thinkingDone: m.thinking ? true : m.thinkingDone,
           };
         }),
         currentRole: msg.agent_name || 'Agent',

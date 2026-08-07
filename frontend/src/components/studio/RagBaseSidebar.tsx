@@ -17,6 +17,8 @@ interface RagBaseSidebarProps {
   setActiveConvId: (id: string | null) => void;
   setInputValue: (value: string) => void;
   onDeleteConversation: (convId: string) => void;
+  onRenameConversation: (convId: string, title: string) => void;
+  onPinConversation: (convId: string) => void;
   onNewChat: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
@@ -34,6 +36,8 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
   setActiveConvId,
   setInputValue,
   onDeleteConversation,
+  onRenameConversation,
+  onPinConversation,
   onNewChat,
   isSidebarOpen,
   onToggleSidebar,
@@ -102,12 +106,8 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
             selectedAgentId={selectedAgentId}
             onSelect={handleConvSelect}
             onDelete={handleConvDelete}
-            onRename={(_id) => {
-              /* TODO */
-            }}
-            onPin={(_id) => {
-              /* TODO */
-            }}
+            onRename={onRenameConversation}
+            onPin={onPinConversation}
           />
         </div>
       </div>

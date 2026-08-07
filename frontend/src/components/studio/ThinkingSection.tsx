@@ -14,20 +14,17 @@ type ThinkingState = keyof typeof THINKING_STATE_META;
 
 function ThinkingBody({
   thinking,
-  state,
   bodyRef,
   t,
 }: {
   thinking: string;
-  state: ThinkingState;
   bodyRef: React.RefObject<HTMLDivElement>;
   t: (key: string) => string;
 }) {
   const items = groupThinkingNodes(thinking);
-  const sizeClass = state === 'pending' ? 'text-xs' : 'text-base';
   return (
     <div
-      className={`relative mt-2 max-h-[420px] overflow-y-auto ${sizeClass} text-[var(--color-text-muted)] leading-[1.65]`}
+      className="relative mt-2 max-h-[420px] overflow-y-auto text-base text-[var(--color-text-muted)] leading-[1.65]"
       ref={bodyRef}
     >
       <div className="relative pl-4">
@@ -78,12 +75,7 @@ export function ThinkingSection({
           <StateIcon size={14} className={color} />
           <span>{t(labelKey)}</span>
         </div>
-        <ThinkingBody
-          thinking={thinking}
-          state={state}
-          bodyRef={bodyRef}
-          t={t}
-        />
+        <ThinkingBody thinking={thinking} bodyRef={bodyRef} t={t} />
       </div>
     );
   }
@@ -95,7 +87,10 @@ export function ThinkingSection({
         onClick={toggle}
         aria-expanded={isExpanded}
       >
-        <StateIcon size={14} className={color} />
+        <StateIcon
+          size={14}
+          className={`${color} ${state === 'pending' ? 'animate-spin' : ''}`}
+        />
         <span>{t(labelKey)}</span>
         {state === 'done' && (
           <span className="text-xs text-[var(--color-text-muted)] ml-1">
@@ -109,12 +104,7 @@ export function ThinkingSection({
         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
       {isExpanded && (
-        <ThinkingBody
-          thinking={thinking}
-          state={state}
-          bodyRef={bodyRef}
-          t={t}
-        />
+        <ThinkingBody thinking={thinking} bodyRef={bodyRef} t={t} />
       )}
     </div>
   );

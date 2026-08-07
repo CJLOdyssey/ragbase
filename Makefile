@@ -49,10 +49,14 @@ e2e-env:
 test-e2e:
 	pytest backend/tests/e2e/ -m integration
 
-.PHONY: dev-backend dev-backend-logs health
+.PHONY: dev-backend dev-backend-reload dev-backend-logs restart-backend health
 
 ## Start backend (自动杀旧进程 + 端口检测, 默认不带 --reload)
 dev-backend:
+	@bash scripts/dev/run-backend.sh
+
+## Restart backend — kill all instances, then start fresh (alias of dev-backend)
+restart-backend:
 	@bash scripts/dev/run-backend.sh
 
 ## Start backend with hot-reload (有风险: 可能触发子进程卡死)
@@ -61,7 +65,7 @@ dev-backend-reload:
 
 ## Tail backend logs
 dev-backend-logs:
-	tail -f /tmp/backend.log
+	tail -f /tmp/ragbase-backend.log
 
 ## Run health check against backend
 health:

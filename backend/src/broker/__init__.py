@@ -187,11 +187,18 @@ async def buffer_run_messages(run_id: str) -> None:
                             len(parsed.get("thinking", "")),
                         )
                         buf.append(parsed)
-            # Timeout or normal exit — clean up top-level references
-            _buffers.pop(run_id, None)
-            _buffer_tasks.pop(run_id, None)
         except asyncio.CancelledError:
             pass
+        finally:
+            # Always release the pubsub connection back to the pool —
+            # otherwise each run leaks one Redis connection until the
+            # pool (max_connections=20) is exhausted.
+            with contextlib.suppress(Exception):
+                await pubsub.unsubscribe(f"run:{run_id}")
+            with contextlib.suppress(Exception):
+                await pubsub.close()
+            _buffers.pop(run_id, None)
+            _buffer_tasks.pop(run_id, None)
 
     _buffer_tasks[run_id] = asyncio.create_task(_worker())
 

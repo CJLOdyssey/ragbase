@@ -31,6 +31,119 @@ from langchain_core.messages import (
 logger = get_logger(__name__)
 
 
+class ThinkTagSplitter:
+    """Streaming splitter for models that emit chain-of-thought inside <think>.
+
+    Some providers (e.g. SiliconFlow's GLM-Z1) return reasoning inline in
+    ``content`` wrapped in ``<think>...</think>`` instead of via
+    ``reasoning_content``. This state machine accumulates those tags across SSE
+    chunks and routes the enclosed text to "thinking" and everything else to
+    "content", so the UI can render the chain-of-thought separately.
+    """
+
+    __slots__ = ("_in_think", "_buffer")
+
+    def __init__(self) -> None:
+        self._in_think = False
+        self._buffer: list[str] = []
+
+    def feed(self, text: str) -> tuple[list[str], list[str]]:
+        """Process one content chunk; return (thinking_parts, content_parts)."""
+        thinking: list[str] = []
+        content: list[str] = []
+        rest = text
+        while rest:
+            tag = "</think>" if self._in_think else "<think>"
+            idx = rest.find(tag)
+            if idx < 0:
+                if self._in_think:
+                    self._buffer.append(rest)
+                else:
+                    content.append(rest)
+                break
+            head, tail = rest[:idx], rest[idx + len(tag):]
+            if self._in_think:
+                self._buffer.append(head)
+                thinking.append("".join(self._buffer))
+                self._buffer = []
+                self._in_think = False
+            else:
+                if head:
+                    content.append(head)
+                self._in_think = True
+            rest = tail
+        return thinking, content
+
+    def finish(self) -> tuple[str | None, str | None]:
+        """Flush any trailing buffer. Returns (leftover_thinking, leftover_content)."""
+        leftover = "".join(self._buffer)
+        self._buffer = []
+        if leftover:
+            if self._in_think:
+                self._in_think = False
+                return leftover, None
+            return None, leftover
+        return None, None
+
+
+
+class ReasoningSplitter:
+    """Streaming splitter for ``reasoning_content`` that carries a <think> tag.
+
+    SiliconFlow's GLM-Z1 emits chain-of-thought in ``reasoning_content``
+    wrapped in ``<think>`` — but the tag is sliced across SSE chunks
+    (``'<th'`` + ``'ink'`` + ``'>'``) and the closing tag is often omitted
+    entirely. Unlike ``ThinkTagSplitter`` (which requires the full tag in one
+    chunk and explicit closing), this state machine accumulates text across
+    chunks, strips a fully-assembled opening ``<think>``, and treats every
+    subsequent chunk as thinking until the stream ends.
+    """
+
+    __slots__ = ("_pending", "_in_think")
+
+    _OPEN_TAG = "<think>"
+
+    def __init__(self) -> None:
+        self._pending: list[str] = []
+        self._in_think = False
+
+    def feed(self, text: str) -> list[str]:
+        """Process one reasoning chunk; return thinking parts to emit."""
+        if self._in_think:
+            # Tag already stripped — everything else is chain-of-thought.
+            return [text] if text else []
+
+        self._pending.append(text)
+        joined = "".join(self._pending)
+        idx = joined.find(self._OPEN_TAG)
+        if idx < 0:
+            # Tag not fully assembled yet — hold the whole buffer. Cap it so a
+            # missing opening tag can't pin memory (shouldn't happen: provider
+            # sends the tag first).
+            if len(joined) > 512:
+                dropped = "".join(self._pending)
+                self._pending = []
+                return [dropped] if dropped else []
+            return []
+
+        # Opening tag assembled — strip it and flush any text before it.
+        tail = joined[idx + len(self._OPEN_TAG):]
+        self._pending = []
+        self._in_think = True
+        before = joined[:idx]
+        out: list[str] = [before] if before else []
+        if tail:
+            out.append(tail)
+        return out
+
+    def finish(self) -> str | None:
+        """Flush any remaining buffered thinking text."""
+        leftover = "".join(self._pending)
+        self._pending = []
+        self._in_think = False
+        return leftover or None
+
+
 def convert_messages_to_api(messages: list[BaseMessage]) -> list[dict[str, Any]]:
     """Convert LangChain BaseMessage list to OpenAI API message dicts."""
     api_messages = []
@@ -136,6 +249,8 @@ async def stream_llm_response(
     _thinking_flushed = False
     _pending_content: list[str] = []
     _tool_calls_seen = False
+    _think_splitter = ThinkTagSplitter()
+    _reasoning_splitter = ReasoningSplitter()
     usage_info: dict[str, Any] = {}
     _start_time = time.time()
     _model_name = body.get("model", "unknown")
@@ -190,21 +305,35 @@ async def stream_llm_response(
 
                 rc = delta.get("reasoning_content")
                 if rc:
-                    thinking_chunks.append(rc)
-                    if stream_cb:
-                        with contextlib.suppress(Exception):
-                            await stream_cb({"event": "on_custom_thinking", "data": {"content": rc}})
+                    # reasoning_content carries a <think> tag that is sliced
+                    # across SSE chunks and often has no closing tag. Strip it
+                    # cross-chunk and emit the cleaned chain-of-thought inline
+                    # so thinking streams BEFORE the answer, not after.
+                    for part in _reasoning_splitter.feed(rc):
+                        thinking_chunks.append(part)
+                        if stream_cb:
+                            with contextlib.suppress(Exception):
+                                await stream_cb({"event": "on_custom_thinking", "data": {"content": part}})
 
                 content = delta.get("content")
                 if content:
+                    think_parts, body_parts = _think_splitter.feed(content)
+                    for part in think_parts:
+                        thinking_chunks.append(part)
+                        if stream_cb:
+                            with contextlib.suppress(Exception):
+                                await stream_cb({"event": "on_custom_thinking", "data": {"content": part}})
+                    if not body_parts:
+                        continue
                     if thinking_chunks and not _thinking_flushed:
                         _thinking_flushed = True
                     if _tool_calls_seen or not tool_definitions:
-                        content_chunks.append(content)
-                        if stream_cb:
-                            await stream_cb({"event": "on_custom_token", "data": {"content": content}})
+                        for part in body_parts:
+                            content_chunks.append(part)
+                            if stream_cb:
+                                await stream_cb({"event": "on_custom_token", "data": {"content": part}})
                     else:
-                        _pending_content.append(content)
+                        _pending_content.extend(body_parts)
 
                 tc_delta = delta.get("tool_calls")
                 if tc_delta:
@@ -237,6 +366,28 @@ async def stream_llm_response(
             if stream_cb:
                 await stream_cb({"event": "on_custom_token", "data": {"content": chunk}})
     _pending_content.clear()
+
+    # Flush any trailing <think> block that wasn't explicitly closed (some
+    # models omit the closing tag on truncation) and leftover content.
+    leftover_thinking, leftover_content = _think_splitter.finish()
+    if leftover_thinking:
+        thinking_chunks.append(leftover_thinking)
+        if stream_cb:
+            with contextlib.suppress(Exception):
+                await stream_cb({"event": "on_custom_thinking", "data": {"content": leftover_thinking}})
+    if leftover_content and (not tool_definitions or _tool_calls_seen):
+        content_chunks.append(leftover_content)
+        if stream_cb:
+            await stream_cb({"event": "on_custom_token", "data": {"content": leftover_content}})
+
+    # reasoning_content is emitted inline via _reasoning_splitter; flush any
+    # buffered text whose opening <think> never fully assembled.
+    r_leftover = _reasoning_splitter.finish()
+    if r_leftover:
+        thinking_chunks.append(r_leftover)
+        if stream_cb:
+            with contextlib.suppress(Exception):
+                await stream_cb({"event": "on_custom_thinking", "data": {"content": r_leftover}})
 
     # Record application-level metrics
     _elapsed = time.time() - _start_time

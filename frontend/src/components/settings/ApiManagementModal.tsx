@@ -232,7 +232,7 @@ export default function ApiManagementModal({ onClose }: Props) {
 
   return (
     <Modal
-      title="API 管理"
+      title="API"
       onClose={onClose}
       className="api-modal"
       hideHeaderBorder

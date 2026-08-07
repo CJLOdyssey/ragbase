@@ -274,6 +274,89 @@ class TestStreamLlmResponse:
         assert finish_reason == "stop"
 
     @pytest.mark.asyncio
+    async def test_reasoning_content_sliced_think_tags_stripped(self):
+        """GLM-Z1 reasoning_content wraps <think> sliced across token chunks."""
+        from streaming.llm_stream import stream_llm_response
+
+        sse_lines = [
+            'data: {"choices":[{"delta":{"reasoning_content":"\\n<th"},"finish_reason":null}]}',
+            'data: {"choices":[{"delta":{"reasoning_content":"ink>\\n推理过程"},"finish_reason":null}]}',
+            'data: {"choices":[{"delta":{"reasoning_content":"</think>"},"finish_reason":null}]}',
+            'data: {"choices":[{"delta":{"content":"正式回答"},"finish_reason":"stop"}]}',
+            "data: [DONE]",
+        ]
+
+        with patch("httpx.AsyncClient", return_value=_MockClientCtx(sse_lines)):
+            content, thinking, tool_calls, finish_reason, usage = await stream_llm_response(
+                "https://api.siliconflow.cn/v1/chat/completions",
+                {"Authorization": "Bearer sk-test"},
+                {"model": "THUDM/GLM-Z1-9B-0414", "messages": []},
+            )
+        assert "".join(thinking) == "推理过程"
+        assert "".join(content) == "正式回答"
+
+    @pytest.mark.asyncio
+    async def test_strips_think_wrappers_from_reasoning_content(self):
+        """SiliconFlow wraps GLM-Z1 reasoning_content in <think>; strip it."""
+        from streaming.llm_stream import stream_llm_response
+
+        sse_lines = [
+            'data: {"choices":[{"delta":{"reasoning_content":"<think>推理过程</think>"},"finish_reason":null}]}',
+            'data: {"choices":[{"delta":{"content":"正式回答"},"finish_reason":"stop"}]}',
+            "data: [DONE]",
+        ]
+
+        with patch("httpx.AsyncClient", return_value=_MockClientCtx(sse_lines)):
+            content, thinking, tool_calls, finish_reason, usage = await stream_llm_response(
+                "https://api.siliconflow.cn/v1/chat/completions",
+                {"Authorization": "Bearer sk-test"},
+                {"model": "THUDM/GLM-Z1-9B-0414", "messages": []},
+            )
+        assert "".join(thinking) == "推理过程"
+        assert "".join(content) == "正式回答"
+
+    @pytest.mark.asyncio
+    async def test_splits_think_tags_from_content(self):
+        """GLM-Z1-style models emit <think> inline in content; split into thinking."""
+        from streaming.llm_stream import stream_llm_response
+
+        sse_lines = [
+            'data: {"choices":[{"delta":{"content":"<think>用户问"},"finish_reason":null}]}',
+            'data: {"choices":[{"delta":{"content":"首都，需要回答北京。"},"finish_reason":null}]}',
+            'data: {"choices":[{"delta":{"content":"</think>中国的首都是北京。"},"finish_reason":"stop"}]}',
+            "data: [DONE]",
+        ]
+
+        with patch("httpx.AsyncClient", return_value=_MockClientCtx(sse_lines)):
+            content, thinking, tool_calls, finish_reason, usage = await stream_llm_response(
+                "https://api.siliconflow.cn/v1/chat/completions",
+                {"Authorization": "Bearer sk-test"},
+                {"model": "THUDM/GLM-Z1-9B-0414", "messages": []},
+            )
+        assert "".join(thinking) == "用户问首都，需要回答北京。"
+        assert "".join(content) == "中国的首都是北京。"
+        assert finish_reason == "stop"
+
+    @pytest.mark.asyncio
+    async def test_think_without_reasoning_content_ordering(self):
+        """Ensure think-tag content does not emit on_custom_token for the think part."""
+        from streaming.llm_stream import stream_llm_response
+
+        sse_lines = [
+            'data: {"choices":[{"delta":{"content":"<think>推理过程</think>正式回答"},"finish_reason":"stop"}]}',
+            "data: [DONE]",
+        ]
+
+        with patch("httpx.AsyncClient", return_value=_MockClientCtx(sse_lines)):
+            content, thinking, tool_calls, finish_reason, usage = await stream_llm_response(
+                "https://api.siliconflow.cn/v1/chat/completions",
+                {"Authorization": "Bearer sk-test"},
+                {"model": "THUDM/GLM-Z1-9B-0414", "messages": []},
+            )
+        assert "".join(thinking) == "推理过程"
+        assert "".join(content) == "正式回答"
+
+    @pytest.mark.asyncio
     async def test_parses_tool_call_deltas(self):
         from streaming.llm_stream import stream_llm_response
 

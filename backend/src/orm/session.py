@@ -16,6 +16,7 @@ class SessionDB(Base):
     title: Mapped[str] = mapped_column(String(256), default="新对话")
     user_id: Mapped[str] = mapped_column(String(128), default="default")
     kind: Mapped[str] = mapped_column(String(16), default="normal")
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="f")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

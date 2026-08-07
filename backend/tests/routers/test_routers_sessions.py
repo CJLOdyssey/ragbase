@@ -214,6 +214,38 @@ class TestSessions:
                               headers={"X-User-ID": "admin"})
             assert resp.status_code == 500
 
+    # ── Pin ──────────────────────────────────────────────────────────────
+
+    def test_pin_session(self, client):
+        resp = client.post("/api/sessions", json={"title": "p"}, headers={"X-User-ID": "admin"})
+        session_id = resp.json()["id"]
+        resp = client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": True},
+                          headers={"X-User-ID": "admin"})
+        assert resp.status_code == 200
+        assert resp.json()["is_pinned"] is True
+
+    def test_pin_session_unpin(self, client):
+        resp = client.post("/api/sessions", json={"title": "p"}, headers={"X-User-ID": "admin"})
+        session_id = resp.json()["id"]
+        client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": True},
+                   headers={"X-User-ID": "admin"})
+        resp = client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": False},
+                          headers={"X-User-ID": "admin"})
+        assert resp.status_code == 200
+        assert resp.json()["is_pinned"] is False
+
+    def test_pin_session_not_found(self, client):
+        resp = client.put("/api/sessions/nonexistent/pin", json={"is_pinned": True},
+                          headers={"X-User-ID": "admin"})
+        assert resp.status_code == 404
+
+    def test_pin_session_forbidden(self, client):
+        resp = client.post("/api/sessions", json={"title": "own"}, headers={"X-User-ID": "admin"})
+        session_id = resp.json()["id"]
+        resp = client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": True},
+                          headers={"X-User-ID": "other"})
+        assert resp.status_code == 403
+
     # ── Delete ───────────────────────────────────────────────────────────
 
     def test_delete_session(self, client):
