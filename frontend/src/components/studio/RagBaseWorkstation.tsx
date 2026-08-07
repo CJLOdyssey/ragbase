@@ -81,6 +81,7 @@ export default function RagBaseWorkstation() {
                     allAgents={[]}
                     displayMessages={s.displayMessages}
                     messagesEndRef={messagesEndRef}
+                    onSwitchBranch={s.handleSwitchBranch}
                   />
                 ) : (
                   <HomeScreen
