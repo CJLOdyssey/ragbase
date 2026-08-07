@@ -87,7 +87,10 @@ async def _run_agent_pipeline(
     if not tracemalloc.is_tracing():
         tracemalloc.start(25)
         logger.info("[MEM] tracemalloc started")
-    log_memory_diff()
+    # ponytail: tracemalloc snapshot/diff is heavy sync CPU work (500MB heap, 25
+    # frames) — offload to a thread or it blocks the uvicorn event loop for 10s+
+    # and POST /api/runs times out on the frontend's 10s axios limit.
+    await asyncio.to_thread(log_memory_diff)
     logger.info("=== ENTER _run_agent_pipeline run=#%s | run=%s ===", _run_counter, run_id)
     await update_run_status(run_id, "running")
     cfg = load_config()
@@ -100,7 +103,13 @@ async def _run_agent_pipeline(
     session_context = ""
     if session_id:
         try:
-            memories = await get_session_memories(session_id)
+            # 分支树：记忆按当前 run 的父链过滤（MemoryEntry.run_id），
+            # 并行分支的记忆不注入新分支上下文（编辑 ≠ 续写）。
+            chain_ids = {r.id for r in await get_run_ancestors(run_id)}
+            memories = [
+                m for m in await get_session_memories(session_id)
+                if m.run_id in chain_ids
+            ]
             if memories:
                 session_context = _build_session_context(memories)
             rag_ctx = await _get_rag_context(requirement, session_id)
@@ -251,6 +260,6 @@ async def _run_agent_pipeline(
 
     with contextlib.suppress(Exception):
         gc.collect()
-    log_memory_diff()
+    await asyncio.to_thread(log_memory_diff)
     logger.info("=== EXIT _run_agent_pipeline run=#%s | run=%s ===", _run_counter, run_id)
     return {"run_id": run_id, "status": "completed"}
