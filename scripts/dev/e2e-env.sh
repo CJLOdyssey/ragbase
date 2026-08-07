@@ -14,7 +14,7 @@ fi
 echo "▶ 启动 postgres + redis (docker/compose.local.yml)..."
 docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
 
-for c in content-studio-db content-studio-redis; do
+for c in ragbase-db ragbase-redis; do
     if [ -z "$(docker ps -q -f name="$c" -f status=running)" ]; then
         echo "❌ $c 未运行" >&2
         exit 1

@@ -2,11 +2,10 @@
 
 
 from datetime import UTC, datetime
-from typing import Any
 from uuid import uuid4
 
 from core.base import Base
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -59,11 +58,6 @@ class ProjectRun(Base):
         server_default="pending",
         comment="pending|running|converged|max_rounds_reached|error",
     )
-    content_type: Mapped[str] = mapped_column(String(32), default="generic", server_default="generic")
-    generation_mode: Mapped[str] = mapped_column(String(32), default="generate", server_default="generate")
-    topic: Mapped[str | None] = mapped_column(Text, nullable=True)
-    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    template_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     parent_run_id: Mapped[str | None] = mapped_column(
         String(36),
         nullable=True,

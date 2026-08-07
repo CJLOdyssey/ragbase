@@ -32,8 +32,8 @@
     "onlineStatus": "Online"
   },
   "app": {
-    "title": "ContentStudio",
-    "subtitle": "AI Content Creator"
+    "title": "RagBase",
+    "subtitle": "RAG Knowledge Q&A"
   },
   "home": {
     "placeholder": "Type a message…",

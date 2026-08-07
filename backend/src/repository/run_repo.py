@@ -48,10 +48,6 @@ async def create_run(
     session_id: str | None = None,
     parent_run_id: str | None = None,
     requirement_versions: list[str] | None = None,
-    content_type: str = "generic",
-    generation_mode: str = "generate",
-    topic: str | None = None,
-    template_id: str | None = None,
 ) -> str:
     """Create a new project run and return its ID.
 
@@ -67,10 +63,6 @@ async def create_run(
         status="pending",
         parent_run_id=parent_run_id,
         requirement_versions=json.dumps(requirement_versions) if requirement_versions else None,
-        content_type=content_type,
-        generation_mode=generation_mode,
-        topic=topic,
-        template_id=template_id,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -104,7 +96,6 @@ async def update_run_result(
     review: str,
     approved: bool,
     status: str,
-    result_json: dict[str, Any] | None = None,
 ) -> Any:
     """Persist the full result payload of a completed run."""
     factory = get_session_factory()
@@ -116,7 +107,6 @@ async def update_run_result(
             run.review = review
             run.approved = approved
             run.status = status
-            run.result_json = result_json
             run.updated_at = datetime.now(UTC)
             await session.commit()
 

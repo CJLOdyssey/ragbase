@@ -32,8 +32,8 @@
     "onlineStatus": "在线状态"
   },
   "app": {
-    "title": "ContentStudio",
-    "subtitle": "AI 内容创作助手"
+    "title": "RagBase",
+    "subtitle": "RAG 知识库问答"
   },
   "home": {
     "placeholder": "输入消息…",

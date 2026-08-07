@@ -17,11 +17,11 @@ services:
       - "6380:6379"
 
   backend:
-    image: content-studio/backend:latest
+    image: ragbase/backend:latest
     ports:
       - "8080:8080"
 
   frontend:
-    image: content-studio/frontend:latest
+    image: ragbase/frontend:latest
     ports:
       - "5173:8080"

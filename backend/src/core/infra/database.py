@@ -41,7 +41,7 @@ if _env_file.exists():
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5433/content_studio",
+    "postgresql+asyncpg://postgres:postgres@localhost:5433/ragbase",
 )
 
 _async_engine: AsyncEngine | None = None
@@ -143,7 +143,6 @@ from orm import (  # noqa: F401
     AuditLogDB,
     ChatMessage,
     CommandLogDB,
-    ComposeTemplateDB,
     KeyUsageLog,
     MemoryEntry,
     ProjectRun,
@@ -159,7 +158,7 @@ from orm import (  # noqa: F401
 
 __all__ = [
     "AssetDB", "AttachmentDB", "AuditLogDB",
-    "ChatMessage", "CommandLogDB", "ComposeTemplateDB", "KeyUsageLog",
+    "ChatMessage", "CommandLogDB", "KeyUsageLog",
     "MemoryEntry", "ProjectRun",
     "PromptDB", "RefreshTokenDB",
     "RoleDB", "SessionDB",

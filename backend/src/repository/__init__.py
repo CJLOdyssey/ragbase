@@ -44,11 +44,6 @@ from repository.auth import (
 
 from repository.command_logs import log_command
 
-from repository.compose_templates import (
-    get_template,
-    list_templates,
-)
-
 from repository.core import apply_owner_filter
 
 from repository.keys import (

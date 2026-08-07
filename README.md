@@ -1,16 +1,16 @@
-# ContentStudio — 内容创作助手
+# RagBase — RAG 知识库问答平台
 
-输入主题/素材，输出可直接发布的图文内容：小红书笔记、公众号文章、短视频脚本、营销文案，支持 AI 配图合成卡片。
+上传私有文档构建知识库，基于检索增强生成（RAG）提供带来源引用的问答。原 content-studio（内容创作助手）迁移而来：内容生成/图文合成层已移除，保留并强化知识库底座（文档上传 → 语义切块 → 向量索引 → 混合检索 → 生成）。
 
 ## 与 agent-studio 的关系
 
-独立项目、独立仓库。技术底座（auth/keys/sessions/runs/streaming/prompts/versions/rag）从 [agent-studio](../agent-studio) 裁剪而来，业务领域刻意错开（内容创作 vs 软件虚拟团队）。规范见 [docs/SPEC.md](docs/SPEC.md)（规范驱动开发）。
+独立项目、独立仓库。技术底座（auth/keys/sessions/runs/streaming/prompts/versions/rag）从 [agent-studio](../agent-studio) 裁剪而来，业务领域为文档知识库问答（vs 软件虚拟团队）。规范见 [docs/SPEC.md](docs/SPEC.md)（规范驱动开发）。
 
 ## 技术栈
 
-- 后端：Python 3.12 + FastAPI + SQLAlchemy(async) + PostgreSQL + Redis + Celery
+- 后端：Python 3.12 + FastAPI + SQLAlchemy(async) + PostgreSQL(pgvector) + Redis + Celery
 - 前端：React 18 + Vite + TypeScript + Ant Design
-- RAG：DashScope text-embedding-v3（品牌风格库）
+- RAG：DashScope text-embedding-v3 + pgvector HNSW + 语义切块
 - 质量：ruff + mypy strict + pytest（unit/integration/e2e 分层）+ vitest
 
 ## 快速开始
@@ -27,7 +27,7 @@ docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
 
 ```bash
 docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
-DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5433/content_studio" make dev-backend
+DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5433/ragbase" make dev-backend
 cd frontend && npm run dev
 ```
 
@@ -45,22 +45,23 @@ backend/src/
 ├── auth/          # 认证（登录/注册/JWT/RBAC）
 ├── core/          # 配置/中间件/错误码/基础设施
 ├── graph/         # 单 Agent 生成引擎
-├── rag/           # RAG 管线（品牌风格库）
+├── rag/           # RAG 管线（切块/嵌入/向量存储/检索）
 ├── repository/    # 数据访问层
-├── routers/       # API 路由（auth/keys/sessions/runs/prompts/...）
+├── routers/       # API 路由（auth/keys/sessions/runs/assets/prompts/...）
 ├── services/      # 业务服务（run_service 等）
 ├── streaming/     # SSE/流式输出
 └── tasks/         # 后台任务管线
 
 frontend/src/
 ├── api/client/    # API 客户端
-├── components/    # 页面组件（content 创作台/auth/input/shared）
+├── components/    # 页面组件（studio 工作台/assets 知识库/auth/input/settings）
 └── i18n/          # 国际化
 ```
 
-## 已裁剪内容
+## 核心数据流
 
-从 agent-studio 裁剪掉：多 Agent 编排（teams/agents/agent_configs）、工具生态（tools/mcps/skills）、工作流引擎（workflow）、监控运维（admin）。保留：认证、会话、运行管线、提示词模板、版本历史、RAG。
+1. **知识库**：文档上传（/api/assets）→ 语义切块 → embedding → pgvector 存储
+2. **问答**：用户提问 → 向量检索相关片段 → 上下文注入 → 流式生成 → 会话/消息持久化
 
 ## 默认账号
 

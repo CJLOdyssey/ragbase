@@ -1,77 +1,77 @@
-# ContentStudio 项目现状（2026-08-06）
+# RagBase 项目现状（2026-08-07）
 
 ## 一、项目定位
 
-内容创作助手（小红书笔记 / 公众号文章 / 短视频脚本 / 营销文案 + AI 配图合成卡片）。
+RAG 知识库问答平台：上传私有文档构建知识库，检索增强生成（RAG）提供带来源引用的问答。
+由 content-studio（内容创作助手）迁移而来：内容生成/图文合成层已移除，知识库底座保留并成为核心。
 独立项目、独立仓库。技术底座（auth/keys/sessions/runs/streaming/prompts/versions/rag）从 agent-studio 裁剪而来。
 规范驱动开发，规范见 `docs/SPEC.md`。
 
 ## 二、git 历史
 
 ```
-a1d68f4 docs: align README startup with content_studio db; fix script names
-d336e4d chore: isolate content-studio env from agent-studio
-9c1e9cd refactor: strip agent-studio leftovers per SPEC 4.5
+feat/ragbase-migration ←（当前）
+88b06e7 wip: settings/studio workspace baseline（迁移前未提交变更入库）
+44848df fix: settings keys query waits for auth
+...（此前 36 个 commit：内容创作时代）
 579e625 feat: init ContentStudio from agent-studio skeleton
 ```
 
-- `9c1e9cd`：按 SPEC 4.5 裁剪 agent-studio 残留（删 105 文件：system_team/thinking_tree/AgentStudio 组件/工具链等，orm 删 9 表模型）
-- `d336e4d`：环境隔离（compose 改名 content-studio-*，alembic.ini 库指向 content_studio）
-- `a1d68f4`：README/脚本对齐（DATABASE_URL 指向、PIDFILE、e2e 容器名）
+## 三、迁移内容（ragbase-migration 分支）
 
-## 三、运行状态（当前）
+### 已删除（内容创作层）
+- 后端：`services/generation_service.py`、`image_service.py`、`structured.py`、`routers/generation.py`、`repository/compose_templates.py`
+- 后端测试 ×6：test_generation_service/test_image_service/test_structured/test_generation_routes/test_compose_templates_repo/test_generation_models
+- 前端：`components/content/`（5 组件+3 测试）、`components/history/`（+测试）、`api/client/generations.ts`、`composeTemplates.ts`、`types/generation.ts`、i18n content/history 命名空间 ×2 语言
+- 路由：`/api/generations*`、`/api/compose-templates`、前端 `/history`
+- DB：`compose_templates` 表 + `project_runs` 的 5 列（content_type/generation_mode/topic/result_json/template_id）—— 迁移 `p9g3n002`
+
+### 保留（底座 + 知识库）
+- 后端：auth/keys/sessions/runs/streaming/prompts/versions/attachments/rag/checkpoint/graph/broker/observability/tasks
+- `routers/assets.py`（知识库 CRUD + RAG index，用户级隔离）+ `orm/infra.AssetDB`
+- 前端：studio 工作台/settings/input/shared/stores/auth
+
+### 改名
+- 项目名 content-studio → **ragbase**（容器 `ragbase-*`、镜像、数据库 `ragbase`、API 标题 RagBase API、前端 title/package name、scripts PIDFILE）
+- 数据库/容器命名空间隔离保持不变（5433/6380 独立容器）
+
+## 四、运行状态（当前）
 
 | 服务 | 端口 | 状态 |
 |---|---|---|
-| 后端 | 8081 | ✅ health 200，连 `content_studio` 库（5433） |
-| 前端 | 5174 | ✅ 200，proxy → 8081 |
-| postgres | 5433 | ✅ `content-studio-db` 独立容器（pgvector/pg16） |
-| redis | 6380 | ✅ `content-studio-redis` 独立容器 |
+| 后端 | 8081 | health 200，连 `ragbase` 库（5433） |
+| 前端 | 5174 | 200，proxy → 8081 |
+| postgres | 5433 | `ragbase-db` 独立容器（pgvector/pg16） |
+| redis | 6380 | `ragbase-redis` 独立容器 |
 
 标准启动命令（混合模式，开发推荐）：
 
 ```bash
 docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
-DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5433/content_studio" make dev-backend
+DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5433/ragbase" make dev-backend
 cd frontend && npm run dev
 ```
 
 > 注意：DATABASE_URL 必须显式注入（run-backend.sh 不读 .env 兜底；opencode 沙箱会泄漏 `DATABASE_URL=file:...` 覆盖 .env）。
 
-## 四、数据库隔离
+## 五、数据库隔离
 
-- content-studio → `content_studio` 库（**独立容器** `content-studio-db`：5433，pgvector/pg16；20 张表，alembic_version = `p9g3n001`；2026-08-06 从共享实例全量迁移数据后隔离）
-- content-studio → `content-studio-redis`（**独立容器**：6380）
+- ragbase → `ragbase` 库（**独立容器** `ragbase-db`：5433，pgvector/pg16；alembic_version 目标 = `p9g3n002`）
+- ragbase → `ragbase-redis`（**独立容器**：6380）
 - agent-studio → `backend` 库（共享实例 5432/6379，**不再触碰**）
 - 已授权范围：不得修改 agent-studio 的代码/数据/进程/配置
 
-## 五、裁剪边界（已完成）
-
-已删：多 Agent 编排（teams/agents/agent_configs）、工具生态（tools/mcps/skills）、工作流（workflow）、system_team/thinking_tree、AgentStudio 前端组件、CLI main.py。
-保留：auth/sessions/runs/prompts/versions/rag/attachments、SingleAgentGraph（单 agent 引擎）、生成管线基础。
-
-## 六、待办：P9 SPEC 新功能（已完成）
+## 六、迁移遗留（待办）
 
 | 项 | 内容 | 状态 |
 |---|---|---|
-| 调研 | run_service / attachments / providers 复用点 | ✅ 已调研（多源参照见实施计划） |
-| alembic | project_runs 加列 + assets + compose_templates 表 + seed | ✅ 已实现（p9g3n001） |
-| generation_service | 生成编排（校验/提示词/结构化/存版本） | ✅ 已实现 |
-| image_service | 文生图 provider（OpenAI/DashScope 通义万相/Stability） | ✅ 已实现 |
-| routers/generation | POST /api/generations + continue/variations/image/compose | ✅ 已实现 |
-| assets | 素材库 CRUD + RAG index | ✅ 已实现 |
-| compose_templates | 内置 3 套卡片模板 + GET /api/compose-templates | ✅ 已实现（seed） |
-| 测试+验证门 | ruff/mypy/pytest/tsc/vitest/eslint | ✅ 全绿（见下） |
-
-验证门结果：ruff 0 error / mypy strict 0 error / pytest 1346 过 7 跳过（含 P9 新增 39 用例）/ tsc 0 error / eslint 0 error / vitest 445/445；generation 管线覆盖率 81%（generation_service 81%、image_service 82%、structured 100%，SPEC §4.1 ≥80%）。
-
-实施计划：`docs/superpowers/plans/2026-08-06-p9-generation-pipeline.md`
-
-当前生成链路：类型化生成（content_type/主题校验 → vault key → run 创建 → LLM SSE → 结构化解析 → 版本+草稿），配素材 RAG + compose 模板 + 文生图。冒烟已验证：GET /api/compose-templates 3 套模板、POST /api/generations 返回 run_id（无真实 key 时管线入 error 态）。
+| 迁移执行 | DB `p9g3n002`（drop compose_templates + 5 列）尚未在真实库执行 | ⚠️ 验证门后执行 |
+| 现有数据 | content_studio 旧库数据不迁移（新库 ragbase 从迁移链全新构建） | ⚠️ 旧数据废弃 |
+| 目录改名 | 项目目录 `content-studio` → `ragbase`（git mv 或文件系统级） | ⚠️ 待执行 |
 
 ## 七、配置文档
 
-- `AGENTS.md`（项目根，gitignore 不入库）：第一性原理审视规则 + 启动/环境/验证门
+- `AGENTS.md`（项目根）：第一性原理审视规则 + 启动/环境/验证门
 - `docs/SPEC.md`：项目规范（约束/功能/技术/工程/验收）
 - 全局 `~/.config/opencode/AGENTS.md`：caveman/ponytail 等 skill 清单
 
@@ -83,5 +83,3 @@ make typecheck-backend   # mypy strict
 make test-backend-quick  # pytest
 cd frontend && npx tsc --noEmit && npx eslint src/ && npx vitest run
 ```
-
-上次全量（P9 收尾）：ruff 0 错、mypy strict 0 错、pytest 1346 过 7 跳过、tsc 0 错、vitest 445/445、eslint 0 错。

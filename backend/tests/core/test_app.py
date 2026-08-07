@@ -16,7 +16,7 @@ class TestAppCreation:
     def test_app_title(self):
         from core.app import app
 
-        assert app.title == "ContentStudio API"
+        assert app.title == "RagBase API"
 
     def test_app_route_count(self):
         from core.app import app

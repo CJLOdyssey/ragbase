@@ -23,7 +23,6 @@ from routers import (
     assets,
     attachments,
     auth,
-    generation,
     keys,
     models,
     prompts,
@@ -78,8 +77,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="ContentStudio API",
-    description="内容创作助手 API — 文案生成、图文合成、素材库管理",
+    title="RagBase API",
+    description="企业级 RAG 知识库问答平台 API — 文档上传、索引、检索、生成",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -161,7 +160,7 @@ app.add_middleware(RequestSizeLimitMiddleware)
 
 # ── Routers ─────────────────────────────────────────────────────────────────
 routers = [auth, runs, run_continue, sessions, attachments, models, keys,
-           prompts, providers, versions, generation, assets]
+           prompts, providers, versions, assets]
 for r in routers:
     app.include_router(r.router)
 
