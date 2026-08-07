@@ -40,11 +40,8 @@ function toConversation(s: SessionItem): Conversation {
   };
 }
 
-// 分支树：按 parent_run_id 组树，返回目标 run（缺省 = 最新 run）的父链路径（根在前）
-function buildRunPath(
-  runs: ProjectRun[],
-  fromRunId?: string | null,
-): {
+// 分支树：按 parent_run_id 组树，返回最新 run 的父链路径（根在前）
+function buildRunPath(runs: ProjectRun[]): {
   path: ProjectRun[];
   active: string | null;
 } {
@@ -54,16 +51,15 @@ function buildRunPath(
       (b.created_at ?? '').localeCompare(a.created_at ?? '') > 0 ? b : a,
     runs[0],
   );
-  const start = fromRunId && byId.has(fromRunId) ? byId.get(fromRunId) : latest;
   const path: ProjectRun[] = [];
   const seen = new Set<string>();
-  let cur: ProjectRun | undefined = start;
+  let cur: ProjectRun | undefined = latest;
   while (cur && !seen.has(cur.id)) {
     seen.add(cur.id);
     path.unshift(cur);
     cur = cur.parent_run_id ? byId.get(cur.parent_run_id) : undefined;
   }
-  return { path, active: start?.id ?? latest?.id ?? null };
+  return { path, active: latest?.id ?? null };
 }
 
 // 路径 turns：平铺消息 + runTurns（runId → agent turn）+ 版本映射（versionRunIds）
@@ -236,59 +232,6 @@ export function useHomeState() {
     setActiveConvId(null);
   }, []);
 
-  // 分支完整路径：目标 run 的父链（根在前）+ 其主子孙链（每次取最新子 run
-  // 直到末端）。切分支后显示该分支的全部消息（后续轮次不再隐藏）。
-  function buildBranchPath(
-    runs: ProjectRun[],
-    fromRunId: string,
-  ): ProjectRun[] {
-    const { path: parentPath } = buildRunPath(runs, fromRunId);
-    const byParent = new Map<string, ProjectRun[]>();
-    for (const r of runs) {
-      const p = r.parent_run_id;
-      if (!p) continue;
-      const list = byParent.get(p);
-      if (list) list.push(r);
-      else byParent.set(p, [r]);
-    }
-    const tail: ProjectRun[] = [];
-    const seen = new Set<string>(parentPath.map((r) => r.id));
-    let cur: string | null = fromRunId;
-    while (cur) {
-      const kids: ProjectRun[] = (byParent.get(cur) ?? [])
-        .filter((k) => !seen.has(k.id))
-        .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
-      const next: ProjectRun | undefined = kids[0];
-      if (!next) break;
-      tail.push(next);
-      seen.add(next.id);
-      cur = next.id;
-    }
-    return [...parentPath, ...tail];
-  }
-
-  // 分支语义：切版本 = 切分支，重新加载目标 run 分支的全部消息（父链 +
-  // 子孙链，而非只显示到本 turn 或截断后续轮次）。
-  const handleSwitchBranch = useCallback(async (runId: string) => {
-    const convId = useChatStore.getState().currentConvId;
-    if (!convId) return;
-    try {
-      const detail = await getSessionDetail(convId);
-      const path = buildBranchPath(detail.runs ?? [], runId);
-      const { loaded, runTurns } = buildPathTurns(path);
-      for (const m of loaded) {
-        if (m.role !== 'user' && m.thinkingDone === undefined) {
-          m.thinkingDone = true;
-        }
-      }
-      useChatStore.getState().loadConversation(loaded, convId, convId);
-      useChatStore.getState().setActiveRunId(runId);
-      useChatStore.getState().setRunTurns(runTurns);
-    } catch (err) {
-      Logger.warn('[useHomeState] failed to switch branch to %s', runId, err);
-    }
-  }, []);
-
   const handleDeleteConversation = useCallback(
     (convId: string) => {
       if (activeConvId === convId) {
@@ -361,7 +304,6 @@ export function useHomeState() {
     handleSend,
     handleStop: cancelRun,
     handleNewChat,
-    handleSwitchBranch,
     handleDeleteConversation,
     handleRenameConversation,
     handlePinConversation,
