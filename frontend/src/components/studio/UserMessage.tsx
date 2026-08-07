@@ -124,6 +124,7 @@ export default function UserMessage({
                 <button
                   className="flex items-center justify-center w-6 h-6 bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-0 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] disabled:opacity-35 disabled:cursor-not-allowed"
                   onClick={() => onSwitchUserVersion?.(msg.id, 'next')}
+                  disabled={currentUserVersion === userVersions.length - 1}
                   aria-label="Next user version"
                 >
                   <ChevronRight size={12} />

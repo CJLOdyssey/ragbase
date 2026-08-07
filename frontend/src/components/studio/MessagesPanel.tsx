@@ -56,7 +56,7 @@ export default function MessagesPanel({
       const nv =
         direction === 'prev'
           ? Math.max(0, cur - 1)
-          : (cur + 1) % versions.length;
+          : Math.min(versions.length - 1, cur + 1);
       if (nv === cur) return;
       // 分支语义：切版本 = 切分支，视图整体切换到目标 run 所在分支。
       const versionRunId = userMsg?.versionRunIds?.[nv];
