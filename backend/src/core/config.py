@@ -9,7 +9,7 @@ from core.infra.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-_env_file = Path(__file__).parent.parent / ".env"
+_env_file = Path(__file__).resolve().parent.parent.parent / ".env"
 if _env_file.exists():
     for line in _env_file.read_text().splitlines():
         line = line.strip()
