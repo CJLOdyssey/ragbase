@@ -5,7 +5,7 @@ export async function submitRequirement(
   session_id?: string,
   key_id?: string,
   model?: string,
-  parent_run_id?: string,
+  parent_run_id?: string | null,
 ): Promise<{ run_id: string; status: string; session_id?: string }> {
   const { data } = await api.post('/runs', {
     requirement,

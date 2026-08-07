@@ -68,6 +68,7 @@ export async function submitRequirement(
 ) {
   const s = useChatStore.getState();
   const effectiveSessionId = session_id || s.currentSessionId || undefined;
+  const effectiveParentRunId = parent_run_id ?? s.activeRunId;
   if (s.currentRunId) {
     disconnectRun(s.currentRunId);
   }
@@ -121,7 +122,7 @@ export async function submitRequirement(
       effectiveSessionId,
       keyId,
       model,
-      parent_run_id,
+      effectiveParentRunId,
     );
     const run_id = resp.run_id;
     const returnedSessionId = resp.session_id || effectiveSessionId || null;
