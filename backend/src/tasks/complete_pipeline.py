@@ -11,6 +11,7 @@ from core.config import load_config
 from core.infra.logging_config import get_logger
 from repository import update_run_result, update_run_status
 
+from .completion_request import ContinuationContext, build_completion_request
 from .prefix_completion import stream_prefix_completion
 
 logger = get_logger(__name__)
@@ -25,6 +26,7 @@ async def _complete_pipeline(
     api_base: str | None = None,
     model: str | None = None,
     thinking: str | None = None,
+    question: str | None = None,
 ) -> dict[str, Any] | None:
 
     global _complete_counter
@@ -44,44 +46,19 @@ async def _complete_pipeline(
 
     await update_run_status(run_id, "running")
 
-    base_url = (api_base or "https://api.deepseek.com").rstrip("/")
-
-    if thinking:
-        clean_base = base_url.rstrip("/beta")
-        url = f"{clean_base}/beta/chat/completions"
-    else:
-        url = f"{base_url}/chat/completions"
-
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-    if thinking:
-        body = {
-            "model": effective_model,
-            "messages": [
-                {"role": "user", "content": content},
-                {"role": "assistant", "content": "", "reasoning_content": thinking, "prefix": True},
-            ],
-            "stream": True,
-            "max_tokens": 16384,
-        }
-        base_lower = (api_base or "").lower()
-        model_lower = (effective_model or "").lower()
-        is_deepseek = "deepseek" in base_lower or "deepseek" in model_lower
-        if is_deepseek:
-            body["thinking"] = {"type": "enabled"}
-    else:
-        system_prompt = (
-            "Continue the following text naturally. "
-            "Output ONLY the continuation — no prefix, no analysis, no commentary, no meta-text. "
-            "Do not repeat the input text."
-        )
-        prompt = f"{system_prompt}\n\n{content}"
-        body = {
-            "model": effective_model,
-            "messages": [{"role": "user", "content": prompt}],
-            "stream": True,
-            "max_tokens": 16384,
-        }
+    req = build_completion_request(
+        ctx=ContinuationContext(
+            question=question,
+            draft=content,
+            thinking=thinking,
+        ),
+        model=effective_model,
+        api_base=api_base,
+        api_key=api_key,
+    )
+    url = req.url
+    headers = req.headers
+    body = req.body
 
     logger.info("[complete] Starting completion for run %s | model=%s", run_id, effective_model)
 
@@ -99,10 +76,13 @@ async def _complete_pipeline(
         return None
 
     if thinking_chunks:
+        # 思考被中断续写：thinking_done 携带「原半截思考 + 续写思考」，
+        # 前端覆盖消息 thinking 时保留断点前的推理链（视觉上思考完整续接）。
+        merged_thinking = f"{thinking or ''}{''.join(thinking_chunks)}"
         await publish_run_message(run_id, {
             "type": "thinking_done",
             "agent_name": "Agent",
-            "thinking": "".join(thinking_chunks),
+            "thinking": merged_thinking,
         })
 
     try:

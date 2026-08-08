@@ -146,6 +146,24 @@ describe('handleErrorEvent', { tags: ['unit'] }, () => {
     expect(result.error).toBe('Something broke');
   });
 
+  it('clears continuing/edit pending state so the UI never sticks', () => {
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState({ continuingId: 'msg-1', editTargetId: 'msg-1' })),
+    );
+
+    handleErrorEvent(set as never, {
+      type: 'error',
+      content: 'boom',
+    });
+
+    const result = set.mock.results[0].value as Record<string, unknown>;
+    expect(result.continuingId).toBeNull();
+    expect(result.editTargetId).toBeNull();
+    expect(result.pendingVersions).toBeNull();
+    expect(result.pendingThinkingVersions).toBeNull();
+    expect(result.streamingId).toBeNull();
+  });
+
   it('defaults error message when content is missing', () => {
     const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
       fn(makeState()),

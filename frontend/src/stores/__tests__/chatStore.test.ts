@@ -8,6 +8,9 @@ vi.mock('../../api/websocket', () => ({
 
 vi.mock('../../api/client', () => ({
   submitRequirement: vi.fn(),
+  cancelRun: vi
+    .fn()
+    .mockResolvedValue({ run_id: 'run-1', status: 'cancelled' }),
   listKeys: vi.fn().mockResolvedValue([
     {
       id: 'key-1',
@@ -195,19 +198,24 @@ describe('chatStore', { tags: ['unit'] }, () => {
   });
 
   describe('cancelRun', () => {
-    it('disconnects and clears run state', async () => {
+    it('disconnects, cancels backend and clears run state', async () => {
       const { useChatStore } = await import('../chatStore');
+      const { cancelRun } = await import('../../api/client');
       useChatStore.setState({
         currentRunId: 'run-1',
         streamingId: 'stream-1',
         status: 'running',
       });
       useChatStore.getState().cancelRun();
+      await vi.waitFor(() => {
+        expect(cancelRun).toHaveBeenCalledWith('run-1');
+      });
       const state = useChatStore.getState();
       expect(state.currentRunId).toBeNull();
       expect(state.streamingId).toBeNull();
       expect(state.status).toBe('idle');
       expect(state.wsStatus).toBe('disconnected');
+      expect(state.interruptedMessageId).toBe('stream-1');
     });
   });
 

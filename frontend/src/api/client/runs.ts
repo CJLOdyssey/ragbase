@@ -21,11 +21,22 @@ export async function resumeRun(
   content: string,
   session_id?: string,
   thinking?: string,
+  model?: string,
+  question?: string,
 ): Promise<{ run_id: string; status: string; session_id?: string }> {
   const { data } = await api.post('/runs/complete', {
     content,
     session_id,
     thinking: thinking || undefined,
+    model: model || undefined,
+    question: question || undefined,
   });
+  return data;
+}
+
+export async function cancelRun(
+  runId: string,
+): Promise<{ run_id: string; status: string; session_id?: string }> {
+  const { data } = await api.post(`/runs/${runId}/cancel`);
   return data;
 }

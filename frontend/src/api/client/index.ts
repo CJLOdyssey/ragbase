@@ -1,5 +1,5 @@
 export { ApiError, NetworkError, TimeoutError, normalizeError } from './errors';
-export { submitRequirement, resumeRun } from './runs';
+export { submitRequirement, resumeRun, cancelRun } from './runs';
 export {
   listKeys,
   createKey,

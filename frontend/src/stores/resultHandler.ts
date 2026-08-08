@@ -168,6 +168,9 @@ export function handleResultEvent(
       pendingRegenerate,
       status: 'idle' as ChatState['status'],
       streamingId: null,
+      // 续写/生成完成：清除中断标记，避免「已中断/继续」按钮永久残留
+      // （否则用户可无限次继续 → 每次续写 run 的思考都追加，思考内容爆炸）。
+      interruptedMessageId: null,
       result: makeRunResult(codeContent),
       skipThinking: false,
     };

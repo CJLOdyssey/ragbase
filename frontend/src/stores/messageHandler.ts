@@ -72,6 +72,11 @@ export function handleErrorEvent(set: SetFn, msg: WsErrorEvent): void {
     status: 'error' as ChatState['status'],
     error: msg.content || 'Unknown error',
     streamingId: null,
+    // 失败即终止流程：清理续写/编辑挂起状态，避免 UI 卡在「继续生成中…」。
+    continuingId: null,
+    editTargetId: null,
+    pendingVersions: null,
+    pendingThinkingVersions: null,
     wsStatus: 'connected' as ChatState['wsStatus'],
   }));
 }
@@ -85,6 +90,10 @@ export function handleBalanceWarningEvent(
     status: 'error' as ChatState['status'],
     error: msg.content || '模型余额不足',
     streamingId: null,
+    continuingId: null,
+    editTargetId: null,
+    pendingVersions: null,
+    pendingThinkingVersions: null,
     wsStatus: 'connected' as ChatState['wsStatus'],
   }));
 }

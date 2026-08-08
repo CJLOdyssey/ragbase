@@ -84,6 +84,7 @@ def complete_agent(
     api_base: str | None = None,
     model: str | None = None,
     thinking: str | None = None,
+    question: str | None = None,
 ) -> Any:
     t0 = time.time()
     logger.info(
@@ -91,7 +92,9 @@ def complete_agent(
         run_id, model, bool(thinking), self.request.retries,
     )
     try:
-        result = _run_async(_complete_pipeline(content, run_id, api_key, api_base, model, thinking))
+        result = _run_async(
+            _complete_pipeline(content, run_id, api_key, api_base, model, thinking, question)
+        )
         elapsed = time.time() - t0
         logger.info(
             "Celery complete SUCCESS | run=%s | elapsed=%.2fs | retry=%d",

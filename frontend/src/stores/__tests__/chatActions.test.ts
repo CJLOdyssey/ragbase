@@ -83,6 +83,7 @@ const initialState = {
 beforeEach(() => {
   useChatStore.setState(initialState);
   vi.clearAllMocks();
+  localStorage.clear();
   mockListKeys.mockResolvedValue([
     {
       id: 'key-1',
@@ -504,11 +505,90 @@ describe('continueGeneration', { tags: ['unit'] }, () => {
       'partial response',
       'sess-1',
       'some thinking',
+      'deepseek-chat',
+      undefined,
     );
     const state = useChatStore.getState();
     expect(state.currentRunId).toBe('run-2');
     expect(state.status).toBe('running');
     expect(connectRun).toHaveBeenCalled();
+  });
+
+  it('passes the original user question for seamless continuation', async () => {
+    const userMsg = makeMsg({
+      id: 'user-1',
+      role: 'user',
+      content: '原问题是什么？',
+    });
+    const interrupted = makeMsg({
+      id: 'int-1b',
+      role: 'agent',
+      content: '半截回答',
+      thinking: '思考',
+    });
+    useChatStore.setState({
+      interruptedMessageId: 'int-1b',
+      messages: [userMsg, interrupted],
+      currentSessionId: 'sess-1',
+    });
+
+    await continueGeneration();
+
+    expect(mockResumeRun).toHaveBeenCalledWith(
+      '半截回答',
+      'sess-1',
+      '思考',
+      'deepseek-chat',
+      '原问题是什么？',
+    );
+  });
+
+  it('aborts when interrupted message has neither content nor thinking', async () => {
+    const interrupted = makeMsg({
+      id: 'int-4',
+      role: 'agent',
+      content: '',
+      thinking: '',
+    });
+    useChatStore.setState({
+      interruptedMessageId: 'int-4',
+      messages: [interrupted],
+      currentSessionId: 'sess-1',
+    });
+
+    await continueGeneration();
+
+    expect(mockResumeRun).not.toHaveBeenCalled();
+    const state = useChatStore.getState();
+    expect(state.interruptedMessageId).toBeNull();
+    expect(state.error).toBe('没有可续写的内容，请重新生成');
+  });
+
+  it('resumes with thinking as material when content was interrupted mid-reasoning', async () => {
+    const interrupted = makeMsg({
+      id: 'int-5',
+      role: 'agent',
+      content: '',
+      thinking: 'half-built reasoning chain',
+    });
+    useChatStore.setState({
+      interruptedMessageId: 'int-5',
+      messages: [interrupted],
+      currentSessionId: 'sess-1',
+    });
+
+    await continueGeneration();
+
+    expect(mockResumeRun).toHaveBeenCalledWith(
+      '',
+      'sess-1',
+      'half-built reasoning chain',
+      'deepseek-chat',
+      undefined,
+    );
+    const state = useChatStore.getState();
+    expect(state.currentRunId).toBe('run-2');
+    expect(state.status).toBe('running');
   });
 
   it('uses versions when available for pending state', async () => {

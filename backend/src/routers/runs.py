@@ -96,6 +96,19 @@ async def list_runs(limit: int = 20) -> Any:
         raise error_response(ErrorCode.INTERNAL_ERROR) from e
 
 
+@router.post("/api/runs/{run_id}/cancel", response_model=RunResponse)
+async def cancel_run(run_id: str, request: Request) -> Any:
+    """Cancel an in-flight run: propagate cancellation to the LLM stream."""
+    try:
+        result = await run_service.cancel_run(run_id)
+        return RunResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error cancelling run %s: %s", run_id, e, exc_info=True)
+        raise error_response(ErrorCode.INTERNAL_ERROR) from e
+
+
 @router.websocket("/ws/runs/{run_id}")
 async def run_websocket(websocket: WebSocket, run_id: str) -> Any:
     """Stream run progress and messages over a WebSocket connection."""

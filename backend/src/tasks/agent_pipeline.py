@@ -170,6 +170,14 @@ async def _run_agent_pipeline(
         # Kill any OS child processes spawned by the timed-out task
         _kill_stuck_child_processes()
         return {"run_id": run_id, "status": "timeout"}
+    except asyncio.CancelledError:
+        # "停止生成"：task.cancel() 沿 await 链传播，上游 LLM 请求随之中断。
+        logger.warning("[TASKS] Agent pipeline cancelled (run=%s)", run_id)
+        with contextlib.suppress(Exception):
+            await update_run_status(run_id, "cancelled")
+        with contextlib.suppress(Exception):
+            await publish_run_message(run_id, {"type": "cancelled", "run_id": run_id})
+        raise
 
     # ── Extract artifacts ──
     messages = result.get("messages", [])

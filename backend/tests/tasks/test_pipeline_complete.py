@@ -121,7 +121,7 @@ class TestCompletePipeline:
         args, _ = mock_complete_deps["stream_prefix_completion"].await_args
         body = args[2]
         assert body["model"] == "test-model"
-        assert "Continue the following text" in body["messages"][0]["content"]
+        assert "Continue the following answer draft naturally" in body["messages"][0]["content"]
         assert "Hello" in body["messages"][0]["content"]
 
         mock_complete_deps["update_run_result"].assert_awaited_with(
@@ -158,6 +158,7 @@ class TestCompletePipeline:
             api_base=api_base,
             model="deepseek-v4-flash",
             thinking="previous reasoning",
+            question="原问题",
         )
 
         args, _ = mock_complete_deps["stream_prefix_completion"].await_args
@@ -165,9 +166,9 @@ class TestCompletePipeline:
         body = args[2]
         assert "/beta/chat/completions" in url
         assert body["model"] == "deepseek-v4-flash"
-        assert body["messages"][0]["role"] == "user"
-        assert body["messages"][0]["content"] == content
+        assert body["messages"][0] == {"role": "user", "content": "原问题"}
         assert body["messages"][1]["role"] == "assistant"
+        assert body["messages"][1]["content"] == content
         assert body["messages"][1]["prefix"] is True
         assert body.get("thinking") == {"type": "enabled"}
 
@@ -176,7 +177,7 @@ class TestCompletePipeline:
             {
                 "type": "thinking_done",
                 "agent_name": "Agent",
-                "thinking": "thinking...",
+                "thinking": "previous reasoningthinking...",
             },
         )
         assert thinking_call in mock_complete_deps["publish_run_message"].await_args_list

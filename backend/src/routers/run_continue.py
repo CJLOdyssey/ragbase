@@ -19,6 +19,8 @@ class CompleteRunRequest(BaseModel):
     content: str = Field(default="")
     session_id: str | None = None
     thinking: str | None = None
+    model: str | None = None
+    question: str | None = None
 
 
 @router.post("/api/runs/complete", response_model=RunResponse)
@@ -38,6 +40,8 @@ async def create_complete_run(req: CompleteRunRequest, request: Request) -> Any:
             session_id=req.session_id,
             user_id=user_id,
             thinking=req.thinking,
+            model=req.model,
+            question=req.question,
         )
         return RunResponse(**result)
     except ValueError as e:
