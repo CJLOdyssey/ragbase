@@ -95,20 +95,30 @@ class ThinkTagSplitter:
 
 
 class ReasoningSplitter:
-    """Streaming splitter for ``reasoning_content`` that carries a <think> tag.
+    """Streaming splitter for ``reasoning_content`` that may carry <think> tags.
 
     SiliconFlow's GLM-Z1 emits chain-of-thought in ``reasoning_content``
-    wrapped in ``<think>`` — but the tag is sliced across SSE chunks
+    wrapped in ``<think>`` — the tag may be sliced across SSE chunks
     (``'<th'`` + ``'ink'`` + ``'>'``) and the closing tag is often omitted
-    entirely. Unlike ``ThinkTagSplitter`` (which requires the full tag in one
-    chunk and explicit closing), this state machine accumulates text across
-    chunks, strips a fully-assembled opening ``<think>``, and treats every
-    subsequent chunk as thinking until the stream ends.
+    entirely. DeepSeek's native ``reasoning_content`` carries NO tag at all.
+
+    State machine over two modes:
+    - content mode: boundedly wait for a fully-assembled ``<think>`` opening
+      tag (cross-chunk slicing); past a small character budget the stream is
+      treated as tag-less (DeepSeek) and emitted immediately.
+    - thinking mode: strip a fully-assembled ``</think>`` closing tag
+      (cross-chunk slicing) and emit everything before it; the remainder is
+      re-processed (may open a new think block).
     """
 
     __slots__ = ("_pending", "_in_think")
 
     _OPEN_TAG = "<think>"
+    _CLOSE_TAG = "</think>"
+    # Bounded wait for the tag to assemble across chunks: <think> is 7 chars,
+    # providers slice ~1-2 chars/chunk, so 16 chars covers the worst case
+    # while keeping tag-less streams (DeepSeek) real-time.
+    _TAG_WAIT_CHARS = 16
 
     def __init__(self) -> None:
         self._pending: list[str] = []
@@ -116,32 +126,57 @@ class ReasoningSplitter:
 
     def feed(self, text: str) -> list[str]:
         """Process one reasoning chunk; return thinking parts to emit."""
-        if self._in_think:
-            # Tag already stripped — everything else is chain-of-thought.
-            return [text] if text else []
+        out: list[str] = []
+        rest = text
+        while rest:
+            rest = (
+                self._feed_thinking(rest, out)
+                if self._in_think
+                else self._feed_content(rest, out)
+            )
+        return out
 
+    def _feed_content(self, text: str, out: list[str]) -> str:
+        """Content mode: wait for the opening tag, or stream tag-less input."""
         self._pending.append(text)
         joined = "".join(self._pending)
         idx = joined.find(self._OPEN_TAG)
         if idx < 0:
-            # Tag not fully assembled yet — hold the whole buffer. Cap it so a
-            # missing opening tag can't pin memory (shouldn't happen: provider
-            # sends the tag first).
-            if len(joined) > 512:
-                dropped = "".join(self._pending)
+            if len(joined) >= self._TAG_WAIT_CHARS:
+                flushed = "".join(self._pending)
                 self._pending = []
-                return [dropped] if dropped else []
-            return []
-
-        # Opening tag assembled — strip it and flush any text before it.
-        tail = joined[idx + len(self._OPEN_TAG):]
+                if flushed:
+                    out.append(flushed)
+            return ""
+        # Opening tag assembled — drop everything before it (format noise such
+        # as leading newlines) and switch to thinking mode. The trailing part
+        # may also start with a chunk-boundary newline; strip it.
+        tail = joined[idx + len(self._OPEN_TAG):].lstrip("\n")
         self._pending = []
         self._in_think = True
+        return tail
+
+    def _feed_thinking(self, text: str, out: list[str]) -> str:
+        """Thinking mode: strip the closing tag (cross-chunk), keep the rest."""
+        self._pending.append(text)
+        joined = "".join(self._pending)
+        idx = joined.find(self._CLOSE_TAG)
+        if idx < 0:
+            # Not closed yet — emit everything but a trailing fragment that
+            # could be a sliced closing tag.
+            hold = len(self._CLOSE_TAG) - 1
+            if len(joined) > hold:
+                emit, keep = joined[:-hold], joined[-hold:]
+                self._pending = [keep]
+                if emit:
+                    out.append(emit)
+            return ""
         before = joined[:idx]
-        out: list[str] = [before] if before else []
-        if tail:
-            out.append(tail)
-        return out
+        self._pending = []
+        self._in_think = False
+        if before:
+            out.append(before)
+        return joined[idx + len(self._CLOSE_TAG):]
 
     def finish(self) -> str | None:
         """Flush any remaining buffered thinking text."""

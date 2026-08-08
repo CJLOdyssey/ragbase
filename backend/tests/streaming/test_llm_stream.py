@@ -469,6 +469,32 @@ class TestStreamLlmResponse:
         assert "".join(content) == "hi"
 
     @pytest.mark.asyncio
+    async def test_tagless_reasoning_streams_realtime_before_content(self):
+        """DeepSeek reasoning_content carries no <think>: after the bounded
+        tag wait it must stream real-time (thinking event before content)."""
+        from streaming.llm_stream import stream_llm_response
+
+        callback = AsyncMock()
+        sse_lines = [
+            'data: {"choices":[{"delta":{"reasoning_content":"这是一段超过十六个字符的深度思考过程文本"},"finish_reason":null}]}',
+            'data: {"choices":[{"delta":{"reasoning_content":"继续思考更多"},"finish_reason":null}]}',
+            'data: {"choices":[{"delta":{"content":"Answer"},"finish_reason":"stop"}]}',
+            "data: [DONE]",
+        ]
+        with patch("httpx.AsyncClient", return_value=_MockClientCtx(sse_lines)):
+            content, thinking, tool_calls, finish_reason, usage = await stream_llm_response(
+                "https://api.deepseek.com/chat/completions",
+                {"Authorization": "Bearer sk-test"},
+                {"model": "deepseek-chat", "messages": []},
+                stream_cb=callback,
+            )
+        assert "".join(thinking) == "这是一段超过十六个字符的深度思考过程文本继续思考更多"
+        assert "".join(content) == "Answer"
+        # 实时性：thinking 事件先于 content 事件发出（未被 hold 到流结束）
+        events = [c.args[0]["event"] for c in callback.call_args_list]
+        assert events.index("on_custom_thinking") < events.index("on_custom_token")
+
+    @pytest.mark.asyncio
     async def test_calls_callback_for_reasoning_content(self):
         from streaming.llm_stream import stream_llm_response
 
