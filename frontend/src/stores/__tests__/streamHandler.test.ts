@@ -83,7 +83,10 @@ describe('handleStreamStart', { tags: ['unit'] }, () => {
     expect(result.messages![0].agent_name).toBe('Agent');
   });
 
-  it('handles pendingVersions during continuation', () => {
+  it('clears pendingVersions during continuation (no archival in branch model)', () => {
+    // Branch model (edit=新分支 run, ee48c1d): pendingVersions is a dead field —
+    // the interrupted message is REPLACED by the continuation stream, never
+    // archived into versions.
     const s = makeState({
       continuingId: 'msg-1',
       pendingVersions: ['v1'],
@@ -94,11 +97,11 @@ describe('handleStreamStart', { tags: ['unit'] }, () => {
     const result = handleStreamStart(s as never, { type: 'stream' }, ' new');
 
     expect(result.pendingVersions).toBeNull();
-    expect(result.messages![0].versions).toBeDefined();
-    expect(result.messages![0].versions![0]).toBe('old');
+    expect(result.messages![0].versions).toBeUndefined();
+    expect(result.messages![0].content).toBe('old new');
   });
 
-  it('handles pendingVersions for new stream (no continuingId)', () => {
+  it('clears pendingVersions for new stream (no continuingId)', () => {
     const s = makeState({
       pendingVersions: ['v0'],
       pendingThinkingVersions: ['t0'],
@@ -106,11 +109,12 @@ describe('handleStreamStart', { tags: ['unit'] }, () => {
 
     const result = handleStreamStart(s as never, { type: 'stream' }, 'first');
 
-    expect(result.messages![0].versions).toBeDefined();
-    expect(result.messages![0].versions).toEqual(['v0', 'first']);
+    expect(result.pendingVersions).toBeNull();
+    expect(result.messages![0].versions).toBeUndefined();
+    expect(result.messages![0].content).toBe('first');
   });
 
-  it('merges edit-regenerate answer into the target message as a new version (keeps other messages)', () => {
+  it('merges edit-regenerate answer into the target message (keeps other messages)', () => {
     const s = makeState({
       editTargetId: 'a1',
       messages: [
@@ -127,11 +131,13 @@ describe('handleStreamStart', { tags: ['unit'] }, () => {
     );
 
     expect(result.editTargetId).toBeNull();
-    // Old answer archived as a version; the new stream starts FRESH (not old+new).
-    expect(result.messages![1].versions).toEqual(['old answer']);
+    // Edit = new branch run: the target message is remapped to the new run's
+    // message and the stream starts FRESH — old answer is NOT archived as a
+    // version (branch navigation replaces it, DB keeps it).
+    expect(result.messages![1].versions).toBeUndefined();
     expect(result.messages![1].content).toBe(' fresh');
     expect(result.messages![1].thinking).toBe('');
-    expect(result.messages![1].currentVersion).toBe(0);
+    expect(result.messages![1].currentVersion).toBeUndefined();
     // Other messages preserved — nothing deleted.
     expect(result.messages!.map((m) => m.id)).toEqual([
       'u1',
@@ -252,7 +258,7 @@ describe('handleThinkingStreamNew', { tags: ['unit'] }, () => {
     expect(result.messages![0].thinking).toBe('old-think more');
   });
 
-  it('handles pendingVersions during new thinking stream', () => {
+  it('clears pendingVersions during new thinking stream (no archival)', () => {
     const s = makeState({
       pendingVersions: ['v0'],
       pendingThinkingVersions: ['t0'],
@@ -264,9 +270,10 @@ describe('handleThinkingStreamNew', { tags: ['unit'] }, () => {
       'new-think',
     );
 
-    expect(result.messages![0].versions).toBeDefined();
-    expect(result.messages![0].thinkingVersions).toBeDefined();
-    expect(result.messages![0].thinkingVersions).toEqual(['t0', 'new-think']);
+    expect(result.pendingVersions).toBeNull();
+    expect(result.messages![0].versions).toBeUndefined();
+    expect(result.messages![0].thinkingVersions).toBeUndefined();
+    expect(result.messages![0].thinking).toBe('new-think');
   });
 
   it('merges edit-regenerate thinking into the target message (keeps other messages)', () => {
@@ -286,10 +293,10 @@ describe('handleThinkingStreamNew', { tags: ['unit'] }, () => {
     );
 
     expect(result.editTargetId).toBeNull();
-    // New thinking starts fresh; old thinking archived into thinkingVersions.
+    // New thinking starts fresh; the old message is NOT archived (branch model).
     expect(result.messages![1].thinking).toBe(' new think');
-    expect(result.messages![1].versions).toEqual(['old answer']);
-    expect(result.messages![1].thinkingVersions).toEqual(['old think']);
+    expect(result.messages![1].versions).toBeUndefined();
+    expect(result.messages![1].thinkingVersions).toBeUndefined();
     expect(result.messages![1].content).toBe('');
     expect(result.messages!.map((m) => m.id)).toEqual([
       'u1',

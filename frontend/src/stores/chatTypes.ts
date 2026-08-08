@@ -13,7 +13,6 @@ export interface RegeneratePending {
 export interface ChatState {
   currentRunId: string | null;
   currentSessionId: string | null;
-  currentConvId: string | null;
   messages: ChatMessage[];
   status: AppStatus;
   result: RunResult | null;
@@ -44,7 +43,6 @@ export interface ChatState {
   ) => void;
   loadConversation: (
     messages: ChatMessage[],
-    convId?: string | null,
     sessionId?: string | null,
   ) => void;
   cancelRun: () => void;
@@ -55,10 +53,15 @@ export interface ChatState {
   setWsStatus: (wsStatus: WsConnectionStatus) => void;
   activeRunId: string | null;
   setActiveRunId: (runId: string | null) => void;
-  /** runId → agent turn (content/thinking) — 分页版本切换时模型消息联动 */
-  runTurns: Record<string, { content: string; thinking: string }>;
-  setRunTurns: (
-    turns: Record<string, { content: string; thinking: string }>,
-  ) => void;
+  /** 用户版本切换（分支语义）：返回目标 runId，null = 无变化 */
+  resolveUserVersionTarget: (
+    msgId: string,
+    direction: 'prev' | 'next',
+  ) => string | null;
+  /** 模型答案分页（重新生成分支）：返回目标 runId，null = 无变化 */
+  resolveAnswerVersionTarget: (
+    msgId: string,
+    direction: 'prev' | 'next',
+  ) => string | null;
   reset: () => void;
 }

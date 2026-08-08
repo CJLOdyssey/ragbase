@@ -24,6 +24,7 @@ from repository import (
     get_run,
     get_runs,
     get_session,
+    save_message,
     update_run_status,
     update_session_title,
 )
@@ -139,6 +140,21 @@ class RunService:
             logger.error("Failed to create run: %s", e, exc_info=True)
             raise
 
+        # ── Persist user message ─────────────────────────────────────
+        # 只要有消息就入库：用户问题也落库 chat_messages（此前仅存 runs.
+        # requirement，加载时由 with_requirement_message 运行时合成）。
+        # 该函数幂等保护：若消息已存在则跳过。
+        try:
+            await save_message(
+                run_id=run_id,
+                role="user",
+                agent_name="我",
+                content=requirement,
+                round_number=1,
+            )
+        except Exception:
+            logger.warning("Failed to persist user message for run %s", run_id)
+
         # ── Update session timestamp ────────────────────────────────
         try:
             existing_sess = await get_session(session_id)
@@ -242,6 +258,20 @@ class RunService:
 
         # ── Persist run ─────────────────────────────────────────────
         run_id = await db_create_run(content, session_id=session_id)
+
+        # ── Persist user message ─────────────────────────────────────
+        # 只要有消息就入库：续写 run 的用户消息 = 原问题（question）——
+        # 视图显示「原问题 + 续写回答」，而非半截文本当问题。
+        try:
+            await save_message(
+                run_id=run_id,
+                role="user",
+                agent_name="我",
+                content=(question or content).strip() or content,
+                round_number=1,
+            )
+        except Exception:
+            logger.warning("Failed to persist user message for continuation run %s", run_id)
 
         # ── Redis buffer ────────────────────────────────────────────
         await buffer_run_messages(run_id)

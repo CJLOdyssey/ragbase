@@ -1,10 +1,5 @@
 import type { ChatMessage, ProjectRun } from '../types';
 
-export interface LoadedTurns {
-  loaded: ChatMessage[];
-  runTurns: Record<string, { content: string; thinking: string }>;
-}
-
 export function buildByParent(runs: ProjectRun[]): Map<string, ProjectRun[]> {
   const byParent = new Map<string, ProjectRun[]>();
   for (const r of runs) {
@@ -19,14 +14,14 @@ export function buildByParent(runs: ProjectRun[]): Map<string, ProjectRun[]> {
 }
 
 // 分支点版本挂载：user 消息 = 全部分支（切分支）；配对的模型消息 = 同一
-// 用户问题的不同回答（requirement 相同的 run 组，重新生成链），本地切换。
-// 模型消息带 userMsgId，切换分页时不联动用户消息（同一问题，内容不变）。
+// 用户问题的不同回答（requirement 相同的 run 组，重新生成链），也是分支
+// （与用户消息 1:N），切换走分支加载（父链 + 子孙链）。模型消息带
+// userMsgId（归一化到用户消息）。
 function attachBranchVersions(
   loaded: ChatMessage[],
   uIdx: number,
   branchGroup: ProjectRun[],
   runId: string,
-  runTurns: Record<string, { content: string; thinking: string }>,
 ): void {
   const userMsg = loaded[uIdx];
   const userMsgId = userMsg.id;
@@ -67,28 +62,16 @@ function attachBranchVersions(
       userMsgId,
     };
   }
-  // 答案组所有 run 的 agent turn 进 runTurns：模型消息分页本地切换，
-  // 无需整分支加载。
-  for (const r of answerGroup) {
-    const am = (r.messages ?? []).find((m) => m.role !== 'user');
-    if (am) {
-      runTurns[r.id] = {
-        content: am.content ?? '',
-        thinking: am.thinking ?? '',
-      };
-    }
-  }
 }
 
-// 路径 turns：平铺消息 + runTurns（runId → agent turn）+ 版本映射（versionRunIds）
+// 路径 turns：平铺消息 + 分支点版本映射（userVersions/answerVersions）。
 // runs 为会话完整 run 集，用于计算平行兄弟分支（跨分支切换入口）。
 export function buildPathTurns(
   path: ProjectRun[],
   runs: ProjectRun[],
-): LoadedTurns {
+): ChatMessage[] {
   const byParent = buildByParent(runs);
   const loaded: ChatMessage[] = [];
-  const runTurns: Record<string, { content: string; thinking: string }> = {};
   for (let i = 0; i < path.length; i++) {
     const run = path[i];
     for (const m of run.messages ?? []) {
@@ -110,17 +93,9 @@ export function buildPathTurns(
         (a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''),
       );
       if (branchGroup.length > 1) {
-        attachBranchVersions(loaded, uIdx, branchGroup, run.id, runTurns);
+        attachBranchVersions(loaded, uIdx, branchGroup, run.id);
       }
     }
-    // runTurns：runId → agent turn（分页切换时模型消息联动）
-    const agentMsg = (run.messages ?? []).find((m) => m.role !== 'user');
-    if (agentMsg) {
-      runTurns[run.id] = {
-        content: agentMsg.content ?? '',
-        thinking: agentMsg.thinking ?? '',
-      };
-    }
   }
-  return { loaded, runTurns };
+  return loaded;
 }

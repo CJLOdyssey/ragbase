@@ -190,6 +190,38 @@ class StreamEmitter:
         except Exception:
             logger.exception("emit_tool_complete failed")
 
+    async def persist_partial(self) -> None:
+        """Persist the un-flushed partial output on cancellation.
+
+        "只要有消息就入库"：run 被取消时，把已流式的半截正文/思考保存为
+        chat_message（content 可为空、thinking 可为空，但至少其一非空才会保存）。
+        """
+        thinking_text = (
+            "".join(self._thinking_buffer).strip() if self._thinking_buffer else ""
+        )
+        full_content = "".join(self._stream_buffer) if self._stream_buffer else ""
+        if not thinking_text and not full_content:
+            return
+        self._stream_buffer.clear()
+        self._thinking_buffer.clear()
+        self._buffer_chars.clear()
+        self._message_index += 1
+        try:
+            await save_message(
+                run_id=self._run_id,
+                role="Agent",
+                agent_name="Agent",
+                content=full_content,
+                thinking=thinking_text or None,
+                round_number=self._message_index,
+            )
+            logger.info(
+                "Partial message persisted for cancelled run %s (content=%d, thinking=%d)",
+                self._run_id, len(full_content), len(thinking_text),
+            )
+        except Exception:
+            logger.exception("Persist partial failed for run %s", self._run_id)
+
     async def _flush_buffers(self) -> None:
         thinking_text = ""
         if self._thinking_buffer:

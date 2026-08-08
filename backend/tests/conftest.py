@@ -87,13 +87,13 @@ def _rid(prefix: str = "test") -> str:
 def _clear_rate_limits() -> None:
     try:
         out = subprocess.run(
-            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1", "KEYS", "ratelimit:*"],
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "KEYS", "ratelimit:*"],
             capture_output=True, text=True, timeout=5,
         )
         if out.stdout.strip():
             keys = out.stdout.strip().split("\n")
             subprocess.run(
-                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1", "DEL"] + keys,
+                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "DEL"] + keys,
                 capture_output=True, timeout=5,
             )
     except Exception:
@@ -173,14 +173,14 @@ def _read_redis(pattern: str) -> list[str]:
     """Read values from Redis matching a key pattern (via docker exec)."""
     try:
         out = subprocess.run(
-            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1", "KEYS", pattern],
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "KEYS", pattern],
             capture_output=True, text=True, timeout=5,
         )
         if not out.stdout.strip():
             return []
         keys = out.stdout.strip().split("\n")
         vals = subprocess.run(
-            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1", "MGET"] + keys,
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "MGET"] + keys,
             capture_output=True, text=True, timeout=5,
         )
         return [v for v in vals.stdout.strip().split("\n") if v]
@@ -192,12 +192,12 @@ def _delete_redis(pattern: str) -> None:
     """Delete Redis keys matching a pattern (via docker exec)."""
     try:
         out = subprocess.run(
-            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1", "KEYS", pattern],
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "KEYS", pattern],
             capture_output=True, text=True, timeout=5,
         )
         if out.stdout.strip():
             subprocess.run(
-                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1", "DEL"]
+                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "DEL"]
                 + out.stdout.strip().split("\n"),
                 capture_output=True, timeout=5,
             )

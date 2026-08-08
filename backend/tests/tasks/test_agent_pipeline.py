@@ -19,6 +19,13 @@ def mock_agent_deps():
         patch("tasks.agent_pipeline.load_config"),
         patch("tasks.agent_pipeline.get_session_memories", new_callable=AsyncMock),
         patch("tasks.agent_pipeline.get_session_messages", new_callable=AsyncMock),
+        patch(
+            "tasks.agent_pipeline.get_run_ancestors",
+            new_callable=AsyncMock,
+            # 分支记忆：父链必须有成员，否则 memories/rag 分支被空链短路跳过。
+            # MagicMock.__eq__ 恒真 → 过滤必然通过。
+            return_value=[MagicMock(id="ancestor-1")],
+        ),
         patch("tasks.agent_pipeline.update_run_status", new_callable=AsyncMock),
         patch("tasks.agent_pipeline.update_run_result", new_callable=AsyncMock),
         patch("tasks.agent_pipeline.log_key_usage", new_callable=AsyncMock),

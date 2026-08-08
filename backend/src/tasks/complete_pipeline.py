@@ -1,5 +1,6 @@
 """Raw LLM streaming completion pipeline — used by "继续生成" flow."""
 
+import contextlib
 import gc
 import os
 import tracemalloc
@@ -9,7 +10,7 @@ import httpx
 from broker import publish_run_message
 from core.config import load_config
 from core.infra.logging_config import get_logger
-from repository import update_run_result, update_run_status
+from repository import save_message, update_run_result, update_run_status
 
 from .completion_request import ContinuationContext, build_completion_request
 from .prefix_completion import stream_prefix_completion
@@ -94,6 +95,18 @@ async def _complete_pipeline(
             approved=False,
             status="completed",
         )
+        # 只要有消息就入库：续写结果保存为 chat_message（刷新后仍可见；
+        # 此前只写 runs.code，刷新后续写内容会从视图消失）。
+        saved_thinking = f"{thinking or ''}{''.join(thinking_chunks)}" or None
+        with contextlib.suppress(Exception):
+            await save_message(
+                run_id=run_id,
+                role="Agent",
+                agent_name="Agent",
+                content=content + full_content,
+                thinking=saved_thinking,
+                round_number=1,
+            )
         await publish_run_message(run_id, {
             "type": "result",
             "status": "completed",

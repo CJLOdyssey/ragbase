@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import statistics
 import time
 
@@ -11,7 +12,8 @@ import pytest
 
 pytestmark = pytest.mark.benchmark
 
-BASE = "http://localhost:8080"
+# 全容器模式默认 8080；混合模式用 BENCH_BASE_URL 覆盖（如 8081）。
+BASE = os.environ.get("BENCH_BASE_URL", "http://localhost:8080")
 
 
 class TestHTTPBenchmark:

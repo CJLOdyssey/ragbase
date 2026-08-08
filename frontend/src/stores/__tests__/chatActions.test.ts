@@ -293,16 +293,22 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
     expect(s.activeRunId).toBe('run-1');
     const updatedUser = s.messages[0];
     expect(updatedUser.content).toBe('new question');
-    expect(updatedUser.userVersions).toBeUndefined();
-    expect(updatedUser.currentUserVersion).toBeUndefined();
+    // Edit history archived on the user message (version chain drives branch nav).
+    expect(updatedUser.userVersions).toEqual(['old question', 'new question']);
+    expect(updatedUser.currentUserVersion).toBe(1);
     // The old answer is NOT deleted — it stays as the merge target for the stream.
-    expect(s.messages.map((m) => m.id)).toEqual(['u1', 'a1']);
+    // (User message id is rewritten to the synthetic run-{run_id}-requirement by
+    // submitRequirement for edit routing.)
+    expect(s.messages.map((m) => m.id)).toEqual([
+      'run-run-1-requirement',
+      'a1',
+    ]);
     expect(mockSubmitReq).toHaveBeenCalledWith(
       'new question',
       'sess-1',
       'key-1',
       'deepseek-chat',
-      undefined,
+      null,
     );
   });
 
@@ -319,14 +325,14 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
     expect(s.editTargetId).toBeNull();
     expect(s.activeRunId).toBe('run-1');
     expect(s.messages[0].content).toBe('edited solo');
-    expect(s.messages[0].userVersions).toBeUndefined();
-    expect(s.messages[0].currentUserVersion).toBeUndefined();
+    expect(s.messages[0].userVersions).toEqual(['solo', 'edited solo']);
+    expect(s.messages[0].currentUserVersion).toBe(1);
     expect(mockSubmitReq).toHaveBeenCalledWith(
       'edited solo',
       'sess-1',
       'key-1',
       'deepseek-chat',
-      undefined,
+      null,
     );
   });
 
@@ -343,9 +349,8 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
     expect(useChatStore.getState().messages[0].userVersions).toBeUndefined();
   });
 
-  it('does not write userVersions on a second edit', async () => {
-    // Branch model: user messages carry no per-edit version history, even if
-    // one was seeded before this refactor.
+  it('appends to the version chain on a second edit', async () => {
+    // Version chain grows on each edit: [v1, v2] → [v1, v2, v3].
     useChatStore.setState({
       messages: [
         makeMsg({
@@ -363,14 +368,25 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
 
     const msg = useChatStore.getState().messages[0];
     expect(msg.content).toBe('v3 content');
-    expect(msg.userVersions).toBeUndefined();
-    expect(msg.currentUserVersion).toBeUndefined();
+    expect(msg.userVersions).toEqual([
+      'v1 content',
+      'v2 content',
+      'v3 content',
+    ]);
+    expect(msg.currentUserVersion).toBe(2);
   });
 
-  it('parses parent_run_id from the synthetic user message id', async () => {
+  it('uses parentRunId from the loaded message (not synthetic id parsing)', async () => {
+    // Loaded user messages carry parent_run_id (buildPathTurns); edits branch a
+    // sibling from it. Synthetic "run-{id}-requirement" parsing is gone.
     useChatStore.setState({
       messages: [
-        makeMsg({ id: 'run-abc123-requirement', role: 'user', content: 'old' }),
+        makeMsg({
+          id: 'run-abc123-requirement',
+          role: 'user',
+          content: 'old',
+          parentRunId: 'parent-7',
+        }),
       ],
       currentSessionId: 'sess-1',
     });
@@ -383,7 +399,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
       'sess-1',
       'key-1',
       'deepseek-chat',
-      'abc123',
+      'parent-7',
     );
   });
 });
@@ -591,7 +607,9 @@ describe('continueGeneration', { tags: ['unit'] }, () => {
     expect(state.status).toBe('running');
   });
 
-  it('uses versions when available for pending state', async () => {
+  it('does not archive versions into pending state (dead field in branch model)', async () => {
+    // Branch model: continuation replaces the interrupted message; versions are
+    // not carried into pendingVersions (field is a leftover, never consumed).
     const interrupted = makeMsg({
       id: 'int-2',
       role: 'agent',
@@ -608,7 +626,7 @@ describe('continueGeneration', { tags: ['unit'] }, () => {
     await continueGeneration();
 
     const state = useChatStore.getState();
-    expect(state.pendingVersions).toEqual(['v1', 'v2']);
+    expect(state.pendingVersions).toBeNull();
     expect(state.pendingThinkingVersions).toBeNull();
   });
 

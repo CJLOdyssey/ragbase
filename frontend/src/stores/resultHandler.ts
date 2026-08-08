@@ -130,7 +130,7 @@ export function handleResultEvent(
       });
     }
     // 重新生成完成：给新模型消息挂答案分页（同 requirement 答案组 =
-    // 旧 run 列表 + 新 run），本地切换无需整分支加载。
+    // 旧 run 列表 + 新 run），切换走分支加载（父链 + 子孙链）。
     let pendingRegenerate = _s.pendingRegenerate;
     const done = msgs.find((m) => m.id === _s.streamingId);
     if (done && pendingRegenerate && runId) {
@@ -150,21 +150,8 @@ export function handleResultEvent(
       );
       pendingRegenerate = null;
     }
-    // 流式结束：记录当前 run 的 agent turn（分页版本切换时模型消息联动）
-    const doneAfter = msgs.find((m) => m.id === _s.streamingId);
-    const runTurns =
-      doneAfter && runId
-        ? {
-            ..._s.runTurns,
-            [runId]: {
-              content: doneAfter.content ?? '',
-              thinking: doneAfter.thinking ?? '',
-            },
-          }
-        : _s.runTurns;
     return {
       messages: msgs,
-      runTurns,
       pendingRegenerate,
       status: 'idle' as ChatState['status'],
       streamingId: null,

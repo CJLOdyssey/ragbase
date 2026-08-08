@@ -48,7 +48,7 @@ def create_redis() -> Any:
     """
     if SENTINEL_ENABLED:
         sentinel = _get_sentinel()
-        max_connections = int(os.environ.get("REDIS_POOL_SIZE", "20"))
+        max_connections = int(os.environ.get("REDIS_POOL_SIZE", "100"))
         kwargs: dict[str, Any] = {
             "db": SENTINEL_DB,
             "decode_responses": True,
@@ -64,7 +64,7 @@ def create_redis() -> Any:
 
     # Direct connection — read REDIS_URL from env to avoid circular imports
     url = os.environ.get("REDIS_URL", "redis://localhost:6380/0")
-    max_connections = int(os.environ.get("REDIS_POOL_SIZE", "20"))
+    max_connections = int(os.environ.get("REDIS_POOL_SIZE", "100"))
     return AsyncRedis.from_url(
         url,
         max_connections=max_connections,

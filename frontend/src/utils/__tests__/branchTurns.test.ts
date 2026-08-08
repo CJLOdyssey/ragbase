@@ -57,7 +57,7 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
         '你知道什么是skill 吗',
       ]),
     ];
-    const { loaded, runTurns } = buildPathTurns([runs[0], runs[1]], runs);
+    const loaded = buildPathTurns([runs[0], runs[1]], runs);
     const agentMsg = loaded.find((m) => m.content === '你知道什么是agent 吗');
     expect(agentMsg?.userVersions).toEqual([
       '你知道什么是agent 吗',
@@ -72,10 +72,6 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
     );
     expect(agentTurn?.answerVersions).toBeUndefined();
     expect(agentTurn?.answerRunIds).toBeUndefined();
-    expect(runTurns.r2).toEqual({
-      content: '回答:你知道什么是agent 吗',
-      thinking: '思考:你知道什么是agent 吗',
-    });
   });
 
   it('重新生成：模型消息分页 = 同一问题的不同回答（requirement 相同），不切分支', () => {
@@ -94,7 +90,7 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
         '你知道什么是skill 吗',
       ]),
     ];
-    const { loaded, runTurns } = buildPathTurns([runs[0], runs[3]], runs);
+    const loaded = buildPathTurns([runs[0], runs[3]], runs);
 
     // user 消息版本器 = unique 文本分支（agent / skill）：同文本的重新生成
     // 分支（r4）折叠进模型答案分页，不在用户版本器重复出现
@@ -117,16 +113,6 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
     expect(agentTurn?.answerRunIds).toEqual(['r3', 'r4']);
     expect(agentTurn?.currentAnswerVersion).toBe(1);
     expect(agentTurn?.userMsgId).toBe(userMsg?.id);
-
-    // runTurns 覆盖答案组全部 run → 模型分页本地切换，无需整分支加载
-    expect(runTurns.r3).toEqual({
-      content: '回答:你知道什么是skill 吗',
-      thinking: '思考:你知道什么是skill 吗',
-    });
-    expect(runTurns.r4).toEqual({
-      content: '回答:你知道什么是skill 吗',
-      thinking: '思考:你知道什么是skill 吗',
-    });
   });
 
   it('后续追问 turn：模型消息也无版本数据', () => {
@@ -146,7 +132,7 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
         'agent出现的年份',
       ]),
     ];
-    const { loaded } = buildPathTurns([runs[0], runs[1], runs[3]], runs);
+    const loaded = buildPathTurns([runs[0], runs[1], runs[3]], runs);
     const followUp = loaded.find((m) => m.content === 'agent出现的年份');
     expect(followUp?.userVersions).toBeUndefined();
     expect(followUp?.versionRunIds).toBeUndefined();
@@ -170,7 +156,7 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
         '你知道什么是skill 吗',
       ]),
     ];
-    const { loaded } = buildPathTurns([runs[0], runs[2]], runs);
+    const loaded = buildPathTurns([runs[0], runs[2]], runs);
     expect(loaded.map((m) => m.content)).toEqual([
       '你是什么模型',
       '回答:你是什么模型',
@@ -184,7 +170,7 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
       makeRun('r1', '什么是 RAG', null, '2026-08-08T00:00:00Z'),
       makeRun('r2', '什么是 RAG', null, '2026-08-08T00:01:00Z'),
     ];
-    const { loaded } = buildPathTurns([runs[1]], runs);
+    const loaded = buildPathTurns([runs[1]], runs);
 
     // 纯重新生成链：用户版本器文本 unique 只剩 1 项 → 不挂（避免与模型
     // 答案分页重复）；模型消息分页 = 同问题的不同回答
@@ -197,24 +183,5 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
     expect(agentTurn?.answerRunIds).toEqual(['r1', 'r2']);
     expect(agentTurn?.currentAnswerVersion).toBe(1);
     expect(agentTurn?.userMsgId).toBe(userMsg?.id);
-  });
-
-  it('runTurns：runId → agent turn 联动', () => {
-    const runs = [
-      makeRun('r1', '你是什么模型', null, '2026-08-08T00:00:00Z'),
-      makeRun('r2', '你知道什么是agent 吗', 'r1', '2026-08-08T00:01:00Z', [
-        '你是什么模型',
-        '你知道什么是agent 吗',
-      ]),
-    ];
-    const { runTurns } = buildPathTurns(runs, runs);
-    expect(runTurns.r1).toEqual({
-      content: '回答:你是什么模型',
-      thinking: '思考:你是什么模型',
-    });
-    expect(runTurns.r2).toEqual({
-      content: '回答:你知道什么是agent 吗',
-      thinking: '思考:你知道什么是agent 吗',
-    });
   });
 });

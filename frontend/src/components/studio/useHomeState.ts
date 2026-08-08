@@ -217,7 +217,7 @@ export function useHomeState() {
         const detail = await getSessionDetail(convId);
         if (seq !== loadSeqRef.current) return;
         const { path, active } = buildRunPath(detail.runs ?? []);
-        const { loaded, runTurns } = buildPathTurns(path, detail.runs ?? []);
+        const loaded = buildPathTurns(path, detail.runs ?? []);
 
         // Persisted messages are completed turns — mark agent thinking as done
         // so the ThinkingSection shows "已思考" instead of a stuck spinner.
@@ -226,9 +226,8 @@ export function useHomeState() {
             m.thinkingDone = true;
           }
         }
-        useChatStore.getState().loadConversation(loaded, convId, convId);
+        useChatStore.getState().loadConversation(loaded, convId);
         useChatStore.getState().setActiveRunId(active);
-        useChatStore.getState().setRunTurns(runTurns);
         Logger.info(
           '[loadConv] conv=%s runs=%d path=%d loaded=%d lastRun=%s',
           convId.slice(0, 8),
@@ -252,7 +251,9 @@ export function useHomeState() {
   // 分支语义：切版本 = 切分支，视图整体切到目标 run 所在分支的全部消息
   // （父链 + 子孙链，后续轮次跟随目标分支；不在该分支的轮次仅视图隐藏，DB 留存）。
   const handleSwitchBranch = useCallback(async (runId: string) => {
-    const convId = useChatStore.getState().currentConvId;
+    // currentSessionId 即当前会话 id（loadConversation 与流式提交均设置；
+    // 历史 currentConvId 已合并至此字段）。
+    const convId = useChatStore.getState().currentSessionId;
     if (!convId) return;
     const seq = ++loadSeqRef.current;
     try {
@@ -265,19 +266,18 @@ export function useHomeState() {
           .filter((id): id is string => !!id),
       );
       const path = buildBranchPath(detail.runs ?? [], runId, currentPath);
-      const { loaded, runTurns } = buildPathTurns(path, detail.runs ?? []);
+      const loaded = buildPathTurns(path, detail.runs ?? []);
       for (const m of loaded) {
         if (m.role !== 'user' && m.thinkingDone === undefined) {
           m.thinkingDone = true;
         }
       }
-      useChatStore.getState().loadConversation(loaded, convId, convId);
+      useChatStore.getState().loadConversation(loaded, convId);
       // activeRunId 设为加载分支的末端（buildBranchPath 可能经 tail 选择了
       // 平行分支），后续追问才挂到当前显示的分支而非传入的父节点。
       useChatStore
         .getState()
         .setActiveRunId(path[path.length - 1]?.id ?? runId);
-      useChatStore.getState().setRunTurns(runTurns);
       Logger.info(
         '[switchBranch] run=%s runs=%d path=%d loaded=%d',
         runId.slice(0, 8),

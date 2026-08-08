@@ -173,6 +173,10 @@ async def _run_agent_pipeline(
     except asyncio.CancelledError:
         # "停止生成"：task.cancel() 沿 await 链传播，上游 LLM 请求随之中断。
         logger.warning("[TASKS] Agent pipeline cancelled (run=%s)", run_id)
+        # 半截内容也落库（只要有消息就入库）：取消时 emitter 中未 flush 的
+        # 流式正文/思考保存为 chat_message，刷新后仍可见。
+        with contextlib.suppress(Exception):
+            await emitter.persist_partial()
         with contextlib.suppress(Exception):
             await update_run_status(run_id, "cancelled")
         with contextlib.suppress(Exception):

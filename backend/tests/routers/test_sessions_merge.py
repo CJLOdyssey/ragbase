@@ -27,4 +27,6 @@ async def test_requirement_message_per_run(db_engine):
     msgs = with_requirement_message(run, [])
     assert msgs[0]["id"] == "run-r1-requirement"
     assert msgs[0]["content"] == "q2"
-    assert "user_versions" not in msgs[0]
+    # 编辑链版本（requirement_versions）挂到合成消息 → 分支导航可用；
+    # 无编辑历史时为 None（前端按 undefined/空处理）。
+    assert msgs[0]["user_versions"] is None

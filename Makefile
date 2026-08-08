@@ -1,4 +1,4 @@
-.PHONY: test test-backend test-frontend lint-backend typecheck-backend lint-frontend coverage e2e-env test-e2e
+.PHONY: test test-backend test-frontend lint-backend typecheck-backend lint-frontend coverage e2e-env test-e2e test-benchmark
 
 # 统一排除规则：integration 需要真后端+docker (有 @pytest.mark.integration)，
 # benchmark 是性能测试（locust 覆盖）。与 CI (pytest-split) 共用同一 marker 约定，
@@ -48,6 +48,17 @@ e2e-env:
 ## 跑 API 级 E2E（需要 e2e-env + 后端已启动在 8082）
 test-e2e:
 	pytest backend/tests/e2e/ -m integration
+
+## 性能基准（需要活后端，默认 8082 E2E 后端）。
+## 压测会并发打满连接池 — 后端需配大池（REDIS_POOL_SIZE/DATABASE_POOL_SIZE，
+## 参考下方 8082 启动示例）。-n 0 强制单进程：xdist 多 worker 并发压测会
+## 打爆单 uvicorn（累计 1200+ 并发 → 503/超时）。
+## 8082 启动示例：
+##   PORT=8082 REDIS_POOL_SIZE=256 DATABASE_POOL_SIZE=256 bash scripts/dev/run-backend.sh
+test-benchmark:
+	E2E_BASE_URL=http://localhost:8082 \
+	BENCH_BASE_URL=http://localhost:8082 BENCH_WS_URL=ws://localhost:8082 \
+	pytest backend/tests/benchmark/ -m benchmark -n 0
 
 .PHONY: dev-backend dev-backend-reload dev-backend-logs restart-backend health
 

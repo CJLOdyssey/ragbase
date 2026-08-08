@@ -1,7 +1,7 @@
 """Unit tests for """
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -33,6 +33,7 @@ class TestRunService:
         with (
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
+            patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_service.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.get_api_key_for_model") as mock_get_model,
             patch("services.run_service.get_default_api_key") as mock_get_default,
@@ -60,6 +61,7 @@ class TestRunService:
         with (
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
+            patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_service.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages") as mock_buffer,
             patch("services.run_service.asyncio.create_task"),
@@ -128,6 +130,7 @@ class TestRunService:
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.create_session") as mock_create_sess,
+            patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_service.get_api_key_for_model") as mock_get_model,
             patch("services.run_service.get_default_api_key") as mock_get_default,
             patch("services.run_service.buffer_run_messages"),
@@ -159,6 +162,7 @@ class TestRunService:
         with (
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
+            patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_service.get_api_key_for_model") as mock_get_model,
             patch("services.run_service.get_default_api_key") as mock_get_default,
             patch("repository.create_run") as mock_db_create_run,
@@ -186,6 +190,7 @@ class TestRunService:
         with (
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
+            patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_service.get_api_key_for_model") as mock_get_model,
             patch("services.run_service.get_default_api_key") as mock_get_default,
             patch("services.run_service.buffer_run_messages"),
@@ -327,6 +332,7 @@ class TestRunService:
         with (
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
+            patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_service.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages"),
             patch("services.run_service.asyncio.create_task") as mock_create_task,
@@ -365,6 +371,7 @@ class TestRunService:
         with (
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
+            patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_service.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages"),
             patch("services.run_service.asyncio.create_task") as mock_create_task,

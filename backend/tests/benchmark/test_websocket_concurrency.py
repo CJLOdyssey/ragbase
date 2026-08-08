@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 
 import pytest
@@ -30,7 +31,7 @@ def _clear_limits():
 
 pytestmark = pytest.mark.benchmark
 
-WS_BASE = "ws://localhost:8080"
+WS_BASE = os.environ.get("BENCH_WS_URL", "ws://localhost:8080")
 
 
 class TestWebSocketConcurrency:

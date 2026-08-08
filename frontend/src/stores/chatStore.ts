@@ -11,9 +11,7 @@ export type { WsConnectionStatus, ChatState } from './chatTypes';
 const INITIAL_STATE = {
   currentRunId: null,
   activeRunId: null,
-  runTurns: {},
   currentSessionId: null,
-  currentConvId: null,
   messages: [],
   status: 'idle' as AppStatus,
   result: null,
@@ -31,6 +29,13 @@ const INITIAL_STATE = {
   wsStatus: 'disconnected' as ChatState['wsStatus'],
   submissionConvId: null,
 };
+
+// 版本分页通用计算：方向 → 合法索引（越界夹取），未变时返回 null。
+function clampVersion(total: number, cur: number, direction: 'prev' | 'next') {
+  const nv =
+    direction === 'prev' ? Math.max(0, cur - 1) : Math.min(total - 1, cur + 1);
+  return nv === cur ? null : nv;
+}
 
 export const useChatStore = create<ChatState>((set, get) => ({
   ...INITIAL_STATE,
@@ -54,11 +59,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
-  loadConversation: (
-    messages: ChatMessage[],
-    convId?: string | null,
-    sessionId?: string | null,
-  ) => {
+  loadConversation: (messages: ChatMessage[], sessionId?: string | null) => {
     const s = get();
     const prevRunId = s.currentRunId;
     if (prevRunId) {
@@ -70,8 +71,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
     set({
       messages,
-      runTurns: {},
-      currentConvId: convId ?? null,
       currentSessionId: sessionId ?? null,
       currentRunId: null,
       activeRunId: null,
@@ -144,6 +143,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ ...INITIAL_STATE, submissionConvId: null });
   },
 
+  // 用户消息版本切换（分支语义）：计算目标 runId（越界夹取），null = 无变化。
+  resolveUserVersionTarget: (msgId, direction) => {
+    const msg = get().messages.find((m) => m.id === msgId);
+    if (!msg) return null;
+    const versions = msg.userVersions;
+    const versionRunIds = msg.versionRunIds;
+    if (!versions || versions.length < 2) return null;
+    const nv = clampVersion(
+      versions.length,
+      msg.currentUserVersion ?? versions.length - 1,
+      direction,
+    );
+    if (nv === null) return null;
+    return versionRunIds?.[nv] ?? null;
+  },
+
+  // 模型消息答案分页（重新生成分支，与用户消息 1:N）：计算目标 runId。
+  resolveAnswerVersionTarget: (msgId, direction) => {
+    const msg = get().messages.find((m) => m.id === msgId);
+    if (!msg) return null;
+    const versions = msg.answerVersions;
+    const runIds = msg.answerRunIds;
+    if (!versions || !runIds || versions.length < 2) return null;
+    const nv = clampVersion(
+      versions.length,
+      msg.currentAnswerVersion ?? versions.length - 1,
+      direction,
+    );
+    if (nv === null) return null;
+    return runIds[nv] ?? null;
+  },
+
   setThumbsFeedback: (msgId, value) => {
     set((s) => ({
       messages: s.messages.map((m) =>
@@ -151,8 +182,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ),
     }));
   },
-
-  setRunTurns: (turns) => set({ runTurns: turns }),
 }));
 
 export {

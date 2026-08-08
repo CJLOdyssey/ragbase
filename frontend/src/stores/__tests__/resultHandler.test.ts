@@ -89,7 +89,7 @@ describe('handleThinkingDone', { tags: ['unit'] }, () => {
     expect(result.messages![0].agent_name).toBe('Agent');
   });
 
-  it('preserves versions when pendingVersions present', () => {
+  it('clears pendingVersions without archival (dead field in branch model)', () => {
     const s = makeState({
       continuingId: 'msg-1',
       pendingVersions: ['v1', 'v2'],
@@ -106,10 +106,7 @@ describe('handleThinkingDone', { tags: ['unit'] }, () => {
 
     expect(result.pendingVersions).toBeNull();
     expect(result.pendingThinkingVersions).toBeNull();
-    expect(result.messages![0].versions).toBeDefined();
-    expect(
-      result.messages![0].versions![result.messages![0].versions!.length - 1],
-    ).toBe('old content');
+    expect(result.messages![0].versions).toBeUndefined();
   });
 });
 
