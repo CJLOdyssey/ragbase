@@ -66,6 +66,8 @@ export interface ChatMessage {
   versionRunIds?: string[];
   /** 本消息对应 run 的 parent_run_id（编辑产生兄弟分支时使用） */
   parentRunId?: string | null;
+  /** 配对的用户消息 id（模型消息分页切换时归一化到用户消息） */
+  userMsgId?: string;
   currentUserVersion?: number;
   thumbsFeedback?: 'up' | 'down' | null;
   interrupted?: boolean;

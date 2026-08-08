@@ -151,24 +151,32 @@ export async function submitRequirement(
         return { messages: msgs };
       });
     } else {
-      // Edit-regenerate: rebind the EDITED user message to the new run, or the
-      // next edit resolves parent_run_id to the stale first run and the backend
-      // requirement_versions chain silently drops intermediate versions.
+      // Edit-regenerate / regenerate: rebind the target user message to the new
+      // run, or the next edit resolves parent_run_id to a stale run and the
+      // backend requirement_versions chain silently drops intermediate versions.
       useChatStore.setState((prev) => {
         const msgs = [...prev.messages];
-        const targetIdx = msgs.findIndex((m) => m.id === prev.editTargetId);
-        const userIdx = targetIdx > 0 ? targetIdx - 1 : -1;
+        // edit 场景：editTargetId 前一条用户消息；regenerate 场景：截断后最后一条。
+        const targetIdx = prev.editTargetId
+          ? msgs.findIndex((m) => m.id === prev.editTargetId) - 1
+          : msgs.length - 1;
         const u =
-          userIdx >= 0 && msgs[userIdx].role === 'user' ? msgs[userIdx] : null;
-        if (u && u.id.startsWith('run-') && u.id.endsWith('-requirement')) {
-          msgs[userIdx] = {
-            ...u,
-            id: `run-${run_id}-requirement`,
-            runId: run_id,
-            // 版本链最后一跳 = 新 run
-            versionRunIds: [...(u.versionRunIds ?? []), run_id],
-          };
-        }
+          targetIdx >= 0 && msgs[targetIdx]?.role === 'user'
+            ? msgs[targetIdx]
+            : null;
+        if (!u) return { messages: msgs };
+        // 版本链最后一跳 = 新 run。userVersions/currentUserVersion 不在此写：
+        // 用户消息版本器由加载时 attachBranchVersions 全量挂载（branchGroup），
+        // 流式路径只维护 run 映射（versionRunIds）。
+        const versionRunIds = u.versionRunIds
+          ? [...u.versionRunIds, run_id]
+          : [run_id];
+        msgs[targetIdx] = {
+          ...u,
+          id: `run-${run_id}-requirement`,
+          runId: run_id,
+          versionRunIds,
+        };
         return { messages: msgs };
       });
     }
@@ -202,20 +210,33 @@ export async function regenerateMessage(msgIndex: number) {
   if (!userMsg) return;
   if (s.currentRunId) disconnectRun(s.currentRunId);
 
-  // The synthetic user message id is "run-{run_id}-requirement" — parse the run
-  // this regeneration replaces so the backend links the edit chain
-  // (parent_run_id); merge_edit_chains then folds the old answer into versions
-  // instead of leaving an orphan run (stale reply + duplicated user message).
-  let parentRunId: string | undefined;
-  if (userMsg.id?.startsWith('run-') && userMsg.id.endsWith('-requirement')) {
-    parentRunId = userMsg.id.slice(4, -'-requirement'.length);
-  }
+  // 重新生成 = 重新回答该用户问题，产生兄弟分支：新 run 的 parent = 被重
+  // 生成 turn 的 parent（与编辑一致），而非 turn 自身。parentRunId 在加载
+  // （buildPathTurns）与流式提交（submitRequirement）时都注入，刷新后仍可靠；
+  // 不能用 synthetic id "run-{id}-requirement"（仅流式会话存在，刷新后消失）。
+  const parentRunId = userMsg.parentRunId ?? null;
+  // 被重新生成 turn 的旧 run：优先接续已有答案分页列表（多次重新生成累积），
+  // 否则用消息 runId（流式消息带 runId，加载消息经 buildPathTurns 注入）。
+  const modelMsg = s.messages[msgIndex];
+  const oldRunIds =
+    modelMsg?.versionRunIds && modelMsg.versionRunIds.length > 0
+      ? modelMsg.versionRunIds
+      : modelMsg?.runId
+        ? [modelMsg.runId]
+        : [];
 
   useChatStore.setState({
     status: 'loading',
     error: null,
     result: null,
+    streamingId: null,
+    skipThinking: false,
     messages: s.messages.slice(0, msgIndex),
+    pendingRegenerate: {
+      userMsgId: userMsg.id,
+      oldRunIds,
+      requirement: userMsg.content,
+    },
   });
   await submitRequirement(
     userMsg.content,

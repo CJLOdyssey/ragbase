@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { ChatMessage, ProjectRun, SessionItem } from '../../types';
+import type { ProjectRun, SessionItem } from '../../types';
 import type { ModelOption } from '../../types/input';
 import type { Conversation, Message } from '../../types/studio';
 import { listModels } from '../../api/client/models';
@@ -15,6 +15,7 @@ import {
 } from '../../api/client/sessions';
 import { submitRequirement } from '../../stores/chatActions';
 import { useChatStore } from '../../stores/chatStore';
+import { buildPathTurns } from '../../utils/branchTurns';
 import Logger from '../../utils/logger';
 import { useSettings } from '../../contexts/SettingsContext';
 
@@ -100,47 +101,6 @@ function buildBranchPath(
   return [...parentPath, ...tail];
 }
 
-// 路径 turns：平铺消息 + runTurns（runId → agent turn）+ 版本映射（versionRunIds）
-function buildPathTurns(path: ProjectRun[]): {
-  loaded: ChatMessage[];
-  runTurns: Record<string, { content: string; thinking: string }>;
-} {
-  const loaded: ChatMessage[] = [];
-  const runTurns: Record<string, { content: string; thinking: string }> = {};
-  for (let i = 0; i < path.length; i++) {
-    const run = path[i];
-    for (const m of run.messages ?? []) {
-      loaded.push({
-        ...m,
-        runId: run.id,
-        parentRunId: run.parent_run_id ?? null,
-      });
-    }
-    // 版本计数：user 消息带 requirement_versions（run 层）
-    const uIdx = loaded.findIndex(
-      (m) => m.runId === run.id && m.role === 'user',
-    );
-    if (uIdx >= 0 && run.requirement_versions?.length) {
-      loaded[uIdx] = {
-        ...loaded[uIdx],
-        userVersions: run.requirement_versions,
-        // 版本 i 的 run = 路径上第 i 个 run（parent 链，根在前）
-        versionRunIds: path.slice(0, i + 1).map((r) => r.id),
-        currentUserVersion: run.requirement_versions.length - 1,
-      };
-    }
-    // runTurns：runId → agent turn（分页切换时模型消息联动）
-    const agentMsg = (run.messages ?? []).find((m) => m.role !== 'user');
-    if (agentMsg) {
-      runTurns[run.id] = {
-        content: agentMsg.content ?? '',
-        thinking: agentMsg.thinking ?? '',
-      };
-    }
-  }
-  return { loaded, runTurns };
-}
-
 export function useHomeState() {
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
@@ -155,6 +115,8 @@ export function useHomeState() {
   const [isApiOpen, setIsApiOpen] = useState(false);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState(readStoredModel);
+  // 加载竞态保护：快速切换会话/分支时，丢弃过期响应（仅最新一次落地）。
+  const loadSeqRef = useRef(0);
 
   useEffect(() => {
     const sync = () => setSelectedModel(readStoredModel());
@@ -216,6 +178,7 @@ export function useHomeState() {
         thinkingDone: m.thinkingDone,
         userVersions: m.userVersions,
         currentUserVersion: m.currentUserVersion,
+        userMsgId: m.userMsgId,
         runId: m.runId,
       })),
     [messages],
@@ -247,10 +210,12 @@ export function useHomeState() {
     async (convId: string | null) => {
       setActiveConvId(convId);
       if (!convId) return;
+      const seq = ++loadSeqRef.current;
       try {
         const detail = await getSessionDetail(convId);
+        if (seq !== loadSeqRef.current) return;
         const { path, active } = buildRunPath(detail.runs ?? []);
-        const { loaded, runTurns } = buildPathTurns(path);
+        const { loaded, runTurns } = buildPathTurns(path, detail.runs ?? []);
 
         // Persisted messages are completed turns — mark agent thinking as done
         // so the ThinkingSection shows "已思考" instead of a stuck spinner.
@@ -262,6 +227,14 @@ export function useHomeState() {
         useChatStore.getState().loadConversation(loaded, convId, convId);
         useChatStore.getState().setActiveRunId(active);
         useChatStore.getState().setRunTurns(runTurns);
+        Logger.info(
+          '[loadConv] conv=%s runs=%d path=%d loaded=%d lastRun=%s',
+          convId.slice(0, 8),
+          (detail.runs ?? []).length,
+          path.length,
+          loaded.length,
+          active?.slice(0, 8) ?? '-',
+        );
       } catch (err) {
         Logger.warn('[useHomeState] failed to load conversation', err);
       }
@@ -279,8 +252,10 @@ export function useHomeState() {
   const handleSwitchBranch = useCallback(async (runId: string) => {
     const convId = useChatStore.getState().currentConvId;
     if (!convId) return;
+    const seq = ++loadSeqRef.current;
     try {
       const detail = await getSessionDetail(convId);
+      if (seq !== loadSeqRef.current) return;
       const currentPath = new Set(
         useChatStore
           .getState()
@@ -288,15 +263,26 @@ export function useHomeState() {
           .filter((id): id is string => !!id),
       );
       const path = buildBranchPath(detail.runs ?? [], runId, currentPath);
-      const { loaded, runTurns } = buildPathTurns(path);
+      const { loaded, runTurns } = buildPathTurns(path, detail.runs ?? []);
       for (const m of loaded) {
         if (m.role !== 'user' && m.thinkingDone === undefined) {
           m.thinkingDone = true;
         }
       }
       useChatStore.getState().loadConversation(loaded, convId, convId);
-      useChatStore.getState().setActiveRunId(runId);
+      // activeRunId 设为加载分支的末端（buildBranchPath 可能经 tail 选择了
+      // 平行分支），后续追问才挂到当前显示的分支而非传入的父节点。
+      useChatStore
+        .getState()
+        .setActiveRunId(path[path.length - 1]?.id ?? runId);
       useChatStore.getState().setRunTurns(runTurns);
+      Logger.info(
+        '[switchBranch] run=%s runs=%d path=%d loaded=%d',
+        runId.slice(0, 8),
+        (detail.runs ?? []).length,
+        path.length,
+        loaded.length,
+      );
     } catch (err) {
       Logger.warn('[useHomeState] failed to switch branch to %s', runId, err);
     }

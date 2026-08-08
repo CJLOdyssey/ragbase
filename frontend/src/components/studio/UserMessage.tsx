@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type * as React from 'react';
-import { ChevronRight, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types/studio';
 import { CopyBtn } from './messages';
+import VersionPager from './VersionPager';
 import { sanitizeHtml } from '../../utils/sanitize';
 
 interface Props {
@@ -109,27 +110,12 @@ export default function UserMessage({
               <Pencil size={12} />
             </button>
             {userVersions.length > 1 && (
-              <div className="flex items-center gap-0.5">
-                <button
-                  className="flex items-center justify-center w-6 h-6 bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-0 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] disabled:opacity-35 disabled:cursor-not-allowed"
-                  onClick={() => onSwitchUserVersion?.(msg.id, 'prev')}
-                  disabled={currentUserVersion === 0}
-                  aria-label="Previous user version"
-                >
-                  <ChevronRight size={12} className="rotate-180" />
-                </button>
-                <span className="text-xs text-[var(--color-text-muted)] min-w-7 text-center select-none">
-                  {currentUserVersion + 1}/{userVersions.length}
-                </span>
-                <button
-                  className="flex items-center justify-center w-6 h-6 bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-0 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] disabled:opacity-35 disabled:cursor-not-allowed"
-                  onClick={() => onSwitchUserVersion?.(msg.id, 'next')}
-                  disabled={currentUserVersion === userVersions.length - 1}
-                  aria-label="Next user version"
-                >
-                  <ChevronRight size={12} />
-                </button>
-              </div>
+              <VersionPager
+                total={userVersions.length}
+                current={currentUserVersion}
+                onPrev={() => onSwitchUserVersion?.(msg.id, 'prev')}
+                onNext={() => onSwitchUserVersion?.(msg.id, 'next')}
+              />
             )}
             {time && (
               <span className="block text-xs text-[var(--color-text-muted)] mt-1 ml-0">

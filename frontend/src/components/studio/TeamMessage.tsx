@@ -18,6 +18,7 @@ import { CopyBtn } from './messages';
 import { markdownComponents, rehypeLinkify } from './thinking';
 import { ThinkingSection } from './ThinkingSection';
 import UserMessage from './UserMessage';
+import VersionPager from './VersionPager';
 
 function PlanCard({
   msg,
@@ -114,6 +115,7 @@ function MessageActionBar({
   showContinue,
   isContinuing,
   onContinue,
+  onSwitchVersion,
   t,
 }: {
   msg: Message;
@@ -123,8 +125,10 @@ function MessageActionBar({
   showContinue?: boolean;
   isContinuing?: boolean;
   onContinue?: () => void;
+  onSwitchVersion?: (msgId: string, direction: 'prev' | 'next') => void;
   t: (key: string) => string;
 }) {
+  const versionTotal = msg.userVersions?.length ?? 0;
   return (
     <div className="flex items-center gap-2 mt-1 w-full">
       <CopyBtn text={msg.content} label={t('teamMessage.copy')} />
@@ -148,6 +152,16 @@ function MessageActionBar({
         onThumbsFeedback={onThumbsFeedback}
         t={t}
       />
+      {versionTotal > 1 && (
+        <VersionPager
+          total={versionTotal}
+          current={msg.currentUserVersion ?? 0}
+          onPrev={() => onSwitchVersion?.(msg.id, 'prev')}
+          onNext={() => onSwitchVersion?.(msg.id, 'next')}
+          prevLabel="Previous answer version"
+          nextLabel="Next answer version"
+        />
+      )}
       {time && (
         <span className="block text-xs text-[var(--color-text-muted)] mt-1 ml-0">
           {time}
@@ -304,6 +318,7 @@ const TeamMessage = memo(function TeamMessage({
               showContinue={showContinue}
               isContinuing={isContinuing}
               onContinue={onContinue}
+              onSwitchVersion={onSwitchUserVersion}
               t={t}
             />
           </>

@@ -3,6 +3,13 @@ import type { AppStatus, ChatMessage, RunResult } from '../types';
 export type WsConnectionStatus =
   'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
+/** 重新生成（regenerate）流式上下文：完成后给新模型消息挂答案分页 */
+export interface RegeneratePending {
+  userMsgId: string;
+  oldRunIds: string[];
+  requirement: string;
+}
+
 export interface ChatState {
   currentRunId: string | null;
   currentSessionId: string | null;
@@ -21,6 +28,8 @@ export interface ChatState {
   skipThinking: boolean;
   pendingVersions: string[] | null;
   pendingThinkingVersions: string[] | null;
+  /** 重新生成进行中（流式完成后给模型消息挂答案分页） */
+  pendingRegenerate: RegeneratePending | null;
   switchUserVersion: (msgId: string, direction: 'prev' | 'next') => void;
   setThumbsFeedback: (msgId: string, value: 'up' | 'down' | null) => void;
   wsStatus: WsConnectionStatus;

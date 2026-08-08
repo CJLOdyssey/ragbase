@@ -128,7 +128,12 @@ async def _run_agent_pipeline(
             for cr in chain[:-1]:  # 不含自身（自身 requirement 由 graph.run 追加）
                 hist = await get_messages(cr.id)
                 req = (cr.requirement or "").strip()
-                if req:
+                # 去重：requirement 与 run 内首条 user 消息内容相同（常规轮次
+                # 两者就是同一问题），只注入一次，省 token 不改变注入内容。
+                first_user = next(
+                    (m.content for m in hist if m.role == "user"), None
+                )
+                if req and req != (first_user or "").strip():
                     chat_history.append(HumanMessage(content=req))
                 for m in hist:
                     if m.role == "user":

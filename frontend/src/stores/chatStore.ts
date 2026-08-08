@@ -26,6 +26,7 @@ const INITIAL_STATE = {
   skipThinking: false,
   pendingVersions: null,
   pendingThinkingVersions: null,
+  pendingRegenerate: null,
   wsStatus: 'disconnected' as ChatState['wsStatus'],
   submissionConvId: null,
 };

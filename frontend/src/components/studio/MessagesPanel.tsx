@@ -1,5 +1,6 @@
 import { RefObject, useCallback } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import type { ChatMessage } from '../../types';
 import type { Agent, Message } from '../../types/studio';
 import {
   continueGeneration,
@@ -9,6 +10,30 @@ import {
 import { useChatStore } from '../../stores/chatStore';
 import BrowserFrame from './BrowserFrame';
 import TeamMessage from './TeamMessage';
+
+// 模型消息答案切换：同一用户问题的不同回答（重新生成链），纯本地联动。
+// 只更新模型消息 content/thinking/currentUserVersion，不动用户消息与分支。
+function applyLocalAnswerSwitch(
+  prev: ChatMessage[],
+  msgId: string,
+  runIds: string[],
+  nv: number,
+  runTurns: Record<string, { content: string; thinking: string }>,
+): ChatMessage[] {
+  const runId = runIds[nv];
+  const turn = runTurns[runId];
+  if (!turn) return prev;
+  return prev.map((m) =>
+    m.id === msgId
+      ? {
+          ...m,
+          content: turn.content,
+          thinking: turn.thinking,
+          currentUserVersion: nv,
+        }
+      : m,
+  );
+}
 
 interface Props {
   showAgentChat: boolean;
@@ -46,48 +71,54 @@ export default function MessagesPanel({
     [displayMessages],
   );
 
-  const handleSwitchUserVersion = useCallback(
+  // 模型消息分页：同一用户问题的不同回答（重新生成链），纯本地切换，
+  // 不联动用户消息、不切分支。
+  const handleSwitchAnswerVersion = useCallback(
     (msgId: string, direction: 'prev' | 'next') => {
       const s = useChatStore.getState();
-      const userMsg = s.messages.find((m) => m.id === msgId);
-      const versions = userMsg?.userVersions;
-      if (!versions || versions.length < 2) return;
-      const cur = userMsg?.currentUserVersion ?? versions.length - 1;
+      const msg = s.messages.find((m) => m.id === msgId);
+      if (!msg) return;
+      const versions = msg.userVersions;
+      const runIds = msg.versionRunIds;
+      if (!versions || !runIds || versions.length < 2) return;
+      const cur = msg.currentUserVersion ?? versions.length - 1;
       const nv =
         direction === 'prev'
           ? Math.max(0, cur - 1)
           : Math.min(versions.length - 1, cur + 1);
       if (nv === cur) return;
-      const versionRunId = userMsg?.versionRunIds?.[nv];
-      // 目标 run 不在当前视图（另一分支）→ 加载该分支完整内容。
-      if (versionRunId && !s.runTurns[versionRunId]) {
-        void onSwitchBranch(versionRunId);
-        return;
-      }
-      // 同分支/线性：本地版本切换，数字 2/2→1/2，内容 + 回答联动，后续轮次保留。
-      const turn = versionRunId ? s.runTurns[versionRunId] : undefined;
-      useChatStore.setState((prev) => {
-        const uIdx = prev.messages.findIndex((m) => m.id === msgId);
-        const aIdx =
-          uIdx >= 0
-            ? prev.messages.findIndex((m, i) => i > uIdx && m.role !== 'user')
-            : -1;
-        return {
-          messages: prev.messages.map((m, i) => {
-            if (i === uIdx) {
-              return {
-                ...m,
-                content: versions[nv],
-                currentUserVersion: nv,
-              };
-            }
-            if (i === aIdx && turn) {
-              return { ...m, content: turn.content, thinking: turn.thinking };
-            }
-            return m;
-          }),
-        };
-      });
+      useChatStore.setState((prev) => ({
+        messages: applyLocalAnswerSwitch(
+          prev.messages,
+          msg.id,
+          runIds,
+          nv,
+          s.runTurns,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const handleSwitchUserVersion = useCallback(
+    (msgId: string, direction: 'prev' | 'next') => {
+      const s = useChatStore.getState();
+      const userMsg = s.messages.find((m) => m.id === msgId);
+      if (!userMsg) return;
+      const versions = userMsg.userVersions;
+      const versionRunIds = userMsg.versionRunIds;
+      if (!versions || versions.length < 2) return;
+      const cur = userMsg.currentUserVersion ?? versions.length - 1;
+      const nv =
+        direction === 'prev'
+          ? Math.max(0, cur - 1)
+          : Math.min(versions.length - 1, cur + 1);
+      if (nv === cur) return;
+      // 用户版本 = 分支语义：始终整分支切换（视图加载目标分支全部消息），
+      // 不做本地联动 — 本地联动只用于模型消息分页（handleSwitchAnswerVersion）。
+      const runId = versionRunIds?.[nv];
+      if (!runId) return;
+      void onSwitchBranch(runId);
     },
     [onSwitchBranch],
   );
@@ -118,7 +149,16 @@ export default function MessagesPanel({
               onRegenerate={handleRegenerate}
               showContinue={msg.id === interruptedMessageId}
               onContinue={continueGeneration}
-              onSwitchUserVersion={handleSwitchUserVersion}
+              onSwitchUserVersion={(id, dir) => {
+                const m = useChatStore
+                  .getState()
+                  .messages.find((x) => x.id === id);
+                if (m?.role === 'user') {
+                  handleSwitchUserVersion(id, dir);
+                } else {
+                  handleSwitchAnswerVersion(id, dir);
+                }
+              }}
               isContinuing={msg.id === continuingId}
               onThumbsFeedback={handleThumbsFeedback}
             />
@@ -150,7 +190,16 @@ export default function MessagesPanel({
               onRegenerate={handleRegenerate}
               showContinue={msg.id === interruptedMessageId}
               onContinue={continueGeneration}
-              onSwitchUserVersion={handleSwitchUserVersion}
+              onSwitchUserVersion={(id, dir) => {
+                const m = useChatStore
+                  .getState()
+                  .messages.find((x) => x.id === id);
+                if (m?.role === 'user') {
+                  handleSwitchUserVersion(id, dir);
+                } else {
+                  handleSwitchAnswerVersion(id, dir);
+                }
+              }}
               isContinuing={msg.id === continuingId}
               onThumbsFeedback={handleThumbsFeedback}
             />

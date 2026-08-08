@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import os
 import time
 from typing import Any
 
@@ -19,7 +20,13 @@ from core.infra.metrics import (
 
 # Hard guard on runaway SSE streams (free-tier LLMs can stream forever, each
 # chunk resetting httpx's read timeout). Truncate past this many SSE lines.
-_MAX_STREAM_LINES = 2000
+#
+# The model supports up to MAX_STREAM_TOKENS output tokens; reasoning models
+# (DeepSeek-R1) can emit very long chain-of-thought, so the line budget must
+# comfortably fit that (SSE emits ~one token per line on these providers).
+# Configurable via LLM_MAX_STREAM_LINES; defaults to 4x the token budget.
+_MAX_STREAM_TOKENS = int(os.environ.get("LLM_MAX_STREAM_TOKENS", "16384"))
+_MAX_STREAM_LINES = int(os.environ.get("LLM_MAX_STREAM_LINES", str(_MAX_STREAM_TOKENS * 4)))
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,

@@ -162,13 +162,23 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
     expect(disconnectRun).toHaveBeenCalledWith('old-run');
     const state = useChatStore.getState();
     expect(state.messages).toHaveLength(1);
-    expect(state.messages[0].id).toBe('u1');
+    // 用户消息 rebind 到新 run（版本链末跳）；userVersions 由加载时挂载，
+    // 流式路径不写
+    expect(state.messages[0].id).toBe('run-run-1-requirement');
+    expect(state.messages[0].runId).toBe('run-1');
+    expect(state.messages[0].versionRunIds).toEqual(['run-1']);
+    expect(state.messages[0].userVersions).toBeUndefined();
+    expect(state.pendingRegenerate).toMatchObject({
+      userMsgId: 'u1',
+      oldRunIds: [],
+      requirement: 'original',
+    });
     expect(mockSubmitReq).toHaveBeenCalledWith(
       'original',
       'sess-1',
       'key-1',
       'deepseek-chat',
-      undefined,
+      null,
     );
   });
 
@@ -205,15 +215,16 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'sess-1',
       'siliconflow-key',
       'Qwen/Qwen3-8B',
-      undefined,
+      null,
     );
   });
 
-  it('passes parent_run_id parsed from the synthetic user message id', async () => {
+  it('passes parent_run_id from the user message parentRunId (sibling branch)', async () => {
     const userMsg = makeMsg({
-      id: 'run-run-abc-requirement',
+      id: 'u1',
       role: 'user',
       content: 'original',
+      parentRunId: 'run-2',
     });
     const agentMsg = makeMsg({ id: 'a1', role: 'agent', content: 'response' });
     useChatStore.setState({
@@ -229,7 +240,32 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'sess-1',
       'key-1',
       'deepseek-chat',
-      'run-abc',
+      'run-2',
+    );
+  });
+
+  it('re-branches at the turn parent, not the turn itself (synthetic id ignored)', async () => {
+    const userMsg = makeMsg({
+      id: 'run-run-abc-requirement',
+      role: 'user',
+      content: 'original',
+      parentRunId: 'run-1',
+    });
+    const agentMsg = makeMsg({ id: 'a1', role: 'agent', content: 'response' });
+    useChatStore.setState({
+      messages: [userMsg, agentMsg],
+      currentSessionId: 'sess-1',
+      currentRunId: 'old-run',
+    });
+
+    await regenerateMessage(1);
+
+    expect(mockSubmitReq).toHaveBeenCalledWith(
+      'original',
+      'sess-1',
+      'key-1',
+      'deepseek-chat',
+      'run-1',
     );
   });
 });
