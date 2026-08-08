@@ -30,7 +30,6 @@ export interface ChatState {
   pendingThinkingVersions: string[] | null;
   /** 重新生成进行中（流式完成后给模型消息挂答案分页） */
   pendingRegenerate: RegeneratePending | null;
-  switchUserVersion: (msgId: string, direction: 'prev' | 'next') => void;
   setThumbsFeedback: (msgId: string, value: 'up' | 'down' | null) => void;
   wsStatus: WsConnectionStatus;
   /** Conversation ID at submission time */

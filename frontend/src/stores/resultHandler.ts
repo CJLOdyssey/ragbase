@@ -140,11 +140,11 @@ export function handleResultEvent(
           ? {
               ...m,
               userMsgId: pendingRegenerate!.userMsgId,
-              userVersions: answerRunIds.map(
+              answerVersions: answerRunIds.map(
                 () => pendingRegenerate!.requirement,
               ),
-              versionRunIds: answerRunIds,
-              currentUserVersion: answerRunIds.length - 1,
+              answerRunIds,
+              currentAnswerVersion: answerRunIds.length - 1,
             }
           : m,
       );

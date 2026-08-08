@@ -49,6 +49,9 @@ export interface Message {
   isTyping?: boolean;
   userVersions?: string[];
   currentUserVersion?: number;
+  /** 模型消息答案分页（重新生成链），与用户版本字段解耦 */
+  answerVersions?: string[];
+  currentAnswerVersion?: number;
   /** 配对的用户消息 id（模型消息分页切换时归一化到用户消息） */
   userMsgId?: string;
   thumbsFeedback?: 'up' | 'down' | null;

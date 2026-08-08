@@ -178,6 +178,8 @@ export function useHomeState() {
         thinkingDone: m.thinkingDone,
         userVersions: m.userVersions,
         currentUserVersion: m.currentUserVersion,
+        answerVersions: m.answerVersions,
+        currentAnswerVersion: m.currentAnswerVersion,
         userMsgId: m.userMsgId,
         runId: m.runId,
       })),

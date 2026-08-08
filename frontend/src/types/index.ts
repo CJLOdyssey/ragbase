@@ -69,6 +69,11 @@ export interface ChatMessage {
   /** 配对的用户消息 id（模型消息分页切换时归一化到用户消息） */
   userMsgId?: string;
   currentUserVersion?: number;
+  /** 模型消息答案分页（重新生成链）：与用户版本（userVersions）解耦的独立字段 */
+  answerVersions?: string[];
+  /** 答案分页 → runId 映射（answerVersions[i] 对应 answerRunIds[i] 的 run turn） */
+  answerRunIds?: string[];
+  currentAnswerVersion?: number;
   thumbsFeedback?: 'up' | 'down' | null;
   interrupted?: boolean;
   runId?: string;

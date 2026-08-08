@@ -219,8 +219,8 @@ export async function regenerateMessage(msgIndex: number) {
   // 否则用消息 runId（流式消息带 runId，加载消息经 buildPathTurns 注入）。
   const modelMsg = s.messages[msgIndex];
   const oldRunIds =
-    modelMsg?.versionRunIds && modelMsg.versionRunIds.length > 0
-      ? modelMsg.versionRunIds
+    modelMsg?.answerRunIds && modelMsg.answerRunIds.length > 0
+      ? modelMsg.answerRunIds
       : modelMsg?.runId
         ? [modelMsg.runId]
         : [];

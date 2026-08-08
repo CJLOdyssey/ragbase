@@ -12,7 +12,7 @@ import BrowserFrame from './BrowserFrame';
 import TeamMessage from './TeamMessage';
 
 // 模型消息答案切换：同一用户问题的不同回答（重新生成链），纯本地联动。
-// 只更新模型消息 content/thinking/currentUserVersion，不动用户消息与分支。
+// 只更新模型消息 content/thinking/currentAnswerVersion，不动用户消息与分支。
 function applyLocalAnswerSwitch(
   prev: ChatMessage[],
   msgId: string,
@@ -29,10 +29,17 @@ function applyLocalAnswerSwitch(
           ...m,
           content: turn.content,
           thinking: turn.thinking,
-          currentUserVersion: nv,
+          currentAnswerVersion: nv,
         }
       : m,
   );
+}
+
+// 版本分页通用计算：方向 → 合法索引（越界夹取），未变时返回 null。
+function clampVersion(total: number, cur: number, direction: 'prev' | 'next') {
+  const nv =
+    direction === 'prev' ? Math.max(0, cur - 1) : Math.min(total - 1, cur + 1);
+  return nv === cur ? null : nv;
 }
 
 interface Props {
@@ -78,15 +85,12 @@ export default function MessagesPanel({
       const s = useChatStore.getState();
       const msg = s.messages.find((m) => m.id === msgId);
       if (!msg) return;
-      const versions = msg.userVersions;
-      const runIds = msg.versionRunIds;
+      const versions = msg.answerVersions;
+      const runIds = msg.answerRunIds;
       if (!versions || !runIds || versions.length < 2) return;
-      const cur = msg.currentUserVersion ?? versions.length - 1;
-      const nv =
-        direction === 'prev'
-          ? Math.max(0, cur - 1)
-          : Math.min(versions.length - 1, cur + 1);
-      if (nv === cur) return;
+      const cur = msg.currentAnswerVersion ?? versions.length - 1;
+      const nv = clampVersion(versions.length, cur, direction);
+      if (nv === null) return;
       useChatStore.setState((prev) => ({
         messages: applyLocalAnswerSwitch(
           prev.messages,
@@ -109,11 +113,8 @@ export default function MessagesPanel({
       const versionRunIds = userMsg.versionRunIds;
       if (!versions || versions.length < 2) return;
       const cur = userMsg.currentUserVersion ?? versions.length - 1;
-      const nv =
-        direction === 'prev'
-          ? Math.max(0, cur - 1)
-          : Math.min(versions.length - 1, cur + 1);
-      if (nv === cur) return;
+      const nv = clampVersion(versions.length, cur, direction);
+      if (nv === null) return;
       // 用户版本 = 分支语义：始终整分支切换（视图加载目标分支全部消息），
       // 不做本地联动 — 本地联动只用于模型消息分页（handleSwitchAnswerVersion）。
       const runId = versionRunIds?.[nv];
@@ -149,16 +150,8 @@ export default function MessagesPanel({
               onRegenerate={handleRegenerate}
               showContinue={msg.id === interruptedMessageId}
               onContinue={continueGeneration}
-              onSwitchUserVersion={(id, dir) => {
-                const m = useChatStore
-                  .getState()
-                  .messages.find((x) => x.id === id);
-                if (m?.role === 'user') {
-                  handleSwitchUserVersion(id, dir);
-                } else {
-                  handleSwitchAnswerVersion(id, dir);
-                }
-              }}
+              onSwitchUserVersion={handleSwitchUserVersion}
+              onSwitchAnswer={handleSwitchAnswerVersion}
               isContinuing={msg.id === continuingId}
               onThumbsFeedback={handleThumbsFeedback}
             />
@@ -190,16 +183,8 @@ export default function MessagesPanel({
               onRegenerate={handleRegenerate}
               showContinue={msg.id === interruptedMessageId}
               onContinue={continueGeneration}
-              onSwitchUserVersion={(id, dir) => {
-                const m = useChatStore
-                  .getState()
-                  .messages.find((x) => x.id === id);
-                if (m?.role === 'user') {
-                  handleSwitchUserVersion(id, dir);
-                } else {
-                  handleSwitchAnswerVersion(id, dir);
-                }
-              }}
+              onSwitchUserVersion={handleSwitchUserVersion}
+              onSwitchAnswer={handleSwitchAnswerVersion}
               isContinuing={msg.id === continuingId}
               onThumbsFeedback={handleThumbsFeedback}
             />

@@ -128,7 +128,7 @@ function MessageActionBar({
   onSwitchVersion?: (msgId: string, direction: 'prev' | 'next') => void;
   t: (key: string) => string;
 }) {
-  const versionTotal = msg.userVersions?.length ?? 0;
+  const versionTotal = msg.answerVersions?.length ?? 0;
   return (
     <div className="flex items-center gap-2 mt-1 w-full">
       <CopyBtn text={msg.content} label={t('teamMessage.copy')} />
@@ -155,7 +155,7 @@ function MessageActionBar({
       {versionTotal > 1 && (
         <VersionPager
           total={versionTotal}
-          current={msg.currentUserVersion ?? 0}
+          current={msg.currentAnswerVersion ?? 0}
           onPrev={() => onSwitchVersion?.(msg.id, 'prev')}
           onNext={() => onSwitchVersion?.(msg.id, 'next')}
           prevLabel="Previous answer version"
@@ -207,6 +207,7 @@ const TeamMessage = memo(function TeamMessage({
   showContinue,
   onContinue,
   onSwitchUserVersion,
+  onSwitchAnswer,
   isContinuing,
   onThumbsFeedback,
 }: {
@@ -217,6 +218,7 @@ const TeamMessage = memo(function TeamMessage({
   showContinue?: boolean;
   onContinue?: () => void;
   onSwitchUserVersion?: (msgId: string, direction: 'prev' | 'next') => void;
+  onSwitchAnswer?: (msgId: string, direction: 'prev' | 'next') => void;
   isContinuing?: boolean;
   onThumbsFeedback?: (msgId: string, value: 'up' | 'down' | null) => void;
 }) {
@@ -318,7 +320,7 @@ const TeamMessage = memo(function TeamMessage({
               showContinue={showContinue}
               isContinuing={isContinuing}
               onContinue={onContinue}
-              onSwitchVersion={onSwitchUserVersion}
+              onSwitchVersion={onSwitchAnswer}
               t={t}
             />
           </>

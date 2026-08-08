@@ -66,12 +66,12 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
     expect(agentMsg?.versionRunIds).toEqual(['r2', 'r3']);
     expect(agentMsg?.currentUserVersion).toBe(0);
 
-    // 模型消息：agent 问题只有 1 个回答 → 无分页
+    // 模型消息：agent 问题只有 1 个回答 → 无分页（answer 字段不挂载）
     const agentTurn = loaded.find(
       (m) => m.content === '回答:你知道什么是agent 吗',
     );
-    expect(agentTurn?.userVersions).toBeUndefined();
-    expect(agentTurn?.versionRunIds).toBeUndefined();
+    expect(agentTurn?.answerVersions).toBeUndefined();
+    expect(agentTurn?.answerRunIds).toBeUndefined();
     expect(runTurns.r2).toEqual({
       content: '回答:你知道什么是agent 吗',
       thinking: '思考:你知道什么是agent 吗',
@@ -110,12 +110,12 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
     const agentTurn = loaded.find(
       (m) => m.content === '回答:你知道什么是skill 吗',
     );
-    expect(agentTurn?.userVersions).toEqual([
+    expect(agentTurn?.answerVersions).toEqual([
       '你知道什么是skill 吗',
       '你知道什么是skill 吗',
     ]);
-    expect(agentTurn?.versionRunIds).toEqual(['r3', 'r4']);
-    expect(agentTurn?.currentUserVersion).toBe(1);
+    expect(agentTurn?.answerRunIds).toEqual(['r3', 'r4']);
+    expect(agentTurn?.currentAnswerVersion).toBe(1);
     expect(agentTurn?.userMsgId).toBe(userMsg?.id);
 
     // runTurns 覆盖答案组全部 run → 模型分页本地切换，无需整分支加载
@@ -193,9 +193,9 @@ describe('buildPathTurns', { tags: ['unit'] }, () => {
     expect(userMsg?.versionRunIds).toBeUndefined();
 
     const agentTurn = loaded.find((m) => m.role !== 'user');
-    expect(agentTurn?.userVersions).toEqual(['什么是 RAG', '什么是 RAG']);
-    expect(agentTurn?.versionRunIds).toEqual(['r1', 'r2']);
-    expect(agentTurn?.currentUserVersion).toBe(1);
+    expect(agentTurn?.answerVersions).toEqual(['什么是 RAG', '什么是 RAG']);
+    expect(agentTurn?.answerRunIds).toEqual(['r1', 'r2']);
+    expect(agentTurn?.currentAnswerVersion).toBe(1);
     expect(agentTurn?.userMsgId).toBe(userMsg?.id);
   });
 

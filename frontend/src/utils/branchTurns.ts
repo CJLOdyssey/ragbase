@@ -61,9 +61,9 @@ function attachBranchVersions(
   if (answerGroup.length > 1) {
     loaded[aIdx] = {
       ...loaded[aIdx],
-      userVersions: answerGroup.map((s) => s.requirement),
-      versionRunIds: answerGroup.map((s) => s.id),
-      currentUserVersion: answerGroup.findIndex((s) => s.id === runId),
+      answerVersions: answerGroup.map((s) => s.requirement),
+      answerRunIds: answerGroup.map((s) => s.id),
+      currentAnswerVersion: answerGroup.findIndex((s) => s.id === runId),
       userMsgId,
     };
   }
