@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -25,6 +26,7 @@ import { useChatStore } from '../../stores/chatStore';
 function clearLocalConversations() {
   try {
     localStorage.removeItem('ragbase-conversations');
+    localStorage.removeItem('ragbase-sessions-cache');
     window.dispatchEvent(new Event('ragbase-conversations-updated'));
   } catch {}
 }
@@ -80,6 +82,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// 页面常驻期间定时续期 access_token（httpOnly cookie 轮换），刷新页面时
+// cookie 仍然新鲜 → getMe 直接 200，跳过 401→refresh→me 串行链（对齐
+// agent-studio 的 token 保鲜机制，刷新体验更丝滑）。
+const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [legacyMode, setLegacyMode] = useState(true);
@@ -87,6 +94,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginModalView, setLoginModalView] = useState<AuthModalView>('login');
   const [loginModalEmail, setLoginModalEmail] = useState('');
+  const refreshTimerRef = useRef<number | null>(null);
+  const lastRefreshRef = useRef(0);
+
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    try {
+      await refreshTokens();
+      lastRefreshRef.current = Date.now();
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    // 登录后每 10 分钟续期；失败（后端重启/瞬时故障）时 60 秒快速重试，
+    // 避免 access_token 在 TTL 内过期且无人续期。后台标签页计时器被节流，
+    // 切回前台时若超期立即补一次。
+    const start = () => {
+      lastRefreshRef.current = Date.now();
+      if (refreshTimerRef.current !== null) return;
+      let failureBackoff = false;
+      refreshTimerRef.current = window.setInterval(async () => {
+        const ok = await refreshSession();
+        if (!ok && !failureBackoff) {
+          failureBackoff = true;
+          window.setTimeout(() => {
+            failureBackoff = false;
+            void refreshSession();
+          }, 60_000);
+        }
+      }, REFRESH_INTERVAL_MS);
+    };
+    const stop = () => {
+      if (refreshTimerRef.current !== null) {
+        window.clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        Date.now() - lastRefreshRef.current >= REFRESH_INTERVAL_MS
+      ) {
+        void refreshSession();
+      }
+    };
+    window.addEventListener('auth:login', start);
+    window.addEventListener('auth:logout', stop);
+    window.addEventListener('auth:unauthorized', stop);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('auth:login', start);
+      window.removeEventListener('auth:logout', stop);
+      window.removeEventListener('auth:unauthorized', stop);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      stop();
+    };
+  }, [refreshSession]);
 
   useEffect(() => {
     let cancelled = false;

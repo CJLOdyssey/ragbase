@@ -162,7 +162,8 @@ class TestKeys:
             })
             assert resp.status_code == 200
             assert resp.json()["models"] == []
-            assert "warning" in resp.json()
+            assert resp.json()["success"] is False
+            assert resp.json()["message"] == "Connection refused"
 
     def test_key_usage(self, client):
         with patch("routers.keys.get_key_usage_stats", new_callable=AsyncMock) as mock_stats:

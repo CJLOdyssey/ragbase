@@ -157,6 +157,7 @@ export default function ProviderEditModal({
   const [models, setModels] = useState<string[]>(provider.models);
   const [showKey, setShowKey] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     listProviders()
@@ -194,20 +195,25 @@ export default function ProviderEditModal({
   const handleFetchModels = async () => {
     if (!apiKey.trim()) return;
     setFetchingModels(true);
+    setFetchError(null);
     try {
       const result = await fetchModelsFromProvider({
         api_key: apiKey,
         base_url: baseUrl || undefined,
         provider: providerType,
       });
-      if (result.success && result.models.length > 0) {
-        setModels((prev) => {
-          const merged = new Set([...prev, ...result.models]);
-          return Array.from(merged);
-        });
+      if (result.success) {
+        if (result.models.length > 0) {
+          setModels((prev) => {
+            const merged = new Set([...prev, ...result.models]);
+            return Array.from(merged);
+          });
+        }
+      } else {
+        setFetchError(result.message || '拉取模型失败');
       }
-    } catch {
-      /* ignore */
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : '拉取模型失败');
     } finally {
       setFetchingModels(false);
     }
@@ -260,6 +266,12 @@ export default function ProviderEditModal({
       }
     >
       {error && <FormErrorBanner error={error} onCloseError={onCloseError} />}
+      {fetchError && (
+        <FormErrorBanner
+          error={fetchError}
+          onCloseError={() => setFetchError(null)}
+        />
+      )}
       <div>
         <ProviderSelector
           providers={providers}

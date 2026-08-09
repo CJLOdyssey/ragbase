@@ -44,7 +44,7 @@ class ProjectRun(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     session_id: Mapped[str | None] = mapped_column(
         String(36),
-        ForeignKey("sessions.id", ondelete="SET NULL"),
+        ForeignKey("sessions.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
@@ -61,6 +61,7 @@ class ProjectRun(Base):
     )
     parent_run_id: Mapped[str | None] = mapped_column(
         String(36),
+        ForeignKey("project_runs.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
         comment="Edit-regenerate chain: the run whose answer this run replaces",

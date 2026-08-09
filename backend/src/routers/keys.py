@@ -259,7 +259,7 @@ async def fetch_models_from_provider(req: FetchModelsRequest) -> Any:
     if result.get("success"):
         return {"success": True, "models": result.get("models", [])}
     logger.warning("Model fetch failed (non-blocking): %s", result.get("message", "unknown"))
-    return {"success": True, "models": [], "warning": result.get("message", "Connection failed")}
+    return {"success": False, "models": [], "message": result.get("message", "Connection failed")}
 
 
 @router.get("/api/keys/usage")

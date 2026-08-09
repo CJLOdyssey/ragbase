@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { ProjectRun, SessionItem } from '../../types';
 import type { ModelOption } from '../../types/input';
 import type { Conversation, Message } from '../../types/studio';
@@ -13,7 +14,7 @@ import {
   pinSession,
   renameSession,
 } from '../../api/client/sessions';
-import { submitRequirement } from '../../stores/chatActions';
+import { retry, submitRequirement } from '../../stores/chatActions';
 import { useChatStore } from '../../stores/chatStore';
 import { buildPathTurns } from '../../utils/branchTurns';
 import Logger from '../../utils/logger';
@@ -21,12 +22,52 @@ import { useSettings } from '../../contexts/SettingsContext';
 
 const MODEL_STORAGE_KEY = 'ragbase-selected-model';
 const MODEL_CHANGED_EVENT = 'ragbase-model-changed';
+const ACTIVE_CONV_KEY = 'ragbase-active-conv-id';
+// 会话列表渲染缓存：首帧先用本地缓存渲染（刷新丝滑，不等 auth 链），
+// 后端列表返回后刷新覆盖（对齐 agent-studio 的 localStorage 会话管理）。
+const SESSIONS_CACHE_KEY = 'ragbase-sessions-cache';
+
+function readSessionsCache(): SessionItem[] {
+  try {
+    const raw = localStorage.getItem(SESSIONS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSessionsCache(items: SessionItem[]): void {
+  try {
+    localStorage.setItem(SESSIONS_CACHE_KEY, JSON.stringify(items));
+  } catch {
+    // non-fatal
+  }
+}
 
 function readStoredModel(): string {
   try {
     return localStorage.getItem(MODEL_STORAGE_KEY) || '';
   } catch {
     return '';
+  }
+}
+
+function readActiveConvId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_CONV_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistActiveConvId(convId: string | null): void {
+  try {
+    if (convId) localStorage.setItem(ACTIVE_CONV_KEY, convId);
+    else localStorage.removeItem(ACTIVE_CONV_KEY);
+  } catch {
+    // non-fatal
   }
 }
 
@@ -109,11 +150,22 @@ export function useHomeState() {
   const messages = useChatStore((s) => s.messages);
   const isRunning = useChatStore((s) => s.status === 'running');
   const cancelRun = useChatStore((s) => s.cancelRun);
+  const apiStatus = useChatStore((s) => s.status);
+  const apiError = useChatStore((s) => s.error);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isApiOpen, setIsApiOpen] = useState(false);
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  // 会话标识单一事实源 = URL 路由 /chat/:sessionId（对齐 DeepSeek：可分享/
+  // 收藏/多标签独立/前进后退）；localStorage 仅作 fallback（直达 / 时恢复）。
+  const { sessionId } = useParams();
+  const navigate = useNavigate();
+  const activeConvId = sessionId ?? null;
+  // 会话加载中（恢复/切换，消息未就绪）— 期间渲染消息面板而非主页，
+  // 避免刷新/点击后主页一闪而过。
+  const [restoring, setRestoring] = useState<boolean>(
+    () => sessionId !== undefined || readActiveConvId() !== null,
+  );
   const [selectedModel, setSelectedModel] = useState(readStoredModel);
   // 加载竞态保护：快速切换会话/分支时，丢弃过期响应（仅最新一次落地）。
   const loadSeqRef = useRef(0);
@@ -124,9 +176,18 @@ export function useHomeState() {
     return () => window.removeEventListener(MODEL_CHANGED_EVENT, sync);
   }, []);
 
-  const { data: sessions = [] } = useQuery({
+  // 首帧渲染缓存中的会话列表（同步），后台 API 返回后刷新覆盖。
+  const [cachedSessions, setCachedSessions] =
+    useState<SessionItem[]>(readSessionsCache);
+  useQuery<SessionItem[]>({
     queryKey: ['sessions'],
-    queryFn: () => listSessions(),
+    // 首帧渲染缓存，拉到最新列表后刷新缓存（queryFn 内落缓存，非 effect）。
+    queryFn: async () => {
+      const data = await listSessions();
+      setCachedSessions(data);
+      writeSessionsCache(data);
+      return data;
+    },
     // Sessions are user-owned: only fetch once authentication is ready, and
     // re-fetch when it flips (login/refresh completes after initial mount).
     enabled: isAuthenticated,
@@ -150,7 +211,7 @@ export function useHomeState() {
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
 
   const conversations: Conversation[] = useMemo(() => {
-    return sessions
+    return cachedSessions
       .map(toConversation)
       .filter((c) => !deletedIds.has(c.id))
       .map((c) => {
@@ -165,7 +226,7 @@ export function useHomeState() {
             }
           : c;
       });
-  }, [sessions, localTweaks, deletedIds]);
+  }, [cachedSessions, localTweaks, deletedIds]);
 
   const displayMessages: Message[] = useMemo(
     () =>
@@ -208,45 +269,77 @@ export function useHomeState() {
     window.dispatchEvent(new Event(MODEL_CHANGED_EVENT));
   }, []);
 
-  const handleSelectConversation = useCallback(
-    async (convId: string | null) => {
-      setActiveConvId(convId);
-      if (!convId) return;
-      const seq = ++loadSeqRef.current;
-      try {
-        const detail = await getSessionDetail(convId);
-        if (seq !== loadSeqRef.current) return;
-        const { path, active } = buildRunPath(detail.runs ?? []);
-        const loaded = buildPathTurns(path, detail.runs ?? []);
-
-        // Persisted messages are completed turns — mark agent thinking as done
-        // so the ThinkingSection shows "已思考" instead of a stuck spinner.
-        for (const m of loaded) {
-          if (m.role !== 'user' && m.thinkingDone === undefined) {
-            m.thinkingDone = true;
-          }
+  const loadConversationById = useCallback(async (convId: string) => {
+    setRestoring(true);
+    const seq = ++loadSeqRef.current;
+    try {
+      const detail = await getSessionDetail(convId);
+      if (seq !== loadSeqRef.current) return;
+      const { path, active } = buildRunPath(detail.runs ?? []);
+      const loaded = buildPathTurns(path, detail.runs ?? []);
+      // Persisted messages are completed turns — mark agent thinking as done
+      // so the ThinkingSection shows "已思考" instead of a stuck spinner.
+      for (const m of loaded) {
+        if (m.role !== 'user' && m.thinkingDone === undefined) {
+          m.thinkingDone = true;
         }
-        useChatStore.getState().loadConversation(loaded, convId);
-        useChatStore.getState().setActiveRunId(active);
-        Logger.info(
-          '[loadConv] conv=%s runs=%d path=%d loaded=%d lastRun=%s',
-          convId.slice(0, 8),
-          (detail.runs ?? []).length,
-          path.length,
-          loaded.length,
-          active?.slice(0, 8) ?? '-',
-        );
-      } catch (err) {
-        Logger.warn('[useHomeState] failed to load conversation', err);
       }
+      useChatStore.getState().loadConversation(loaded, convId);
+      useChatStore.getState().setActiveRunId(active);
+      Logger.info(
+        '[loadConv] conv=%s runs=%d path=%d loaded=%d lastRun=%s',
+        convId.slice(0, 8),
+        (detail.runs ?? []).length,
+        path.length,
+        loaded.length,
+        active?.slice(0, 8) ?? '-',
+      );
+    } catch (err) {
+      Logger.warn('[useHomeState] failed to load conversation', err);
+    }
+    if (seq === loadSeqRef.current) {
+      setRestoring(false);
+    }
+  }, []);
+
+  const handleSelectConversation = useCallback(
+    (convId: string | null) => {
+      persistActiveConvId(convId);
+      navigate(convId ? `/chat/${convId}` : '/');
     },
-    [],
+    [navigate],
   );
 
-  const handleNewChat = useCallback(() => {
+  // 会话路由驱动：进入/切换/前进后退（URL 变化）→ 加载对应会话；
+  // URL 无会话（主页）→ 清空消息。setTimeout 延后一帧：加载开始的同步
+  // setState（restoring）移出 effect 体（react-hooks/set-state-in-effect），
+  // 竞态仍由 loadSeqRef 兜底。
+  useEffect(() => {
+    if (activeConvId) {
+      const timer = setTimeout(() => {
+        void loadConversationById(activeConvId);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
     useChatStore.getState().reset();
-    setActiveConvId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConvId]);
+
+  // 直达主页（无 URL 会话）时恢复上次会话：localStorage fallback 后
+  // 以 URL 形式重建（replace，不堆历史）。
+  useEffect(() => {
+    const stored = readActiveConvId();
+    if (!sessionId && stored) {
+      navigate(`/chat/${stored}`, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleNewChat = useCallback(() => {
+    persistActiveConvId(null);
+    setRestoring(false);
+    navigate('/');
+  }, [navigate]);
 
   // 分支语义：切版本 = 切分支，视图整体切到目标 run 所在分支的全部消息
   // （父链 + 子孙链，后续轮次跟随目标分支；不在该分支的轮次仅视图隐藏，DB 留存）。
@@ -293,10 +386,16 @@ export function useHomeState() {
   const handleDeleteConversation = useCallback(
     (convId: string) => {
       if (activeConvId === convId) {
-        useChatStore.getState().reset();
-        setActiveConvId(null);
+        persistActiveConvId(null);
+        setRestoring(false);
+        navigate('/');
       }
       setDeletedIds((prev) => new Set(prev).add(convId));
+      setCachedSessions((prev) => {
+        const next = prev.filter((c) => c.id !== convId);
+        writeSessionsCache(next);
+        return next;
+      });
       deleteSession(convId).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to delete session %s: %s',
@@ -305,7 +404,7 @@ export function useHomeState() {
         );
       });
     },
-    [activeConvId],
+    [activeConvId, navigate],
   );
 
   const handleRenameConversation = useCallback(
@@ -316,6 +415,13 @@ export function useHomeState() {
         ...prev,
         [convId]: { ...prev[convId], title: trimmed },
       }));
+      setCachedSessions((prev) => {
+        const next = prev.map((c) =>
+          c.id === convId ? { ...c, title: trimmed } : c,
+        );
+        writeSessionsCache(next);
+        return next;
+      });
       renameSession(convId, trimmed).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to rename session %s: %s',
@@ -335,6 +441,13 @@ export function useHomeState() {
         ...prev,
         [convId]: { ...prev[convId], isPinned: next },
       }));
+      setCachedSessions((prev) => {
+        const updated = prev.map((c) =>
+          c.id === convId ? { ...c, is_pinned: next } : c,
+        );
+        writeSessionsCache(updated);
+        return updated;
+      });
       pinSession(convId, next).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to pin session %s: %s',
@@ -355,7 +468,9 @@ export function useHomeState() {
     activeConvId,
     setActiveConvId: handleSelectConversation,
     displayMessages,
-    hasMessages,
+    // activeConvId 非空（URL 指向会话）→ 恒显示消息面板：加载中 restoring
+    // 保真，空会话（runs 为空）也停驻空面板而非回弹主页。
+    hasMessages: hasMessages || restoring || activeConvId !== null,
     models,
     selectedModel: effectiveModel,
     setSelectedModel: handleModelChange,
@@ -375,5 +490,8 @@ export function useHomeState() {
     isApiOpen,
     setIsApiOpen,
     isRunning,
+    apiStatus,
+    apiError,
+    retryApi: retry,
   };
 }

@@ -80,6 +80,14 @@ if (api.interceptors?.response) {
         return Promise.reject(normalizeError(error));
       }
 
+      // Refresh endpoint failures are terminal — never recurse into this
+      // interceptor or queue behind a refresh that is itself failing, or
+      // isRefreshing would stay true forever and stall every request
+      // (用户菜单等依赖 loading 收敛的 UI 会永久骨架).
+      if (retryConfig.url === '/auth/refresh') {
+        return Promise.reject(normalizeError(error));
+      }
+
       if (isRefreshing) {
         return new Promise((resolve) => {
           pendingQueue.push(() => resolve(api(retryConfig)));

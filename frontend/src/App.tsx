@@ -170,6 +170,10 @@ function ThemedApp() {
                 <Routes>
                   <Route path="/" element={<RagBaseWorkstation />} />
                   <Route
+                    path="/chat/:sessionId"
+                    element={<RagBaseWorkstation />}
+                  />
+                  <Route
                     path="/assets"
                     element={
                       <Suspense fallback={<PageLoading />}>
