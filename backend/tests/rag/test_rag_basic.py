@@ -109,6 +109,17 @@ class TestSemanticChunk:
         assert len(result) > 1
         assert all(c.session_id == "sess-1" for c in result)
 
+    def test_semantic_chunk_tail_window_no_infinite_loop(self):
+        """Regression: when the final window touched len(words), the old
+        start = end - overlap arithmetic pinned start and looped forever."""
+        from rag.rag_chunking import semantic_chunk
+
+        words = ["word"] * 150  # tail window lands exactly on len(words)
+        text = " ".join(words)
+        result = semantic_chunk(text, "sess-1", chunk_size=100, overlap=64)
+        assert len(result) >= 3
+        assert result[-1].text.split()[-1] == "word"  # tail preserved
+
     def test_semantic_chunk_tags_from_headings(self):
         from rag.rag_chunking import semantic_chunk
 

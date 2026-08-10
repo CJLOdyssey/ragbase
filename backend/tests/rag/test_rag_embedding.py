@@ -23,7 +23,48 @@ class TestEmbeddingProvider:
 
     def test_init_base_url(self):
         p = EmbeddingProvider(api_key="sk")
-        assert "dashscope.aliyuncs.com" in p._base_url
+        assert p.base_url is None
+
+    def test_default_dashscope_endpoint_constant(self):
+        from rag.rag_embedding import DASHSCOPE_EMBEDDING_URL
+        assert "dashscope.aliyuncs.com" in DASHSCOPE_EMBEDDING_URL
+
+    def test_init_openai_compat_base_url(self):
+        p = EmbeddingProvider(api_key="sk", base_url="https://api.siliconflow.cn/v1")
+        assert p.base_url == "https://api.siliconflow.cn/v1"
+
+    def test_embed_sync_openai_compat_request(self):
+        """base_url set → OpenAI-compatible: POST {base}/embeddings, input list."""
+        p = EmbeddingProvider(
+            api_key="sk-test", model="BAAI/bge-m3", base_url="https://api.siliconflow.cn/v1"
+        )
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "data": [{"embedding": [0.1] * EMBEDDING_DIM}]
+        }).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch("rag.rag_embedding.urllib.request.urlopen", return_value=mock_response) as mock_urlopen:
+            result = p._embed_sync(["hello"])
+            req = mock_urlopen.call_args[0][0]
+            assert req.full_url == "https://api.siliconflow.cn/v1/embeddings"
+            body = json.loads(req.data.decode("utf-8"))
+            assert body["model"] == "BAAI/bge-m3"
+            assert body["input"] == ["hello"]
+            assert "text_type" not in body
+        assert len(result[0]) == EMBEDDING_DIM
+
+    def test_embed_sync_openai_compat_missing_data_raises(self):
+        p = EmbeddingProvider(api_key="sk", base_url="https://x/v1")
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"data": []}).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch("rag.rag_embedding.urllib.request.urlopen", return_value=mock_response):
+            with pytest.raises(RuntimeError, match="missing embeddings"):
+                p._embed_sync(["text"])
 
     @pytest.mark.asyncio
     async def test_embed_no_api_key_raises(self):

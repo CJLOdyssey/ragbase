@@ -61,6 +61,8 @@ def semantic_chunk(
                         tags=tags,
                     )
                 )
+                if end == len(words):
+                    break
                 start = end - overlap
 
     return chunks

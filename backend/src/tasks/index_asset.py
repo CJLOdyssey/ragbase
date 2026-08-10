@@ -15,7 +15,7 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     from rag.rag_embedding import EmbeddingProvider
     from rag.rag_store import PgVectorStore
     from repository.assets import get_asset, set_asset_indexed
-    from repository.keys import get_embedding_api_key
+    from repository.keys import get_embedding_config
 
     asset = await get_asset(asset_id)
     if asset is None or asset.user_id != user_id:
@@ -25,15 +25,19 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     if not text.strip():
         raise ValueError("asset has no text content — cannot index")
 
-    api_key = await get_embedding_api_key()
-    if not api_key:
+    cfg = await get_embedding_config()
+    if cfg is None or cfg["api_key"] is None:
         raise RuntimeError("no embedding API key configured")
 
     chunks = semantic_chunk(text, session_id=f"asset:{asset.id}", run_id=None)
     for chunk in chunks:
         chunk.metadata = {"asset_id": asset.id, "asset_name": asset.name}
 
-    provider = EmbeddingProvider(api_key=api_key)
+    provider = EmbeddingProvider(
+        api_key=cfg["api_key"],
+        model=cfg["model"] or "text-embedding-v3",
+        base_url=cfg["base_url"],
+    )
     embeddings = await provider.embed([c.text for c in chunks])
     for chunk, emb in zip(chunks, embeddings, strict=False):
         chunk.embedding = emb

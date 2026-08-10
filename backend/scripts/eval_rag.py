@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from rag.rag_chunking import semantic_chunk  # noqa: E402
 from rag.rag_embedding import EmbeddingProvider  # noqa: E402
 from rag.rag_store import PgVectorStore  # noqa: E402
-from repository.keys import get_embedding_api_key  # noqa: E402
+from repository.keys import get_embedding_config  # noqa: E402
 
 _EVAL_SESSION = "eval:corpus"
 
@@ -48,12 +48,14 @@ async def _main(args: argparse.Namespace) -> int:
     cases = _load_golden(args.golden)
     corpus = _load_corpus(args.corpus)
 
-    api_key = await get_embedding_api_key()
-    if not api_key:
+    cfg = await get_embedding_config()
+    if cfg is None or cfg["api_key"] is None:
         print("no embedding API key configured — cannot run eval", file=sys.stderr)
         return 2
 
-    provider = EmbeddingProvider(api_key=api_key)
+    provider = EmbeddingProvider(
+        api_key=cfg["api_key"], model=cfg["model"], base_url=cfg["base_url"]
+    )
     store = PgVectorStore()
     await store.clear_session(_EVAL_SESSION)
 

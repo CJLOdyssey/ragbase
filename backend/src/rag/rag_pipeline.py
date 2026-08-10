@@ -19,7 +19,7 @@ Production stack:
 from core.infra.logging_config import get_logger
 
 from rag.rag_chunking import semantic_chunk
-from rag.rag_embedding import EmbeddingProvider
+from rag.rag_embedding import EMBEDDING_MODEL, EmbeddingProvider
 from rag.rag_store import PgVectorStore
 
 logger = get_logger(__name__)
@@ -34,9 +34,19 @@ def get_rag_pipeline() -> tuple[EmbeddingProvider | None, PgVectorStore]:
     return _embedding_provider, _vector_store
 
 
-def ensure_embedding_provider(api_key: str | None = None) -> None:
+def ensure_embedding_provider(
+    api_key: str | None = None,
+    model: str | None = None,
+    base_url: str | None = None,
+) -> None:
     global _embedding_provider
-    _embedding_provider = EmbeddingProvider(api_key=api_key) if api_key else None
+    _embedding_provider = (
+        EmbeddingProvider(
+            api_key=api_key, model=model or EMBEDDING_MODEL, base_url=base_url
+        )
+        if api_key
+        else None
+    )
 
 
 async def ingest_session_messages(

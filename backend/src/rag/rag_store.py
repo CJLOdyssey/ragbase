@@ -100,7 +100,6 @@ class PgVectorStore:
                 if not chunk.embedding:
                     continue
                 emb_str = "[" + ",".join(str(v) for v in chunk.embedding) + "]"
-                tags_array = "{" + ",".join(chunk.tags) + "}" if chunk.tags else "{}"
                 metadata = chunk.metadata or {}
                 await session.execute(
                     text(
@@ -108,7 +107,7 @@ class PgVectorStore:
                         INSERT INTO vector_chunks
                             (id, session_id, run_id, text, tags, embedding,
                              user_id, asset_id, metadata)
-                        VALUES (:id, :sid, :rid, :text, CAST(:tags AS text[]),
+                        VALUES (:id, :sid, :rid, :text, :tags,
                                 CAST(:emb AS vector), :uid, :aid, CAST(:meta AS jsonb))
                         ON CONFLICT (id) DO UPDATE
                         SET text = EXCLUDED.text,
@@ -124,7 +123,7 @@ class PgVectorStore:
                         "sid": chunk.session_id,
                         "rid": chunk.run_id or "",
                         "text": chunk.text,
-                        "tags": tags_array,
+                        "tags": chunk.tags,
                         "emb": emb_str,
                         "uid": user_id,
                         "aid": metadata.get("asset_id"),

@@ -206,7 +206,7 @@ class TestPgVectorStore:
             await store.add([chunk], user_id="u1")
             insert_call = mock_session.execute.call_args_list[3]
             params = insert_call[0][1]
-            assert params["tags"] == "{python,bug}"
+            assert params["tags"] == ["python", "bug"]
 
     @pytest.mark.asyncio
     async def test_add_empty_tags_format(self):
@@ -217,7 +217,7 @@ class TestPgVectorStore:
             await store.add([chunk], user_id="u1")
             insert_call = mock_session.execute.call_args_list[3]
             params = insert_call[0][1]
-            assert params["tags"] == "{}"
+            assert params["tags"] == []
 
     @pytest.mark.asyncio
     async def test_add_run_id_none_defaults_empty(self):

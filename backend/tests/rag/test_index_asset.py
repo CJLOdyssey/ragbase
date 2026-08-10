@@ -32,7 +32,13 @@ def _patch_asset_env(tmp_path: Path, text: str = "## 节一\n内容 ABC-12345"):
     repo = {
         "get_asset": AsyncMock(return_value=asset),
         "set_asset_indexed": AsyncMock(),
-        "get_embedding_api_key": AsyncMock(return_value="sk-test"),
+        "get_embedding_config": AsyncMock(
+            return_value={
+                "api_key": "sk-test",
+                "base_url": "https://api.siliconflow.cn/v1",
+                "model": "BAAI/bge-m3",
+            }
+        ),
     }
     provider_cls = MagicMock()
     provider = MagicMock()
@@ -66,10 +72,10 @@ class TestIndexAsset:
     @pytest.mark.asyncio
     async def test_no_api_key_raises(self, tmp_path):
         repo, provider_cls, store, asset = _patch_asset_env(tmp_path)
-        repo["get_embedding_api_key"].return_value = None
+        repo["get_embedding_config"].return_value = None
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
-            patch("repository.keys.get_embedding_api_key", repo["get_embedding_api_key"]),
+            patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
         ):
             with pytest.raises(RuntimeError, match="embedding API key"):
                 await _index_asset("a1", "u1")
@@ -81,7 +87,7 @@ class TestIndexAsset:
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
             patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
-            patch("repository.keys.get_embedding_api_key", repo["get_embedding_api_key"]),
+            patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
             patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
             patch("rag.rag_store.PgVectorStore", return_value=store),
         ):
@@ -102,7 +108,7 @@ class TestIndexAsset:
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
             patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
-            patch("repository.keys.get_embedding_api_key", repo["get_embedding_api_key"]),
+            patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
             patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
             patch("rag.rag_store.PgVectorStore", return_value=store),
         ):

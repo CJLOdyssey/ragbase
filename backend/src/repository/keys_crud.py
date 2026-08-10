@@ -366,8 +366,32 @@ async def delete_api_key(key_id: str, user_id: str) -> bool:
         return True
 
 
-async def get_embedding_api_key() -> str | None:
-    """Get the decrypted API key for embedding (any active key with embedding capability)."""
+def _pick_embedding_model(models: str) -> str | None:
+    """Pick an embedding-capable model from a key's comma-joined models list.
+
+    bge-m3 is preferred (deterministic 1024-dim output) over other
+    embedding-named models, regardless of list order.
+    """
+    if not models:
+        return None
+    candidates = [x.strip() for x in models.split(",")]
+    for m in candidates:
+        if "bge-m3" in m.lower():
+            return m
+    for m in candidates:
+        lowered = m.lower()
+        if "embedding" in lowered or "bge-" in lowered:
+            return m
+    return None
+
+
+async def get_embedding_config() -> dict[str, str | None] | None:
+    """Resolve the embedding endpoint: {api_key, base_url, model}.
+
+    Prefers an active key whose models list names an embedding model (e.g.
+    bge-m3 / *-embedding-*); falls back to the oldest embedding-capability
+    key with the legacy DashScope endpoint.
+    """
     from core.infra.database import UserApiKey
     from core.infra.key_vault import decrypt_api_key
 
@@ -380,12 +404,31 @@ async def get_embedding_api_key() -> str | None:
                 _capabilities_contains(session, "embedding"),
             )
             .order_by(UserApiKey.created_at)
-            .limit(1)
         )
-        row = (await session.execute(stmt)).scalar_one_or_none()
-        if row is None:
-            return None
-        return decrypt_api_key(row.encrypted_key)
+        rows = (await session.execute(stmt)).scalars().all()
+
+    if not rows:
+        return None
+    for row in rows:
+        model = _pick_embedding_model(row.models)
+        if model:
+            return {
+                "api_key": decrypt_api_key(row.encrypted_key),
+                "base_url": row.base_url,
+                "model": model,
+            }
+    row = rows[0]
+    return {
+        "api_key": decrypt_api_key(row.encrypted_key),
+        "base_url": None,
+        "model": "text-embedding-v3",
+    }
+
+
+async def get_embedding_api_key() -> str | None:
+    """Get the decrypted API key for embedding (backward-compat shim)."""
+    cfg = await get_embedding_config()
+    return cfg["api_key"] if cfg else None
 
 
 async def get_tool_api_key(provider: str) -> str | None:

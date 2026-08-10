@@ -310,6 +310,43 @@ async def test_get_embedding_api_key_beyond_row_window(db_engine):
 
 
 @pytest.mark.asyncio
+async def test_get_embedding_config_prefers_embedding_model_key(db_engine):
+    """A key whose models list names an embedding model wins over an older bare key."""
+    from repository.keys_crud import create_api_key, get_embedding_config
+
+    # Older key: embedding capability but LLM-only models.
+    await create_api_key(
+        "user1", "custom", capabilities=["embedding"],
+        plaintext_key="sk-deepseek", base_url="https://api.deepseek.com",
+        models=["deepseek-v4-flash"],
+    )
+    # Newer key: siliconflow with bge-m3.
+    await create_api_key(
+        "user1", "custom", capabilities=["embedding"],
+        plaintext_key="sk-silicon", base_url="https://api.siliconflow.cn/v1",
+        models=["BAAI/bge-m3", "deepseek-ai/DeepSeek-V4"],
+    )
+
+    cfg = await get_embedding_config()
+    assert cfg is not None
+    assert cfg["api_key"] == "sk-silicon"
+    assert cfg["base_url"] == "https://api.siliconflow.cn/v1"
+    assert cfg["model"] == "BAAI/bge-m3"
+
+
+@pytest.mark.asyncio
+async def test_get_embedding_config_falls_back_to_oldest(db_engine):
+    """No embedding-named models → oldest embedding-capability key, DashScope defaults."""
+    from repository.keys_crud import create_api_key, get_embedding_config
+
+    await create_api_key("user1", "dashscope", capabilities=["embedding"], plaintext_key="sk-old")
+    await create_api_key("user1", "custom", capabilities=["embedding"], plaintext_key="sk-new")
+
+    cfg = await get_embedding_config()
+    assert cfg == {"api_key": "sk-old", "base_url": None, "model": "text-embedding-v3"}
+
+
+@pytest.mark.asyncio
 async def test_get_tool_api_key_matches_capabilities(db_engine):
     """A key carrying the tool capability is served for its provider."""
     from repository.keys_crud import create_api_key, get_tool_api_key
@@ -460,6 +497,58 @@ async def test_get_api_keys_with_models(db_engine):
     keys = await get_api_keys("user1")
     assert len(keys) == 1
     assert keys[0]["models"] == ["gpt-4", "gpt-3.5-turbo"]
+
+
+@pytest.mark.asyncio
+async def test_create_api_key_with_model_types_serialized(db_engine):
+    from repository.keys_crud import create_api_key, get_api_keys
+
+    await create_api_key(
+        "user1", "custom", plaintext_key="sk-mt",
+        models=["gpt-4o"], model_types={"gpt-4o": "embedding"},
+    )
+    keys = await get_api_keys("user1")
+    assert len(keys) == 1
+    assert keys[0]["model_types"] == {"gpt-4o": "embedding"}
+
+
+@pytest.mark.asyncio
+async def test_get_api_keys_model_types_none_by_default(db_engine):
+    from repository.keys_crud import create_api_key, get_api_keys
+
+    await create_api_key("user1", "custom", plaintext_key="sk-nomt", models=["gpt-4o"])
+    keys = await get_api_keys("user1")
+    assert len(keys) == 1
+    assert keys[0]["model_types"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_api_key_model_types_replace(db_engine):
+    from repository.keys_crud import create_api_key, get_api_keys, update_api_key
+
+    k = await create_api_key(
+        "user1", "custom", plaintext_key="sk-upd", models=["gpt-4o"],
+        model_types={"gpt-4o": "embedding"},
+    )
+    result = await update_api_key(k.id, "user1", model_types={"gpt-4o": "rerank"})
+    assert result is not None
+    assert result["model_types"] == {"gpt-4o": "rerank"}
+
+    keys = await get_api_keys("user1")
+    assert keys[0]["model_types"] == {"gpt-4o": "rerank"}
+
+
+@pytest.mark.asyncio
+async def test_update_api_key_model_types_clear(db_engine):
+    from repository.keys_crud import create_api_key, update_api_key
+
+    k = await create_api_key(
+        "user1", "custom", plaintext_key="sk-clr", models=["gpt-4o"],
+        model_types={"gpt-4o": "embedding"},
+    )
+    result = await update_api_key(k.id, "user1", model_types={})
+    assert result is not None
+    assert result["model_types"] == {}
 
 
 @pytest.mark.asyncio
