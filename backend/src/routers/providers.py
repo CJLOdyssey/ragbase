@@ -150,6 +150,12 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "capabilities": ["chat", "vector"],
         "docs_url": None,
     },
+    "custom_tool": {
+        "name": "自定义工具",
+        "base_url": "",
+        "capabilities": ["tool"],
+        "docs_url": None,
+    },
 }
 
 router = APIRouter(tags=["providers"])

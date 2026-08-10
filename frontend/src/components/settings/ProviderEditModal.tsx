@@ -54,6 +54,12 @@ const FALLBACK_PROVIDERS: ProvidersMap = {
     capabilities: ['chat', 'vector'],
     docs_url: null,
   },
+  custom_tool: {
+    name: '自定义工具',
+    base_url: '',
+    capabilities: ['tool'],
+    docs_url: null,
+  },
 };
 
 interface Props {
