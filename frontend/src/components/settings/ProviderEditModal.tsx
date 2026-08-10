@@ -134,7 +134,7 @@ export default function ProviderEditModal({
     onSave({
       ...provider,
       provider: providerType,
-      capabilities: categoriesOf(info ?? {}),
+      capabilities: info ? categoriesOf(info) : (provider.capabilities ?? []),
       name,
       baseUrl,
       apiKey,

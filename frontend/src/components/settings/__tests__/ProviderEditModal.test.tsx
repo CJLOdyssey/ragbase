@@ -1,4 +1,5 @@
 import { fetchModelsFromProvider } from '../../../api/client/keys';
+import { listProviders } from '../../../api/client/providers';
 import ProviderEditModal, { type ApiProviderForm } from '../ProviderEditModal';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +10,7 @@ vi.mock('../../../api/client/providers', () => ({
       openai: {
         name: 'OpenAI',
         base_url: 'https://api.openai.com/v1',
-        capabilities: ['chat'],
+        capabilities: ['chat', 'vector'],
         docs_url: null,
       },
     }),
@@ -97,6 +98,54 @@ describe('ProviderEditModal 模型刷新链路', () => {
 
     await waitFor(() =>
       expect(screen.getByText('Network Error')).toBeInTheDocument(),
+    );
+  });
+
+  it('保存时提交从目录派生的 capabilities', async () => {
+    const onSave = vi.fn();
+    render(
+      <ProviderEditModal
+        provider={BASE_PROVIDER}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('保存'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'openai',
+        capabilities: ['llm', 'embedding'],
+      }),
+    );
+  });
+
+  it('目录无此 provider 时回退到存储的 capabilities', async () => {
+    vi.mocked(listProviders).mockResolvedValue({
+      custom: {
+        name: '自定义',
+        base_url: '',
+        capabilities: ['chat', 'vector'],
+        docs_url: null,
+      },
+    });
+    const onSave = vi.fn();
+    render(
+      <ProviderEditModal
+        provider={BASE_PROVIDER}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: 'OpenAI' })).toBeNull();
+    });
+    fireEvent.click(screen.getByText('保存'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ capabilities: ['llm'] }),
     );
   });
 });
