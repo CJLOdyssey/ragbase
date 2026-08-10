@@ -128,7 +128,7 @@
       "tool": "工具"
     },
     "badge": {
-      "llm": "对话",
+      "llm": "大语言模型",
       "embedding": "嵌入",
       "rerank": "重排序",
       "speech2text": "语音转文字",
