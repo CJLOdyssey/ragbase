@@ -375,14 +375,17 @@ async def get_embedding_api_key() -> str | None:
     async with factory() as session:
         stmt = (
             select(UserApiKey)
-            .where(UserApiKey.is_active.is_(True))
+            .where(
+                UserApiKey.is_active.is_(True),
+                _capabilities_contains(session, "embedding"),
+            )
             .order_by(UserApiKey.created_at)
-            .limit(50)
+            .limit(1)
         )
-        for row in (await session.execute(stmt)).scalars():
-            if "embedding" in (row.capabilities or []):
-                return decrypt_api_key(row.encrypted_key)
-    return None
+        row = (await session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            return None
+        return decrypt_api_key(row.encrypted_key)
 
 
 async def get_tool_api_key(provider: str) -> str | None:
@@ -397,13 +400,31 @@ async def get_tool_api_key(provider: str) -> str | None:
             .where(
                 UserApiKey.provider == provider,
                 UserApiKey.is_active.is_(True),
+                _capabilities_contains(session, "tool"),
             )
-            .limit(50)
+            .order_by(UserApiKey.created_at)
+            .limit(1)
         )
-        for row in (await session.execute(stmt)).scalars():
-            if "tool" in (row.capabilities or []):
-                return decrypt_api_key(row.encrypted_key)
-    return None
+        row = (await session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            return None
+        return decrypt_api_key(row.encrypted_key)
+
+
+def _capabilities_contains(session: Any, capability: str) -> Any:
+    """Array-contains predicate: JSONB ``@>`` on postgres, ``json_each`` on sqlite.
+
+    ``UserApiKey.capabilities`` is JSONB on postgres (``contains`` compiles to
+    the ``@>`` operator) but plain JSON on sqlite (``with_variant``), where the
+    ``@>`` operator does not exist — emulate "array contains value" with the
+    json1 ``json_each`` table function so filtering is SQL-side on both engines.
+    """
+    from sqlalchemy import exists, func
+
+    if session.get_bind().dialect.name == "postgresql":
+        return UserApiKey.capabilities.contains([capability])
+    elements = func.json_each(UserApiKey.capabilities).table_valued("value")
+    return exists(select(elements.c.value).where(elements.c.value == capability))
 
 
 async def log_key_usage(

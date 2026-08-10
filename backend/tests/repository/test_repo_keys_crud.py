@@ -298,6 +298,48 @@ async def test_get_embedding_api_key_none(db_engine):
 
 
 @pytest.mark.asyncio
+async def test_get_embedding_api_key_beyond_row_window(db_engine):
+    """SQL-side filtering must find a matching key beyond the old 50-row window."""
+    from repository.keys_crud import create_api_key, get_embedding_api_key
+
+    for i in range(60):
+        await create_api_key("user1", "openai", plaintext_key=f"sk-llm-{i}")
+    await create_api_key("user1", "openai", capabilities=["embedding"], plaintext_key="sk-emb-60")
+    result = await get_embedding_api_key()
+    assert result == "sk-emb-60"
+
+
+@pytest.mark.asyncio
+async def test_get_tool_api_key_matches_capabilities(db_engine):
+    """A key carrying the tool capability is served for its provider."""
+    from repository.keys_crud import create_api_key, get_tool_api_key
+
+    await create_api_key("user1", "tavily", capabilities=["tool"], plaintext_key="tavily-secret")
+    result = await get_tool_api_key("tavily")
+    assert result == "tavily-secret"
+
+
+@pytest.mark.asyncio
+async def test_get_tool_api_key_requires_tool_capability(db_engine):
+    """Provider match alone is not enough — the key must carry the tool capability."""
+    from repository.keys_crud import create_api_key, get_tool_api_key
+
+    await create_api_key("user1", "tavily", plaintext_key="tavily-llm-only")
+    result = await get_tool_api_key("tavily")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_tool_api_key_provider_scope(db_engine):
+    """A tool-capable key of another provider is not served for this provider."""
+    from repository.keys_crud import create_api_key, get_tool_api_key
+
+    await create_api_key("user1", "openai", capabilities=["tool"], plaintext_key="openai-tool")
+    assert await get_tool_api_key("tavily") is None
+    assert await get_tool_api_key("openai") == "openai-tool"
+
+
+@pytest.mark.asyncio
 async def test_log_key_usage(db_engine):
     from repository.keys_crud import create_api_key, log_key_usage
 
