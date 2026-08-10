@@ -105,7 +105,7 @@
   "providerEdit": {
     "provider": "Provider",
     "name": "Name",
-    "nameOptional": "Name (optional)",
+    "nameOptional": "optional",
     "apiKey": "API Key",
     "baseUrl": "Base URL",
     "add": "Add",
@@ -114,6 +114,8 @@
     "supportedModels": "Supported models",
     "noModelsWithKey": "No models returned for this API key",
     "enterApiKeyToFetch": "Enter an API key to fetch models",
+    "baseUrlPlaceholder": "https://api.example.com/v1",
+    "apiKeyPlaceholder": "Enter API Key",
     "fetchFromApi": "Fetch models from API",
     "category": {
       "llm": "LLM",

@@ -105,7 +105,7 @@
   "providerEdit": {
     "provider": "提供商",
     "name": "名称",
-    "nameOptional": "名称（可选）",
+    "nameOptional": "选填",
     "apiKey": "API Key",
     "baseUrl": "Base URL",
     "add": "添加",
@@ -114,6 +114,8 @@
     "supportedModels": "支持模型",
     "noModelsWithKey": "该 API Key 未返回模型",
     "enterApiKeyToFetch": "输入 API Key 后获取模型",
+    "baseUrlPlaceholder": "https://api.example.com/v1",
+    "apiKeyPlaceholder": "输入 API Key",
     "fetchFromApi": "从 API 获取模型",
     "category": {
       "llm": "LLM",

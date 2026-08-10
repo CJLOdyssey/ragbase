@@ -53,7 +53,7 @@ export default function CredentialsSection({
             type="text"
             value={baseUrl}
             onChange={(e) => onChangeBaseUrl(e.target.value)}
-            placeholder="https://api.openai.com/v1"
+            placeholder={t('providerEdit.baseUrlPlaceholder')}
             className="w-full py-2 px-3 bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] text-sm font-sans outline-none transition-colors focus:border-[var(--color-accent)] focus:shadow-[0 0 0 2px var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
           />
         </div>
@@ -68,7 +68,7 @@ export default function CredentialsSection({
             type={showKey ? 'text' : 'password'}
             value={apiKey}
             onChange={(e) => onChangeApiKey(e.target.value)}
-            placeholder="sk-..."
+            placeholder={t('providerEdit.apiKeyPlaceholder')}
             className="flex-1 bg-transparent border-none px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:outline-none placeholder:text-[var(--color-text-muted)]"
           />
           <button
