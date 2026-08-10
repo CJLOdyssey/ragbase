@@ -277,7 +277,11 @@ async def fetch_models_from_provider(req: FetchModelsRequest) -> Any:
     }
     result = await asyncio.to_thread(_test_connection_sync, key_cfg)
     if result.get("success"):
-        return {"success": True, "models": result.get("models", [])}
+        return {
+            "success": True,
+            "models": result.get("models", []),
+            "types": result.get("types", {}),
+        }
     logger.warning("Model fetch failed (non-blocking): %s", result.get("message", "unknown"))
     return {"success": False, "models": [], "message": result.get("message", "Connection failed")}
 
