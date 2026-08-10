@@ -289,7 +289,10 @@ export default function ApiProviderTab({
         <button
           type="button"
           className={`${FILTER_TAB_BASE} ${filterCat === 'all' ? FILTER_TAB_ACTIVE : FILTER_TAB_IDLE}`}
-          onClick={() => setFilterCat('all')}
+          onClick={() => {
+            setFilterCat('all');
+            setSelectedRowKeys([]);
+          }}
         >
           {t('providerEdit.filterAll')}
         </button>
@@ -298,7 +301,10 @@ export default function ApiProviderTab({
             key={cat}
             type="button"
             className={`${FILTER_TAB_BASE} ${filterCat === cat ? FILTER_TAB_ACTIVE : FILTER_TAB_IDLE}`}
-            onClick={() => setFilterCat(cat)}
+            onClick={() => {
+              setFilterCat(cat);
+              setSelectedRowKeys([]);
+            }}
           >
             {t(`providerEdit.category.${cat}`)}
           </button>

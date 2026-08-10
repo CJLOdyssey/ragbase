@@ -6,8 +6,8 @@ Legacy mapping: chat->[llm] vector->[embedding] general->[llm,embedding]
 
 import json
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = "p9g3n005"

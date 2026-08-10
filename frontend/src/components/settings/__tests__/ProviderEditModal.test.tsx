@@ -101,7 +101,7 @@ describe('ProviderEditModal 模型刷新链路', () => {
     );
   });
 
-  it('保存时提交从目录派生的 capabilities', async () => {
+  it('同 provider 编辑时保留存储的 capabilities', async () => {
     const onSave = vi.fn();
     render(
       <ProviderEditModal
@@ -116,6 +116,65 @@ describe('ProviderEditModal 模型刷新链路', () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
         provider: 'openai',
+        capabilities: ['llm'],
+      }),
+    );
+  });
+
+  it('切换 provider 时从目录派生 capabilities', async () => {
+    vi.mocked(listProviders).mockResolvedValue({
+      openai: {
+        name: 'OpenAI',
+        base_url: 'https://api.openai.com/v1',
+        capabilities: ['chat', 'vector'],
+        docs_url: null,
+      },
+      deepseek: {
+        name: 'DeepSeek',
+        base_url: 'https://api.deepseek.com/v1',
+        capabilities: ['chat'],
+        docs_url: null,
+      },
+    });
+    const onSave = vi.fn();
+    render(
+      <ProviderEditModal
+        provider={{ ...BASE_PROVIDER, capabilities: ['llm', 'embedding'] }}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: 'DeepSeek' })).toBeTruthy();
+    });
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'deepseek' },
+    });
+    fireEvent.click(screen.getByText('保存'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'deepseek',
+        capabilities: ['llm'],
+      }),
+    );
+  });
+
+  it('新 key 保存时从目录派生 capabilities', async () => {
+    const onSave = vi.fn();
+    render(
+      <ProviderEditModal
+        provider={{ ...BASE_PROVIDER, id: '' }}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('保存'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
         capabilities: ['llm', 'embedding'],
       }),
     );

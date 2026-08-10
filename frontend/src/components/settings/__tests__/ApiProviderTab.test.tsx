@@ -81,4 +81,26 @@ describe('ApiProviderTab', { tags: ['unit'] }, () => {
     expect(screen.getByText('OpenAI Key')).toBeInTheDocument();
     expect(screen.getByText('Tavily Key')).toBeInTheDocument();
   });
+
+  it('clears row selection when switching filter tab', () => {
+    const onBatchDelete = vi.fn();
+    renderTab({
+      keys: [
+        makeKey({ capabilities: ['llm'] }),
+        makeKey({ id: 'k2', label: 'Tavily Key', capabilities: ['tool'] }),
+      ],
+      onBatchDelete,
+    });
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[2]);
+    expect(screen.getByText('删除 (1)')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('providerEdit.category.tool'));
+    expect(screen.queryByText('删除 (1)')).toBeNull();
+
+    fireEvent.click(screen.getByText('providerEdit.filterAll'));
+    expect(screen.queryByText('删除 (1)')).toBeNull();
+    expect(onBatchDelete).not.toHaveBeenCalled();
+  });
 });

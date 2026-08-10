@@ -1,18 +1,15 @@
 """Provider definitions — capabilities, base URLs, and model hints.
 
-Single source of truth consumed by:
-  - Frontend ProviderEditModal (type selector, capability badges)
-  - Backend key validation (capabilities against provider capabilities)
+Single source of truth served to the frontend via GET /api/providers
+(ProviderEditModal type selector, capability badges).
 
 Adding a new provider or capability requires only updating the PROVIDERS dict.
 """
 
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-
-Capability = Literal["llm", "embedding", "image"]
 
 # 主流 LLM API 供应商清单。base_url 均为官方 OpenAI 兼容端点
 # （核对：DeepSeek/智谱/Kimi/硅基流动 官方文档；OpenAI/Anthropic/MiniMax/

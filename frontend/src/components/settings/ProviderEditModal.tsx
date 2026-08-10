@@ -131,10 +131,15 @@ export default function ProviderEditModal({
   const showModels = shouldShowModels(caps);
 
   const handleSave = () => {
+    const preserveStored =
+      Boolean(provider.id) && providerType === provider.provider;
+    const capabilities = preserveStored
+      ? (provider.capabilities ?? categoriesOf(info ?? {}))
+      : categoriesOf(info ?? {});
     onSave({
       ...provider,
       provider: providerType,
-      capabilities: info ? categoriesOf(info) : (provider.capabilities ?? []),
+      capabilities,
       name,
       baseUrl,
       apiKey,
