@@ -1,20 +1,25 @@
 import { Loader2, RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { CATEGORY_ORDER } from '../../utils/providerCategories';
 
 interface Props {
   models: string[];
+  modelTypes: Record<string, string>;
   fetching: boolean;
   apiKey: string;
   onRemoveModel: (model: string) => void;
   onFetchModels: () => void;
+  onChangeModelType: (model: string, type: string) => void;
 }
 
 export default function ModelSection({
   models,
+  modelTypes,
   fetching,
   apiKey,
   onRemoveModel,
   onFetchModels,
+  onChangeModelType,
 }: Props) {
   const { t } = useTranslation();
 
@@ -25,21 +30,36 @@ export default function ModelSection({
       </label>
       <div className="flex items-start gap-2">
         {models.length > 0 ? (
-          <div className="flex-1 flex flex-wrap gap-1.5 p-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-md min-h-[36px]">
+          <div className="flex-1 flex flex-col gap-1.5 p-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-md min-h-[36px] max-h-64 overflow-y-auto">
             {models.map((model) => (
-              <span
+              <div
                 key={model}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--color-accent)] text-white rounded text-xs font-medium"
+                className="flex items-center gap-2 px-2 py-1 bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-md"
               >
-                {model}
+                <span className="flex-1 min-w-0 truncate text-xs font-medium text-[var(--color-text-primary)]">
+                  {model}
+                </span>
+                <select
+                  value={modelTypes[model] ?? ''}
+                  onChange={(e) => onChangeModelType(model, e.target.value)}
+                  aria-label={`${model} 类型`}
+                  className="text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-1.5 py-0.5 text-[var(--color-text-secondary)] cursor-pointer shrink-0"
+                >
+                  <option value="">—</option>
+                  {CATEGORY_ORDER.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {t('providerEdit.category.' + cat)}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() => onRemoveModel(model)}
-                  className="p-0 bg-transparent border-none text-white/60 cursor-pointer hover:text-white transition-colors"
+                  className="p-0 bg-transparent border-none text-[var(--color-text-muted)] cursor-pointer hover:text-[var(--color-danger)] transition-colors shrink-0"
                 >
                   <X size={12} />
                 </button>
-              </span>
+              </div>
             ))}
           </div>
         ) : (

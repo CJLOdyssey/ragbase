@@ -17,6 +17,7 @@ export interface ApiProviderForm {
   baseUrl: string;
   apiKey: string;
   models: string[];
+  model_types?: Record<string, string> | null;
   isActive: boolean;
   status?: 'connected' | 'error' | 'untested';
 }
@@ -114,6 +115,9 @@ export default function ProviderEditModal({
   const [baseUrl, setBaseUrl] = useState(provider.baseUrl);
   const [apiKey, setApiKey] = useState(provider.apiKey);
   const [models, setModels] = useState<string[]>(provider.models);
+  const [modelTypes, setModelTypes] = useState<Record<string, string>>(
+    provider.model_types ?? {},
+  );
   const [showKey, setShowKey] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -144,6 +148,7 @@ export default function ProviderEditModal({
       baseUrl,
       apiKey,
       models,
+      model_types: modelTypes,
     });
   };
 
@@ -164,6 +169,7 @@ export default function ProviderEditModal({
             return Array.from(merged);
           });
         }
+        setModelTypes(result.types ?? {});
       } else {
         setFetchError(result.message || '拉取模型失败');
       }
@@ -253,10 +259,19 @@ export default function ProviderEditModal({
         <div className="pt-1">
           <ModelSection
             models={models}
+            modelTypes={modelTypes}
             fetching={fetchingModels}
             apiKey={apiKey}
-            onRemoveModel={(m) =>
-              setModels((prev) => prev.filter((x) => x !== m))
+            onRemoveModel={(m) => {
+              setModels((prev) => prev.filter((x) => x !== m));
+              setModelTypes((prev) => {
+                const next = { ...prev };
+                delete next[m];
+                return next;
+              });
+            }}
+            onChangeModelType={(m, type) =>
+              setModelTypes((prev) => ({ ...prev, [m]: type }))
             }
             onFetchModels={handleFetchModels}
           />

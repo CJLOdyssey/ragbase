@@ -4,17 +4,17 @@ import ProviderEditModal, { type ApiProviderForm } from '../ProviderEditModal';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const DEFAULT_PROVIDERS = {
+  openai: {
+    name: 'OpenAI',
+    base_url: 'https://api.openai.com/v1',
+    capabilities: ['chat', 'vector'],
+    docs_url: null,
+  },
+};
+
 vi.mock('../../../api/client/providers', () => ({
-  listProviders: vi.fn(() =>
-    Promise.resolve({
-      openai: {
-        name: 'OpenAI',
-        base_url: 'https://api.openai.com/v1',
-        capabilities: ['chat', 'vector'],
-        docs_url: null,
-      },
-    }),
-  ),
+  listProviders: vi.fn(),
 }));
 
 vi.mock('../../../api/client/keys', () => ({
@@ -35,6 +35,7 @@ const BASE_PROVIDER: ApiProviderForm = {
 describe('ProviderEditModal 模型刷新链路', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(listProviders).mockResolvedValue(DEFAULT_PROVIDERS);
   });
 
   it('fetch-models 失败时显示错误 banner，可关闭', async () => {
@@ -206,5 +207,115 @@ describe('ProviderEditModal 模型刷新链路', () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ capabilities: ['llm'] }),
     );
+  });
+
+  it('fetch 成功后每行渲染类型下拉，改类型后保存载荷含 model_types', async () => {
+    vi.mocked(fetchModelsFromProvider).mockResolvedValue({
+      success: true,
+      models: ['gpt-4', 'text-embedding-3'],
+      types: { 'gpt-4': 'llm', 'text-embedding-3': 'embedding' },
+    });
+    const onSave = vi.fn();
+    render(
+      <ProviderEditModal
+        provider={BASE_PROVIDER}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle('从 API 获取模型'));
+
+    await waitFor(() =>
+      expect(screen.getByText('text-embedding-3')).toBeInTheDocument(),
+    );
+
+    const gptType = screen.getByRole('combobox', {
+      name: 'gpt-4 类型',
+    }) as HTMLSelectElement;
+    expect(gptType.value).toBe('llm');
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThan(1);
+
+    fireEvent.change(gptType, { target: { value: 'embedding' } });
+    fireEvent.click(screen.getByText('保存'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model_types: { 'gpt-4': 'embedding', 'text-embedding-3': 'embedding' },
+      }),
+    );
+  });
+
+  it('fetch 失败时类型 map 保持为空，保存载荷传空 model_types', async () => {
+    vi.mocked(fetchModelsFromProvider).mockResolvedValue({
+      success: false,
+      models: [],
+      message: 'Connection refused',
+    });
+    const onSave = vi.fn();
+    render(
+      <ProviderEditModal
+        provider={BASE_PROVIDER}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle('从 API 获取模型'));
+    await waitFor(() =>
+      expect(screen.getByText('Connection refused')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByText('保存'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ model_types: {} }),
+    );
+  });
+
+  it('编辑已有 key 时按存储的类型初始化下拉', async () => {
+    const onSave = vi.fn();
+    render(
+      <ProviderEditModal
+        provider={{
+          ...BASE_PROVIDER,
+          models: ['gpt-4o'],
+          model_types: { 'gpt-4o': 'llm' },
+        }}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const typeSelect = screen.getByRole('combobox', {
+      name: 'gpt-4o 类型',
+    }) as HTMLSelectElement;
+    expect(typeSelect.value).toBe('llm');
+
+    fireEvent.click(screen.getByText('保存'));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ model_types: { 'gpt-4o': 'llm' } }),
+    );
+  });
+
+  it('模型列表容器带滚动样式', async () => {
+    vi.mocked(fetchModelsFromProvider).mockResolvedValue({
+      success: true,
+      models: ['gpt-4'],
+      types: { 'gpt-4': 'llm' },
+    });
+    render(
+      <ProviderEditModal
+        provider={BASE_PROVIDER}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle('从 API 获取模型'));
+    await waitFor(() => expect(screen.getByText('gpt-4')).toBeInTheDocument());
+
+    const list = screen.getByText('gpt-4').closest('div')?.parentElement;
+    expect(list?.className).toContain('max-h-64');
+    expect(list?.className).toContain('overflow-y-auto');
   });
 });

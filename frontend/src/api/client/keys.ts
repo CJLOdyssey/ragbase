@@ -8,6 +8,7 @@ export interface KeyItem {
   key_masked: string;
   base_url: string | null;
   models: string[];
+  model_types?: Record<string, string> | null;
   is_active: boolean;
   is_default: boolean;
   last_used_at: string | null;
@@ -26,6 +27,7 @@ export async function createKey(cfg: {
   api_key: string;
   base_url?: string;
   models?: string[];
+  model_types?: Record<string, string>;
   is_default?: boolean;
 }): Promise<KeyItem> {
   const { data } = await api.post('/keys', cfg);
@@ -40,6 +42,7 @@ export async function updateKey(
     api_key?: string;
     base_url?: string;
     models?: string[];
+    model_types?: Record<string, string>;
     is_active?: boolean;
     is_default?: boolean;
   },
@@ -73,7 +76,12 @@ export async function fetchModelsFromProvider(cfg: {
   api_key: string;
   base_url?: string;
   provider?: string;
-}): Promise<{ success: boolean; models: string[]; message?: string }> {
+}): Promise<{
+  success: boolean;
+  models: string[];
+  types?: Record<string, string>;
+  message?: string;
+}> {
   const { data } = await api.post('/keys/fetch-models', cfg);
   return data;
 }
