@@ -106,7 +106,7 @@ class AttachmentResponse(BaseModel):
     """Attachment metadata returned from the API."""
 
     id: str
-    session_id: str
+    session_id: str | None = None
     run_id: str | None = None
     filename: str
     content_type: str = "application/octet-stream"

@@ -105,7 +105,7 @@ export default function RagBaseWorkstation() {
                     selectedModel={s.selectedModel}
                     onModelChange={s.setSelectedModel}
                     commands={[]}
-                    onSend={(text) => s.handleSend(text)}
+                    onSend={(text, files) => s.handleSend(text, files)}
                     onConfigureModels={() => s.setIsApiOpen(true)}
                     inputToolbarRef={inputToolbarRef}
                     isRunning={s.isRunning}
@@ -117,7 +117,7 @@ export default function RagBaseWorkstation() {
               {s.hasMessages && (
                 <InputToolbar
                   ref={inputToolbarRef}
-                  onSend={(text) => s.handleSend(text)}
+                  onSend={(text, files) => s.handleSend(text, files)}
                   models={s.models}
                   selectedModel={s.selectedModel}
                   onModelChange={s.setSelectedModel}

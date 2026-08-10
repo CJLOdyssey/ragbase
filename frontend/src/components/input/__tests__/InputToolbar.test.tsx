@@ -69,6 +69,16 @@ vi.mock('@/utils/useToast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
+const { mockUploadAttachment, mockDeleteAttachment } = vi.hoisted(() => ({
+  mockUploadAttachment: vi.fn(),
+  mockDeleteAttachment: vi.fn(),
+}));
+
+vi.mock('@/api/client/attachments', () => ({
+  uploadAttachment: mockUploadAttachment,
+  deleteAttachment: mockDeleteAttachment,
+}));
+
 vi.mock('@/contexts/SettingsContext', () => ({
   useSettings: () => ({
     settings: { sendOnEnter: true, sendMode: 'enter' },
@@ -118,6 +128,8 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     vi.clearAllMocks();
     paletteMock.openValue = false;
     paletteMock.filtered.length = 0;
+    mockUploadAttachment.mockResolvedValue({ id: 'att-default' });
+    mockDeleteAttachment.mockResolvedValue({ data: { success: true } });
   });
 
   it('renders basic elements', () => {
@@ -321,5 +333,46 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     fireEvent.click(screen.getByTestId('file-attach'));
     expect(mockToast).toHaveBeenCalledWith('home.fileTooLarge', 'error');
     expect(mockToast).toHaveBeenCalledWith('home.fileTypeDenied', 'error');
+  });
+
+  it('uploads file on select and marks it done with attachment id', async () => {
+    mockUploadAttachment.mockResolvedValue({ id: 'att-9' });
+    const ref = createRef<InputToolbarHandle>();
+    render(<InputToolbar {...defaultProps} ref={ref} />);
+    act(() => {
+      ref.current?.addFiles([new File(['content'], 'a.txt')]);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mockUploadAttachment).toHaveBeenCalled();
+    expect(screen.getByText('a.txt')).toBeInTheDocument();
+  });
+
+  it('shows failure state when upload fails', async () => {
+    mockUploadAttachment.mockRejectedValue(new Error('network'));
+    const ref = createRef<InputToolbarHandle>();
+    render(<InputToolbar {...defaultProps} ref={ref} />);
+    act(() => {
+      ref.current?.addFiles([new File(['content'], 'a.txt')]);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText('失败')).toBeInTheDocument();
+  });
+
+  it('deletes server file when removing an uploaded attachment', async () => {
+    mockUploadAttachment.mockResolvedValue({ id: 'att-9' });
+    const ref = createRef<InputToolbarHandle>();
+    render(<InputToolbar {...defaultProps} ref={ref} />);
+    act(() => {
+      ref.current?.addFiles([new File(['content'], 'a.txt')]);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Remove a.txt/i }));
+    expect(mockDeleteAttachment).toHaveBeenCalledWith('att-9');
   });
 });

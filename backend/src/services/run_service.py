@@ -69,6 +69,7 @@ class RunService:
         key_id: str | None = None,
         model: str | None = None,
         parent_run_id: str | None = None,
+        attachment_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         """Create a run, resolve credentials, subscribe to buffer, dispatch pipeline.
 
@@ -139,6 +140,21 @@ class RunService:
         except Exception as e:
             logger.error("Failed to create run: %s", e, exc_info=True)
             raise
+
+        # ── Bind pre-uploaded attachments ─────────────────────────────
+        # Pre-uploaded files (POST /api/attachments) carry session_id but no
+        # run_id; binding happens here so the pipeline can inject their links.
+        if attachment_ids:
+            try:
+                from repository.attachments import bind_attachments_to_run
+
+                await bind_attachments_to_run(attachment_ids, run_id, session_id, user_id)
+                logger.info(
+                    "Attachments bound | run=%s | requested=%d",
+                    run_id, len(attachment_ids),
+                )
+            except Exception:
+                logger.exception("Failed to bind attachments for run=%s", run_id)
 
         # ── Persist user message ─────────────────────────────────────
         # 只要有消息就入库：用户问题也落库 chat_messages（此前仅存 runs.

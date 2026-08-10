@@ -251,9 +251,23 @@ export function useHomeState() {
   const effectiveModel = selectedModel || models[0]?.id || '';
 
   const handleSend = useCallback(
-    async (text: string) => {
+    async (
+      text: string,
+      files?: import('../../types/input').AttachedFile[],
+    ) => {
       if (!text.trim()) return;
-      await submitRequirement(text);
+      // 附件已由 InputToolbar 选中即传（pre-session），这里只带已上传的 id
+      const ids = files
+        ?.map((f) => f.attachmentId)
+        .filter((x): x is string => !!x);
+      await submitRequirement(
+        text,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        ids?.length ? ids : undefined,
+      );
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
     [queryClient],

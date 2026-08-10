@@ -9,6 +9,11 @@ import type {
   FileRejection,
   ModelOption,
 } from '../../types/input';
+import {
+  deleteAttachment,
+  uploadAttachment,
+} from '../../api/client/attachments';
+import AttachmentList from './AttachmentList';
 import CommandDropdown from './CommandDropdown';
 import FileAttach from './FileAttach';
 import ModelSelector from './ModelSelector';
@@ -64,6 +69,18 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
 
     const composer = useMessageComposer({
       onSend: (text) => {
+        // 附件未就绪（上传中/失败）时不发送——失败需移除，进行中需等待
+        const pending = files.filter((f) => f.status !== 'done');
+        if (pending.length > 0) {
+          const allFailed = pending.every((f) => f.status === 'error');
+          toast(
+            allFailed
+              ? t('home.uploadFailed', '部分文件上传失败，请移除后重试')
+              : t('home.uploading', '文件上传中，请稍候'),
+            'error',
+          );
+          return;
+        }
         onSend(text, files);
         setFiles([]);
       },
@@ -116,26 +133,65 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
 
     // ── File handling ──
 
+    // 选中即传（行业模式）：文件上传与会话解耦（后端支持 pre-session 上传），
+    // 选中立刻上传拿 attachment id，发送时消息只带 id。
     const addFiles = useCallback(
       (incoming: File[]) => {
-        setFiles((prev) => {
-          const now = Date.now();
-          const mapped: AttachedFile[] = incoming.map((f, i) => ({
-            id: `${now}-${i}-${Math.random().toString(36).slice(2, 6)}`,
-            name: f.name,
-            size: f.size,
-            type: f.type,
-            file: f,
-          }));
-          const merged = [...prev, ...mapped].slice(0, MAX_FILES);
-          if (merged.length < prev.length + mapped.length) {
-            toast(t('home.maxFiles', { count: MAX_FILES }), 'info');
-          }
-          return merged;
-        });
+        const now = Date.now();
+        const all: AttachedFile[] = incoming.map((f, i) => ({
+          id: `${now}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          name: f.name,
+          size: f.size,
+          type: f.type,
+          file: f,
+          status: 'uploading',
+          progress: 0,
+        }));
+        const room = MAX_FILES - files.length;
+        if (room < all.length) {
+          toast(t('home.maxFiles', { count: MAX_FILES }), 'info');
+        }
+        const toKeep = all.slice(0, Math.max(0, room));
+        setFiles((prev) => [...prev, ...toKeep]);
+        for (const m of toKeep) {
+          if (!m.file) continue;
+          uploadAttachment(m.file, undefined, undefined, (pct) => {
+            setFiles((prev) =>
+              prev.map((x) => (x.id === m.id ? { ...x, progress: pct } : x)),
+            );
+          })
+            .then((att) => {
+              setFiles((prev) =>
+                prev.map((x) =>
+                  x.id === m.id
+                    ? { ...x, status: 'done', attachmentId: att.id }
+                    : x,
+                ),
+              );
+            })
+            .catch(() => {
+              setFiles((prev) =>
+                prev.map((x) =>
+                  x.id === m.id ? { ...x, status: 'error' } : x,
+                ),
+              );
+            });
+        }
       },
-      [toast, t],
+      [toast, t, files],
     );
+
+    const removeFile = useCallback((id: string) => {
+      setFiles((prev) => {
+        const target = prev.find((f) => f.id === id);
+        if (target?.attachmentId) {
+          deleteAttachment(target.attachmentId).catch(() => {
+            /* orphan server file — best effort cleanup */
+          });
+        }
+        return prev.filter((f) => f.id !== id);
+      });
+    }, []);
 
     useImperativeHandle(ref, () => ({ addFiles }), [addFiles]);
 
@@ -194,6 +250,8 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
           />
+
+          <AttachmentList files={files} onRemove={removeFile} />
 
           <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-surface-raised)] border-t-0 min-h-[var(--da-toolbar-height)] rounded-b-[var(--da-input-radius)]">
             <div className="flex items-center gap-2">

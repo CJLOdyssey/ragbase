@@ -180,6 +180,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'key-1',
       'deepseek-chat',
       null,
+      undefined,
     );
   });
 
@@ -217,6 +218,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'siliconflow-key',
       'Qwen/Qwen3-8B',
       null,
+      undefined,
     );
   });
 
@@ -242,6 +244,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'key-1',
       'deepseek-chat',
       'run-2',
+      undefined,
     );
   });
 
@@ -267,6 +270,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'key-1',
       'deepseek-chat',
       'run-1',
+      undefined,
     );
   });
 });
@@ -309,6 +313,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
       'key-1',
       'deepseek-chat',
       null,
+      undefined,
     );
   });
 
@@ -333,6 +338,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
       'key-1',
       'deepseek-chat',
       null,
+      undefined,
     );
   });
 
@@ -400,6 +406,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
       'key-1',
       'deepseek-chat',
       'parent-7',
+      undefined,
     );
   });
 });

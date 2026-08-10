@@ -6,6 +6,7 @@ export async function submitRequirement(
   key_id?: string,
   model?: string,
   parent_run_id?: string | null,
+  attachment_ids?: string[],
 ): Promise<{ run_id: string; status: string; session_id?: string }> {
   const { data } = await api.post('/runs', {
     requirement,
@@ -13,6 +14,7 @@ export async function submitRequirement(
     key_id: key_id || undefined,
     model: model || undefined,
     parent_run_id: parent_run_id || undefined,
+    attachment_ids: attachment_ids?.length ? attachment_ids : undefined,
   });
   return data;
 }

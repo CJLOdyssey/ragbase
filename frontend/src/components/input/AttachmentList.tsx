@@ -43,6 +43,14 @@ export default function AttachmentList({ files, onRemove }: Props) {
             <span className="text-[var(--color-text-muted)] text-xs">
               {fmtSize(f.size)}
             </span>
+            {f.status === 'uploading' && (
+              <span className="text-[var(--color-text-muted)] text-xs">
+                {f.progress ?? 0}%
+              </span>
+            )}
+            {f.status === 'error' && (
+              <span className="text-[var(--color-danger)] text-xs">失败</span>
+            )}
             <button
               className="p-0.5 bg-transparent border-none rounded text-[var(--color-text-muted)] cursor-pointer flex items-center justify-center hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
               onClick={() => onRemove(f.id)}

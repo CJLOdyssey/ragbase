@@ -48,11 +48,16 @@ class AttachmentDB(Base):
     __tablename__ = "attachments"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    session_id: Mapped[str] = mapped_column(
+    session_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("sessions.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
+        comment="Null until bound to a run's session (pre-upload before first message)",
+    )
+    user_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True,
+        comment="Uploader; ownership check for pre-session attachments",
     )
     run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     filename: Mapped[str] = mapped_column(String(256), nullable=False)

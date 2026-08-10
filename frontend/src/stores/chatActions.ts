@@ -65,6 +65,7 @@ export async function submitRequirement(
   skipAddUserMessage?: boolean,
   submissionConvId?: string | null,
   parent_run_id?: string | null,
+  attachment_ids?: string[],
 ) {
   const s = useChatStore.getState();
   const effectiveSessionId = session_id || s.currentSessionId || undefined;
@@ -129,6 +130,7 @@ export async function submitRequirement(
       keyId,
       model,
       effectiveParentRunId,
+      attachment_ids,
     );
     const run_id = resp.run_id;
     const returnedSessionId = resp.session_id || effectiveSessionId || null;

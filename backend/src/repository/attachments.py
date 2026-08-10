@@ -1,16 +1,17 @@
 """Attachment repository — CRUD for AttachmentDB."""
 
 from core.infra.database import AttachmentDB, get_session_factory
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, update
 
 
 async def create_attachment(
     attachment_id: str,
-    session_id: str,
+    session_id: str | None,
     filename: str,
     content_type: str,
     size_bytes: int,
     storage_path: str,
+    user_id: str | None = None,
     run_id: str | None = None,
     extracted_text: str | None = None,
 ) -> AttachmentDB:
@@ -18,6 +19,7 @@ async def create_attachment(
     attachment = AttachmentDB(
         id=attachment_id,
         session_id=session_id,
+        user_id=user_id,
         run_id=run_id,
         filename=filename,
         content_type=content_type,
@@ -74,3 +76,30 @@ async def delete_attachment(attachment_id: str) -> str | None:
         await session.delete(attachment)
         await session.commit()
         return storage_path
+
+
+async def bind_attachments_to_run(
+    attachment_ids: list[str], run_id: str, session_id: str, user_id: str
+) -> None:
+    """Bind pre-uploaded attachments to a run.
+
+    Qualified: attachment already belongs to the run's session, OR is still
+    unbound (pre-session upload) AND owned by the same user. Silently skips
+    ids that don't qualify — a stranger's pending file can never be attached.
+    """
+    if not attachment_ids:
+        return
+    factory = get_session_factory()
+    async with factory() as session:
+        await session.execute(
+            update(AttachmentDB)
+            .where(
+                AttachmentDB.id.in_(attachment_ids),
+                or_(
+                    AttachmentDB.session_id == session_id,
+                    and_(AttachmentDB.session_id.is_(None), AttachmentDB.user_id == user_id),
+                ),
+            )
+            .values(run_id=run_id, session_id=session_id)
+        )
+        await session.commit()

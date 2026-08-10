@@ -202,6 +202,88 @@ class TestAttachments:
         with pytest.raises(HTTPException):
             _validate_upload("application/x-executable", 100)
 
+    async def test_upload_traversal_session_id(self, client):
+        resp = client.post(
+            "/api/attachments",
+            files={"file": ("x.txt", b"content", "text/plain")},
+            data={"session_id": "../etc"},
+        )
+        assert resp.status_code == 400
+
+    async def test_upload_magic_mismatch(self, client):
+        resp = client.post("/api/sessions", json={"title": "att-magic"}, headers={"X-User-ID": "admin"})
+        session_id = resp.json()["id"]
+        resp = client.post(
+            "/api/attachments",
+            files={"file": ("fake.png", b"this is not a png", "image/png")},
+            data={"session_id": session_id},
+        )
+        assert resp.status_code == 415
+
+    async def test_upload_text_with_nul_byte(self, client):
+        resp = client.post("/api/sessions", json={"title": "att-nul"}, headers={"X-User-ID": "admin"})
+        session_id = resp.json()["id"]
+        resp = client.post(
+            "/api/attachments",
+            files={"file": ("evil.txt", b"real\x00binary", "text/plain")},
+            data={"session_id": session_id},
+        )
+        assert resp.status_code == 415
+
+    async def test_get_attachment_forbidden_when_auth_enabled(self, client, monkeypatch):
+        resp = client.post("/api/sessions", json={"title": "att-auth"}, headers={"X-User-ID": "admin"})
+        session_id = resp.json()["id"]
+        resp = client.post(
+            "/api/attachments",
+            files={"file": ("secret.txt", b"secret", "text/plain")},
+            data={"session_id": session_id},
+        )
+        attachment_id = resp.json()["id"]
+        monkeypatch.setenv("AUTH_ENABLED", "1")
+        # Unauthenticated caller (no cookie/state) resolves to "anonymous" → 403
+        resp = client.get(f"/api/attachments/{attachment_id}")
+        assert resp.status_code == 403
+
+    async def test_upload_without_session(self, client):
+        resp = client.post(
+            "/api/attachments",
+            files={"file": ("pre.txt", b"pre-session upload", "text/plain")},
+            data={},
+            headers={"X-User-ID": "admin"},
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["session_id"] is None
+        assert data["filename"] == "pre.txt"
+
+    async def test_upload_without_session_stored_user_scoped(self, client):
+        resp = client.post(
+            "/api/attachments",
+            files={"file": ("pre.txt", b"pre-session upload", "text/plain")},
+            data={},
+            headers={"X-User-ID": "admin"},
+        )
+        assert resp.status_code == 201
+        from repository.attachments import get_attachment_by_id
+
+        att = await get_attachment_by_id(resp.json()["id"])
+        assert att is not None
+        assert att.user_id == "admin"
+        assert "_u_admin" in att.storage_path
+
+    async def test_get_pending_attachment_forbidden_for_other_user(self, client, monkeypatch):
+        resp = client.post(
+            "/api/attachments",
+            files={"file": ("pre.txt", b"pre-session upload", "text/plain")},
+            data={},
+            headers={"X-User-ID": "admin"},
+        )
+        attachment_id = resp.json()["id"]
+        monkeypatch.setenv("AUTH_ENABLED", "1")
+        resp = client.get(f"/api/attachments/{attachment_id}")
+        # Unauthenticated caller resolves to "anonymous" ≠ uploader "admin"
+        assert resp.status_code == 403
+
     def test_upload_dir_creation(self):
         from routers.attachments import UPLOAD_DIR
         assert UPLOAD_DIR.exists()

@@ -31,6 +31,10 @@ export interface AttachedFile {
   size: number;
   type: string;
   file?: File;
+  /** Pre-upload state (upload on select, industry pattern) */
+  status?: 'uploading' | 'done' | 'error';
+  progress?: number;
+  attachmentId?: string;
 }
 
 export interface FileRejection {
