@@ -62,23 +62,10 @@ def _test_connection_sync(key_cfg: dict[str, Any]) -> dict[str, Any]:
     if not test_url:
         return {"success": False, "message": "No base URL configured", "models": [], "types": {}}
 
-    try:
-        req = urllib.request.Request(test_url, method="GET")
-        req.add_header("Authorization", f"Bearer {key_cfg['api_key']}")
-        req.add_header("Content-Type", "application/json")
-
-        with urllib.request.urlopen(req, timeout=_FETCH_TIMEOUT) as resp:  # nosec B310
-            if resp.status == 200:
-                models, types = _classify_models(test_url, key_cfg["api_key"], key_cfg["provider"])
-                return {
-                    "success": True,
-                    "message": "Connection successful",
-                    "models": models,
-                    "types": types,
-                }
-            return {"success": False, "message": f"HTTP {resp.status}", "models": [], "types": {}}
-    except Exception as e:
-        return {"success": False, "message": str(e), "models": [], "types": {}}
+    success, models, types, message = _classify_models(
+        test_url, key_cfg["api_key"], key_cfg["provider"]
+    )
+    return {"success": success, "message": message, "models": models, "types": types}
 
 
 def _parse_models_from_response(resp: Any, provider: str) -> list[str]:
@@ -125,23 +112,27 @@ def _infer_audio_type(model_id: str) -> str:
     return ""
 
 
-def _classify_models(base_url: str, api_key: str, provider: str) -> tuple[list[str], dict[str, str]]:
-    """Fetch models and map each to a model type.
+def _classify_models(
+    base_url: str, api_key: str, provider: str
+) -> tuple[bool, list[str], dict[str, str], str]:
+    """Fetch models in a single HTTP phase and map each to a model type.
 
-    SiliconFlow: one request per sub_type filter plus a type=audio fallback
-    request, fetched concurrently. On ANY fetch failure, degrade to a single
-    full-list request with an empty types map (pre-classification behavior).
+    SiliconFlow: one request per sub_type filter plus a type=audio request,
+    fetched concurrently. On ANY fetch failure, degrade to a single full-list
+    request with an empty types map (pre-classification behavior); if the
+    degrade request also fails, report failure with the underlying message.
     Other providers: single full-list request, types always empty.
-    Returns (models, {model_id: type}).
+    Returns (success, models, {model_id: type}, message).
     """
-    def fetch_all() -> list[str]:
-        return _fetch_models_for_url(base_url, api_key)
+
+    def fetch_full() -> tuple[bool, list[str], dict[str, str], str]:
+        try:
+            return True, _fetch_models_for_url(base_url, api_key), {}, "Connection successful"
+        except Exception as e:
+            return False, [], {}, str(e)
 
     if not _is_siliconflow(provider, base_url):
-        try:
-            return fetch_all(), {}
-        except Exception:
-            return [], {}
+        return fetch_full()
 
     queries = {sub: f"{base_url}?sub_type={sub}" for sub in _SUB_TYPE_TO_MODEL_TYPE}
     queries["audio"] = f"{base_url}?type=audio"
@@ -158,10 +149,7 @@ def _classify_models(base_url: str, api_key: str, provider: str) -> tuple[list[s
         buckets = {}
 
     if not buckets:
-        try:
-            return fetch_all(), {}
-        except Exception:
-            return [], {}
+        return fetch_full()
 
     models: list[str] = []
     types: dict[str, str] = {}
@@ -179,4 +167,4 @@ def _classify_models(base_url: str, api_key: str, provider: str) -> tuple[list[s
                     types[model_id] = audio_type
             else:
                 types[model_id] = model_type
-    return models, types
+    return True, models, types, "Connection successful"

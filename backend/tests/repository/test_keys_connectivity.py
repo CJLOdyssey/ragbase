@@ -212,9 +212,11 @@ class TestClassifyModels:
         with unittest.mock.patch("urllib.request.urlopen", side_effect=_urlopen_side_effect({
             "chat": ["Qwen/Qwen2.5-7B-Instruct"],
         })):
-            models, types = _classify_models(
+            success, models, types, message = _classify_models(
                 "https://api.siliconflow.cn/v1/models", "sk-test", "siliconflow"
             )
+        assert success is True
+        assert message == "Connection successful"
         assert "Qwen/Qwen2.5-7B-Instruct" in models
         assert types["Qwen/Qwen2.5-7B-Instruct"] == "llm"
 
@@ -229,9 +231,10 @@ class TestClassifyModels:
             "speech-to-text": ["sf/stt-1"],
         }
         with unittest.mock.patch("urllib.request.urlopen", side_effect=_urlopen_side_effect(buckets)):
-            models, types = _classify_models(
+            success, models, types, _ = _classify_models(
                 "https://api.siliconflow.cn/v1/models", "sk-test", "custom"
             )
+        assert success is True
         assert set(models) == set(sum(buckets.values(), []))
         assert types == {
             "sf/chat-1": "llm",
@@ -251,9 +254,10 @@ class TestClassifyModels:
                 "Kokoro-82M",
             ],
         })):
-            models, types = _classify_models(
+            success, models, types, _ = _classify_models(
                 "https://api.siliconflow.cn/v1/models", "sk-test", "siliconflow"
             )
+        assert success is True
         assert types["FunAudioLLM/CosyVoice2-0.5B"] == "tts"
         assert types["FunAudioLLM/SenseVoiceSmall"] == "speech2text"
         assert "Kokoro-82M" in models
@@ -263,16 +267,20 @@ class TestClassifyModels:
         with unittest.mock.patch("urllib.request.urlopen", side_effect=_urlopen_side_effect({
             "audio": ["iic/SenseVoiceSmall"],
         })):
-            _, types = _classify_models(
+            success, _, types, _ = _classify_models(
                 "https://api.siliconflow.cn/v1/models", "sk-test", "siliconflow"
             )
+        assert success is True
         assert types["iic/SenseVoiceSmall"] == "speech2text"
 
     def test_provider_detected_by_chinese_name(self):
         with unittest.mock.patch("urllib.request.urlopen", side_effect=_urlopen_side_effect({
             "chat": ["sf/chat-1"],
         })):
-            models, types = _classify_models("https://api.siliconflow.cn/v1/models", "sk-test", "硅基流动")
+            success, models, types, _ = _classify_models(
+                "https://api.siliconflow.cn/v1/models", "sk-test", "硅基流动"
+            )
+        assert success is True
         assert types["sf/chat-1"] == "llm"
         assert "sf/chat-1" in models
 
@@ -280,18 +288,20 @@ class TestClassifyModels:
         with unittest.mock.patch("urllib.request.urlopen", side_effect=_urlopen_side_effect({
             "embedding": ["sf/embed-1"],
         })):
-            _, types = _classify_models(
+            success, _, types, _ = _classify_models(
                 "https://proxy.siliconflow.example/v1/models", "sk-test", "custom"
             )
+        assert success is True
         assert types["sf/embed-1"] == "embedding"
 
-    def test_non_siliconflow_types_empty(self):
+    def test_non_siliconflow_single_fetch(self):
         with unittest.mock.patch("urllib.request.urlopen", side_effect=_urlopen_side_effect(
             {}, fallback=["gpt-4", "gpt-3.5"]
         )) as mock_open:
-            models, types = _classify_models(
+            success, models, types, _ = _classify_models(
                 "https://api.openai.com/v1/models", "sk-test", "openai"
             )
+        assert success is True
         assert models == ["gpt-4", "gpt-3.5"]
         assert types == {}
         assert mock_open.call_count == 1
@@ -303,9 +313,10 @@ class TestClassifyModels:
             return _canned_response(["m1", "m2"])
 
         with unittest.mock.patch("urllib.request.urlopen", side_effect=side_effect):
-            models, types = _classify_models(
+            success, models, types, _ = _classify_models(
                 "https://api.siliconflow.cn/v1/models", "sk-test", "siliconflow"
             )
+        assert success is True
         assert models == ["m1", "m2"]
         assert types == {}
 
@@ -318,31 +329,35 @@ class TestClassifyModels:
             return _canned_response(["m1"])
 
         with unittest.mock.patch("urllib.request.urlopen", side_effect=side_effect):
-            models, types = _classify_models(
+            success, models, types, _ = _classify_models(
                 "https://api.siliconflow.cn/v1/models", "sk-test", "siliconflow"
             )
+        assert success is True
         assert models == ["m1"]
         assert types == {}
 
-    def test_single_fetch_failure_returns_empty(self):
+    def test_single_fetch_failure_reports_failure(self):
         def side_effect(req, *args, **kwargs):
             raise ConnectionError("boom")
 
         with unittest.mock.patch("urllib.request.urlopen", side_effect=side_effect):
-            models, types = _classify_models(
+            success, models, types, message = _classify_models(
                 "https://api.siliconflow.cn/v1/models", "sk-test", "siliconflow"
             )
+        assert success is False
         assert models == []
         assert types == {}
+        assert message == "boom"
 
     def test_dedup_models_across_buckets(self):
         with unittest.mock.patch("urllib.request.urlopen", side_effect=_urlopen_side_effect({
             "chat": ["sf/shared"],
             "audio": ["sf/shared", "sf/tts-only"],
         })):
-            models, types = _classify_models(
+            success, models, types, _ = _classify_models(
                 "https://api.siliconflow.cn/v1/models", "sk-test", "siliconflow"
             )
+        assert success is True
         assert models.count("sf/shared") == 1
         assert types["sf/shared"] == "llm"
 
@@ -362,16 +377,49 @@ class TestTestConnectionSyncTypes:
         assert result["types"]["sf/chat-1"] == "llm"
         assert result["types"]["sf/embed-1"] == "embedding"
 
-    def test_non_siliconflow_types_empty_in_connection(self):
+    def test_non_siliconflow_single_http_phase(self):
         with unittest.mock.patch("urllib.request.urlopen", side_effect=_urlopen_side_effect(
             {}, fallback=["gpt-4"]
-        )):
+        )) as mock_open:
             result = _test_connection_sync({
                 "api_key": "sk-test",
                 "provider": "openai",
                 "base_url": "https://api.openai.com/v1",
             })
         assert result["success"] is True
+        assert result["models"] == ["gpt-4"]
+        assert result["types"] == {}
+        assert mock_open.call_count == 1
+
+    def test_siliconflow_degrade_failure_reports_failure(self):
+        def side_effect(req, *args, **kwargs):
+            raise ConnectionError("refused")
+
+        with unittest.mock.patch("urllib.request.urlopen", side_effect=side_effect):
+            result = _test_connection_sync({
+                "api_key": "sk-test",
+                "provider": "siliconflow",
+                "base_url": "https://api.siliconflow.cn/v1",
+            })
+        assert result["success"] is False
+        assert result["models"] == []
+        assert result["types"] == {}
+        assert "refused" in result["message"]
+
+    def test_siliconflow_degrade_success_still_ok(self):
+        def side_effect(req, *args, **kwargs):
+            if "sub_type=" in req.full_url or "type=audio" in req.full_url:
+                raise ConnectionError("boom")
+            return _canned_response(["sf/fallback"])
+
+        with unittest.mock.patch("urllib.request.urlopen", side_effect=side_effect):
+            result = _test_connection_sync({
+                "api_key": "sk-test",
+                "provider": "siliconflow",
+                "base_url": "https://api.siliconflow.cn/v1",
+            })
+        assert result["success"] is True
+        assert result["models"] == ["sf/fallback"]
         assert result["types"] == {}
 
     def test_connection_failure_includes_empty_types(self):
