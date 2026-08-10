@@ -11,6 +11,15 @@ def test_model_type_inference():
     assert infer_model_type("", "tavily") == "tool"
 
 
+def test_model_type_inference_with_org_prefix():
+    from routers.models import infer_model_type
+
+    assert infer_model_type("BAAI/bge-m3", "custom") == "embedding"
+    assert infer_model_type("Pro/BAAI/bge-m3", "custom") == "embedding"
+    assert infer_model_type("Qwen/Qwen3-Reranker-8B", "custom") == "rerank"
+    assert infer_model_type("zai-org/GLM-5.2", "custom") == "llm"
+
+
 def _create_key(client, *, models, model_types=None, label="models-test"):
     resp = client.post(
         "/api/keys",

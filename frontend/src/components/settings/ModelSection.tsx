@@ -5,6 +5,8 @@ import { CATEGORY_ORDER } from '../../utils/providerCategories';
 interface Props {
   models: string[];
   modelTypes: Record<string, string>;
+  /** Inferred type fallbacks (from /api/models) for models without an explicit stored type. */
+  typeDefaults?: Record<string, string>;
   fetching: boolean;
   apiKey: string;
   onRemoveModel: (model: string) => void;
@@ -15,6 +17,7 @@ interface Props {
 export default function ModelSection({
   models,
   modelTypes,
+  typeDefaults = {},
   fetching,
   apiKey,
   onRemoveModel,
@@ -40,7 +43,7 @@ export default function ModelSection({
                   {model}
                 </span>
                 <select
-                  value={modelTypes[model] ?? ''}
+                  value={modelTypes[model] ?? typeDefaults[model] ?? ''}
                   onChange={(e) => onChangeModelType(model, e.target.value)}
                   aria-label={`${model} 类型`}
                   className="text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-1.5 py-0.5 text-[var(--color-text-secondary)] cursor-pointer shrink-0"

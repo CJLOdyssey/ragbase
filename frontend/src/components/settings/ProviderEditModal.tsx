@@ -3,6 +3,7 @@ import Modal from '@/components/shared/Modal';
 import { AlertCircle, Loader2, Save, Tag, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchModelsFromProvider } from '../../api/client/keys';
+import { listModels } from '../../api/client/models';
 import { listProviders, type ProvidersMap } from '../../api/client/providers';
 import CredentialsSection from './CredentialsSection';
 import ModelSection from './ModelSection';
@@ -136,12 +137,21 @@ export default function ProviderEditModal({
   const [showKey, setShowKey] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [typeDefaults, setTypeDefaults] = useState<Record<string, string>>({});
 
   useEffect(() => {
     listProviders()
       .then(setProviders)
       .catch(() => {})
       .finally(() => setLoadingProviders(false));
+  }, []);
+
+  useEffect(() => {
+    listModels()
+      .then((infos) =>
+        setTypeDefaults(Object.fromEntries(infos.map((i) => [i.id, i.type]))),
+      )
+      .catch(() => {});
   }, []);
 
   const info = providers[providerType];
@@ -276,6 +286,7 @@ export default function ProviderEditModal({
           <ModelSection
             models={models}
             modelTypes={modelTypes}
+            typeDefaults={typeDefaults}
             fetching={fetchingModels}
             apiKey={apiKey}
             onRemoveModel={(m) => {

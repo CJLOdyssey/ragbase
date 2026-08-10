@@ -30,13 +30,18 @@ RERANK_PREFIXES = ("rerank", "bge-reranker")
 
 def infer_model_type(model: str, provider: str) -> str:
     m = model.lower()
-    if m.startswith(EMBEDDING_PREFIXES) or "embed" in m:
+    # Match on the basename (after org/namespace prefix like "BAAI/"), since
+    # real model ids carry a prefix (e.g. "BAAI/bge-m3") that would otherwise
+    # defeat startswith checks. Substring checks ("embed", "asr") stay on the
+    # full name to avoid over-matching vendor names.
+    base = m.rsplit("/", 1)[-1]
+    if base.startswith(EMBEDDING_PREFIXES) or "embed" in m:
         return "embedding"
-    if m.startswith(RERANK_PREFIXES):
+    if base.startswith(RERANK_PREFIXES) or "rerank" in m:
         return "rerank"
-    if m.startswith(("whisper", "paraformer", "sherpa")) or "asr" in m:
+    if base.startswith(("whisper", "paraformer", "sherpa")) or "asr" in m:
         return "speech2text"
-    if m.startswith(("tts", "edge-tts")) or "voice" in m:
+    if base.startswith(("tts", "edge-tts")) or "voice" in m:
         return "tts"
     if "moderation" in m:
         return "moderation"
