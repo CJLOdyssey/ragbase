@@ -68,6 +68,7 @@ async def _get_models_from_keys(user_id: str) -> list[ModelInfo]:
             continue
         provider = k.get("provider", "custom")
         provider_label = PROVIDER_LABELS.get(provider, provider.title())
+        types_map = k.get("model_types") or {}
         for model_id in k.get("models", []):
             if model_id in seen:
                 continue
@@ -77,7 +78,7 @@ async def _get_models_from_keys(user_id: str) -> list[ModelInfo]:
                     id=model_id,
                     label=model_id,
                     provider=provider_label,
-                    type=infer_model_type(model_id, provider),
+                    type=types_map.get(model_id) or infer_model_type(model_id, provider),
                 )
             )
 

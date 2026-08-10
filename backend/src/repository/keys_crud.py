@@ -17,6 +17,7 @@ async def create_api_key(
     plaintext_key: str = "",
     base_url: str | None = None,
     models: list[str] | None = None,
+    model_types: dict[str, str] | None = None,
     is_default: bool = False,
 ) -> UserApiKey:
     """Save a new API key — encrypts before storage, returns the created key."""
@@ -43,6 +44,7 @@ async def create_api_key(
             encrypted_key=encrypted,
             base_url=base_url,
             models=",".join(models) if models else "",
+            model_types=model_types,
             is_active=True,
             is_default=is_default,
         )
@@ -114,6 +116,7 @@ async def get_api_keys(
                     "id": r.id,
                     "provider": r.provider,
                     "capabilities": list(r.capabilities or []),
+                    "model_types": r.model_types,
                     "label": r.label,
                     "key_masked": key_masked,
                     "base_url": r.base_url,
@@ -170,6 +173,7 @@ async def get_api_key_for_use(key_id: str, user_id: str) -> dict[str, Any] | Non
             "id": row.id,
             "provider": row.provider,
             "capabilities": list(row.capabilities or []),
+            "model_types": row.model_types,
             "api_key": decrypt_api_key(row.encrypted_key),
             "base_url": row.base_url,
             "models": [m.strip() for m in row.models.split(",") if m.strip()] if row.models else [],
@@ -224,6 +228,7 @@ async def get_api_key_for_model(model: str, user_id: str) -> dict[str, Any] | No
             "id": row.id,
             "provider": row.provider,
             "capabilities": list(row.capabilities or []),
+            "model_types": row.model_types,
             "api_key": decrypt_api_key(row.encrypted_key),
             "base_url": row.base_url,
             "models": [m.strip() for m in row.models.split(",") if m.strip()] if row.models else [],
@@ -298,6 +303,7 @@ async def update_api_key(
     is_active: bool | None = None,
     is_default: bool | None = None,
     capabilities: list[str] | None = None,
+    model_types: dict[str, str] | None = None,
 ) -> dict[str, Any] | None:
     """Update an API key configuration."""
     factory = get_session_factory()
@@ -320,6 +326,8 @@ async def update_api_key(
             row.models = ",".join(models)
         if capabilities is not None:
             row.capabilities = capabilities
+        if model_types is not None:
+            row.model_types = model_types
         if is_active is not None:
             row.is_active = is_active
         if is_default is not None:
@@ -344,6 +352,7 @@ async def update_api_key(
             "label": row.label,
             "provider": row.provider,
             "capabilities": list(row.capabilities or []),
+            "model_types": row.model_types,
             "key_masked": mask_api_key(decrypt_api_key(row.encrypted_key)),
             "is_active": row.is_active,
             "is_default": row.is_default,

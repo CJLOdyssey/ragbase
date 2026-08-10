@@ -14,7 +14,7 @@ from auth import get_user_id
 from core.audit import log_audit
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
-from domain.capabilities import validate_capabilities
+from domain.capabilities import VALID, validate_capabilities
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field, field_validator
 from repository import (
@@ -39,6 +39,7 @@ class KeyCreateRequest(BaseModel):
     )
     base_url: str | None = None
     models: list[str] = Field(default_factory=list)
+    model_types: dict[str, str] | None = None
     is_default: bool = False
 
     @field_validator("capabilities")
@@ -49,6 +50,16 @@ class KeyCreateRequest(BaseModel):
             raise ValueError(err)
         return v
 
+    @field_validator("model_types")
+    @classmethod
+    def _check_model_types(cls, v: dict[str, str] | None) -> dict[str, str] | None:
+        if v is None:
+            return v
+        for value in v.values():
+            if value not in VALID:
+                raise ValueError(f"未知模型类型: {value}")
+        return v
+
 
 class KeyUpdateRequest(BaseModel):
     capabilities: list[str] | None = Field(default=None)
@@ -56,6 +67,7 @@ class KeyUpdateRequest(BaseModel):
     api_key: str | None = Field(default=None, description="New plaintext key (optional)")
     base_url: str | None = None
     models: list[str] | None = None
+    model_types: dict[str, str] | None = None
     is_active: bool | None = None
     is_default: bool | None = None
 
@@ -69,6 +81,16 @@ class KeyUpdateRequest(BaseModel):
             raise ValueError(err)
         return v
 
+    @field_validator("model_types")
+    @classmethod
+    def _check_model_types(cls, v: dict[str, str] | None) -> dict[str, str] | None:
+        if v is None:
+            return v
+        for value in v.values():
+            if value not in VALID:
+                raise ValueError(f"未知模型类型: {value}")
+        return v
+
 
 class FetchModelsRequest(BaseModel):
     api_key: str = Field(..., min_length=1)
@@ -80,6 +102,7 @@ class KeyResponse(BaseModel):
     id: str
     provider: str
     capabilities: list[str]
+    model_types: dict[str, str] | None = None
     label: str
     key_masked: str
     base_url: str | None
@@ -108,6 +131,7 @@ async def list_keys(request: Request) -> Any:
                 id=k["id"],
                 provider=k["provider"],
                 capabilities=k.get("capabilities", ["llm"]),
+                model_types=k.get("model_types"),
                 label=k["label"],
                 key_masked=k["key_masked"],
                 base_url=k["base_url"],
@@ -143,6 +167,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
         plaintext_key=req.api_key,
         base_url=req.base_url,
         models=req.models,
+        model_types=req.model_types,
         is_default=req.is_default,
     )
 
@@ -154,6 +179,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
             id=obj.id,
             provider=obj.provider,
             capabilities=obj.capabilities,
+            model_types=obj.model_types,
             label=obj.label,
             key_masked=mask_api_key(decrypt_api_key(obj.encrypted_key)),
             base_url=obj.base_url,
@@ -186,6 +212,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
         id=obj.id,
         provider=obj.provider,
         capabilities=obj.capabilities,
+        model_types=obj.model_types,
         label=obj.label,
         key_masked=mask_api_key(decrypt_api_key(obj.encrypted_key)),
         base_url=obj.base_url,
@@ -209,6 +236,7 @@ async def edit_key(key_id: str, req: KeyUpdateRequest, request: Request) -> Any:
         plaintext_key=req.api_key,
         base_url=req.base_url,
         models=req.models,
+        model_types=req.model_types,
         is_active=req.is_active,
         is_default=req.is_default,
     )
@@ -228,6 +256,7 @@ async def edit_key(key_id: str, req: KeyUpdateRequest, request: Request) -> Any:
         id=result["id"],
         provider=result["provider"],
         capabilities=result.get("capabilities", ["llm"]),
+        model_types=result.get("model_types"),
         label=result["label"],
         key_masked=result["key_masked"],
         base_url=result.get("base_url"),

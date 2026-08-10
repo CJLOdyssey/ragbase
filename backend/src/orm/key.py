@@ -27,6 +27,13 @@ class UserApiKey(Base):
         nullable=False,
         comment="llm|embedding|rerank|speech2text|tts|moderation|tool — what this key can do",
     )
+    model_types: Mapped[dict[str, str] | None] = mapped_column(
+        "model_types",
+        JSONB().with_variant(JSON, "sqlite"),
+        default=None,
+        nullable=True,
+        comment="per-model capability map (model -> llm|embedding|...); None = name heuristic",
+    )
     label: Mapped[str] = mapped_column(String(64), nullable=False)
     encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)
     base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)

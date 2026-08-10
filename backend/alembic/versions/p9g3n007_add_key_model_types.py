@@ -5,8 +5,8 @@ sub_type) or set manually in the key form. NULL means fall back to the
 name heuristic in /api/models.
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = "p9g3n007"
