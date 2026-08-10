@@ -1,10 +1,14 @@
-"""Tests for RAG embedding provider (backend/rag/rag_embedding.py)."""
+"""Tests for RAG embedding provider (backend/rag/rag_embedding.py).
+
+Contract: embedding failures RAISE — zero-vector fallback is forbidden because
+it silently poisons the vector store with fake embeddings.
+"""
 
 import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from rag.rag_embedding import EMBEDDING_DIM, EmbeddingProvider, _fallback_embed
+from rag.rag_embedding import EMBEDDING_DIM, EmbeddingProvider
 
 
 class TestEmbeddingProvider:
@@ -22,35 +26,23 @@ class TestEmbeddingProvider:
         assert "dashscope.aliyuncs.com" in p._base_url
 
     @pytest.mark.asyncio
-    async def test_embed_no_api_key_fallback(self):
+    async def test_embed_no_api_key_raises(self):
         p = EmbeddingProvider(api_key="")
-        result = await p.embed(["hello", "world"])
-        assert len(result) == 2
-        assert len(result[0]) == EMBEDDING_DIM
-        assert result[0] == [0.0] * EMBEDDING_DIM
+        with pytest.raises(RuntimeError, match="API key"):
+            await p.embed(["hello", "world"])
 
     @pytest.mark.asyncio
-    async def test_embed_query_no_api_key(self):
+    async def test_embed_query_no_api_key_raises(self):
         p = EmbeddingProvider(api_key="")
-        result = await p.embed_query("hello")
-        assert len(result) == EMBEDDING_DIM
-
-    def test__fallback_embed(self):
-        result = _fallback_embed(["a", "b"])
-        assert len(result) == 2
-        assert len(result[0]) == EMBEDDING_DIM
-
-    def test__fallback_embed_empty(self):
-        result = _fallback_embed([])
-        assert result == []
+        with pytest.raises(RuntimeError, match="API key"):
+            await p.embed_query("hello")
 
     @pytest.mark.asyncio
-    async def test_embed_falls_back_on_exception(self):
+    async def test_embed_raises_on_exception(self):
         p = EmbeddingProvider(api_key="sk-test")
         with patch.object(p, "_embed_sync", side_effect=Exception("API down")):
-            result = await p.embed(["test"])
-            assert len(result) == 1
-            assert result[0] == [0.0] * EMBEDDING_DIM
+            with pytest.raises(Exception, match="API down"):
+                await p.embed(["test"])
 
     @pytest.mark.asyncio
     async def test_embed_success(self):
@@ -100,7 +92,7 @@ class TestEmbeddingProvider:
             assert len(result[0]) == EMBEDDING_DIM
             assert result[0] == [0.1] * EMBEDDING_DIM
 
-    def test_embed_sync_missing_output_key_fallback(self):
+    def test_embed_sync_missing_output_key_raises(self):
         p = EmbeddingProvider(api_key="sk-test")
         response_data = {"output": {}}
         mock_response = MagicMock()
@@ -109,11 +101,10 @@ class TestEmbeddingProvider:
         mock_response.__exit__ = MagicMock(return_value=False)
 
         with patch("rag.rag_embedding.urllib.request.urlopen", return_value=mock_response):
-            result = p._embed_sync(["text"])
-            assert len(result) == 1
-            assert result[0] == [0.0] * EMBEDDING_DIM
+            with pytest.raises(RuntimeError, match="missing embeddings"):
+                p._embed_sync(["text"])
 
-    def test_embed_sync_missing_embeddings_key_fallback(self):
+    def test_embed_sync_missing_embeddings_key_raises(self):
         p = EmbeddingProvider(api_key="sk-test")
         response_data = {"output": {"other_key": "value"}}
         mock_response = MagicMock()
@@ -122,11 +113,10 @@ class TestEmbeddingProvider:
         mock_response.__exit__ = MagicMock(return_value=False)
 
         with patch("rag.rag_embedding.urllib.request.urlopen", return_value=mock_response):
-            result = p._embed_sync(["text"])
-            assert len(result) == 1
-            assert result[0] == [0.0] * EMBEDDING_DIM
+            with pytest.raises(RuntimeError, match="missing embeddings"):
+                p._embed_sync(["text"])
 
-    def test_embed_sync_empty_output_fallback(self):
+    def test_embed_sync_empty_output_raises(self):
         p = EmbeddingProvider(api_key="sk-test")
         response_data = {"output": None}
         mock_response = MagicMock()
@@ -135,9 +125,8 @@ class TestEmbeddingProvider:
         mock_response.__exit__ = MagicMock(return_value=False)
 
         with patch("rag.rag_embedding.urllib.request.urlopen", return_value=mock_response):
-            result = p._embed_sync(["text"])
-            assert len(result) == 1
-            assert result[0] == [0.0] * EMBEDDING_DIM
+            with pytest.raises(RuntimeError, match="missing embeddings"):
+                p._embed_sync(["text"])
 
     def test_embed_sync_request_headers(self):
         p = EmbeddingProvider(api_key="sk-test-key")

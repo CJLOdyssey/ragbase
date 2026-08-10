@@ -22,17 +22,16 @@ class EmbeddingProvider:
         self._base_url = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding"
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        """Batch-embed a list of texts. Returns list of 1024-dim vectors."""
+        """Batch-embed a list of texts. Returns list of 1024-dim vectors.
+
+        Raises RuntimeError on any failure — callers must handle; zero-vector
+        fallback would silently poison the vector store with fake embeddings.
+        """
         if not self.api_key:
-            return _fallback_embed(texts)
-
-        try:
-            result = await asyncio.to_thread(self._embed_sync, texts)
-            return result
-        except Exception as e:
-            logger.warning("DashScope embedding failed, using fallback: %s", e)
-
-        return _fallback_embed(texts)
+            raise RuntimeError(
+                "RAG embedding unavailable: no DashScope API key configured"
+            )
+        return await asyncio.to_thread(self._embed_sync, texts)
 
     def _embed_sync(self, texts: list[str]) -> list[list[float]]:
         """Embed texts synchronously via DashScope HTTP API in a thread pool."""
@@ -54,17 +53,8 @@ class EmbeddingProvider:
 
         if result.get("output") and result["output"].get("embeddings"):
             return [e["embedding"] for e in result["output"]["embeddings"]]
-        return _fallback_embed(texts)
+        raise RuntimeError("DashScope embedding response missing embeddings")
 
     async def embed_query(self, query: str) -> list[float]:
         embeddings = await self.embed([query])
         return embeddings[0]
-
-
-def _fallback_embed(texts: list[str]) -> list[list[float]]:
-    logger.warning(
-        "RAG embedding unavailable: no DashScope API key configured. "
-        "Returning zero vectors for %d texts — vector search will be non-functional.",
-        len(texts),
-    )
-    return [[0.0] * EMBEDDING_DIM for _ in texts]
