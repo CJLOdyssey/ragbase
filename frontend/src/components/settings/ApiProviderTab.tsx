@@ -1,15 +1,7 @@
 import { useMemo, useState } from 'react';
 import type * as React from 'react';
 import LoadingSkeleton from '@/components/shared/LoadingSkeleton';
-import {
-  Button,
-  ConfigProvider,
-  Space,
-  Switch,
-  Table,
-  Tag,
-  Tooltip,
-} from 'antd';
+import { Button, ConfigProvider, Space, Switch, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   AlertCircle,
@@ -22,12 +14,22 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { KeyItem } from '../../api/client';
+import CapabilityBadges from './CapabilityBadges';
+import {
+  categoriesOf,
+  CATEGORY_ORDER,
+  type Category,
+} from '../../utils/providerCategories';
 
-const USAGE_COLORS: Record<string, string> = {
-  vector: 'var(--color-accent)',
-  general: 'var(--color-success)',
-  tool: 'var(--color-warning)',
-};
+const capsOf = (k: KeyItem): string[] =>
+  (k as { capabilities?: string[] }).capabilities ?? [];
+
+const FILTER_TAB_BASE =
+  'px-2.5 py-1 rounded-md text-xs transition-colors cursor-pointer border-none';
+const FILTER_TAB_ACTIVE =
+  'bg-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] text-[var(--color-accent)] font-medium';
+const FILTER_TAB_IDLE =
+  'bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]';
 
 interface Props {
   keys: KeyItem[];
@@ -60,6 +62,14 @@ export default function ApiProviderTab({
 }: Props) {
   const { t } = useTranslation();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [filterCat, setFilterCat] = useState<'all' | Category>('all');
+
+  const visibleKeys = useMemo(() => {
+    if (filterCat === 'all') return keys;
+    return keys.filter((k) =>
+      categoriesOf({ capabilities: capsOf(k) }).includes(filterCat),
+    );
+  }, [keys, filterCat]);
 
   const handleBatchDelete = () => {
     if (onBatchDelete) onBatchDelete(selectedRowKeys as string[]);
@@ -75,14 +85,6 @@ export default function ApiProviderTab({
   };
 
   const columns: ColumnsType<KeyItem> = useMemo(() => {
-    const usageLabel = (type: string) => {
-      if (type === 'tool') return t('api.type_tool');
-      if (type === 'general') return t('api.type_general');
-      if (type === 'vector') return t('api.type_vector');
-      if (type === 'image') return t('api.type_image');
-      if (type === 'audio') return t('api.type_audio');
-      return t('api.type_chat');
-    };
     return [
       {
         title: '名称',
@@ -124,27 +126,11 @@ export default function ApiProviderTab({
       },
       {
         title: '用途',
-        dataIndex: 'usage_type',
-        key: 'usage_type',
-        width: 64,
-        render: (type: string) => (
-          <Tag
-            color={USAGE_COLORS[type] ? undefined : 'default'}
-            style={{
-              fontSize: 11,
-              lineHeight: '20px',
-              padding: '0 8px',
-              ...(USAGE_COLORS[type]
-                ? {
-                    background: `color-mix(in srgb, ${USAGE_COLORS[type]} 12%, transparent)`,
-                    color: USAGE_COLORS[type],
-                    borderColor: `color-mix(in srgb, ${USAGE_COLORS[type]} 25%, transparent)`,
-                  }
-                : {}),
-            }}
-          >
-            {usageLabel(type)}
-          </Tag>
+        dataIndex: 'capabilities',
+        key: 'capabilities',
+        width: 150,
+        render: (_: unknown, record: KeyItem) => (
+          <CapabilityBadges capabilities={capsOf(record)} />
         ),
       },
       {
@@ -237,7 +223,7 @@ export default function ApiProviderTab({
         ),
       },
     ];
-  }, [testingId, onEdit, onTest, onDelete, onToggleActive, t]);
+  }, [testingId, onEdit, onTest, onDelete, onToggleActive]);
 
   return (
     <div className="h-full flex flex-col">
@@ -299,6 +285,25 @@ export default function ApiProviderTab({
         </div>
       )}
       <div className="border-t border-[var(--color-border)] shrink-0" />
+      <div className="flex items-center gap-1 mb-2 pt-2 shrink-0">
+        <button
+          type="button"
+          className={`${FILTER_TAB_BASE} ${filterCat === 'all' ? FILTER_TAB_ACTIVE : FILTER_TAB_IDLE}`}
+          onClick={() => setFilterCat('all')}
+        >
+          {t('providerEdit.filterAll')}
+        </button>
+        {CATEGORY_ORDER.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            className={`${FILTER_TAB_BASE} ${filterCat === cat ? FILTER_TAB_ACTIVE : FILTER_TAB_IDLE}`}
+            onClick={() => setFilterCat(cat)}
+          >
+            {t(`providerEdit.category.${cat}`)}
+          </button>
+        ))}
+      </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {loading && keys.length === 0 ? (
           <LoadingSkeleton type="table" rows={4} />
@@ -325,7 +330,7 @@ export default function ApiProviderTab({
               className="api-key-table"
               rowKey="id"
               columns={columns}
-              dataSource={keys}
+              dataSource={visibleKeys}
               pagination={false}
               size="small"
               rowSelection={{
