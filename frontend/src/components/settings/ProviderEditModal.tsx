@@ -271,7 +271,15 @@ export default function ProviderEditModal({
               });
             }}
             onChangeModelType={(m, type) =>
-              setModelTypes((prev) => ({ ...prev, [m]: type }))
+              setModelTypes((prev) => {
+                const next = { ...prev };
+                if (type) {
+                  next[m] = type;
+                } else {
+                  delete next[m];
+                }
+                return next;
+              })
             }
             onFetchModels={handleFetchModels}
           />
