@@ -112,7 +112,7 @@ async def _run_agent_pipeline(
             ]
             if memories:
                 session_context = _build_session_context(memories)
-            rag_ctx = await _get_rag_context(requirement, session_id)
+            rag_ctx = await _get_rag_context(requirement, session_id, user_id)
             if rag_ctx:
                 session_context += "\n" + rag_ctx
         except Exception:
@@ -241,7 +241,7 @@ async def _run_agent_pipeline(
             try:
                 from rag.rag_pipeline import ingest_session_messages
 
-                await ingest_session_messages(session_id, run_id, [{"content": requirement}])
+                await ingest_session_messages(session_id, run_id, [{"content": requirement}], user_id=user_id)
             except Exception:
                 logger.warning("RAG ingest failed for session %s", session_id)
 

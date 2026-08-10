@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from rag.rag_chunking import Chunk
-from rag.rag_store import PgVectorStore
+from rag.rag_store import PgVectorStore, _rrf_fuse
 
 
 class _AsyncSessionCtx:
@@ -34,6 +34,20 @@ def _patch_db(session: AsyncMock):
     """Patch get_session_factory to return a factory yielding the given session."""
     factory = _SessionFactory(session)
     return patch("core.infra.database.get_session_factory", return_value=factory)
+
+
+def _row(row_id: str, text: str, similarity: float, **extra: object) -> tuple[object, ...]:
+    """Build a search result row: (id, text, tags, session_id, run_id, asset_id, metadata, similarity)."""
+    return (
+        row_id,
+        text,
+        extra.get("tags", ["tag1"]),
+        extra.get("session_id", "s1"),
+        extra.get("run_id", "r1"),
+        extra.get("asset_id"),
+        extra.get("metadata", {}),
+        similarity,
+    )
 
 
 class TestPgVectorStore:
@@ -129,7 +143,7 @@ class TestPgVectorStore:
     @pytest.mark.asyncio
     async def test_add_empty_chunks(self):
         store = PgVectorStore()
-        await store.add([])
+        await store.add([], user_id="u1")
         assert store._initialized is False
 
     @pytest.mark.asyncio
@@ -141,7 +155,7 @@ class TestPgVectorStore:
             Chunk(id="c2", text="world", session_id="s1", run_id="r1", embedding=[0.2] * 1024, tags=[]),
         ]
         with _patch_db(mock_session):
-            await store.add(chunks)
+            await store.add(chunks, user_id="u1")
             # 3 DDL + 2 INSERT
             assert mock_session.execute.call_count == 5
 
@@ -154,7 +168,7 @@ class TestPgVectorStore:
             Chunk(id="c2", text="world", session_id="s1", run_id="r1"),
         ]
         with _patch_db(mock_session):
-            await store.add(chunks)
+            await store.add(chunks, user_id="u1")
             # 3 DDL + 0 INSERT (all skipped)
             assert mock_session.execute.call_count == 3
 
@@ -167,7 +181,7 @@ class TestPgVectorStore:
             Chunk(id="c2", text="no emb", session_id="s1", run_id="r1"),
         ]
         with _patch_db(mock_session):
-            await store.add(chunks)
+            await store.add(chunks, user_id="u1")
             # 3 DDL + 1 INSERT
             assert mock_session.execute.call_count == 4
 
@@ -177,7 +191,7 @@ class TestPgVectorStore:
         mock_session = AsyncMock()
         chunk = Chunk(id="c1", text="test", session_id="s1", run_id="r1", embedding=[1.0, 2.0, 3.0])
         with _patch_db(mock_session):
-            await store.add([chunk])
+            await store.add([chunk], user_id="u1")
             insert_call = mock_session.execute.call_args_list[3]
             params = insert_call[0][1]
             assert params["emb"] == "[1.0,2.0,3.0]"
@@ -189,7 +203,7 @@ class TestPgVectorStore:
         chunk = Chunk(id="c1", text="test", session_id="s1", run_id="r1",
                        embedding=[0.1] * 1024, tags=["python", "bug"])
         with _patch_db(mock_session):
-            await store.add([chunk])
+            await store.add([chunk], user_id="u1")
             insert_call = mock_session.execute.call_args_list[3]
             params = insert_call[0][1]
             assert params["tags"] == "{python,bug}"
@@ -200,7 +214,7 @@ class TestPgVectorStore:
         mock_session = AsyncMock()
         chunk = Chunk(id="c1", text="test", session_id="s1", run_id="r1", embedding=[0.1] * 1024, tags=[])
         with _patch_db(mock_session):
-            await store.add([chunk])
+            await store.add([chunk], user_id="u1")
             insert_call = mock_session.execute.call_args_list[3]
             params = insert_call[0][1]
             assert params["tags"] == "{}"
@@ -211,10 +225,27 @@ class TestPgVectorStore:
         mock_session = AsyncMock()
         chunk = Chunk(id="c1", text="test", session_id="s1", run_id=None, embedding=[0.1] * 1024)
         with _patch_db(mock_session):
-            await store.add([chunk])
+            await store.add([chunk], user_id="u1")
             insert_call = mock_session.execute.call_args_list[3]
             params = insert_call[0][1]
             assert params["rid"] == ""
+
+    @pytest.mark.asyncio
+    async def test_add_user_id_and_asset_metadata(self):
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        chunk = Chunk(
+            id="c1", text="test", session_id="s1", run_id=None,
+            embedding=[0.1] * 1024,
+            metadata={"asset_id": "a1", "asset_name": "手册"},
+        )
+        with _patch_db(mock_session):
+            await store.add([chunk], user_id="u1")
+            insert_call = mock_session.execute.call_args_list[3]
+            params = insert_call[0][1]
+            assert params["uid"] == "u1"
+            assert params["aid"] == "a1"
+            assert '"asset_name"' in params["meta"]
 
     # ── search() tests ─────────────────────────────────────────────────
 
@@ -223,18 +254,32 @@ class TestPgVectorStore:
         store = PgVectorStore()
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = [
-            ("result text", ["tag1"], "s1", "r1", 0.95),
-        ]
+        mock_result.fetchall.return_value = [_row("c1", "result text", 0.95)]
+        # 3 DDL + vector leg only (short query skips the lexical leg)
         mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
         with _patch_db(mock_session):
-            results = await store.search([0.1] * 1024, top_k=5)
+            results = await store.search([0.1] * 1024, query_text="hi", user_id="u1", top_k=5)
             assert len(results) == 1
             assert results[0]["text"] == "result text"
             assert results[0]["tags"] == ["tag1"]
-            assert results[0]["score"] == 0.95
+            assert results[0]["similarity"] == 0.95
             assert results[0]["session_id"] == "s1"
             assert results[0]["run_id"] == "r1"
+
+    @pytest.mark.asyncio
+    async def test_search_user_id_always_filtered(self):
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = []
+        mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
+        with _patch_db(mock_session):
+            await store.search([0.1] * 1024, query_text="hi", user_id="u-42")
+            search_call = mock_session.execute.call_args_list[3]
+            query = str(search_call[0][0])
+            params = search_call[0][1]
+            assert "user_id = :uid" in query
+            assert params["uid"] == "u-42"
 
     @pytest.mark.asyncio
     async def test_search_with_session_id(self):
@@ -244,7 +289,7 @@ class TestPgVectorStore:
         mock_result.fetchall.return_value = []
         mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
         with _patch_db(mock_session):
-            await store.search([0.1] * 1024, session_id="s1")
+            await store.search([0.1] * 1024, query_text="hi", user_id="u1", session_id="s1")
             search_call = mock_session.execute.call_args_list[3]
             query = str(search_call[0][0])
             assert "session_id = :sid" in query
@@ -257,27 +302,13 @@ class TestPgVectorStore:
         mock_result.fetchall.return_value = []
         mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
         with _patch_db(mock_session):
-            await store.search([0.1] * 1024, tag_filter=["python", "bug"])
+            await store.search([0.1] * 1024, query_text="hi", user_id="u1", tag_filter=["python", "bug"])
             search_call = mock_session.execute.call_args_list[3]
             query = str(search_call[0][0])
             params = search_call[0][1]
             assert "ANY(tags)" in query
             assert params["tag0"] == "python"
             assert params["tag1"] == "bug"
-
-    @pytest.mark.asyncio
-    async def test_search_with_session_and_tags(self):
-        store = PgVectorStore()
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.fetchall.return_value = []
-        mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
-        with _patch_db(mock_session):
-            await store.search([0.1] * 1024, session_id="s1", tag_filter=["python"])
-            search_call = mock_session.execute.call_args_list[3]
-            query = str(search_call[0][0])
-            assert "session_id = :sid" in query
-            assert "ANY(tags)" in query
 
     @pytest.mark.asyncio
     async def test_search_empty_results(self):
@@ -287,7 +318,7 @@ class TestPgVectorStore:
         mock_result.fetchall.return_value = []
         mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
         with _patch_db(mock_session):
-            results = await store.search([0.1] * 1024)
+            results = await store.search([0.1] * 1024, query_text="hi", user_id="u1")
             assert results == []
 
     @pytest.mark.asyncio
@@ -295,43 +326,94 @@ class TestPgVectorStore:
         store = PgVectorStore()
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = [("text", None, "s1", "r1", 0.8)]
+        mock_result.fetchall.return_value = [_row("c1", "text", 0.8, tags=None)]
         mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
         with _patch_db(mock_session):
-            results = await store.search([0.1] * 1024)
+            results = await store.search([0.1] * 1024, query_text="hi", user_id="u1")
             assert results[0]["tags"] == []
 
     @pytest.mark.asyncio
-    async def test_search_no_filters(self):
-        store = PgVectorStore()
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.fetchall.return_value = []
-        mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
-        with _patch_db(mock_session):
-            await store.search([0.1] * 1024)
-            search_call = mock_session.execute.call_args_list[3]
-            query = str(search_call[0][0])
-            assert "TRUE" in query
-
-    @pytest.mark.asyncio
-    async def test_search_multiple_results(self):
+    async def test_search_carries_asset_trace(self):
         store = PgVectorStore()
         mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [
-            ("text1", ["tag1"], "s1", "r1", 0.95),
-            ("text2", ["tag2"], "s2", "r2", 0.80),
-            ("text3", [], "s3", "r3", 0.70),
+            _row("c1", "text", 0.9, asset_id="a1", metadata={"asset_name": "手册"})
         ]
         mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
         with _patch_db(mock_session):
-            results = await store.search([0.1] * 1024)
-            assert len(results) == 3
-            assert results[0]["text"] == "text1"
-            assert results[2]["tags"] == []
+            results = await store.search([0.1] * 1024, query_text="hi", user_id="u1")
+            assert results[0]["asset_id"] == "a1"
+            assert results[0]["metadata"]["asset_name"] == "手册"
 
-    # ── clear_session() tests ──────────────────────────────────────────
+    # ── hybrid search (lexical leg + RRF) tests ────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_search_runs_lexical_leg_for_long_query(self):
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        vec_result = MagicMock()
+        vec_result.fetchall.return_value = [_row("c1", "text", 0.9)]
+        lex_result = MagicMock()
+        lex_result.fetchall.return_value = [_row("c2", "text", 0.7)]
+        # 3 DDL + vec leg + SET LOCAL + lex leg
+        mock_session.execute = AsyncMock(
+            side_effect=[None, None, None, vec_result, None, lex_result]
+        )
+        with _patch_db(mock_session):
+            results = await store.search([0.1] * 1024, query_text="SKU-2024-001", user_id="u1")
+            lex_call = mock_session.execute.call_args_list[5]
+            query = str(lex_call[0][0])
+            assert "word_similarity" in query
+            assert "text <% :q" in query
+            assert len(results) == 2
+
+    @pytest.mark.asyncio
+    async def test_search_skips_lexical_leg_for_short_query(self):
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        vec_result = MagicMock()
+        vec_result.fetchall.return_value = []
+        mock_session.execute = AsyncMock(side_effect=[None, None, None, vec_result])
+        with _patch_db(mock_session):
+            await store.search([0.1] * 1024, query_text="hi", user_id="u1")
+            # No 5th/6th execute: lexical leg skipped
+            assert mock_session.execute.call_count == 4
+
+    @pytest.mark.asyncio
+    async def test_rrf_fuses_legs_by_rank(self):
+        vec_leg = [
+            {"id": "a", "text": "a", "similarity": 0.9},
+            {"id": "b", "text": "b", "similarity": 0.8},
+        ]
+        lex_leg = [
+            {"id": "b", "text": "b", "similarity": 0.7},
+            {"id": "c", "text": "c", "similarity": 0.6},
+        ]
+        fused = _rrf_fuse([vec_leg, lex_leg], top_k=2)
+        ids = [r["id"] for r in fused]
+        # b appears in both legs -> highest RRF score
+        assert ids == ["b", "a"]
+
+    def test_rrf_respects_top_k(self):
+        legs = [[{"id": f"c{i}", "text": str(i)} for i in range(10)]]
+        fused = _rrf_fuse(legs, top_k=3)
+        assert len(fused) == 3
+
+    # ── clear_asset() / clear_session() tests ──────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_clear_asset(self):
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        with _patch_db(mock_session):
+            await store.clear_asset("a1")
+            delete_call = mock_session.execute.call_args_list[3]
+            query = str(delete_call[0][0])
+            params = delete_call[0][1]
+            assert "DELETE FROM vector_chunks" in query
+            assert "asset_id = :aid" in query
+            assert params["aid"] == "a1"
 
     @pytest.mark.asyncio
     async def test_clear_session(self):
@@ -341,7 +423,6 @@ class TestPgVectorStore:
             await store.clear_session("s1")
             # 3 DDL in _ensure_table + 1 DELETE in clear_session
             assert mock_session.execute.call_count == 4
-            # _ensure_table commits + clear_session commits
             assert mock_session.commit.call_count == 2
 
     @pytest.mark.asyncio
@@ -365,7 +446,7 @@ class TestPgVectorStore:
         mock_session = AsyncMock()
         chunk = Chunk(id="c1", text="test", session_id="s1", run_id="r1", embedding=[0.1] * 1024)
         with _patch_db(mock_session):
-            await store.add([chunk])
+            await store.add([chunk], user_id="u1")
             assert store._initialized is True
 
     @pytest.mark.asyncio
@@ -377,7 +458,7 @@ class TestPgVectorStore:
         mock_result.fetchall.return_value = []
         mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
         with _patch_db(mock_session):
-            await store.search([0.1] * 1024)
+            await store.search([0.1] * 1024, query_text="hi", user_id="u1")
             assert store._initialized is True
 
 

@@ -1,0 +1,114 @@
+"""Tests for async asset indexing (backend/tasks/index_asset.py).
+
+Covers the permission boundary (an asset may only be indexed by its owner),
+the idempotency contract (clear_asset runs before add — no stale chunks),
+and metadata provenance (chunks carry asset_id/asset_name for citations).
+"""
+
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from tasks.index_asset import _index_asset
+
+
+def _asset(asset_id: str = "a1", user_id: str = "u1", name: str = "手册"):
+    asset = MagicMock()
+    asset.id = asset_id
+    asset.user_id = user_id
+    asset.name = name
+    asset.storage_path = "/tmp/ragbase-test-asset.md"
+    return asset
+
+
+def _patch_asset_env(tmp_path: Path, text: str = "## 节一\n内容 ABC-12345"):
+    """Patch repository layer + provider + store; write a real file to index."""
+    path = tmp_path / "asset.md"
+    path.write_text(text, encoding="utf-8")
+
+    asset = _asset()
+    asset.storage_path = str(path)
+
+    repo = {
+        "get_asset": AsyncMock(return_value=asset),
+        "set_asset_indexed": AsyncMock(),
+        "get_embedding_api_key": AsyncMock(return_value="sk-test"),
+    }
+    provider_cls = MagicMock()
+    provider = MagicMock()
+    provider.embed = AsyncMock(return_value=[[0.1] * 1024])
+    provider_cls.return_value = provider
+
+    store = MagicMock()
+    store.clear_asset = AsyncMock()
+    store.add = AsyncMock()
+
+    return repo, provider_cls, store, asset
+
+
+class TestIndexAsset:
+    @pytest.mark.asyncio
+    async def test_owner_only(self, tmp_path):
+        """A user may not index an asset they do not own."""
+        repo, provider_cls, store, asset = _patch_asset_env(tmp_path)
+        asset.user_id = "other-user"
+        with patch("repository.assets.get_asset", repo["get_asset"]):
+            with pytest.raises(ValueError, match="not owned"):
+                await _index_asset("a1", "u1")
+
+    @pytest.mark.asyncio
+    async def test_empty_text_rejected(self, tmp_path):
+        repo, provider_cls, store, asset = _patch_asset_env(tmp_path, text="   ")
+        with patch("repository.assets.get_asset", repo["get_asset"]):
+            with pytest.raises(ValueError, match="no text content"):
+                await _index_asset("a1", "u1")
+
+    @pytest.mark.asyncio
+    async def test_no_api_key_raises(self, tmp_path):
+        repo, provider_cls, store, asset = _patch_asset_env(tmp_path)
+        repo["get_embedding_api_key"].return_value = None
+        with (
+            patch("repository.assets.get_asset", repo["get_asset"]),
+            patch("repository.keys.get_embedding_api_key", repo["get_embedding_api_key"]),
+        ):
+            with pytest.raises(RuntimeError, match="embedding API key"):
+                await _index_asset("a1", "u1")
+
+    @pytest.mark.asyncio
+    async def test_clear_before_add_idempotent(self, tmp_path):
+        """Reindex must not leave stale chunks: clear_asset precedes add."""
+        repo, provider_cls, store, asset = _patch_asset_env(tmp_path)
+        with (
+            patch("repository.assets.get_asset", repo["get_asset"]),
+            patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
+            patch("repository.keys.get_embedding_api_key", repo["get_embedding_api_key"]),
+            patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
+            patch("rag.rag_store.PgVectorStore", return_value=store),
+        ):
+            result = await _index_asset("a1", "u1")
+
+        assert result["indexed"] is True
+        assert result["chunks"] > 0
+        store.clear_asset.assert_awaited_once_with("a1")
+        store.add.assert_awaited_once()
+        # Store receives the owning user, not a default.
+        assert store.add.call_args.kwargs["user_id"] == "u1"
+        repo["set_asset_indexed"].assert_awaited_once_with("a1", True)
+
+    @pytest.mark.asyncio
+    async def test_chunks_carry_asset_provenance(self, tmp_path):
+        """Chunks embed asset_id/asset_name metadata for citation trace."""
+        repo, provider_cls, store, asset = _patch_asset_env(tmp_path)
+        with (
+            patch("repository.assets.get_asset", repo["get_asset"]),
+            patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
+            patch("repository.keys.get_embedding_api_key", repo["get_embedding_api_key"]),
+            patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
+            patch("rag.rag_store.PgVectorStore", return_value=store),
+        ):
+            await _index_asset("a1", "u1")
+
+        chunks = store.add.call_args[0][0]
+        assert all(c.metadata["asset_id"] == "a1" for c in chunks)
+        assert all(c.metadata["asset_name"] == "手册" for c in chunks)
+        assert all(c.embedding is not None for c in chunks)

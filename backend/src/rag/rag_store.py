@@ -1,6 +1,17 @@
-from typing import Any
+"""pgvector + pg_trgm hybrid vector store for RAG pipeline.
 
-"""pgvector vector store for RAG pipeline."""
+Schema (alembic p9g3n006): vector_chunks (id, session_id, run_id, text, tags,
+embedding vector(1024), user_id, asset_id, metadata).
+
+Retrieval is hybrid: HNSW cosine leg (pgvector) ‖ pg_trgm word-similarity leg
+(GIN), fused with Reciprocal Rank Fusion (k=60) — the pattern from pgvector's
+official hybrid_search/rrf.py example. user_id is a mandatory filter on every
+search: chunks are isolated per owner, never leakable across users.
+"""
+
+import json
+from collections.abc import Sequence
+from typing import Any
 
 from core.infra.logging_config import get_logger
 from sqlalchemy import text
@@ -10,14 +21,16 @@ from rag.rag_embedding import EMBEDDING_DIM
 
 logger = get_logger(__name__)
 
+_RRF_K = 60
+_LEXICAL_MIN_LEN = 3  # pg_trgm degenerates below a trigram's worth of chars
+
 
 class PgVectorStore:
-    """PostgreSQL + pgvector vector store.
+    """PostgreSQL vector store with hybrid search and per-user isolation.
 
     Requires:
       CREATE EXTENSION IF NOT EXISTS vector;
-      Table: vector_chunks (id, session_id, run_id, text, tags, embedding vector(1024))
-      Index: CREATE INDEX ON vector_chunks USING hnsw (embedding vector_cosine_ops);
+      CREATE EXTENSION IF NOT EXISTS pg_trgm;
     """
 
     def __init__(self) -> None:
@@ -30,51 +43,51 @@ class PgVectorStore:
 
         factory = get_session_factory()
         async with factory() as session:
-            # Enable extension (requires superuser in production — run once manually)
             try:
                 await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             except Exception:
                 logger.warning("pgvector extension not available — install it first")
 
-            # Create table if not exists
             await session.execute(
-                text(f"""
-                CREATE TABLE IF NOT EXISTS vector_chunks (
-                    id TEXT PRIMARY KEY,
-                    session_id TEXT NOT NULL,
-                    run_id TEXT,
-                    text TEXT NOT NULL,
-                    tags TEXT[] DEFAULT '{{}}',
-                    embedding vector({EMBEDDING_DIM})
+                text(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS vector_chunks (
+                        id TEXT PRIMARY KEY,
+                        session_id TEXT NOT NULL,
+                        run_id TEXT,
+                        text TEXT NOT NULL,
+                        tags TEXT[] DEFAULT '{{}}',
+                        embedding vector({EMBEDDING_DIM}),
+                        user_id TEXT NOT NULL DEFAULT '',
+                        asset_id TEXT,
+                        metadata JSONB
+                    )
+                """
                 )
-            """)
             )
 
-            # Create index if not exists
             try:
                 await session.execute(
-                    text("""
-                    CREATE INDEX IF NOT EXISTS idx_vector_chunks_embedding
-                    ON vector_chunks USING hnsw (embedding vector_cosine_ops)
-                """)
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_vector_chunks_embedding "
+                        "ON vector_chunks USING hnsw (embedding vector_cosine_ops)"
+                    )
                 )
             except Exception:
-                # HNSW might not be available — try IVFFlat
                 try:
                     await session.execute(
-                        text("""
-                        CREATE INDEX IF NOT EXISTS idx_vector_chunks_embedding
-                        ON vector_chunks USING ivfflat (embedding vector_cosine_ops)
-                    """)
+                        text(
+                            "CREATE INDEX IF NOT EXISTS idx_vector_chunks_embedding "
+                            "ON vector_chunks USING ivfflat (embedding vector_cosine_ops)"
+                        )
                     )
                 except Exception:
                     logger.warning("No vector index available — searches will be sequential")
-
             await session.commit()
         self._initialized = True
 
-    async def add(self, chunks: list[Chunk]) -> None:
-        """Insert chunks with embeddings into pgvector."""
+    async def add(self, chunks: list[Chunk], user_id: str) -> None:
+        """Insert chunks with embeddings, tagged with their owning user."""
         if not chunks:
             return
         await self._ensure_table()
@@ -86,19 +99,24 @@ class PgVectorStore:
             for chunk in chunks:
                 if not chunk.embedding:
                     continue
-                # Build vector literal safely from numeric values
                 emb_str = "[" + ",".join(str(v) for v in chunk.embedding) + "]"
-                # Use proper PostgreSQL array literal via CAST
                 tags_array = "{" + ",".join(chunk.tags) + "}" if chunk.tags else "{}"
+                metadata = chunk.metadata or {}
                 await session.execute(
                     text(
                         """
-                        INSERT INTO vector_chunks (id, session_id, run_id, text, tags, embedding)
-                        VALUES (:id, :sid, :rid, :text, CAST(:tags AS text[]), CAST(:emb AS vector))
+                        INSERT INTO vector_chunks
+                            (id, session_id, run_id, text, tags, embedding,
+                             user_id, asset_id, metadata)
+                        VALUES (:id, :sid, :rid, :text, CAST(:tags AS text[]),
+                                CAST(:emb AS vector), :uid, :aid, CAST(:meta AS jsonb))
                         ON CONFLICT (id) DO UPDATE
                         SET text = EXCLUDED.text,
                             tags = EXCLUDED.tags,
-                            embedding = EXCLUDED.embedding
+                            embedding = EXCLUDED.embedding,
+                            user_id = EXCLUDED.user_id,
+                            asset_id = EXCLUDED.asset_id,
+                            metadata = EXCLUDED.metadata
                         """
                     ),
                     {
@@ -108,6 +126,9 @@ class PgVectorStore:
                         "text": chunk.text,
                         "tags": tags_array,
                         "emb": emb_str,
+                        "uid": user_id,
+                        "aid": metadata.get("asset_id"),
+                        "meta": json.dumps(metadata, ensure_ascii=False),
                     },
                 )
             await session.commit()
@@ -116,13 +137,17 @@ class PgVectorStore:
     async def search(
         self,
         query_embedding: list[float],
+        query_text: str,
+        user_id: str,
         session_id: str | None = None,
         tag_filter: list[str] | None = None,
         top_k: int = 5,
     ) -> list[dict[str, Any]]:
-        """Search with hybrid vector similarity and optional tag filter.
+        """Hybrid search: HNSW cosine leg + pg_trgm leg, fused via RRF.
 
-        Returns list of {text, score, tags, session_id, run_id}.
+        user_id is mandatory — chunks of other owners are never candidates.
+        Returns list of {text, tags, session_id, run_id, asset_id, metadata,
+        similarity, score}, ordered by RRF score descending.
         """
         await self._ensure_table()
 
@@ -130,10 +155,8 @@ class PgVectorStore:
 
         factory = get_session_factory()
         async with factory() as session:
-            emb_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
-
-            where_clauses = []
-            params = {"emb": emb_str, "top_k": top_k}
+            where_clauses = ["user_id = :uid"]
+            params: dict[str, Any] = {"uid": user_id}
 
             if session_id:
                 where_clauses.append("session_id = :sid")
@@ -147,31 +170,58 @@ class PgVectorStore:
                     params[param_name] = tag.lower()
                 where_clauses.append("(" + " OR ".join(tag_conditions) + ")")
 
-            where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
+            where_sql = " AND ".join(where_clauses)
 
-            result = await session.execute(
-                text(f"""
-                SELECT text, tags, session_id, run_id,
-                       1 - (embedding <=> CAST(:emb AS vector)) AS similarity
-                FROM vector_chunks
-                WHERE {where_sql}
-                ORDER BY embedding <=> CAST(:emb AS vector)
-                LIMIT :top_k
-            """),
-                params,
+            emb_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
+
+            legs: list[list[dict[str, Any]]] = []
+
+            vec_rows = await session.execute(
+                text(
+                    f"""
+                    SELECT id, text, tags, session_id, run_id, asset_id, metadata,
+                           1 - (embedding <=> CAST(:emb AS vector)) AS similarity
+                    FROM vector_chunks
+                    WHERE {where_sql}
+                    ORDER BY embedding <=> CAST(:emb AS vector)
+                    LIMIT :vec_k
+                """
+                ),
+                {**params, "emb": emb_str, "vec_k": top_k * 5},
             )
+            legs.append(_rows_to_dicts(vec_rows.fetchall()))
 
-            rows = result.fetchall()
-            return [
-                {
-                    "text": row[0],
-                    "tags": row[1] if row[1] else [],
-                    "session_id": row[2],
-                    "run_id": row[3],
-                    "score": round(float(row[4]), 4),
-                }
-                for row in rows
-            ]
+            if len(query_text.strip()) >= _LEXICAL_MIN_LEN:
+                await session.execute(text("SET LOCAL pg_trgm.word_similarity_threshold = 0.3"))
+                lex_rows = await session.execute(
+                    text(
+                        f"""
+                        SELECT id, text, tags, session_id, run_id, asset_id, metadata,
+                               word_similarity(:q, text) AS similarity
+                        FROM vector_chunks
+                        WHERE {where_sql} AND text <% :q
+                        ORDER BY word_similarity(:q, text) DESC
+                        LIMIT :lex_k
+                    """
+                    ),
+                    {**params, "q": query_text.strip(), "lex_k": top_k * 5},
+                )
+                legs.append(_rows_to_dicts(lex_rows.fetchall()))
+
+        return _rrf_fuse(legs, top_k)
+
+    async def clear_asset(self, asset_id: str) -> None:
+        """Delete all chunks of an asset — used on asset delete and reindex."""
+        await self._ensure_table()
+        from core.infra.database import get_session_factory
+
+        factory = get_session_factory()
+        async with factory() as session:
+            await session.execute(
+                text("DELETE FROM vector_chunks WHERE asset_id = :aid"),
+                {"aid": asset_id},
+            )
+            await session.commit()
 
     async def clear_session(self, session_id: str) -> None:
         await self._ensure_table()
@@ -184,3 +234,31 @@ class PgVectorStore:
                 {"sid": session_id},
             )
             await session.commit()
+
+
+def _rows_to_dicts(rows: Sequence[Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": row[0],
+            "text": row[1],
+            "tags": row[2] if row[2] else [],
+            "session_id": row[3],
+            "run_id": row[4],
+            "asset_id": row[5],
+            "metadata": row[6] if row[6] else {},
+            "similarity": round(float(row[7]), 4),
+        }
+        for row in rows
+    ]
+
+
+def _rrf_fuse(
+    legs: list[list[dict[str, Any]]], top_k: int, k: int = _RRF_K
+) -> list[dict[str, Any]]:
+    """Fuse ranked legs with Reciprocal Rank Fusion: sum of 1/(k + rank)."""
+    merged: dict[str, dict[str, Any]] = {}
+    for leg in legs:
+        for rank, row in enumerate(leg, start=1):
+            entry = merged.setdefault(row["id"], {**row, "score": 0.0})
+            entry["score"] += 1.0 / (k + rank)
+    return sorted(merged.values(), key=lambda r: r["score"], reverse=True)[:top_k]

@@ -147,15 +147,18 @@ def _build_session_context(memories: list[Any]) -> str:
     return "\n".join(lines)
 
 
-async def _get_rag_context(query: str, session_id: str) -> str:
+async def _get_rag_context(query: str, session_id: str, user_id: str = "anonymous") -> str:
     try:
         from rag.rag_pipeline import ensure_embedding_provider, retrieve_context
         from repository.keys import get_embedding_api_key
 
         api_key = await get_embedding_api_key()
         ensure_embedding_provider(api_key)
-        return await retrieve_context(query=query, session_id=session_id, top_k=3)
+        return await retrieve_context(
+            query=query, user_id=user_id, session_id=session_id, top_k=3
+        )
     except Exception:
+        logger.warning("RAG context retrieval failed for session %s", session_id, exc_info=True)
         return ""
 
 

@@ -10,6 +10,7 @@ from core.mock_fallback import ENABLE as ENABLE_MOCK_FALLBACK
 
 from .agent_pipeline import _run_agent_pipeline
 from .complete_pipeline import _complete_pipeline
+from .index_asset import _index_asset
 from .pipeline_utils import _report_run_error, _run_async, _try_mock_fallback
 
 logger = get_logger(__name__)
@@ -73,6 +74,33 @@ def run_agent(
 
         _report_run_error(run_id, exc)
         self.retry(exc=exc)
+
+
+@_task(bind=True, max_retries=2, default_retry_delay=5)
+def index_asset(
+    self: Any,
+    asset_id: str,
+    user_id: str,
+) -> Any:
+    """Index an asset's chunks into pgvector — async, idempotent."""
+    t0 = time.time()
+    logger.info(
+        "Celery index START | asset=%s | user=%s | retry=%d",
+        asset_id, user_id, self.request.retries,
+    )
+    try:
+        result = _run_async(_index_asset(asset_id, user_id))
+        logger.info(
+            "Celery index SUCCESS | asset=%s | elapsed=%.2fs | chunks=%s",
+            asset_id, time.time() - t0, result.get("chunks"),
+        )
+        return result
+    except Exception:
+        logger.exception(
+            "Celery index FAIL | asset=%s | elapsed=%.2fs | retry=%d",
+            asset_id, time.time() - t0, self.request.retries,
+        )
+        raise
 
 
 @_task(bind=True, max_retries=2, default_retry_delay=5)

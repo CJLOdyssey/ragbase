@@ -43,13 +43,14 @@ async def ingest_session_messages(
     session_id: str,
     run_id: str,
     messages: list[dict[str, Any]],
+    user_id: str = "anonymous",
 ) -> None:
     """Steps 8-11: Ingest conversation messages into pgvector.
 
     1. Concatenate messages → text
     2. Chunk semantically
     3. Embed with DashScope
-    4. Store in pgvector
+    4. Store in pgvector (tagged with the owning user)
     """
     text = "\n".join(m.get("content", "") for m in messages if m.get("content"))
     if not text.strip():
@@ -67,12 +68,13 @@ async def ingest_session_messages(
     for chunk, emb in zip(chunks, embeddings, strict=False):
         chunk.embedding = emb
 
-    await _vector_store.add(chunks)
+    await _vector_store.add(chunks, user_id=user_id)
     logger.info("RAG: ingested %d chunks for session %s", len(chunks), session_id)
 
 
 async def retrieve_context(
     query: str,
+    user_id: str,
     session_id: str | None = None,
     tags: list[str] | None = None,
     top_k: int = 5,
@@ -80,14 +82,16 @@ async def retrieve_context(
     """Steps 13-14: Retrieve relevant context for a user query.
 
     1. Embed query with DashScope
-    2. Hybrid search via pgvector (cosine + tag filter)
-    3. Return formatted context for LLM
+    2. Hybrid search (HNSW ‖ pg_trgm + RRF), filtered to user_id
+    3. Return formatted context with asset trace for LLM
     """
     if _embedding_provider is None:
         return ""
     query_embedding = await _embedding_provider.embed_query(query)
     results = await _vector_store.search(
         query_embedding,
+        query_text=query,
+        user_id=user_id,
         session_id=session_id,
         tag_filter=tags,
         top_k=top_k,
@@ -99,6 +103,15 @@ async def retrieve_context(
     parts = []
     for r in results:
         tag_str = f" [{', '.join(r['tags'])}]" if r["tags"] else ""
-        parts.append(f"--- [相似度: {r['score']:.2f}]{tag_str} ---\n{r['text']}")
+        asset_str = _asset_label(r["metadata"]) or ""
+        parts.append(
+            f"--- [相似度: {r['similarity']:.2f}]{asset_str}{tag_str} ---\n{r['text']}"
+        )
 
     return "\n\n".join(parts)
+
+
+def _asset_label(metadata: dict[str, Any]) -> str:
+    """Format source trace: [素材: 名称] when the chunk came from an asset."""
+    name = (metadata or {}).get("asset_name")
+    return f" [素材: {name}]" if name else ""

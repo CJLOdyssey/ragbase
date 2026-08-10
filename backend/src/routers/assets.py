@@ -8,7 +8,7 @@ from typing import Any
 from auth import get_user_id
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 from repository.assets import (
@@ -16,7 +16,6 @@ from repository.assets import (
     delete_asset,
     get_asset,
     list_assets_by_user,
-    set_asset_indexed,
 )
 
 logger = get_logger(__name__)
@@ -130,6 +129,10 @@ async def remove_asset(asset_id: str, request: Request) -> Any:
     if storage_path is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
     Path(storage_path).unlink(missing_ok=True)
+    # Cascade: purge this asset's vector chunks so deleted docs never resurface.
+    from rag.rag_store import PgVectorStore
+
+    await PgVectorStore().clear_asset(asset_id)
     return {"deleted": True}
 
 
@@ -141,30 +144,10 @@ async def index_asset(asset_id: str, request: Request) -> Any:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
     if asset.asset_type != "document":
         raise error_response(ErrorCode.INVALID_REQUEST, detail="仅文档类素材可索引")
-    try:
-        from rag.rag_chunking import semantic_chunk
-        from rag.rag_embedding import EmbeddingProvider
-        from rag.rag_store import PgVectorStore
-        from repository.keys import get_embedding_api_key
 
-        text = Path(asset.storage_path).read_text(encoding="utf-8", errors="ignore")
-        if not text.strip():
-            raise error_response(ErrorCode.INVALID_REQUEST, detail="素材无文本内容，无法索引")
-        api_key = await get_embedding_api_key()
-        if not api_key:
-            raise error_response(ErrorCode.INVALID_REQUEST, detail="未配置 embedding API Key")
-        provider = EmbeddingProvider(api_key=api_key)
+    # Async, idempotent (reindex clears old chunks first); HTTP request returns
+    # immediately — heavy work runs in the Celery worker.
+    from tasks.registry import index_asset as index_asset_task
 
-        chunks = semantic_chunk(text, session_id=f"asset:{asset.id}", run_id=None)
-        embeddings = await provider.embed([c.text for c in chunks])
-        for chunk, emb in zip(chunks, embeddings, strict=False):
-            chunk.embedding = emb
-        store = PgVectorStore()
-        await store.add(chunks)
-        await set_asset_indexed(asset.id, True)
-        return {"indexed": True, "chunks": len(chunks)}
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001
-        logger.exception("Asset index failed: %s", asset_id)
-        raise error_response(ErrorCode.INTERNAL_ERROR, detail=f"索引失败: {e}") from e
+    index_asset_task.delay(asset_id, user_id)
+    return {"indexing": True}

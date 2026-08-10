@@ -43,7 +43,7 @@ class TestRagPipeline:
     @pytest.mark.asyncio
     async def test_retrieve_no_embedding_provider(self):
         rag_pipeline.ensure_embedding_provider(api_key=None)
-        result = await rag_pipeline.retrieve_context("query")
+        result = await rag_pipeline.retrieve_context("query", user_id="u1")
         assert result == ""
 
     @pytest.mark.asyncio
@@ -52,7 +52,7 @@ class TestRagPipeline:
         provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
         with patch.object(rag_pipeline, "_embedding_provider", provider):
             with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=[]):
-                result = await rag_pipeline.retrieve_context("query")
+                result = await rag_pipeline.retrieve_context("query", user_id="u1")
                 assert result == ""
 
     @pytest.mark.asyncio
@@ -65,8 +65,9 @@ class TestRagPipeline:
                     {"content": "Hello world"},
                     {"content": "This is a test message"},
                 ]
-                await rag_pipeline.ingest_session_messages("s1", "r1", messages)
+                await rag_pipeline.ingest_session_messages("s1", "r1", messages, user_id="u1")
                 mock_add.assert_called_once()
+                assert mock_add.call_args.kwargs["user_id"] == "u1"
                 chunks = mock_add.call_args[0][0]
                 assert len(chunks) > 0
                 assert all(isinstance(c, Chunk) for c in chunks)
@@ -107,22 +108,26 @@ class TestRagPipeline:
         search_results = [
             {
                 "text": "Result one",
-                "score": 0.95,
+                "similarity": 0.95,
                 "tags": ["python", "test"],
                 "session_id": "s1",
                 "run_id": "r1",
+                "asset_id": None,
+                "metadata": {},
             },
             {
                 "text": "Result two",
-                "score": 0.80,
+                "similarity": 0.80,
                 "tags": [],
                 "session_id": "s1",
                 "run_id": "r1",
+                "asset_id": None,
+                "metadata": {},
             },
         ]
         with patch.object(rag_pipeline, "_embedding_provider", provider):
             with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=search_results):
-                result = await rag_pipeline.retrieve_context("test query", session_id="s1")
+                result = await rag_pipeline.retrieve_context("test query", user_id="u1", session_id="s1")
                 assert "Result one" in result
                 assert "Result two" in result
                 assert "0.95" in result
@@ -130,14 +135,36 @@ class TestRagPipeline:
                 assert "[python, test]" in result
 
     @pytest.mark.asyncio
+    async def test_retrieve_includes_asset_trace(self):
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        search_results = [
+            {
+                "text": "Result from asset",
+                "similarity": 0.90,
+                "tags": [],
+                "session_id": "asset:a1",
+                "run_id": None,
+                "asset_id": "a1",
+                "metadata": {"asset_name": "运维手册"},
+            },
+        ]
+        with patch.object(rag_pipeline, "_embedding_provider", provider):
+            with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=search_results):
+                result = await rag_pipeline.retrieve_context("query", user_id="u1")
+                assert "Result from asset" in result
+                assert "[素材: 运维手册]" in result
+
+    @pytest.mark.asyncio
     async def test_retrieve_with_tags_filter(self):
         provider = MagicMock()
         provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
         with patch.object(rag_pipeline, "_embedding_provider", provider):
             with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=[]) as mock_search:
-                await rag_pipeline.retrieve_context("query", tags=["python", "bug"])
+                await rag_pipeline.retrieve_context("query", user_id="u1", tags=["python", "bug"])
                 mock_search.assert_called_once()
                 call_kwargs = mock_search.call_args[1]
+                assert call_kwargs["user_id"] == "u1"
                 assert call_kwargs["tag_filter"] == ["python", "bug"]
 
     @pytest.mark.asyncio
@@ -146,7 +173,7 @@ class TestRagPipeline:
         provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
         with patch.object(rag_pipeline, "_embedding_provider", provider):
             with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=[]) as mock_search:
-                await rag_pipeline.retrieve_context("query", top_k=10)
+                await rag_pipeline.retrieve_context("query", user_id="u1", top_k=10)
                 call_kwargs = mock_search.call_args[1]
                 assert call_kwargs["top_k"] == 10
 
@@ -169,15 +196,17 @@ class TestRagPipeline:
         search_results = [
             {
                 "text": "Single result",
-                "score": 0.90,
+                "similarity": 0.90,
                 "tags": [],
                 "session_id": "s1",
                 "run_id": "r1",
+                "asset_id": None,
+                "metadata": {},
             },
         ]
         with patch.object(rag_pipeline, "_embedding_provider", provider):
             with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=search_results):
-                result = await rag_pipeline.retrieve_context("query")
+                result = await rag_pipeline.retrieve_context("query", user_id="u1")
                 assert "Single result" in result
                 assert "0.90" in result
                 # No tags bracket for empty tags
