@@ -6,10 +6,12 @@ Single source of truth served to the frontend via GET /api/providers
 Adding a new provider or capability requires only updating the PROVIDERS dict.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+
+Capability = Literal["chat", "vector", "image", "tool"]
 
 # 主流 LLM API 供应商清单。base_url 均为官方 OpenAI 兼容端点
 # （核对：DeepSeek/智谱/Kimi/硅基流动 官方文档；OpenAI/Anthropic/MiniMax/
