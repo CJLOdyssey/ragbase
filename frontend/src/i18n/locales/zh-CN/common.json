@@ -123,7 +123,18 @@
       "tts": "文字转语音",
       "moderation": "内容审核(Moderation)",
       "tool": "Tool"
-    }
+    },
+    "badge": {
+      "llm": "对话",
+      "embedding": "嵌入",
+      "rerank": "重排序",
+      "speech2text": "语音转文字",
+      "tts": "文字转语音",
+      "moderation": "内容审核",
+      "tool": "工具"
+    },
+    "filterAll": "全部",
+    "noModelsInGroup": "暂无可用模型"
   },
   "fileAttach": {
     "attach": "附加文件"
