@@ -97,4 +97,6 @@ class TestProviderRoutes:
         resp = client.get("/api/providers")
         data = resp.json()
         assert data["openai"]["base_url"] == "https://api.openai.com/v1"
-        assert data["deepseek"]["base_url"] == "https://api.deepseek.com"
+        assert data["deepseek"]["base_url"] == "https://api.deepseek.com/v1"
+        assert data["zhipu"]["base_url"] == "https://open.bigmodel.cn/api/paas/v4"
+        assert data["siliconflow"]["base_url"] == "https://api.siliconflow.cn/v1"

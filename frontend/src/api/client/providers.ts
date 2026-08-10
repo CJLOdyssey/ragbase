@@ -1,9 +1,19 @@
 import client from './instance';
 
+type ProviderCapability =
+  | 'chat'
+  | 'vector'
+  | 'tool'
+  | 'image'
+  | 'rerank'
+  | 'speech2text'
+  | 'tts'
+  | 'moderation';
+
 interface ProviderInfo {
   name: string;
   base_url: string;
-  capabilities: ('chat' | 'vector' | 'tool')[];
+  capabilities: ProviderCapability[];
   docs_url: string | null;
 }
 

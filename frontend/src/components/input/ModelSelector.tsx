@@ -141,11 +141,9 @@ function OptionsList({
       )}
       {providers.map(([provider, list]) => (
         <div key={provider} className="flex flex-col">
-          {providers.length > 1 && (
-            <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-              {provider}
-            </div>
-          )}
+          <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+            {provider}
+          </div>
           {list.map((m) => (
             <ModelOptionButton
               key={m.id}

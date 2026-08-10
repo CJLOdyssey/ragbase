@@ -114,7 +114,16 @@
     "supportedModels": "Supported models",
     "noModelsWithKey": "No models returned for this API key",
     "enterApiKeyToFetch": "Enter an API key to fetch models",
-    "fetchFromApi": "Fetch models from API"
+    "fetchFromApi": "Fetch models from API",
+    "category": {
+      "llm": "LLM",
+      "embedding": "Text Embedding",
+      "rerank": "Rerank",
+      "speech2text": "Speech2text",
+      "tts": "TTS",
+      "moderation": "Moderation",
+      "tool": "Tool"
+    }
   },
   "fileAttach": {
     "attach": "Attach files"

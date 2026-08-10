@@ -114,7 +114,16 @@
     "supportedModels": "支持模型",
     "noModelsWithKey": "该 API Key 未返回模型",
     "enterApiKeyToFetch": "输入 API Key 后获取模型",
-    "fetchFromApi": "从 API 获取模型"
+    "fetchFromApi": "从 API 获取模型",
+    "category": {
+      "llm": "LLM",
+      "embedding": "嵌入(Embedding)",
+      "rerank": "重排序(Rerank)",
+      "speech2text": "语音转文字",
+      "tts": "文字转语音",
+      "moderation": "内容审核(Moderation)",
+      "tool": "Tool"
+    }
   },
   "fileAttach": {
     "attach": "附加文件"
