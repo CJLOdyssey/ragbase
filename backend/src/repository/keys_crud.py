@@ -12,7 +12,7 @@ from sqlalchemy import select
 async def create_api_key(
     user_id: str,
     provider: str,
-    usage_type: str = "llm",
+    capabilities: list[str] | None = None,
     label: str = "",
     plaintext_key: str = "",
     base_url: str | None = None,
@@ -38,7 +38,7 @@ async def create_api_key(
             id=str(uuid4()),
             user_id=user_id,
             provider=provider,
-            usage_type=usage_type,
+            capabilities=capabilities if capabilities is not None else ["llm"],
             label=label,
             encrypted_key=encrypted,
             base_url=base_url,
@@ -113,7 +113,7 @@ async def get_api_keys(
                 {
                     "id": r.id,
                     "provider": r.provider,
-                    "usage_type": r.usage_type,
+                    "capabilities": list(r.capabilities or []),
                     "label": r.label,
                     "key_masked": key_masked,
                     "base_url": r.base_url,
@@ -169,7 +169,7 @@ async def get_api_key_for_use(key_id: str, user_id: str) -> dict[str, Any] | Non
         return {
             "id": row.id,
             "provider": row.provider,
-            "usage_type": row.usage_type,
+            "capabilities": list(row.capabilities or []),
             "api_key": decrypt_api_key(row.encrypted_key),
             "base_url": row.base_url,
             "models": [m.strip() for m in row.models.split(",") if m.strip()] if row.models else [],
@@ -223,7 +223,7 @@ async def get_api_key_for_model(model: str, user_id: str) -> dict[str, Any] | No
         return {
             "id": row.id,
             "provider": row.provider,
-            "usage_type": row.usage_type,
+            "capabilities": list(row.capabilities or []),
             "api_key": decrypt_api_key(row.encrypted_key),
             "base_url": row.base_url,
             "models": [m.strip() for m in row.models.split(",") if m.strip()] if row.models else [],
@@ -297,7 +297,7 @@ async def update_api_key(
     models: list[str] | None = None,
     is_active: bool | None = None,
     is_default: bool | None = None,
-    usage_type: str | None = None,
+    capabilities: list[str] | None = None,
 ) -> dict[str, Any] | None:
     """Update an API key configuration."""
     factory = get_session_factory()
@@ -318,8 +318,8 @@ async def update_api_key(
             row.base_url = base_url
         if models is not None:
             row.models = ",".join(models)
-        if usage_type is not None:
-            row.usage_type = usage_type
+        if capabilities is not None:
+            row.capabilities = capabilities
         if is_active is not None:
             row.is_active = is_active
         if is_default is not None:
@@ -343,7 +343,7 @@ async def update_api_key(
             "id": row.id,
             "label": row.label,
             "provider": row.provider,
-            "usage_type": row.usage_type,
+            "capabilities": list(row.capabilities or []),
             "key_masked": mask_api_key(decrypt_api_key(row.encrypted_key)),
             "is_active": row.is_active,
             "is_default": row.is_default,
@@ -375,16 +375,13 @@ async def get_embedding_api_key() -> str | None:
     async with factory() as session:
         stmt = (
             select(UserApiKey)
-            .where(
-                UserApiKey.usage_type.in_(["embedding", "both"]),
-                UserApiKey.is_active.is_(True),
-            )
-            .limit(1)
+            .where(UserApiKey.is_active.is_(True))
+            .order_by(UserApiKey.created_at)
+            .limit(50)
         )
-        result = await session.execute(stmt)
-        row = result.scalar_one_or_none()
-        if row:
-            return decrypt_api_key(row.encrypted_key)
+        for row in (await session.execute(stmt)).scalars():
+            if "embedding" in (row.capabilities or []):
+                return decrypt_api_key(row.encrypted_key)
     return None
 
 
@@ -399,15 +396,13 @@ async def get_tool_api_key(provider: str) -> str | None:
             select(UserApiKey)
             .where(
                 UserApiKey.provider == provider,
-                UserApiKey.usage_type == "tool",
                 UserApiKey.is_active.is_(True),
             )
-            .limit(1)
+            .limit(50)
         )
-        result = await session.execute(stmt)
-        row = result.scalar_one_or_none()
-        if row:
-            return decrypt_api_key(row.encrypted_key)
+        for row in (await session.execute(stmt)).scalars():
+            if "tool" in (row.capabilities or []):
+                return decrypt_api_key(row.encrypted_key)
     return None
 
 

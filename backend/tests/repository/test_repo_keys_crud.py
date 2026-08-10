@@ -72,7 +72,7 @@ async def test_get_api_keys_decrypt_failure_graceful(db_engine):
             id="bad-key-id-1234",
             user_id="user1",
             provider="openai",
-            usage_type="llm",
+            capabilities=["llm"],
             label="bad",
             encrypted_key="not-valid-fernet",
             models="",
@@ -275,7 +275,7 @@ async def test_get_default_api_key_system_wide_fallback(db_engine):
 async def test_get_embedding_api_key(db_engine):
     from repository.keys_crud import create_api_key, get_embedding_api_key
 
-    await create_api_key("user1", "openai", usage_type="embedding", plaintext_key="sk-emb")
+    await create_api_key("user1", "openai", capabilities=["embedding"], plaintext_key="sk-emb")
     result = await get_embedding_api_key()
     assert result == "sk-emb"
 
@@ -284,7 +284,7 @@ async def test_get_embedding_api_key(db_engine):
 async def test_get_embedding_api_key_both(db_engine):
     from repository.keys_crud import create_api_key, get_embedding_api_key
 
-    await create_api_key("user1", "openai", usage_type="both", plaintext_key="sk-both")
+    await create_api_key("user1", "openai", capabilities=["llm", "embedding"], plaintext_key="sk-both")
     result = await get_embedding_api_key()
     assert result == "sk-both"
 
@@ -391,10 +391,10 @@ async def test_update_api_key_base_url_and_models(db_engine):
         k.id, "user1",
         base_url="http://new",
         models=["gpt-4", "gpt-3.5-turbo"],
-        usage_type="embedding",
+        capabilities=["embedding"],
     )
     assert result is not None
-    assert result["usage_type"] == "embedding"
+    assert result["capabilities"] == ["embedding"]
 
 
 @pytest.mark.asyncio

@@ -558,7 +558,7 @@ class TestKeyCRUD:
     def test_key_create(self, client):
         payload = {
             "provider": "openai",
-            "usage_type": "vector",
+            "capabilities": ["embedding"],
             "label": "test-key",
             "api_key": "sk-test-key-value",
         }

@@ -2,7 +2,7 @@
 
 Single source of truth consumed by:
   - Frontend ProviderEditModal (type selector, capability badges)
-  - Backend key validation (usage_type against provider capabilities)
+  - Backend key validation (capabilities against provider capabilities)
 
 Adding a new provider or capability requires only updating the PROVIDERS dict.
 """

@@ -22,7 +22,7 @@ class TestKeysModels:
         assert req.provider == "openai"
         assert req.label == "My OpenAI Key"
         assert req.api_key == "sk-test123"
-        assert req.usage_type == "chat"
+        assert req.capabilities == ["llm"]
         assert req.models == []
         assert req.is_default is False
 
@@ -31,7 +31,7 @@ class TestKeysModels:
 
         req = KeyCreateRequest(
             provider="deepseek",
-            usage_type="general",
+            capabilities=["llm", "embedding"],
             label="DeepSeek Key",
             api_key="sk-ds-test",
             base_url="https://api.deepseek.com",
@@ -39,7 +39,7 @@ class TestKeysModels:
             is_default=True,
         )
         assert req.provider == "deepseek"
-        assert req.usage_type == "general"
+        assert req.capabilities == ["llm", "embedding"]
         assert req.base_url == "https://api.deepseek.com"
         assert len(req.models) == 2
         assert req.is_default is True
@@ -54,13 +54,13 @@ class TestKeysModels:
                 api_key="sk-test",
             )
 
-    def test_key_create_request_invalid_usage_type(self):
+    def test_key_create_request_invalid_capability(self):
         from routers.keys import KeyCreateRequest
 
         with pytest.raises(ValidationError):
             KeyCreateRequest(
                 provider="openai",
-                usage_type="invalid",
+                capabilities=["bogus"],
                 label="test",
                 api_key="sk-test",
             )
@@ -93,11 +93,11 @@ class TestKeysModels:
         assert req.api_key is None
         assert req.is_active is None
 
-    def test_key_update_request_invalid_usage_type(self):
+    def test_key_update_request_invalid_capability(self):
         from routers.keys import KeyUpdateRequest
 
         with pytest.raises(ValidationError):
-            KeyUpdateRequest(usage_type="bad_type")
+            KeyUpdateRequest(capabilities=["bad_type"])
 
     def test_fetch_models_request(self):
         from routers.keys import FetchModelsRequest
@@ -113,7 +113,7 @@ class TestKeysModels:
         resp = KeyResponse(
             id="key-1",
             provider="openai",
-            usage_type="llm",
+            capabilities=["llm"],
             label="test",
             key_masked="sk-...est",
             base_url=None,
@@ -167,7 +167,7 @@ class TestKeysModels:
         cols = {c.name for c in UserApiKey.__table__.columns}
         assert "encrypted_key" in cols
         assert "provider" in cols
-        assert "usage_type" in cols
+        assert "capabilities" in cols
         assert "is_default" in cols
         assert "is_active" in cols
 
@@ -175,7 +175,8 @@ class TestKeysModels:
         from core.infra.database import UserApiKey
 
         c_map = {c.name: c for c in UserApiKey.__table__.columns}
-        assert c_map["usage_type"].default.arg == "chat"
+        caps_default = c_map["capabilities"].default.arg
+        assert callable(caps_default) and caps_default(None) == []
         assert c_map["is_active"].default.arg is True
         assert c_map["is_default"].default.arg is False
 

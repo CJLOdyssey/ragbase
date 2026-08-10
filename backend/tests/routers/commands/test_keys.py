@@ -10,31 +10,31 @@ class TestKeys:
 
     def test_create_key_embedding_type(self, client):
         resp = client.post("/api/keys", json={
-            "provider": "openai", "usage_type": "vector",
+            "provider": "openai", "capabilities": ["embedding"],
             "label": "emb-key", "api_key": "sk-emb-test",
         }, headers={"X-User-ID": "admin"})
         assert resp.status_code == 201
         data = resp.json()
         assert data["provider"] == "openai"
-        assert data["usage_type"] == "vector"
+        assert data["capabilities"] == ["embedding"]
 
     def test_create_key_both_type(self, client):
-        # usage_type != vector → hits test_api_key_connection (real network).
+        # capabilities != pure embedding → hits test_api_key_connection (real network).
         # Mock it to avoid a 15s real connection attempt.
         with patch("routers.keys.test_api_key_connection", new_callable=AsyncMock) as mock_test:
             mock_test.return_value = {"success": True, "models": ["gpt-4"]}
             resp = client.post("/api/keys", json={
-                "provider": "openai", "usage_type": "general",
+                "provider": "openai", "capabilities": ["llm", "embedding"],
                 "label": "both-key", "api_key": "sk-both-test",
             }, headers={"X-User-ID": "admin"})
         assert resp.status_code == 201
-        assert resp.json()["usage_type"] == "general"
+        assert resp.json()["capabilities"] == ["llm", "embedding"]
 
     def test_create_key_llm_type_success(self, client):
         with patch("routers.keys.test_api_key_connection", new_callable=AsyncMock) as mock_test:
             mock_test.return_value = {"success": True, "models": ["gpt-4"]}
             resp = client.post("/api/keys", json={
-                "provider": "openai", "usage_type": "chat",
+                "provider": "openai", "capabilities": ["llm"],
                 "label": "llm-key", "api_key": "sk-llm-test",
             }, headers={"X-User-ID": "admin"})
             assert resp.status_code == 201
@@ -44,7 +44,7 @@ class TestKeys:
         with patch("routers.keys.test_api_key_connection", new_callable=AsyncMock) as mock_test:
             mock_test.return_value = {"success": False, "message": "connection refused"}
             resp = client.post("/api/keys", json={
-                "provider": "openai", "usage_type": "chat",
+                "provider": "openai", "capabilities": ["llm"],
                 "label": "llm-key-fail", "api_key": "sk-llm-test",
             }, headers={"X-User-ID": "admin"})
             assert resp.status_code == 201
@@ -53,7 +53,7 @@ class TestKeys:
         with patch("routers.keys.test_api_key_connection", new_callable=AsyncMock) as mock_test:
             mock_test.return_value = {"success": True, "models": []}
             resp = client.post("/api/keys", json={
-                "provider": "openai", "usage_type": "chat",
+                "provider": "openai", "capabilities": ["llm"],
                 "label": "llm-key-no-models", "api_key": "sk-llm-test",
                 "models": ["gpt-4"],
             }, headers={"X-User-ID": "admin"})
@@ -71,7 +71,7 @@ class TestKeys:
 
     def test_edit_key_success(self, client):
         result = {
-            "id": "k1", "provider": "openai", "usage_type": "llm",
+            "id": "k1", "provider": "openai", "capabilities": ["llm"],
             "label": "key-1", "key_masked": "sk-...est",
             "base_url": None, "models": [], "is_active": True,
             "is_default": False, "last_used_at": None, "created_at": None,
@@ -85,7 +85,7 @@ class TestKeys:
 
     def test_edit_key_revalidates_on_new_api_key(self, client):
         result = {
-            "id": "k1", "provider": "openai", "usage_type": "llm",
+            "id": "k1", "provider": "openai", "capabilities": ["llm"],
             "label": "key-1", "key_masked": "sk-...est",
             "base_url": None, "models": [], "is_active": True,
             "is_default": False, "last_used_at": None, "created_at": None,
@@ -100,7 +100,7 @@ class TestKeys:
 
     def test_edit_key_revalidates_on_new_base_url(self, client):
         result = {
-            "id": "k1", "provider": "openai", "usage_type": "llm",
+            "id": "k1", "provider": "openai", "capabilities": ["llm"],
             "label": "key-1", "key_masked": "sk-...est",
             "base_url": None, "models": [], "is_active": True,
             "is_default": False, "last_used_at": None, "created_at": None,
@@ -190,7 +190,7 @@ class TestKeysIntegration:
             mock_test.return_value = {"success": True, "models": ["gpt-4"]}
             create_resp = client.post("/api/keys", json={
                 "provider": "openai",
-                "usage_type": "chat",
+                "capabilities": ["llm"],
                 "label": "integration-key",
                 "api_key": "sk-integration-test-12345",
             }, headers={"X-User-ID": self.USER_ID})
@@ -216,7 +216,7 @@ class TestKeysIntegration:
             mock_test.return_value = {"success": True, "models": ["gpt-4"]}
             create_resp = client.post("/api/keys", json={
                 "provider": "openai",
-                "usage_type": "chat",
+                "capabilities": ["llm"],
                 "label": "fallback-key",
                 "api_key": "sk-fallback-test",
             }, headers={"X-User-ID": self.X_USER_ID})
@@ -242,7 +242,7 @@ class TestKeysIntegration:
                 mock_test.return_value = {"success": True, "models": [f"model-{i}"]}
                 resp = client.post("/api/keys", json={
                     "provider": provider,
-                    "usage_type": "chat",
+                    "capabilities": ["llm"],
                     "label": f"multi-key-{i}",
                     "api_key": f"sk-multi-{i}",
                 }, headers={"X-User-ID": self.USER_ID})

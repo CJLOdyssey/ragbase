@@ -5,7 +5,8 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from core.base import Base
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -19,11 +20,12 @@ class UserApiKey(Base):
     provider: Mapped[str] = mapped_column(
         String(32), nullable=False, comment="openai|deepseek|anthropic|custom"
     )
-    usage_type: Mapped[str] = mapped_column(
-        String(16),
-        default="chat",
+    capabilities: Mapped[list[str]] = mapped_column(
+        "capabilities",
+        JSONB().with_variant(JSON, "sqlite"),
+        default=list,
         nullable=False,
-        comment="chat|vector|image|audio|general|tool — how this key is used",
+        comment="llm|embedding|rerank|speech2text|tts|moderation|tool — what this key can do",
     )
     label: Mapped[str] = mapped_column(String(64), nullable=False)
     encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)

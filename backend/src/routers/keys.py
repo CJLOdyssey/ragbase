@@ -14,8 +14,9 @@ from auth import get_user_id
 from core.audit import log_audit
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
+from domain.capabilities import validate_capabilities
 from fastapi import APIRouter, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from repository import (
     create_api_key,
     delete_api_key,
@@ -31,7 +32,7 @@ router = APIRouter(tags=["keys"])
 
 class KeyCreateRequest(BaseModel):
     provider: str = Field(..., min_length=1, max_length=32, pattern=r"^[a-z_]+$")
-    usage_type: str = Field(default="chat", pattern=r"^(chat|vector|image|audio|general|tool)$")
+    capabilities: list[str] = Field(default_factory=lambda: ["llm"])
     label: str = Field(..., min_length=1, max_length=64)
     api_key: str = Field(
         ..., min_length=1, description="Plaintext API key — encrypted before storage"
@@ -40,15 +41,33 @@ class KeyCreateRequest(BaseModel):
     models: list[str] = Field(default_factory=list)
     is_default: bool = False
 
+    @field_validator("capabilities")
+    @classmethod
+    def _check_caps(cls, v: list[str]) -> list[str]:
+        err = validate_capabilities(v)
+        if err:
+            raise ValueError(err)
+        return v
+
 
 class KeyUpdateRequest(BaseModel):
-    usage_type: str | None = Field(default=None, pattern=r"^(chat|vector|image|audio|general|tool)$")
+    capabilities: list[str] | None = Field(default=None)
     label: str | None = None
     api_key: str | None = Field(default=None, description="New plaintext key (optional)")
     base_url: str | None = None
     models: list[str] | None = None
     is_active: bool | None = None
     is_default: bool | None = None
+
+    @field_validator("capabilities")
+    @classmethod
+    def _check_caps(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        err = validate_capabilities(v)
+        if err:
+            raise ValueError(err)
+        return v
 
 
 class FetchModelsRequest(BaseModel):
@@ -60,7 +79,7 @@ class FetchModelsRequest(BaseModel):
 class KeyResponse(BaseModel):
     id: str
     provider: str
-    usage_type: str
+    capabilities: list[str]
     label: str
     key_masked: str
     base_url: str | None
@@ -88,7 +107,7 @@ async def list_keys(request: Request) -> Any:
             KeyResponse(
                 id=k["id"],
                 provider=k["provider"],
-                usage_type=k.get("usage_type", "llm"),
+                capabilities=k.get("capabilities", ["llm"]),
                 label=k["label"],
                 key_masked=k["key_masked"],
                 base_url=k["base_url"],
@@ -119,7 +138,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
     obj = await create_api_key(
         user_id=user_id,
         provider=req.provider,
-        usage_type=req.usage_type,
+        capabilities=req.capabilities,
         label=req.label,
         plaintext_key=req.api_key,
         base_url=req.base_url,
@@ -127,14 +146,14 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
         is_default=req.is_default,
     )
 
-    # For vector-only keys, skip connectivity test and model fetch
-    if req.usage_type == "vector":
+    # Pure-embedding keys skip connectivity test and model fetch
+    if set(req.capabilities) == {"embedding"}:
         from core.infra.key_vault import decrypt_api_key, mask_api_key
 
         return KeyResponse(
             id=obj.id,
             provider=obj.provider,
-            usage_type=obj.usage_type,
+            capabilities=obj.capabilities,
             label=obj.label,
             key_masked=mask_api_key(decrypt_api_key(obj.encrypted_key)),
             base_url=obj.base_url,
@@ -166,7 +185,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
     return KeyResponse(
         id=obj.id,
         provider=obj.provider,
-        usage_type=obj.usage_type,
+        capabilities=obj.capabilities,
         label=obj.label,
         key_masked=mask_api_key(decrypt_api_key(obj.encrypted_key)),
         base_url=obj.base_url,
@@ -185,6 +204,7 @@ async def edit_key(key_id: str, req: KeyUpdateRequest, request: Request) -> Any:
     result = await update_api_key(
         key_id=key_id,
         user_id=user_id,
+        capabilities=req.capabilities,
         label=req.label,
         plaintext_key=req.api_key,
         base_url=req.base_url,
@@ -207,7 +227,7 @@ async def edit_key(key_id: str, req: KeyUpdateRequest, request: Request) -> Any:
     return KeyResponse(
         id=result["id"],
         provider=result["provider"],
-        usage_type=result.get("usage_type", "chat"),
+        capabilities=result.get("capabilities", ["llm"]),
         label=result["label"],
         key_masked=result["key_masked"],
         base_url=result.get("base_url"),
