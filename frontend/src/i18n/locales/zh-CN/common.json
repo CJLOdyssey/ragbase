@@ -119,7 +119,7 @@
     "apiKeyPlaceholder": "输入 API Key",
     "fetchFromApi": "从 API 获取模型",
     "category": {
-      "llm": "大语言模型",
+      "llm": "LLM",
       "embedding": "嵌入",
       "rerank": "重排序",
       "speech2text": "语音转文字",
@@ -128,7 +128,7 @@
       "tool": "工具"
     },
     "badge": {
-      "llm": "大语言模型",
+      "llm": "LLM",
       "embedding": "嵌入",
       "rerank": "重排序",
       "speech2text": "语音转文字",
