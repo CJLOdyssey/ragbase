@@ -24,10 +24,32 @@ PROVIDER_LABELS = {
 }
 
 
+EMBEDDING_PREFIXES = ("text-embedding", "embedding", "bge-", "m3e-", "jina-embeddings")
+RERANK_PREFIXES = ("rerank", "bge-reranker")
+
+
+def infer_model_type(model: str, provider: str) -> str:
+    m = model.lower()
+    if m.startswith(EMBEDDING_PREFIXES) or "embed" in m:
+        return "embedding"
+    if m.startswith(RERANK_PREFIXES):
+        return "rerank"
+    if m.startswith(("whisper", "paraformer", "sherpa")) or "asr" in m:
+        return "speech2text"
+    if m.startswith(("tts", "edge-tts")) or "voice" in m:
+        return "tts"
+    if "moderation" in m:
+        return "moderation"
+    if provider in ("tavily", "stability"):
+        return "tool"
+    return "llm"
+
+
 class ModelInfo(BaseModel):
     id: str
     label: str
     provider: str
+    type: str = "llm"
 
 
 async def _get_models_from_keys(user_id: str) -> list[ModelInfo]:
@@ -50,7 +72,14 @@ async def _get_models_from_keys(user_id: str) -> list[ModelInfo]:
             if model_id in seen:
                 continue
             seen.add(model_id)
-            models.append(ModelInfo(id=model_id, label=model_id, provider=provider_label))
+            models.append(
+                ModelInfo(
+                    id=model_id,
+                    label=model_id,
+                    provider=provider_label,
+                    type=infer_model_type(model_id, provider),
+                )
+            )
 
     return models
 
