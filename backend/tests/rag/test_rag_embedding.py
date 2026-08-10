@@ -13,9 +13,15 @@ from rag.rag_embedding import EMBEDDING_DIM, EmbeddingProvider
 
 class TestEmbeddingProvider:
     def test_init_defaults(self):
+        # 没有默认值：model 未配置就是 None，绝不隐式假设供应商
         p = EmbeddingProvider(api_key="sk-test")
         assert p.api_key == "sk-test"
-        assert p.model == "text-embedding-v3"
+        assert p.model is None
+
+    def test_embed_sync_without_model_raises(self):
+        p = EmbeddingProvider(api_key="sk-test")
+        with pytest.raises(RuntimeError, match="EMBEDDING_MODEL"):
+            p._embed_sync(["hello"])
 
     def test_init_custom_model(self):
         p = EmbeddingProvider(api_key="sk", model="custom-model")
@@ -56,7 +62,7 @@ class TestEmbeddingProvider:
         assert len(result[0]) == EMBEDDING_DIM
 
     def test_embed_sync_openai_compat_missing_data_raises(self):
-        p = EmbeddingProvider(api_key="sk", base_url="https://x/v1")
+        p = EmbeddingProvider(api_key="sk", model="test-model", base_url="https://x/v1")
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({"data": []}).encode("utf-8")
         mock_response.__enter__ = MagicMock(return_value=mock_response)
@@ -113,7 +119,7 @@ class TestEmbeddingProvider:
             assert result[0] == fake_vector
 
     def test_embed_sync_success(self):
-        p = EmbeddingProvider(api_key="sk-test")
+        p = EmbeddingProvider(api_key="sk-test", model="test-model")
         response_data = {
             "output": {
                 "embeddings": [
@@ -134,7 +140,7 @@ class TestEmbeddingProvider:
             assert result[0] == [0.1] * EMBEDDING_DIM
 
     def test_embed_sync_missing_output_key_raises(self):
-        p = EmbeddingProvider(api_key="sk-test")
+        p = EmbeddingProvider(api_key="sk-test", model="test-model")
         response_data = {"output": {}}
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps(response_data).encode("utf-8")
@@ -146,7 +152,7 @@ class TestEmbeddingProvider:
                 p._embed_sync(["text"])
 
     def test_embed_sync_missing_embeddings_key_raises(self):
-        p = EmbeddingProvider(api_key="sk-test")
+        p = EmbeddingProvider(api_key="sk-test", model="test-model")
         response_data = {"output": {"other_key": "value"}}
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps(response_data).encode("utf-8")
@@ -158,7 +164,7 @@ class TestEmbeddingProvider:
                 p._embed_sync(["text"])
 
     def test_embed_sync_empty_output_raises(self):
-        p = EmbeddingProvider(api_key="sk-test")
+        p = EmbeddingProvider(api_key="sk-test", model="test-model")
         response_data = {"output": None}
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps(response_data).encode("utf-8")
@@ -170,7 +176,7 @@ class TestEmbeddingProvider:
                 p._embed_sync(["text"])
 
     def test_embed_sync_request_headers(self):
-        p = EmbeddingProvider(api_key="sk-test-key")
+        p = EmbeddingProvider(api_key="sk-test-key", model="test-model")
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({
             "output": {"embeddings": [{"embedding": [0.1] * EMBEDDING_DIM}]}
@@ -185,7 +191,7 @@ class TestEmbeddingProvider:
             assert req.get_header("Content-type") == "application/json"
 
     def test_embed_sync_exception_propagates(self):
-        p = EmbeddingProvider(api_key="sk-test")
+        p = EmbeddingProvider(api_key="sk-test", model="test-model")
         with patch("rag.rag_embedding.urllib.request.urlopen", side_effect=Exception("network error")):
             with pytest.raises(Exception, match="network error"):
                 p._embed_sync(["text"])

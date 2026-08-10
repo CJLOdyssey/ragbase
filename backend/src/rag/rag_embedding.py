@@ -10,7 +10,9 @@ from core.infra.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-v3")
+# No default: an unset EMBEDDING_MODEL means embedding is not configured and
+# must fail loudly at call time — never silently assume a provider.
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL")
 EMBEDDING_DIM = 1024  # text-embedding-v3 output dimension
 DASHSCOPE_EMBEDDING_URL = (
     "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding"
@@ -28,7 +30,7 @@ class EmbeddingProvider:
     def __init__(
         self,
         api_key: str,
-        model: str = EMBEDDING_MODEL,
+        model: str | None = None,
         base_url: str | None = None,
     ):
         self.api_key = api_key
@@ -43,12 +45,16 @@ class EmbeddingProvider:
         """
         if not self.api_key:
             raise RuntimeError(
-                "RAG embedding unavailable: no DashScope API key configured"
+                "RAG embedding unavailable: no API key configured"
             )
         return await asyncio.to_thread(self._embed_sync, texts)
 
     def _embed_sync(self, texts: list[str]) -> list[list[float]]:
         """Embed texts synchronously via HTTP API in a thread pool."""
+        if not self.model:
+            raise RuntimeError(
+                "RAG embedding unavailable: EMBEDDING_MODEL not configured"
+            )
         if self.base_url:
             url = f"{self.base_url.rstrip('/')}/embeddings"
             body: dict[str, Any] = {"model": self.model, "input": texts}

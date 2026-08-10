@@ -336,14 +336,15 @@ async def test_get_embedding_config_prefers_embedding_model_key(db_engine):
 
 @pytest.mark.asyncio
 async def test_get_embedding_config_falls_back_to_oldest(db_engine):
-    """No embedding-named models → oldest embedding-capability key, DashScope defaults."""
+    """No embedding-named models → oldest key wins, its own endpoint kept, env model."""
+    from rag.rag_embedding import EMBEDDING_MODEL
     from repository.keys_crud import create_api_key, get_embedding_config
 
     await create_api_key("user1", "dashscope", capabilities=["embedding"], plaintext_key="sk-old")
     await create_api_key("user1", "custom", capabilities=["embedding"], plaintext_key="sk-new")
 
     cfg = await get_embedding_config()
-    assert cfg == {"api_key": "sk-old", "base_url": None, "model": "text-embedding-v3"}
+    assert cfg == {"api_key": "sk-old", "base_url": None, "model": EMBEDDING_MODEL}
 
 
 @pytest.mark.asyncio

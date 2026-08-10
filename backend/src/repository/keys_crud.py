@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.infra.database import KeyUsageLog, UserApiKey, get_session_factory
 from core.infra.key_vault import decrypt_api_key, encrypt_api_key, mask_api_key
+from rag.rag_embedding import EMBEDDING_MODEL
 from sqlalchemy import select
 
 
@@ -429,8 +430,13 @@ async def get_embedding_config() -> dict[str, str | None] | None:
     row = rows[0]
     return {
         "api_key": decrypt_api_key(row.encrypted_key),
-        "base_url": None,
-        "model": "text-embedding-v3",
+        # Keep the key's own endpoint: a key without declared embedding models
+        # may still point at an OpenAI-compatible provider (e.g. SiliconFlow).
+        # Only a key with no base_url at all falls back to the legacy DashScope
+        # native protocol. Model comes from EMBEDDING_MODEL (env-tunable), never
+        # hardcoded.
+        "base_url": row.base_url,
+        "model": EMBEDDING_MODEL,
     }
 
 
