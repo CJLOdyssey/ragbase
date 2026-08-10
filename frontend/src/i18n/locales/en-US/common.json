@@ -137,7 +137,8 @@
       "tool": "Tools"
     },
     "filterAll": "All",
-    "noModelsInGroup": "No models yet"
+    "noModelsInGroup": "No models yet",
+    "totalCount": "{{count}} total"
   },
   "fileAttach": {
     "attach": "Attach files"

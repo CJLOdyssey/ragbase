@@ -137,7 +137,8 @@
       "tool": "工具"
     },
     "filterAll": "全部",
-    "noModelsInGroup": "暂无可用模型"
+    "noModelsInGroup": "暂无可用模型",
+    "totalCount": "共 {{count}} 条"
   },
   "fileAttach": {
     "attach": "附加文件"

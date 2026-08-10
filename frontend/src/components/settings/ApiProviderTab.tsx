@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { KeyItem } from '../../api/client';
 import CapabilityBadges from './CapabilityBadges';
+import WstaPagination from './WstaPagination';
 import {
   categoriesOf,
   CATEGORY_ORDER,
@@ -63,6 +64,8 @@ export default function ApiProviderTab({
   const { t } = useTranslation();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [filterCat, setFilterCat] = useState<'all' | Category>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
 
   const visibleKeys = useMemo(() => {
     if (filterCat === 'all') return keys;
@@ -70,6 +73,22 @@ export default function ApiProviderTab({
       categoriesOf({ capabilities: capsOf(k) }).includes(filterCat),
     );
   }, [keys, filterCat]);
+
+  const paginatedKeys = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return visibleKeys.slice(start, start + pageSize);
+  }, [visibleKeys, page]);
+
+  const handleFilterChange = (cat: 'all' | Category) => {
+    setFilterCat(cat);
+    setPage(1);
+    setSelectedRowKeys([]);
+  };
+
+  const onPageChange = (p: number) => {
+    setPage(p);
+    setSelectedRowKeys([]);
+  };
 
   const handleBatchDelete = () => {
     if (onBatchDelete) onBatchDelete(selectedRowKeys as string[]);
@@ -289,10 +308,7 @@ export default function ApiProviderTab({
         <button
           type="button"
           className={`${FILTER_TAB_BASE} ${filterCat === 'all' ? FILTER_TAB_ACTIVE : FILTER_TAB_IDLE}`}
-          onClick={() => {
-            setFilterCat('all');
-            setSelectedRowKeys([]);
-          }}
+          onClick={() => handleFilterChange('all')}
         >
           {t('providerEdit.filterAll')}
         </button>
@@ -301,10 +317,7 @@ export default function ApiProviderTab({
             key={cat}
             type="button"
             className={`${FILTER_TAB_BASE} ${filterCat === cat ? FILTER_TAB_ACTIVE : FILTER_TAB_IDLE}`}
-            onClick={() => {
-              setFilterCat(cat);
-              setSelectedRowKeys([]);
-            }}
+            onClick={() => handleFilterChange(cat)}
           >
             {t(`providerEdit.category.${cat}`)}
           </button>
@@ -336,7 +349,7 @@ export default function ApiProviderTab({
               className="api-key-table"
               rowKey="id"
               columns={columns}
-              dataSource={visibleKeys}
+              dataSource={paginatedKeys}
               pagination={false}
               size="small"
               rowSelection={{
@@ -360,6 +373,14 @@ export default function ApiProviderTab({
           </ConfigProvider>
         )}
       </div>
+      {visibleKeys.length > 0 && (
+        <WstaPagination
+          total={visibleKeys.length}
+          current={page}
+          pageSize={pageSize}
+          onChange={onPageChange}
+        />
+      )}
     </div>
   );
 }
