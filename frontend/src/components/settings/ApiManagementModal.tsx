@@ -168,7 +168,7 @@ export default function ApiManagementModal({ onClose }: Props) {
       isActive?: boolean;
       isDefault?: boolean;
     },
-  ) => {
+  ): Promise<boolean> => {
     setError(null);
     try {
       await api.updateKey(id, {
@@ -183,10 +183,12 @@ export default function ApiManagementModal({ onClose }: Props) {
       });
       await loadKeys();
       void queryClient.invalidateQueries({ queryKey: ['keys'] });
+      return true;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t('api.updateFailed');
       setError(msg);
       Logger.error('Failed to update API key', err);
+      return false;
     }
   };
 
@@ -346,7 +348,7 @@ export default function ApiManagementModal({ onClose }: Props) {
                 return `${form.provider}-${count}`;
               })();
             if (editingKey.id) {
-              await handleUpdateKey(editingKey.id, {
+              const ok = await handleUpdateKey(editingKey.id, {
                 label,
                 capabilities: form.capabilities,
                 apiKey: form.apiKey || undefined,
@@ -354,6 +356,10 @@ export default function ApiManagementModal({ onClose }: Props) {
                 models: form.models,
                 model_types: form.model_types ?? undefined,
               });
+              if (ok) {
+                setEditingKey(null);
+                setModalError(null);
+              }
             } else {
               await handleSaveKey({
                 provider: form.provider,
