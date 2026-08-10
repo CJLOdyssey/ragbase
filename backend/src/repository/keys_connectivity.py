@@ -7,15 +7,16 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from repository.keys_crud import get_api_key_for_use
+from domain.model_types import infer_model_type
 
 # SiliconFlow /models sub_type filter values (official OpenAPI) → model type.
 _SUB_TYPE_TO_MODEL_TYPE: dict[str, str] = {
     "chat": "llm",
     "embedding": "embedding",
     "reranker": "rerank",
-    "text-to-image": "tool",
-    "image-to-image": "tool",
-    "text-to-video": "tool",
+    "text-to-image": "image",
+    "image-to-image": "image",
+    "text-to-video": "image",
     "speech-to-text": "speech2text",
 }
 
@@ -127,7 +128,9 @@ def _classify_models(
 
     def fetch_full() -> tuple[bool, list[str], dict[str, str], str]:
         try:
-            return True, _fetch_models_for_url(base_url, api_key), {}, "Connection successful"
+            models = _fetch_models_for_url(base_url, api_key)
+            types = {m: infer_model_type(m, provider) for m in models}
+            return True, models, types, "Connection successful"
         except Exception as e:
             return False, [], {}, str(e)
 

@@ -33,7 +33,7 @@ export default function ModelSection({
       </label>
       <div className="flex items-start gap-2">
         {models.length > 0 ? (
-          <div className="flex-1 flex flex-col gap-1.5 p-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-md min-h-[36px] max-h-64 overflow-y-auto">
+          <div className="flex-1 flex flex-col gap-1.5 p-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-md min-h-[36px] max-h-[84px] overflow-y-auto">
             {models.map((model) => (
               <div
                 key={model}
