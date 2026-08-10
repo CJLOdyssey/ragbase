@@ -79,19 +79,17 @@ function SelectorLabel({
   hasLoadedOnce,
   isEmpty,
   current,
-  selectedModel,
 }: {
   hasLoadedOnce: boolean;
   isEmpty: boolean;
   current: ModelOption | undefined;
-  selectedModel: string;
 }) {
   const { t } = useTranslation();
   if (!hasLoadedOnce) {
     return (
       <span className="inline-flex items-center gap-1.5">
         <Loader2 size={10} className="animate-spin" />
-        {selectedModel || t('model.loading') || '加载中'}
+        {t('model.loading') || '加载中'}
       </span>
     );
   }
@@ -315,7 +313,6 @@ export default function ModelSelector({
             hasLoadedOnce={hasLoadedOnce}
             isEmpty={isEmpty}
             current={current}
-            selectedModel={selectedModel}
           />
         </span>
         {hasLoadedOnce && (
