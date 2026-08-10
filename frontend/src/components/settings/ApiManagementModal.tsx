@@ -335,7 +335,7 @@ export default function ApiManagementModal({ onClose }: Props) {
             id: editingKey.id,
             provider: editingKey.provider,
             capabilities: editingKey.capabilities,
-            name: editingKey.label || editingKey.provider,
+            name: editingKey.id ? editingKey.label : '',
             baseUrl: editingKey.base_url || '',
             apiKey: '',
             models: editingKey.models,

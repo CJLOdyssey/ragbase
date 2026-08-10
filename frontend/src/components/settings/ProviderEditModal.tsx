@@ -201,8 +201,7 @@ export default function ProviderEditModal({
   const isToolProvider = caps.includes('tool');
   const showModels = shouldShowModels(caps);
 
-  const canSave =
-    !saving && !!name.trim() && (!requireApiKey || !!apiKey.trim());
+  const canSave = !saving && (!requireApiKey || !!apiKey.trim());
 
   const handleSave = () => {
     const preserveStored =
@@ -214,7 +213,7 @@ export default function ProviderEditModal({
       ...provider,
       provider: providerType,
       capabilities,
-      name,
+      name: name.trim() || info?.name || providerType,
       baseUrl,
       apiKey,
       models,
