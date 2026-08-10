@@ -27,6 +27,10 @@ export async function uploadAttachment(
   if (session_id) form.append('session_id', session_id);
   if (run_id) form.append('run_id', run_id);
   const { data } = await api.post('/attachments', form, {
+    // 覆盖实例默认的 application/json：否则 axios 会把 FormData 序列化成
+    // JSON 字符串（{"file":{}}），后端 multipart 解析 422。置 undefined 让
+    // axios 走 FormData 分支自动设置 multipart boundary。
+    headers: { 'Content-Type': undefined },
     onUploadProgress: (e) => {
       if (onProgress && e.total)
         onProgress(Math.round((e.loaded / e.total) * 100));

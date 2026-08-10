@@ -23,15 +23,32 @@ describe('uploadAttachment', { tags: ['unit'] }, () => {
     const result = await uploadAttachment(file, 's1');
 
     expect(mockApi.post).toHaveBeenCalledTimes(1);
-    const [url, form] = mockApi.post.mock.calls[0] as [string, FormData];
+    const [url, form, config] = mockApi.post.mock.calls[0] as [
+      string,
+      FormData,
+      { headers?: { 'Content-Type'?: unknown } },
+    ];
     expect(url).toBe('/attachments');
+    // 关键：必须覆盖实例默认的 application/json，否则 FormData 被序列化成
+    // JSON 字符串 → 后端 multipart 422
+    expect(config.headers).toEqual({ 'Content-Type': undefined });
     expect(form.get('session_id')).toBe('s1');
     expect((form.get('file') as File).name).toBe('hello.txt');
     expect(result).toEqual({ id: 'a1' });
   });
 
-  it('omits session_id when not provided (pre-session upload)', async () => {
+  it('includes run_id when provided', async () => {
     mockApi.post.mockResolvedValue({ data: { id: 'a2' } });
+    const file = new File(['x'], 'x.txt', { type: 'text/plain' });
+
+    await uploadAttachment(file, 's1', 'r9');
+
+    const form = mockApi.post.mock.calls[0][1] as FormData;
+    expect(form.get('run_id')).toBe('r9');
+  });
+
+  it('omits session_id when not provided (pre-session upload)', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'a3' } });
     const file = new File(['x'], 'x.txt', { type: 'text/plain' });
 
     await uploadAttachment(file, undefined, undefined);
@@ -50,7 +67,7 @@ describe('uploadAttachment', { tags: ['unit'] }, () => {
         },
       ) => {
         config.onUploadProgress?.({ loaded: 50, total: 100 });
-        return { data: { id: 'a3' } };
+        return { data: { id: 'a4' } };
       },
     );
     const file = new File(['x'], 'x.txt', { type: 'text/plain' });
@@ -62,8 +79,17 @@ describe('uploadAttachment', { tags: ['unit'] }, () => {
   });
 });
 
+describe('deleteAttachment', { tags: ['unit'] }, () => {
+  it('DELETEs the attachment', async () => {
+    mockApi.delete.mockResolvedValue({ data: { success: true } });
+    await deleteAttachment('att-1');
+    expect(mockApi.delete).toHaveBeenCalledWith('/attachments/att-1');
+  });
+});
+
 describe('uploadAttachments', { tags: ['unit'] }, () => {
   it('uploads each file separately and returns all ids', async () => {
+    mockApi.post.mockResolvedValue({ data: { id: 'a1' } });
     mockApi.post.mockResolvedValueOnce({ data: { id: 'a1' } });
     mockApi.post.mockResolvedValueOnce({ data: { id: 'a2' } });
 
@@ -77,13 +103,5 @@ describe('uploadAttachments', { tags: ['unit'] }, () => {
 
     expect(mockApi.post).toHaveBeenCalledTimes(2);
     expect(result.map((a) => a.id)).toEqual(['a1', 'a2']);
-  });
-});
-
-describe('deleteAttachment', { tags: ['unit'] }, () => {
-  it('DELETEs the attachment', async () => {
-    mockApi.delete.mockResolvedValue({ data: { success: true } });
-    await deleteAttachment('att-1');
-    expect(mockApi.delete).toHaveBeenCalledWith('/attachments/att-1');
   });
 });
