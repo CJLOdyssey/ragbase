@@ -25,9 +25,11 @@ describe('ModelSelector', { tags: ['unit'] }, () => {
       makeModel('gpt-4o', { type: 'llm' }),
       makeModel('text-embedding-3-small', { type: 'embedding' }),
     ]);
-    expect(screen.getByText('providerEdit.category.llm')).toBeInTheDocument();
     expect(
-      screen.getByText('providerEdit.category.embedding'),
+      screen.getAllByText('providerEdit.category.llm')[0],
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('providerEdit.category.embedding')[0],
     ).toBeInTheDocument();
     expect(screen.getByText('gpt-4o')).toBeInTheDocument();
     expect(screen.getByText('text-embedding-3-small')).toBeInTheDocument();
@@ -35,7 +37,9 @@ describe('ModelSelector', { tags: ['unit'] }, () => {
 
   it('defaults models without a type to the llm group', () => {
     renderSelector([makeModel('gpt-4o')]);
-    expect(screen.getByText('providerEdit.category.llm')).toBeInTheDocument();
+    expect(
+      screen.getAllByText('providerEdit.category.llm')[0],
+    ).toBeInTheDocument();
     expect(screen.getByText('gpt-4o')).toBeInTheDocument();
   });
 
@@ -53,9 +57,11 @@ describe('ModelSelector', { tags: ['unit'] }, () => {
     fireEvent.change(screen.getByPlaceholderText('搜索模型名称...'), {
       target: { value: 'gpt' },
     });
-    expect(screen.getByText('providerEdit.category.llm')).toBeInTheDocument();
     expect(
-      screen.queryByText('providerEdit.category.embedding'),
+      screen.getAllByText('providerEdit.category.llm')[0],
+    ).toBeInTheDocument();
+    expect(
+      screen.queryAllByText('providerEdit.category.embedding')[0] ?? null,
     ).not.toBeInTheDocument();
     expect(screen.getByText('gpt-4o')).toBeInTheDocument();
     expect(

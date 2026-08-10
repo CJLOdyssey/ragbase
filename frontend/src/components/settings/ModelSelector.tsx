@@ -83,7 +83,7 @@ export default function ModelSelector({
               <div className="px-1 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
                 {t('providerEdit.category.' + cat)}
               </div>
-              {items.map(({ model, keyLabel }) => (
+              {items.map(({ model, keyLabel, type }) => (
                 <label
                   key={model}
                   className="flex items-center gap-3 p-3 rounded-md cursor-pointer transition-[background] duration-150 hover:bg-[var(--color-surface-hover)]"
@@ -101,6 +101,11 @@ export default function ModelSelector({
                       <span className="text-sm text-[var(--color-text-primary)] font-mono font-medium">
                         {model}
                       </span>
+                      {type && (
+                        <span className="text-[11px] text-[var(--color-text-muted)] shrink-0">
+                          {t('providerEdit.category.' + type)}
+                        </span>
+                      )}
                     </div>
                     {keyLabel && (
                       <span className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate">
