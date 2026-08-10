@@ -144,10 +144,46 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "capabilities": ["image"],
         "docs_url": "https://platform.stability.ai/docs/getting-started/authentication",
     },
-    "custom": {
-        "name": "自定义",
+    "custom_llm": {
+        "name": "自定义大模型",
         "base_url": "",
-        "capabilities": ["chat", "vector"],
+        "capabilities": ["chat"],
+        "docs_url": None,
+    },
+    "custom_embedding": {
+        "name": "自定义嵌入",
+        "base_url": "",
+        "capabilities": ["vector"],
+        "docs_url": None,
+    },
+    "custom_rerank": {
+        "name": "自定义重排序",
+        "base_url": "",
+        "capabilities": ["rerank"],
+        "docs_url": None,
+    },
+    "custom_speech2text": {
+        "name": "自定义语音转文字",
+        "base_url": "",
+        "capabilities": ["speech2text"],
+        "docs_url": None,
+    },
+    "custom_tts": {
+        "name": "自定义文字转语音",
+        "base_url": "",
+        "capabilities": ["tts"],
+        "docs_url": None,
+    },
+    "custom_moderation": {
+        "name": "自定义内容审核",
+        "base_url": "",
+        "capabilities": ["moderation"],
+        "docs_url": None,
+    },
+    "custom_image": {
+        "name": "自定义图像",
+        "base_url": "",
+        "capabilities": ["image"],
         "docs_url": None,
     },
     "custom_tool": {

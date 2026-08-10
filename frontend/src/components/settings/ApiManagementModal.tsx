@@ -239,7 +239,7 @@ export default function ApiManagementModal({ onClose }: Props) {
   const showAddForm = () => {
     setEditingKey({
       id: '',
-      provider: 'custom',
+      provider: 'openai',
       capabilities: [],
       label: '',
       key_masked: '',

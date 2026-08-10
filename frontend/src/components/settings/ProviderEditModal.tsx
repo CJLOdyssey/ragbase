@@ -48,10 +48,46 @@ const FALLBACK_PROVIDERS: ProvidersMap = {
     capabilities: ['chat', 'vector'],
     docs_url: null,
   },
-  custom: {
-    name: '自定义',
+  custom_llm: {
+    name: '自定义大模型',
     base_url: '',
-    capabilities: ['chat', 'vector'],
+    capabilities: ['chat'],
+    docs_url: null,
+  },
+  custom_embedding: {
+    name: '自定义嵌入',
+    base_url: '',
+    capabilities: ['vector'],
+    docs_url: null,
+  },
+  custom_rerank: {
+    name: '自定义重排序',
+    base_url: '',
+    capabilities: ['rerank'],
+    docs_url: null,
+  },
+  custom_speech2text: {
+    name: '自定义语音转文字',
+    base_url: '',
+    capabilities: ['speech2text'],
+    docs_url: null,
+  },
+  custom_tts: {
+    name: '自定义文字转语音',
+    base_url: '',
+    capabilities: ['tts'],
+    docs_url: null,
+  },
+  custom_moderation: {
+    name: '自定义内容审核',
+    base_url: '',
+    capabilities: ['moderation'],
+    docs_url: null,
+  },
+  custom_image: {
+    name: '自定义图像',
+    base_url: '',
+    capabilities: ['image'],
     docs_url: null,
   },
   custom_tool: {
@@ -131,7 +167,7 @@ export default function ProviderEditModal({
   const [providers, setProviders] = useState<ProvidersMap>(FALLBACK_PROVIDERS);
   const [loadingProviders, setLoadingProviders] = useState(true);
   const [providerType, setProviderType] = useState(
-    provider.provider || 'custom',
+    provider.provider || 'openai',
   );
   const [name, setName] = useState(provider.name);
   const [baseUrl, setBaseUrl] = useState(provider.baseUrl);

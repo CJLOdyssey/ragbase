@@ -17,9 +17,8 @@ export default function ProviderSelector({
 
   const groups = CATEGORY_ORDER.map((cat) => ({
     cat,
-    items: Object.entries(providers).filter(
-      // 自定义无条件进入所有组：每类能力均可自定义接入；空组因 custom 而可见可用。
-      ([key, info]) => key === 'custom' || categoriesOf(info).includes(cat),
+    items: Object.entries(providers).filter(([, info]) =>
+      categoriesOf(info).includes(cat),
     ),
   })).filter((g) => g.items.length > 0);
 
