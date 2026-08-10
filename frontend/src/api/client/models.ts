@@ -4,6 +4,7 @@ export interface ModelInfo {
   id: string;
   label: string;
   provider: string;
+  type: string;
 }
 
 export async function listModels(): Promise<ModelInfo[]> {
