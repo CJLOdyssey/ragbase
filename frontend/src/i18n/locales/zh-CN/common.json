@@ -50,6 +50,7 @@
     "noCommands": "暂无可用命令",
     "noModels": "暂无可用模型",
     "configure": "配置 API 提供商",
+    "manageKeys": "管理 API Key",
     "noModelsHint": "请先配置 API 提供商以使用模型",
     "recent": "最近使用",
     "statusDeprecated": "已弃用",

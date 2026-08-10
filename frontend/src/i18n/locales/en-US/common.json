@@ -50,6 +50,7 @@
     "noCommands": "No commands available",
     "noModels": "No models available",
     "configure": "Configure API provider",
+    "manageKeys": "Manage API Keys",
     "noModelsHint": "Configure an API provider to enable models",
     "recent": "Recent",
     "statusDeprecated": "Deprecated",

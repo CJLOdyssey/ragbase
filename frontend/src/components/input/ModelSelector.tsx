@@ -342,6 +342,16 @@ export default function ModelSelector({
             focusIdx={focusIdx}
             onSelect={handleSelect}
           />
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onConfigure?.();
+            }}
+            className="w-full px-3 py-2 mt-1 text-left text-xs text-[var(--color-text-muted)] border-t border-[var(--color-border)] bg-transparent cursor-pointer transition-colors hover:text-[var(--color-text-primary)]"
+          >
+            {t('model.manageKeys')}
+          </button>
         </div>
       )}
     </div>
