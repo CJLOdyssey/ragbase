@@ -3,7 +3,7 @@ import api from './instance';
 export interface KeyItem {
   id: string;
   provider: string;
-  usage_type: string;
+  capabilities: string[];
   label: string;
   key_masked: string;
   base_url: string | null;
@@ -21,7 +21,7 @@ export async function listKeys(): Promise<KeyItem[]> {
 
 export async function createKey(cfg: {
   provider: string;
-  usage_type?: string;
+  capabilities?: string[];
   label: string;
   api_key: string;
   base_url?: string;
@@ -35,7 +35,7 @@ export async function createKey(cfg: {
 export async function updateKey(
   id: string,
   cfg: {
-    usage_type?: string;
+    capabilities?: string[];
     label?: string;
     api_key?: string;
     base_url?: string;

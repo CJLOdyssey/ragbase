@@ -23,7 +23,7 @@ vi.mock('../../../api/client/keys', () => ({
 const BASE_PROVIDER: ApiProviderForm = {
   id: 'key-1',
   provider: 'openai',
-  usage_type: 'chat',
+  capabilities: ['llm'],
   name: 'OpenAI',
   baseUrl: '',
   apiKey: 'sk-test',

@@ -116,7 +116,7 @@ export default function ApiManagementModal({ onClose }: Props) {
 
   const handleSaveKey = async (keyData: {
     provider: string;
-    usage_type?: string;
+    capabilities?: string[];
     label: string;
     apiKey: string;
     baseUrl: string;
@@ -135,7 +135,7 @@ export default function ApiManagementModal({ onClose }: Props) {
     try {
       await api.createKey({
         provider: keyData.provider,
-        usage_type: keyData.usage_type,
+        capabilities: keyData.capabilities,
         label: keyData.label,
         api_key: keyData.apiKey,
         base_url: keyData.baseUrl || undefined,
@@ -157,7 +157,7 @@ export default function ApiManagementModal({ onClose }: Props) {
   const handleUpdateKey = async (
     id: string,
     updates: {
-      usage_type?: string;
+      capabilities?: string[];
       label?: string;
       apiKey?: string;
       baseUrl?: string;
@@ -169,6 +169,7 @@ export default function ApiManagementModal({ onClose }: Props) {
     setError(null);
     try {
       await api.updateKey(id, {
+        capabilities: updates.capabilities,
         label: updates.label,
         api_key: updates.apiKey,
         base_url: updates.baseUrl,
@@ -233,7 +234,7 @@ export default function ApiManagementModal({ onClose }: Props) {
     setEditingKey({
       id: '',
       provider: 'custom',
-      usage_type: 'chat',
+      capabilities: [],
       label: '',
       key_masked: '',
       base_url: '',
@@ -320,7 +321,7 @@ export default function ApiManagementModal({ onClose }: Props) {
           provider={{
             id: editingKey.id,
             provider: editingKey.provider,
-            usage_type: editingKey.usage_type || 'chat',
+            capabilities: editingKey.capabilities,
             name: editingKey.label || editingKey.provider,
             baseUrl: editingKey.base_url || '',
             apiKey: '',
@@ -342,7 +343,7 @@ export default function ApiManagementModal({ onClose }: Props) {
             if (editingKey.id) {
               await handleUpdateKey(editingKey.id, {
                 label,
-                usage_type: form.usage_type,
+                capabilities: form.capabilities,
                 apiKey: form.apiKey || undefined,
                 baseUrl: form.baseUrl || undefined,
                 models: form.models,
@@ -350,7 +351,7 @@ export default function ApiManagementModal({ onClose }: Props) {
             } else {
               await handleSaveKey({
                 provider: form.provider,
-                usage_type: form.usage_type,
+                capabilities: form.capabilities,
                 label,
                 apiKey: form.apiKey,
                 baseUrl: form.baseUrl,

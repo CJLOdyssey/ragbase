@@ -27,7 +27,7 @@ beforeEach(() => {
 const mockKeyItem = {
   id: '1',
   provider: 'openai',
-  usage_type: 'chat',
+  capabilities: ['llm'],
   label: 'My Key',
   key_masked: 'sk-***',
   base_url: null,

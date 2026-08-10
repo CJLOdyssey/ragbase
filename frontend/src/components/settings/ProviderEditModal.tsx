@@ -7,11 +7,12 @@ import { listProviders, type ProvidersMap } from '../../api/client/providers';
 import CredentialsSection from './CredentialsSection';
 import ModelSection from './ModelSection';
 import ProviderSelector from './ProviderSelector';
+import { categoriesOf } from '../../utils/providerCategories';
 
 export interface ApiProviderForm {
   id: string;
   provider: string;
-  usage_type: string;
+  capabilities: string[];
   name: string;
   baseUrl: string;
   apiKey: string;
@@ -62,48 +63,9 @@ interface Props {
   onCloseError?: () => void;
 }
 
-// Sync usageType/baseUrl to the selected provider's defaults when provider changes.
-// Render-phase state adjustment (React-sanctioned) instead of setState-in-effect.
-function useProviderSync(
-  providers: ProvidersMap,
-  providerType: string,
-  usageType: string,
-  setUsageType: (v: string) => void,
-  baseUrl: string,
-  setBaseUrl: (v: string) => void,
-) {
-  const [prevProviderType, setPrevProviderType] = useState<string | null>(null);
-  if (prevProviderType === providerType) return;
-  setPrevProviderType(providerType);
-  const info = providers[providerType];
-  if (!info) return;
-  const caps = info.capabilities ?? ['chat'];
-  const isTool = caps.includes('tool');
-  if (isTool) {
-    setUsageType('tool');
-  } else {
-    const derived =
-      caps.includes('chat') && caps.includes('vector') ? 'general' : caps[0];
-    if (derived !== usageType) setUsageType(derived);
-  }
-  if (info.base_url && !isTool) {
-    const knownDefaults = Object.values(providers)
-      .map((p) => p.base_url)
-      .filter(Boolean);
-    if (!baseUrl || knownDefaults.includes(baseUrl)) {
-      setBaseUrl(info.base_url);
-    }
-  }
-}
-
-function shouldShowModels(usageType: string, caps: string[]): boolean {
+function shouldShowModels(caps: string[]): boolean {
   if (caps.includes('tool')) return false;
-  return (
-    usageType === 'chat' ||
-    usageType === 'general' ||
-    usageType === 'image' ||
-    usageType === 'audio'
-  );
+  return caps.includes('chat') || caps.includes('image');
 }
 
 function FormErrorBanner({
@@ -148,9 +110,6 @@ export default function ProviderEditModal({
   const [providerType, setProviderType] = useState(
     provider.provider || 'custom',
   );
-  const [usageType, setUsageType] = useState<string>(
-    provider.usage_type || 'chat',
-  );
   const [name, setName] = useState(provider.name);
   const [baseUrl, setBaseUrl] = useState(provider.baseUrl);
   const [apiKey, setApiKey] = useState(provider.apiKey);
@@ -166,25 +125,16 @@ export default function ProviderEditModal({
       .finally(() => setLoadingProviders(false));
   }, []);
 
-  useProviderSync(
-    providers,
-    providerType,
-    usageType,
-    setUsageType,
-    baseUrl,
-    setBaseUrl,
-  );
-
   const info = providers[providerType];
   const caps = info?.capabilities ?? [];
   const isToolProvider = caps.includes('tool');
-  const showModels = shouldShowModels(usageType, caps);
+  const showModels = shouldShowModels(caps);
 
   const handleSave = () => {
     onSave({
       ...provider,
       provider: providerType,
-      usage_type: usageType,
+      capabilities: categoriesOf(info ?? {}),
       name,
       baseUrl,
       apiKey,

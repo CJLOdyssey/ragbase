@@ -10,7 +10,7 @@ vi.mock('react-i18next', () => ({
 const BASE_KEY: KeyItem = {
   id: 'k1',
   provider: 'openai',
-  usage_type: 'chat',
+  capabilities: ['llm'],
   label: 'OpenAI Key',
   key_masked: 'sk-***abc',
   base_url: null,

@@ -33,7 +33,7 @@ vi.mock('../../../components/auth/AuthContext', () => ({
 const keyItem = {
   id: 'k1',
   provider: 'deepseek',
-  usage_type: 'chat',
+  capabilities: ['llm'],
   label: '生产',
   key_masked: 'sk-***abc',
   base_url: null,

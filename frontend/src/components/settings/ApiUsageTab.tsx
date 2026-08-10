@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 interface KeyUsage {
   label: string;
   provider: string;
-  usage_type: string;
+  capabilities: string[];
   is_active: boolean;
   last_used_at: string | null;
   /** 按 Key 拆分消耗 —— 由后端返回，当前预留 */
