@@ -332,6 +332,7 @@ export default function ApiManagementModal({ onClose }: Props) {
             baseUrl: editingKey.base_url || '',
             apiKey: '',
             models: editingKey.models,
+            model_types: editingKey.model_types ?? undefined,
             isActive: editingKey.is_active,
             status: 'untested' as const,
           }}
