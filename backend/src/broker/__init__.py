@@ -39,6 +39,14 @@ celery_app.conf.update(
 
 celery_app.autodiscover_tasks(["tasks"])
 
+# Periodic reindex sweep: catch assets whose files changed after indexing.
+celery_app.conf.beat_schedule = {
+    "reindex-sweep": {
+        "task": "tasks.registry.reindex_sweep",
+        "schedule": 300.0,
+    },
+}
+
 # ---------------------------------------------------------------------------
 # Redis pub/sub
 # ---------------------------------------------------------------------------

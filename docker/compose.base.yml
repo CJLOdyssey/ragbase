@@ -100,7 +100,7 @@ services:
     image: ragbase/backend:latest
     container_name: ragbase-worker
     restart: unless-stopped
-    command: celery -A broker worker --loglevel=${LOG_LEVEL:-info} --concurrency=2 --pool=threads
+    command: celery -A broker worker --beat --loglevel=${LOG_LEVEL:-info} --concurrency=2 --pool=threads
     environment:
       <<: *common-env
     depends_on:

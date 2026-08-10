@@ -8,7 +8,7 @@ from core.base import Base
 
 # Import from domain files
 from orm.auth import RefreshTokenDB, RoleDB, UserDB, UserRoleDB
-from orm.infra import AssetDB, AttachmentDB, AuditLogDB, CommandLogDB
+from orm.infra import AssetDB, AttachmentDB, AuditLogDB, CommandLogDB, FeedbackLog
 from orm.key import KeyUsageLog, UserApiKey
 from orm.prompt_db import PromptDB, VersionDB
 from orm.session import ChatMessage, MemoryEntry, ProjectRun, SessionDB
@@ -20,6 +20,7 @@ __all__ = [
     "AuditLogDB",
     "ChatMessage",
     "CommandLogDB",
+    "FeedbackLog",
     "KeyUsageLog",
     "MemoryEntry",
     "ProjectRun",

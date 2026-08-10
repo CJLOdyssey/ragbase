@@ -84,6 +84,10 @@ def _load_corpus(paths: list[str]) -> str:
 async def _retrieve(
     args: argparse.Namespace, provider: EmbeddingProvider, store: PgVectorStore, query: str
 ) -> list[dict]:
+    if args.rewrite:
+        llm_cfg = await _resolve_llm_config()
+        if llm_cfg:
+            query = await _rewrite_query(llm_cfg, query)
     query_embedding = await provider.embed_query(query)
     results = await store.search(
         query_embedding,
@@ -186,6 +190,24 @@ def _chat_sync(base_url: str, api_key: str, model: str, messages: list[dict]) ->
 
 async def _chat(base_url: str, api_key: str, model: str, messages: list[dict]) -> str:
     return await asyncio.to_thread(_chat_sync, base_url, api_key, model, messages)
+
+
+async def _rewrite_query(llm: dict, query: str) -> str:
+    """Rewrite a question into retrieval-friendly form (keep codes/spec names)."""
+    rewritten = await _chat(
+        llm["base_url"], llm["api_key"], llm["model"],
+        [
+            {
+                "role": "system",
+                "content": (
+                    "你是检索查询改写器。把问题改写成利于检索的形式："
+                    "保留编号/专名原样，补充关键词。只输出改写后的查询，禁止解释。"
+                ),
+            },
+            {"role": "user", "content": query},
+        ],
+    )
+    return rewritten.strip() or query
 
 
 def _ratio(text: str) -> float | None:
@@ -292,6 +314,7 @@ def main() -> None:
     parser.add_argument("--hierarchical", action="store_true", help="chunk with child+parent hierarchy")
     parser.add_argument("--rerank", action="store_true", help="rerank candidates with cross-encoder")
     parser.add_argument("--ragas", action="store_true", help="run RAGAS-style quality metrics (needs LLM key)")
+    parser.add_argument("--rewrite", action="store_true", help="rewrite queries with LLM before retrieval")
     parser.add_argument("--limit", type=int, default=0, help="evaluate only the first N cases (0 = all)")
     parser.add_argument("--fail-below", type=float, default=0.0, help="CI gate: exit 1 if recall@5/mrr below this")
     args = parser.parse_args()

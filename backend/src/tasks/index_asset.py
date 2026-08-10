@@ -6,7 +6,6 @@ stale fragments behind (chunk ids are content hashes — changed text would
 otherwise orphan old rows).
 """
 
-from pathlib import Path
 from typing import Any
 
 
@@ -21,7 +20,9 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     if asset is None or asset.user_id != user_id:
         raise ValueError(f"asset {asset_id} not found or not owned by user")
 
-    text = Path(asset.storage_path).read_text(encoding="utf-8", errors="ignore")
+    from rag.rag_parsing import extract_text
+
+    text = extract_text(asset.storage_path)
     if not text.strip():
         raise ValueError("asset has no text content — cannot index")
 

@@ -12,6 +12,7 @@ from .agent_pipeline import _run_agent_pipeline
 from .complete_pipeline import _complete_pipeline
 from .index_asset import _index_asset
 from .pipeline_utils import _report_run_error, _run_async, _try_mock_fallback
+from .reindex_sweep import run_reindex_sweep
 
 logger = get_logger(__name__)
 
@@ -101,6 +102,14 @@ def index_asset(
             asset_id, time.time() - t0, self.request.retries,
         )
         raise
+
+
+@_task()
+def reindex_sweep() -> Any:
+    """Celery beat entry: queue reindexes for changed/unindexed assets."""
+    result = run_reindex_sweep()
+    logger.info("Celery reindex sweep | queued=%s", result.get("queued"))
+    return result
 
 
 @_task(bind=True, max_retries=2, default_retry_delay=5)

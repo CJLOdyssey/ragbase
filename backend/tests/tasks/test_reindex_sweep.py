@@ -1,0 +1,107 @@
+"""Tests for the periodic reindex sweep (backend/tasks/reindex_sweep.py)."""
+
+import os
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from tasks.reindex_sweep import _reindex_sweep
+
+
+def _asset(asset_id: str, user_id: str, path: str, indexed: bool, updated_at: datetime):
+    a = MagicMock()
+    a.id = asset_id
+    a.user_id = user_id
+    a.storage_path = path
+    a.indexed = indexed
+    a.updated_at = updated_at
+    a.created_at = updated_at
+    return a
+
+
+class TestReindexSweep:
+    @pytest.mark.asyncio
+    async def test_reindexes_changed_file(self, tmp_path):
+        """File mtime newer than updated_at → queued."""
+        f = tmp_path / "doc.md"
+        f.write_text("v1", encoding="utf-8")
+        # Simulate an external replacement: file is newer than the DB row.
+        future = datetime.now(UTC) + timedelta(minutes=5)
+        os.utime(f, (future.timestamp(), future.timestamp()))
+        asset = _asset("a1", "u1", str(f), indexed=True, updated_at=datetime.now(UTC))
+
+        session = _session_with_assets([asset])
+        with (
+            patch("core.infra.database.get_session_factory", return_value=lambda: _SessionCtx(session)),
+            patch("tasks.registry.index_asset") as task,
+        ):
+            result = await _reindex_sweep()
+
+        assert result == {"queued": 1}
+        task.delay.assert_called_once_with("a1", "u1")
+
+    @pytest.mark.asyncio
+    async def test_skips_unchanged_indexed(self, tmp_path):
+        f = tmp_path / "doc.md"
+        f.write_text("v1", encoding="utf-8")
+        asset = _asset("a1", "u1", str(f), indexed=True, updated_at=datetime.now(UTC))
+
+        session = _session_with_assets([asset])
+        with (
+            patch("core.infra.database.get_session_factory", return_value=lambda: _SessionCtx(session)),
+            patch("tasks.registry.index_asset") as task,
+        ):
+            result = await _reindex_sweep()
+        assert result == {"queued": 0}
+        task.delay.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_retries_unindexed(self, tmp_path):
+        """A failed first index (indexed=False) is retried."""
+        f = tmp_path / "doc.md"
+        f.write_text("v1", encoding="utf-8")
+        asset = _asset("a1", "u1", str(f), indexed=False, updated_at=datetime.now(UTC))
+
+        session = _session_with_assets([asset])
+        with (
+            patch("core.infra.database.get_session_factory", return_value=lambda: _SessionCtx(session)),
+            patch("tasks.registry.index_asset") as task,
+        ):
+            result = await _reindex_sweep()
+        assert result == {"queued": 1}
+        task.delay.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_skips_missing_file(self, tmp_path):
+        asset = _asset("a1", "u1", str(tmp_path / "gone.md"), indexed=False, updated_at=datetime.now(UTC))
+        session = _session_with_assets([asset])
+        with (
+            patch("core.infra.database.get_session_factory", return_value=lambda: _SessionCtx(session)),
+            patch("tasks.registry.index_asset") as task,
+        ):
+            result = await _reindex_sweep()
+        assert result == {"queued": 0}
+        task.delay.assert_not_called()
+
+
+
+def _session_with_assets(assets):
+    """Session whose execute -> scalars().all() chain returns assets synchronously."""
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = assets
+    result_mock = MagicMock()
+    result_mock.scalars.return_value = scalars_mock
+    session = AsyncMock()
+    session.execute.return_value = result_mock
+    return session
+
+
+class _SessionCtx:
+    def __init__(self, session):
+        self._session = session
+
+    async def __aenter__(self):
+        return self._session
+
+    async def __aexit__(self, *args):
+        pass
