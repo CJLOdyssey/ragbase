@@ -121,6 +121,7 @@ export default function ApiManagementModal({ onClose }: Props) {
     apiKey: string;
     baseUrl: string;
     models: string[];
+    model_types?: Record<string, string>;
   }) => {
     setModalError(null);
     const maskedNew = maskKey(keyData.apiKey);
@@ -140,6 +141,7 @@ export default function ApiManagementModal({ onClose }: Props) {
         api_key: keyData.apiKey,
         base_url: keyData.baseUrl || undefined,
         models: keyData.models,
+        model_types: keyData.model_types,
         is_default: false,
       });
       await loadKeys();
@@ -162,6 +164,7 @@ export default function ApiManagementModal({ onClose }: Props) {
       apiKey?: string;
       baseUrl?: string;
       models?: string[];
+      model_types?: Record<string, string>;
       isActive?: boolean;
       isDefault?: boolean;
     },
@@ -174,6 +177,7 @@ export default function ApiManagementModal({ onClose }: Props) {
         api_key: updates.apiKey,
         base_url: updates.baseUrl,
         models: updates.models,
+        model_types: updates.model_types,
         is_active: updates.isActive,
         is_default: updates.isDefault,
       });
@@ -347,6 +351,7 @@ export default function ApiManagementModal({ onClose }: Props) {
                 apiKey: form.apiKey || undefined,
                 baseUrl: form.baseUrl || undefined,
                 models: form.models,
+                model_types: form.model_types ?? undefined,
               });
             } else {
               await handleSaveKey({
@@ -356,6 +361,7 @@ export default function ApiManagementModal({ onClose }: Props) {
                 apiKey: form.apiKey,
                 baseUrl: form.baseUrl,
                 models: form.models,
+                model_types: form.model_types ?? undefined,
               });
             }
           }}
