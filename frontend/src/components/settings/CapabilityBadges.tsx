@@ -8,6 +8,7 @@ const STYLES: Record<string, string> = {
   speech2text: 'bg-orange-500/15 text-orange-400',
   tts: 'bg-pink-500/15 text-pink-400',
   moderation: 'bg-yellow-500/15 text-yellow-400',
+  image: 'bg-pink-500/15 text-pink-400',
   tool: 'bg-green-500/15 text-green-400',
 };
 

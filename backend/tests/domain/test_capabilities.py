@@ -4,7 +4,7 @@ from domain.capabilities import CAPABILITIES, USAGE_TYPE_TO_CAPABILITIES, valida
 
 def test_capabilities_enum_matches_spec():
     assert CAPABILITIES == (
-        "llm", "embedding", "rerank", "speech2text", "tts", "moderation", "tool",
+        "llm", "embedding", "rerank", "speech2text", "tts", "moderation", "image", "tool",
     )
 
 
@@ -13,6 +13,7 @@ def test_capabilities_enum_matches_spec():
     [
         (["llm"], None),
         (["llm", "embedding", "tool"], None),
+        (["image"], None),
         ([], None),
         (["general"], "未知能力: general"),
         (["llm", "audio"], "未知能力: audio"),
@@ -26,6 +27,6 @@ def test_legacy_mapping():
     assert USAGE_TYPE_TO_CAPABILITIES["chat"] == ["llm"]
     assert USAGE_TYPE_TO_CAPABILITIES["vector"] == ["embedding"]
     assert USAGE_TYPE_TO_CAPABILITIES["general"] == ["llm", "embedding"]
-    assert USAGE_TYPE_TO_CAPABILITIES["image"] == ["tool"]
+    assert USAGE_TYPE_TO_CAPABILITIES["image"] == ["image"]
     assert USAGE_TYPE_TO_CAPABILITIES["tool"] == ["tool"]
     assert USAGE_TYPE_TO_CAPABILITIES["audio"] == []

@@ -46,7 +46,7 @@ describe('ModelSelector', { tags: ['unit'] }, () => {
   it('shows empty-group hint for categories without models', () => {
     renderSelector([makeModel('gpt-4o', { type: 'llm' })]);
     expect(screen.getByText('gpt-4o')).toBeInTheDocument();
-    expect(screen.getAllByText('providerEdit.noModelsInGroup').length).toBe(6);
+    expect(screen.getAllByText('providerEdit.noModelsInGroup').length).toBe(7);
   });
 
   it('hides groups without hits while searching', () => {

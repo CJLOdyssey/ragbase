@@ -2,7 +2,7 @@ import { categoriesOf, CATEGORY_ORDER } from '../providerCategories';
 import { describe, expect, it } from 'vitest';
 
 describe('providerCategories', () => {
-  it('orders all seven categories', () => {
+  it('orders all eight categories', () => {
     expect(CATEGORY_ORDER).toEqual([
       'llm',
       'embedding',
@@ -10,6 +10,7 @@ describe('providerCategories', () => {
       'speech2text',
       'tts',
       'moderation',
+      'image',
       'tool',
     ]);
   });
@@ -18,9 +19,10 @@ describe('providerCategories', () => {
     expect(categoriesOf({ capabilities: ['chat'] })).toEqual(['llm']);
     expect(categoriesOf({ capabilities: ['vector'] })).toEqual(['embedding']);
     expect(categoriesOf({ capabilities: ['chat', 'vector', 'image'] })).toEqual(
-      ['llm', 'embedding', 'tool'],
+      ['llm', 'embedding', 'image'],
     );
     expect(categoriesOf({ capabilities: ['tool'] })).toEqual(['tool']);
+    expect(categoriesOf({ capabilities: ['image'] })).toEqual(['image']);
     expect(categoriesOf({ capabilities: [] })).toEqual([]);
     expect(categoriesOf({ capabilities: undefined })).toEqual([]);
   });

@@ -125,6 +125,7 @@
       "speech2text": "Speech2text",
       "tts": "TTS",
       "moderation": "Moderation",
+      "image": "Image",
       "tool": "Tool"
     },
     "badge": {
@@ -134,6 +135,7 @@
       "speech2text": "Speech2text",
       "tts": "TTS",
       "moderation": "Moderation",
+      "image": "Image",
       "tool": "Tools"
     },
     "filterAll": "All",

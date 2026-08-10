@@ -109,17 +109,14 @@ function OptionsList({
   focusIdx,
   onSelect,
 }: {
-  providers: [string, ModelOption[]][];
+  providers: { title: string; items: ModelOption[] }[];
   recentModels: ModelOption[];
   selectedModel: string;
   focusIdx: number;
   onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const allOptions = [
-    ...recentModels,
-    ...providers.flatMap(([, list]) => list),
-  ];
+  const allOptions = [...recentModels, ...providers.flatMap((g) => g.items)];
   return (
     <>
       {recentModels.length > 0 && (
@@ -139,12 +136,12 @@ function OptionsList({
           <div className="h-px bg-[var(--color-border-subtle)] mx-2 my-1" />
         </div>
       )}
-      {providers.map(([provider, list]) => (
-        <div key={provider} className="flex flex-col">
+      {providers.map((g) => (
+        <div key={g.title} className="flex flex-col">
           <div className="px-3 py-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-            {provider}
+            {g.title}
           </div>
-          {list.map((m) => (
+          {g.items.map((m) => (
             <ModelOptionButton
               key={m.id}
               m={m}
@@ -188,11 +185,14 @@ export default function ModelSelector({
     return () => clearTimeout(timer);
   }, [hasLoadedOnce]);
 
-  // Memoize grouped models — not called in render path anymore
-  const providers = useMemo(() => {
+  // Memoize grouped models — grouped by provider name.
+  const groups = useMemo(() => {
     const g: Record<string, ModelOption[]> = {};
     for (const m of models) (g[m.provider] ??= []).push(m);
-    return Object.entries(g);
+    return Object.entries(g).map(([provider, items]) => ({
+      title: provider,
+      items,
+    }));
   }, [models]);
 
   // Recent models (user's last picks) shown at top of the list
@@ -210,19 +210,16 @@ export default function ModelSelector({
   );
   const fullProviders = useMemo(
     () =>
-      providers.map(
-        ([provider, list]) =>
-          [provider, list.filter((m) => !recentSet.has(m.id))] as [
-            string,
-            ModelOption[],
-          ],
-      ),
-    [providers, recentSet],
+      groups.map((g) => ({
+        title: g.title,
+        items: g.items.filter((m) => !recentSet.has(m.id)),
+      })),
+    [groups, recentSet],
   );
 
   // All options flattened for keyboard navigation
   const allOptions = useMemo(
-    () => [...recentModels, ...fullProviders.flatMap(([, list]) => list)],
+    () => [...recentModels, ...fullProviders.flatMap((g) => g.items)],
     [recentModels, fullProviders],
   );
 

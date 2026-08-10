@@ -5,6 +5,7 @@ export const CATEGORY_ORDER = [
   'speech2text',
   'tts',
   'moderation',
+  'image',
   'tool',
 ] as const;
 
@@ -18,6 +19,7 @@ export const CAPABILITY_BADGE_KEYS: Record<string, string> = {
   speech2text: 'providerEdit.badge.speech2text',
   tts: 'providerEdit.badge.tts',
   moderation: 'providerEdit.badge.moderation',
+  image: 'providerEdit.badge.image',
   tool: 'providerEdit.badge.tool',
 };
 
@@ -31,7 +33,8 @@ export function categoriesOf(info: { capabilities?: string[] }): Category[] {
   if (caps.includes('speech2text')) cats.push('speech2text');
   if (caps.includes('tts')) cats.push('tts');
   if (caps.includes('moderation')) cats.push('moderation');
-  if (caps.includes('tool') || caps.includes('image')) cats.push('tool');
+  if (caps.includes('image')) cats.push('image');
+  if (caps.includes('tool')) cats.push('tool');
   return cats;
 }
 

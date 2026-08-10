@@ -1,8 +1,8 @@
-"""Key capability enumeration — single source of truth for the 7-type system.
+"""Key capability enumeration — single source of truth for the 8-type system.
 
 Aligned with Dify ModelType (llm/text-embedding/rerank/speech2text/tts/moderation)
-plus Tool (Dify plugin category). Image generation folds into tool per Dify
-convention (DALL-E/Flux are Tool plugins).
+plus Tool (Dify plugin category) and a dedicated Image category (image generation
+providers are tracked separately from tool providers).
 """
 
 CAPABILITIES: tuple[str, ...] = (
@@ -12,6 +12,7 @@ CAPABILITIES: tuple[str, ...] = (
     "speech2text",
     "tts",
     "moderation",
+    "image",
     "tool",
 )
 
@@ -22,7 +23,7 @@ USAGE_TYPE_TO_CAPABILITIES: dict[str, list[str]] = {
     "chat": ["llm"],
     "vector": ["embedding"],
     "general": ["llm", "embedding"],
-    "image": ["tool"],
+    "image": ["image"],
     "tool": ["tool"],
     "audio": [],
 }
