@@ -335,6 +335,7 @@ export default function ApiManagementModal({ onClose }: Props) {
           }}
           saving={saving}
           error={modalError}
+          requireApiKey={!editingKey.id}
           onCloseError={() => setModalError(null)}
           onSave={async (form) => {
             const label =

@@ -62,11 +62,25 @@ interface Props {
   saving?: boolean;
   error?: string | null;
   onCloseError?: () => void;
+  /** 新建模式必须填写 API Key；编辑模式（明文不暴露）允许留空 */
+  requireApiKey?: boolean;
 }
 
 function shouldShowModels(caps: string[]): boolean {
   if (caps.includes('tool')) return false;
   return caps.includes('chat') || caps.includes('image');
+}
+
+function fetchErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : '拉取模型失败';
+}
+
+function modalTitle(isEdit: boolean, t: (k: string) => string): string {
+  return isEdit ? t('providerEdit.edit') : t('providerEdit.add');
+}
+
+function saveButtonLabel(saving: boolean, t: (k: string) => string): string {
+  return saving ? '...' : t('providerEdit.save');
 }
 
 function FormErrorBanner({
@@ -103,6 +117,7 @@ export default function ProviderEditModal({
   saving = false,
   error,
   onCloseError,
+  requireApiKey = false,
 }: Props) {
   const { t } = useTranslation();
 
@@ -134,6 +149,9 @@ export default function ProviderEditModal({
   const isToolProvider = caps.includes('tool');
   const showModels = shouldShowModels(caps);
 
+  const canSave =
+    !saving && !!name.trim() && (!requireApiKey || !!apiKey.trim());
+
   const handleSave = () => {
     const preserveStored =
       Boolean(provider.id) && providerType === provider.provider;
@@ -159,22 +177,22 @@ export default function ProviderEditModal({
     try {
       const result = await fetchModelsFromProvider({
         api_key: apiKey,
-        base_url: baseUrl || undefined,
+        base_url: baseUrl,
         provider: providerType,
       });
-      if (result.success) {
-        if (result.models.length > 0) {
-          setModels((prev) => {
-            const merged = new Set([...prev, ...result.models]);
-            return Array.from(merged);
-          });
-        }
-        setModelTypes(result.types ?? {});
-      } else {
+      if (!result.success) {
         setFetchError(result.message || '拉取模型失败');
+        return;
       }
+      if (result.models.length > 0) {
+        setModels((prev) => {
+          const merged = new Set([...prev, ...result.models]);
+          return Array.from(merged);
+        });
+      }
+      setModelTypes(result.types ?? {});
     } catch (err) {
-      setFetchError(err instanceof Error ? err.message : '拉取模型失败');
+      setFetchError(fetchErrorMessage(err));
     } finally {
       setFetchingModels(false);
     }
@@ -192,9 +210,7 @@ export default function ProviderEditModal({
             )}
           </div>
           <div>
-            <h3 className="m-0">
-              {provider.id ? t('providerEdit.edit') : t('providerEdit.add')}
-            </h3>
+            <h3 className="m-0">{modalTitle(!!provider.id, t)}</h3>
           </div>
         </div>
       }
@@ -214,14 +230,14 @@ export default function ProviderEditModal({
             type="button"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-all duration-150 bg-[var(--color-accent)] text-white hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:brightness-100"
             onClick={handleSave}
-            disabled={!name.trim() || !apiKey.trim() || saving}
+            disabled={!canSave}
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
             ) : (
               <Save size={14} />
             )}
-            {saving ? '...' : t('providerEdit.save')}
+            {saveButtonLabel(saving, t)}
           </button>
         </>
       }
