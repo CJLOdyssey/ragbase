@@ -159,7 +159,7 @@ async def _get_rag_context(query: str, session_id: str, user_id: str = "anonymou
             cfg["api_key"], model=cfg["model"], base_url=cfg["base_url"]
         )
         return await retrieve_context(
-            query=query, user_id=user_id, session_id=session_id, top_k=3
+            query=query, user_id=user_id, session_id=session_id, top_k=3, rerank=True
         )
     except Exception:
         logger.warning("RAG context retrieval failed for session %s", session_id, exc_info=True)

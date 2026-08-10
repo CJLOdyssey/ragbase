@@ -45,3 +45,10 @@ class TestGoldenSet:
     def test_both_categories_represented(self):
         cats = {c["category"] for c in _load_golden()["cases"]}
         assert cats == {"lexical", "semantic"}
+
+    def test_reference_answers_present(self):
+        """RAGAS context_recall needs reference answers; guard the subset."""
+        cases = _load_golden()["cases"]
+        with_ref = [c for c in cases if c.get("expected_answer")]
+        assert len(with_ref) >= _load_golden()["meta"]["reference_cases"]
+        assert all(c["expected_answer"].strip() for c in with_ref)

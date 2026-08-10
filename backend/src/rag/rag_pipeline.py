@@ -82,18 +82,23 @@ async def ingest_session_messages(
     logger.info("RAG: ingested %d chunks for session %s", len(chunks), session_id)
 
 
+RERANK_CANDIDATES = 20  # overfetch before cross-encoder rerank narrows to top_k
+
+
 async def retrieve_context(
     query: str,
     user_id: str,
     session_id: str | None = None,
     tags: list[str] | None = None,
     top_k: int = 5,
+    rerank: bool = False,
 ) -> str:
     """Steps 13-14: Retrieve relevant context for a user query.
 
-    1. Embed query with DashScope
+    1. Embed query
     2. Hybrid search (HNSW ‖ pg_trgm + RRF), filtered to user_id
-    3. Return formatted context with asset trace for LLM
+    3. Optional cross-encoder rerank of candidates down to top_k
+    4. Return formatted context with asset trace for LLM
     """
     if _embedding_provider is None:
         return ""
@@ -104,11 +109,14 @@ async def retrieve_context(
         user_id=user_id,
         session_id=session_id,
         tag_filter=tags,
-        top_k=top_k,
+        top_k=RERANK_CANDIDATES if rerank else top_k,
     )
 
     if not results:
         return ""
+
+    if rerank and len(results) > top_k:
+        results = await _rerank_results(query, results, top_k)
 
     parts = []
     for r in results:
@@ -119,6 +127,25 @@ async def retrieve_context(
         )
 
     return "\n\n".join(parts)
+
+
+async def _rerank_results(
+    query: str, results: list[dict[str, Any]], top_k: int
+) -> list[dict[str, Any]]:
+    """Reorder results with the configured cross-encoder; no-op if unavailable."""
+    from repository.keys import get_rerank_config
+
+    from rag.rag_rerank import RerankProvider
+
+    cfg = await get_rerank_config()
+    if cfg is None or cfg["api_key"] is None:
+        return results
+    provider = RerankProvider(
+        api_key=cfg["api_key"], base_url=cfg["base_url"], model=cfg["model"]
+    )
+    indices = await provider.rerank(query, [r["text"] for r in results], top_n=top_k)
+    by_index = {i: results[i] for i in range(len(results))}
+    return [by_index[idx] for idx in indices if idx in by_index]
 
 
 def _asset_label(metadata: dict[str, Any]) -> str:

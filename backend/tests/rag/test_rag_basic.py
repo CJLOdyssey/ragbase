@@ -120,6 +120,33 @@ class TestSemanticChunk:
         assert len(result) >= 3
         assert result[-1].text.split()[-1] == "word"  # tail preserved
 
+    def test_hierarchical_chunk_carries_parent_text(self):
+        from rag.rag_chunking import hierarchical_chunk
+
+        words = ["word"] * 300
+        text = "# 章一\n\n" + " ".join(words)
+        result = hierarchical_chunk(text, "sess-1", child_size=100, child_overlap=20)
+        assert len(result) > 1
+        for c in result:
+            # Parent text is the normalized full section; child is a sub-window.
+            assert c.metadata["parent_text"] == "# 章一 " + " ".join(words)
+            assert c.text in c.metadata["parent_text"]
+            assert c.metadata["parent_id"]
+
+    def test_hierarchical_chunk_short_section_single_child(self):
+        from rag.rag_chunking import hierarchical_chunk
+
+        text = "## 短节\n\n短内容"
+        result = hierarchical_chunk(text, "sess-1")
+        assert len(result) == 1
+        assert result[0].metadata["parent_text"] == "## 短节 短内容"
+
+    def test_hierarchical_chunk_empty(self):
+        from rag.rag_chunking import hierarchical_chunk
+
+        assert hierarchical_chunk("", "s1") == []
+        assert hierarchical_chunk("   \n  ", "s1") == []
+
     def test_semantic_chunk_tags_from_headings(self):
         from rag.rag_chunking import semantic_chunk
 

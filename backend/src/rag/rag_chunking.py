@@ -68,6 +68,74 @@ def semantic_chunk(
     return chunks
 
 
+def hierarchical_chunk(
+    text: str,
+    session_id: str,
+    run_id: str | None = None,
+    child_size: int = 256,
+    child_overlap: int = 32,
+) -> list[Chunk]:
+    """Hierarchical chunking: child retrieval granularity, parent context in metadata.
+
+    Each markdown section (heading split) is one parent; children are
+    overlapping word windows of child_size. The full parent text rides in
+    metadata["parent_text"] (with parent_id) so retrieval returns a child plus
+    enough surrounding context for the LLM — child for precision, parent for
+    completeness.
+    """
+    if not text or not text.strip():
+        return []
+
+    sections = re.split(r"(?=^#{1,3}\s)", text, flags=re.MULTILINE)
+    chunks: list[Chunk] = []
+
+    for section in sections:
+        section = section.strip()
+        if not section:
+            continue
+        tags = _extract_tags(section)
+        words = section.split()
+        if not words:
+            continue
+        # Normalized parent: children are word windows of this exact string,
+        # so every child is a substring of its parent (deterministic matching).
+        parent_text = " ".join(words)
+        parent_id = _hash_id(parent_text)
+
+        if len(words) <= child_size:
+            chunks.append(
+                Chunk(
+                    id=_hash_id(parent_text),
+                    text=parent_text,
+                    session_id=session_id,
+                    run_id=run_id,
+                    tags=tags,
+                    metadata={"parent_id": parent_id, "parent_text": parent_text},
+                )
+            )
+            continue
+
+        start = 0
+        while start < len(words):
+            end = min(start + child_size, len(words))
+            chunk_text = " ".join(words[start:end])
+            chunks.append(
+                Chunk(
+                    id=_hash_id(chunk_text + str(start)),
+                    text=chunk_text,
+                    session_id=session_id,
+                    run_id=run_id,
+                    tags=tags,
+                    metadata={"parent_id": parent_id, "parent_text": parent_text},
+                )
+            )
+            if end == len(words):
+                break
+            start = end - child_overlap
+
+    return chunks
+
+
 TAG_PATTERNS = [
     (r"##\s*(.+)", 1),
     (r"###\s*(.+)", 2),
