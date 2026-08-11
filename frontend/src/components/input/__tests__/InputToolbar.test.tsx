@@ -3,7 +3,7 @@ import InputToolbar, {
   type InputToolbarHandle,
 } from '@/components/input/InputToolbar';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
@@ -382,6 +382,11 @@ describe('InputToolbar attachment bar & preview', { tags: ['unit'] }, () => {
     vi.clearAllMocks();
     mockUploadAttachment.mockResolvedValue({ id: 'att-1' });
     mockDeleteAttachment.mockResolvedValue({});
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('no network')));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   const addDoneFile = async (name = 'a.txt') => {

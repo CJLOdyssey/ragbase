@@ -199,6 +199,57 @@ describe('AttachmentList preview & thumbnails', { tags: ['unit'] }, () => {
     expect(screen.queryByRole('img')).toBeNull();
   });
 
+  it('does not render preview button while uploading even with onPreview', () => {
+    render(
+      <TestProviders>
+        <AttachmentList
+          files={[
+            makeFile('f1', {
+              name: 'photo.png',
+              type: 'image/png',
+              status: 'uploading',
+            }),
+          ]}
+          onRemove={vi.fn()}
+          onPreview={vi.fn()}
+        />
+      </TestProviders>,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Preview photo.png' }),
+    ).toBeNull();
+  });
+
+  it('does not render preview button for error files even with onPreview', () => {
+    render(
+      <TestProviders>
+        <AttachmentList
+          files={[makeFile('f1', { name: 'broken.txt', status: 'error' })]}
+          onRemove={vi.fn()}
+          onPreview={vi.fn()}
+        />
+      </TestProviders>,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Preview broken.txt' }),
+    ).toBeNull();
+  });
+
+  it('does not render preview button when done file lacks attachmentId', () => {
+    render(
+      <TestProviders>
+        <AttachmentList
+          files={[makeFile('f1', { name: 'orphan.txt', status: 'done' })]}
+          onRemove={vi.fn()}
+          onPreview={vi.fn()}
+        />
+      </TestProviders>,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Preview orphan.txt' }),
+    ).toBeNull();
+  });
+
   it('calls onPreview with the file when name button clicked', () => {
     const onPreview = vi.fn();
     render(

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, Loader2, X } from 'lucide-react';
 import type { AttachedFile } from '../../types/input';
 
@@ -25,6 +25,8 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
   const isText = TEXT_EXT.test(ext);
   const url = `/api/attachments/${file.attachmentId}`;
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   const [fetchState, setFetchState] = useState(() => ({
     url,
     text: null as string | null,
@@ -32,10 +34,19 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
     failed: false,
   }));
 
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    const prevFocused = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => prevFocused?.focus();
+  }, []);
+
   useEffect(() => {
     if (!isText || !file.attachmentId) return;
     let cancelled = false;
-    fetch(url)
+    const controller = new AbortController();
+    fetch(url, { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.blob();
@@ -45,12 +56,18 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
         if (cancelled) return;
         setFetchState({ url, text: content, loading: false, failed: false });
       })
-      .catch(() => {
-        if (cancelled) return;
+      .catch((err: unknown) => {
+        if (
+          cancelled ||
+          (err instanceof DOMException && err.name === 'AbortError')
+        ) {
+          return;
+        }
         setFetchState({ url, text: null, loading: false, failed: true });
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [url, isText, file.attachmentId]);
 
@@ -75,10 +92,12 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={`Preview ${file.name}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+      tabIndex={-1}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6 outline-none"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -99,13 +118,29 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
         </header>
 
         <div className="flex-1 overflow-auto p-5">
-          {isImage && (
-            <img
-              src={url}
-              alt={file.name}
-              className="mx-auto max-w-full max-h-[70vh] object-contain rounded-lg"
-            />
-          )}
+          {isImage &&
+            (imgFailed ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-[var(--color-danger)] mb-4">
+                  图片加载失败
+                </p>
+                <a
+                  href={url}
+                  download
+                  className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:underline"
+                >
+                  <Download size={14} />
+                  下载文件
+                </a>
+              </div>
+            ) : (
+              <img
+                src={url}
+                alt={file.name}
+                className="mx-auto max-w-full max-h-[70vh] object-contain rounded-lg"
+                onError={() => setImgFailed(true)}
+              />
+            ))}
 
           {isText && loading && (
             <div className="flex items-center justify-center gap-2 py-10 text-[var(--color-text-muted)] text-sm">

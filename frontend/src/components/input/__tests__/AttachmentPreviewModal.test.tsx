@@ -37,6 +37,23 @@ describe('AttachmentPreviewModal', { tags: ['unit'] }, () => {
     expect(img).toHaveAttribute('src', '/api/attachments/att-1');
   });
 
+  it('shows 图片加载失败 and download link when image fails to load', () => {
+    render(
+      <TestProviders>
+        <AttachmentPreviewModal
+          file={makeFile('f1', { name: 'photo.png', type: 'image/png' })}
+          onClose={vi.fn()}
+        />
+      </TestProviders>,
+    );
+    fireEvent.error(screen.getByRole('img'));
+    expect(screen.getByText('图片加载失败')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).toBeNull();
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/api/attachments/att-1');
+    expect(link).toHaveAttribute('download');
+  });
+
   it('fetches and renders text content', async () => {
     vi.stubGlobal(
       'fetch',

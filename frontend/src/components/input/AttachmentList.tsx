@@ -63,7 +63,8 @@ function AttachmentChip({
   onPreview?: (file: AttachedFile) => void;
 }) {
   const [thumbFailed, setThumbFailed] = useState(false);
-  const previewEnabled = !!onPreview && file.status === 'done';
+  const previewEnabled =
+    !!onPreview && file.status === 'done' && !!file.attachmentId;
   const showThumb =
     file.status === 'done' &&
     !!file.attachmentId &&
