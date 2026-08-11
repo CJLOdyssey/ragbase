@@ -227,6 +227,19 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
+        {files.length > 0 && (
+          <div
+            data-testid="attach-bar"
+            className="mb-2 px-4 pt-3 pb-2 bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-[var(--da-input-radius)]"
+          >
+            <AttachmentList
+              files={files}
+              onRemove={removeFile}
+              onPreview={setPreviewFile}
+            />
+          </div>
+        )}
+
         <div
           data-input-wrapper
           className="relative bg-[var(--color-surface-raised)] border-none rounded-[var(--da-input-radius)] transition-shadow duration-200 shadow-none focus-within:shadow-[0 0 0 2px var(--color-accent)]"
@@ -239,19 +252,6 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
               onHover={palette.setActiveIndex}
               onClose={palette.close}
             />
-          )}
-
-          {files.length > 0 && (
-            <div
-              data-testid="attach-bar"
-              className="pt-3 border-b border-[var(--color-border)]"
-            >
-              <AttachmentList
-                files={files}
-                onRemove={removeFile}
-                onPreview={setPreviewFile}
-              />
-            </div>
           )}
 
           <textarea
