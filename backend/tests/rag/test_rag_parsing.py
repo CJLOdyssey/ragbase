@@ -1,11 +1,54 @@
 """Tests for document text extraction (backend/rag/rag_parsing.py)."""
 
+import zipfile
 from pathlib import Path
 
 from pypdf import PdfWriter
 from rag.rag_parsing import extract_text
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+
+def _make_docx(path: Path, paragraphs: list[str]) -> None:
+    """Build a minimal DOCX (OOXML zip) with the given paragraph texts."""
+    body = "".join(
+        f'<w:p><w:r><w:t xml:space="preserve">{p}</w:t></w:r></w:p>' for p in paragraphs
+    )
+    document = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f"<w:body>{body}</w:body></w:document>"
+    )
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("word/document.xml", document)
+
+
+def _make_xlsx(path: Path, shared: list[str], cells: list[list[int | str]]) -> None:
+    """Build a minimal XLSX: sharedStrings + one worksheet of cells."""
+    shared_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        + "".join(f"<si><t>{s}</t></si>" for s in shared)
+        + "</sst>"
+    )
+    row_xml = ""
+    for row in cells:
+        cell_xml = ""
+        for cell in row:
+            if isinstance(cell, int):
+                cell_xml += f'<c r="A1" t="n"><v>{cell}</v></c>'
+            else:
+                idx = shared.index(cell)
+                cell_xml += f'<c r="A1" t="s"><v>{idx}</v></c>'
+        row_xml += f"<row>{cell_xml}</row>"
+    sheet_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f"<sheetData>{row_xml}</sheetData></worksheet>"
+    )
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("xl/sharedStrings.xml", shared_xml)
+        zf.writestr("xl/worksheets/sheet1.xml", sheet_xml)
+
 
 
 class TestExtractText:
@@ -31,3 +74,29 @@ class TestExtractText:
         with open(pdf_path, "wb") as f:
             writer.write(f)
         assert extract_text(pdf_path).strip() == ""
+
+    def test_docx_extracts_paragraphs(self, tmp_path):
+        p = tmp_path / "doc.docx"
+        _make_docx(p, ["第一段", "第二段内容"])
+        text = extract_text(p)
+        assert "第一段" in text
+        assert "第二段内容" in text
+
+    def test_docx_missing_document_returns_empty(self, tmp_path):
+        p = tmp_path / "bad.docx"
+        with zipfile.ZipFile(p, "w") as zf:
+            zf.writestr("word/other.xml", "<x/>")
+        assert extract_text(p) == ""
+
+    def test_xlsx_extracts_shared_strings(self, tmp_path):
+        p = tmp_path / "book.xlsx"
+        _make_xlsx(p, ["名称", "数量", "苹果"], [["名称", "数量"], ["苹果", 3]])
+        text = extract_text(p)
+        assert "名称" in text
+        assert "数量" in text
+        assert "苹果" in text
+
+    def test_xlsx_bad_zip_returns_empty(self, tmp_path):
+        p = tmp_path / "bad.xlsx"
+        p.write_bytes(b"not a zip")
+        assert extract_text(p) == ""

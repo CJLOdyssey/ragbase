@@ -27,7 +27,13 @@ ASSET_DIR.mkdir(parents=True, exist_ok=True)
 _MAX_IMAGE_MB = 10
 _MAX_DOC_MB = 20
 _IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp"}
-_DOC_TYPES = {"application/pdf", "text/plain", "text/markdown"}
+_DOC_TYPES = {
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
 
 
 class AssetItem(BaseModel):
@@ -38,6 +44,8 @@ class AssetItem(BaseModel):
     size_bytes: int
     usage_count: int
     indexed: bool
+    source: str = "upload"
+    source_ref: str | None = None
 
 
 def _validate(content_type: str, size: int) -> str:
@@ -62,6 +70,8 @@ def _to_item(asset: Any) -> AssetItem:
         size_bytes=asset.size_bytes,
         usage_count=asset.usage_count,
         indexed=asset.indexed,
+        source=asset.source,
+        source_ref=asset.source_ref,
     )
 
 
@@ -101,6 +111,77 @@ async def upload_asset(
         raise
     logger.info("Asset uploaded | user=%s | %s", user_id, storage_path)
     return _to_item(asset)
+
+
+class UrlImportIn(BaseModel):
+    url: str
+    name: str | None = None
+
+
+@router.post("/api/assets/import-url", response_model=AssetItem, status_code=201)
+async def import_asset_from_url(req: UrlImportIn, request: Request) -> Any:
+    """Multi-source A: import a public document from a URL, then index as usual.
+
+    SSRF guard: only http/https, never RFC1918/loopback/link-local targets.
+    B/C (SharePoint/S3/DB/dir connectors) extend this via source field.
+    """
+    import ipaddress
+    import urllib.parse
+
+    from httpx import AsyncClient, Timeout
+
+    user_id = get_user_id(request)
+    parsed = urllib.parse.urlparse(req.url)
+    if parsed.scheme not in ("http", "https"):
+        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="仅支持 http/https 链接")
+    try:
+        host_ip = ipaddress.ip_address(parsed.hostname or "")
+    except ValueError:
+        try:
+            host_ip = ipaddress.ip_address(await _resolve_host(parsed.hostname or ""))
+        except Exception:
+            raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="无法解析链接域名") from None
+    if host_ip.is_private or host_ip.is_loopback or host_ip.is_link_local or host_ip.is_reserved:
+        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="不允许导入内网地址")
+
+    timeout = Timeout(30.0)
+    try:
+        async with AsyncClient(follow_redirects=True, timeout=timeout) as client:
+            resp = await client.get(req.url)
+            resp.raise_for_status()
+    except Exception:
+        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="下载链接失败") from None
+
+    content = resp.content
+    content_type = resp.headers.get("content-type", "").split(";")[0].strip()
+    asset_type = _validate(content_type, len(content))
+
+    safe_name = Path(urllib.parse.urlparse(req.url).path or "asset").name or "asset"
+    filename = f"{user_id}-{uuid.uuid4().hex[:8]}-{safe_name}"
+    storage_path = str(ASSET_DIR / filename)
+    Path(storage_path).write_bytes(content)
+
+    try:
+        asset = await create_asset(
+            user_id=user_id,
+            name=(req.name or safe_name)[:256],
+            asset_type=asset_type,
+            size_bytes=len(content),
+            storage_path=storage_path,
+            source="url",
+            source_ref=req.url,
+        )
+    except Exception:
+        Path(storage_path).unlink(missing_ok=True)
+        raise
+    logger.info("Asset imported from url | user=%s | %s", user_id, req.url)
+    return _to_item(asset)
+
+
+async def _resolve_host(hostname: str) -> str:
+    import asyncio
+
+    return await asyncio.to_thread(__import__("socket").gethostbyname, hostname)
 
 
 @router.put("/api/assets/{asset_id}", response_model=AssetItem)

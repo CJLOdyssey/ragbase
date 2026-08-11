@@ -84,6 +84,8 @@ def _load_corpus(paths: list[str]) -> str:
 async def _retrieve(
     args: argparse.Namespace, provider: EmbeddingProvider, store: PgVectorStore, query: str
 ) -> list[dict]:
+    if args.multi_rewrite:
+        return await _retrieve_multi(args, provider, store, query)
     if args.rewrite:
         llm_cfg = await _resolve_llm_config()
         if llm_cfg:
@@ -96,6 +98,40 @@ async def _retrieve(
         session_id=_EVAL_SESSION,
         top_k=20 if args.rerank else args.top_k,
     )
+    if args.rerank and len(results) > args.top_k:
+        from rag.rag_pipeline import _rerank_results
+
+        results = await _rerank_results(query, results, args.top_k)
+    return results
+
+
+async def _retrieve_multi(
+    args: argparse.Namespace, provider: EmbeddingProvider, store: PgVectorStore, query: str
+) -> list[dict]:
+    """Multi-query retrieval: original query + LLM rewrite, both embedded and
+    searched, fused by RRF. Keeps lexical precision (original) while adding
+    semantic breadth (rewrite) — Azure agentic-retrieval pattern."""
+    llm_cfg = await _resolve_llm_config()
+    queries = [query]
+    if llm_cfg:
+        rewritten = await _rewrite_query(llm_cfg, query)
+        if rewritten != query:
+            queries.append(rewritten)
+    legs: list[list[dict]] = []
+    for q in queries:
+        q_emb = await provider.embed_query(q)
+        legs.append(
+            await store.search(
+                q_emb,
+                query_text=q,
+                user_id=args.user_id,
+                session_id=_EVAL_SESSION,
+                top_k=20 if args.rerank else args.top_k,
+            )
+        )
+    from rag.rag_store import _rrf_fuse
+
+    results = _rrf_fuse(legs, 20 if args.rerank else args.top_k)
     if args.rerank and len(results) > args.top_k:
         from rag.rag_pipeline import _rerank_results
 
@@ -315,6 +351,7 @@ def main() -> None:
     parser.add_argument("--rerank", action="store_true", help="rerank candidates with cross-encoder")
     parser.add_argument("--ragas", action="store_true", help="run RAGAS-style quality metrics (needs LLM key)")
     parser.add_argument("--rewrite", action="store_true", help="rewrite queries with LLM before retrieval")
+    parser.add_argument("--multi-rewrite", action="store_true", help="multi-query retrieval: original + LLM rewrite fused by RRF")
     parser.add_argument("--limit", type=int, default=0, help="evaluate only the first N cases (0 = all)")
     parser.add_argument("--fail-below", type=float, default=0.0, help="CI gate: exit 1 if recall@5/mrr below this")
     args = parser.parse_args()

@@ -82,6 +82,12 @@ class AssetDB(Base):
     asset_type: Mapped[str] = mapped_column(String(32), default="document")
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     storage_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(16), default="upload", comment="upload | url — B/C: sharepoint, s3, db, dir"
+    )
+    source_ref: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="URL for source=url; connector-native ref for B/C sources"
+    )
     usage_count: Mapped[int] = mapped_column(Integer, default=0)
     indexed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(

@@ -10,6 +10,8 @@ async def create_asset(
     asset_type: str,
     size_bytes: int,
     storage_path: str,
+    source: str = "upload",
+    source_ref: str | None = None,
 ) -> AssetDB:
     asset = AssetDB(
         user_id=user_id,
@@ -17,6 +19,8 @@ async def create_asset(
         asset_type=asset_type,
         size_bytes=size_bytes,
         storage_path=storage_path,
+        source=source,
+        source_ref=source_ref,
     )
     factory = get_session_factory()
     async with factory() as session:
