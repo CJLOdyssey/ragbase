@@ -147,23 +147,35 @@ def _build_session_context(memories: list[Any]) -> str:
     return "\n".join(lines)
 
 
-async def _get_rag_context(query: str, session_id: str, user_id: str = "anonymous") -> str:
+async def _get_rag_context(
+    query: str, session_id: str, user_id: str = "anonymous"
+) -> tuple[str, list[dict[str, Any]]]:
+    """Retrieve RAG context + structured sources for citation.
+
+    Returns (plain-text context for the LLM, chunk-level source list for the
+    message UI). On any failure: empty context, no sources — retrieval must
+    never break the chat.
+    """
     try:
-        from rag.rag_pipeline import ensure_embedding_provider, retrieve_context
+        from rag.rag_pipeline import ensure_embedding_provider, retrieve_context, retrieve_sources
         from repository.keys import get_embedding_config
 
         cfg = await get_embedding_config()
         if cfg is None or cfg["api_key"] is None:
-            return ""
+            return "", []
         ensure_embedding_provider(
             cfg["api_key"], model=cfg["model"], base_url=cfg["base_url"]
         )
-        return await retrieve_context(
+        sources = await retrieve_sources(
             query=query, user_id=user_id, session_id=session_id, top_k=3, rerank=True
         )
+        context = await retrieve_context(
+            query=query, user_id=user_id, session_id=session_id, top_k=3, rerank=True
+        )
+        return context, sources
     except Exception:
         logger.warning("RAG context retrieval failed for session %s", session_id, exc_info=True)
-        return ""
+        return "", []
 
 
 async def _save_output_memories(session_id: str, run_id: str, response: str, metadata: dict[str, Any]) -> None:

@@ -33,6 +33,7 @@ export interface WsMessage {
   content?: string;
   thinking?: string;
   round_number?: number;
+  sources?: RagSource[];
   status?: string;
   error?: string;
   approved?: boolean;
@@ -79,6 +80,8 @@ export interface ChatMessage {
   runId?: string;
   /** 本消息对应 run 绑定的附件（用户消息展示下载入口） */
   attachments?: AttachmentInfo[];
+  /** RAG 引用来源（模型消息展示引用区） */
+  sources?: RagSource[];
 }
 
 export interface AttachmentInfo {
@@ -87,6 +90,14 @@ export interface AttachmentInfo {
   content_type?: string;
   size_bytes?: number;
   has_extracted_text?: boolean;
+}
+
+/** RAG 引用来源（结构化 citation，服务端检索结果） */
+export interface RagSource {
+  asset_id?: string | null;
+  asset_name?: string | null;
+  text: string;
+  similarity?: number;
 }
 
 export interface ProjectRun {

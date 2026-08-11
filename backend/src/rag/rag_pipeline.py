@@ -84,6 +84,11 @@ async def ingest_session_messages(
 
 RERANK_CANDIDATES = 20  # overfetch before cross-encoder rerank narrows to top_k
 
+# Vector-leg similarity floor: hits below this never enter context. Guards
+# against junk chunks poisoning the LLM prompt when the corpus has no real
+# match (Azure guidance: minimum thresholds to exclude low-scoring results).
+DEFAULT_MIN_SCORE = 0.45
+
 
 async def retrieve_context(
     query: str,
@@ -92,6 +97,7 @@ async def retrieve_context(
     tags: list[str] | None = None,
     top_k: int = 5,
     rerank: bool = False,
+    min_score: float | None = DEFAULT_MIN_SCORE,
 ) -> str:
     """Steps 13-14: Retrieve relevant context for a user query.
 
@@ -100,23 +106,17 @@ async def retrieve_context(
     3. Optional cross-encoder rerank of candidates down to top_k
     4. Return formatted context with asset trace for LLM
     """
-    if _embedding_provider is None:
-        return ""
-    query_embedding = await _embedding_provider.embed_query(query)
-    results = await _vector_store.search(
-        query_embedding,
-        query_text=query,
+    results = await _search_results(
+        query=query,
         user_id=user_id,
         session_id=session_id,
-        tag_filter=tags,
-        top_k=RERANK_CANDIDATES if rerank else top_k,
+        tags=tags,
+        top_k=top_k,
+        rerank=rerank,
+        min_score=min_score,
     )
-
     if not results:
         return ""
-
-    if rerank and len(results) > top_k:
-        results = await _rerank_results(query, results, top_k)
 
     parts = []
     for r in results:
@@ -127,6 +127,70 @@ async def retrieve_context(
         )
 
     return "\n\n".join(parts)
+
+
+async def retrieve_sources(
+    query: str,
+    user_id: str,
+    session_id: str | None = None,
+    tags: list[str] | None = None,
+    top_k: int = 5,
+    rerank: bool = False,
+    min_score: float | None = DEFAULT_MIN_SCORE,
+) -> list[dict[str, Any]]:
+    """Structured retrieval for citation UI — same pipeline as retrieve_context.
+
+    Returns chunk-level sources ordered by RRF score: {asset_id, asset_name,
+    text, similarity}. The LLM context stays plain text; this is the
+    auditability counterpart (NVIDIA: "log the response alongside its
+    references").
+    """
+    results = await _search_results(
+        query=query,
+        user_id=user_id,
+        session_id=session_id,
+        tags=tags,
+        top_k=top_k,
+        rerank=rerank,
+        min_score=min_score,
+    )
+    return [
+        {
+            "asset_id": r.get("asset_id"),
+            "asset_name": (r.get("metadata") or {}).get("asset_name"),
+            "text": r["text"],
+            "similarity": r["similarity"],
+        }
+        for r in results
+    ]
+
+
+async def _search_results(
+    query: str,
+    user_id: str,
+    session_id: str | None = None,
+    tags: list[str] | None = None,
+    top_k: int = 5,
+    rerank: bool = False,
+    min_score: float | None = DEFAULT_MIN_SCORE,
+) -> list[dict[str, Any]]:
+    """Shared retrieval core: embed → hybrid search → optional rerank."""
+    if _embedding_provider is None:
+        return []
+    query_embedding = await _embedding_provider.embed_query(query)
+    results: list[dict[str, Any]] = await _vector_store.search(
+        query_embedding,
+        query_text=query,
+        user_id=user_id,
+        session_id=session_id,
+        tag_filter=tags,
+        top_k=RERANK_CANDIDATES if rerank else top_k,
+        min_score=min_score,
+    )
+
+    if results and rerank and len(results) > top_k:
+        results = await _rerank_results(query, results, top_k)
+    return results
 
 
 async def _rerank_results(
@@ -145,7 +209,11 @@ async def _rerank_results(
     )
     indices = await provider.rerank(query, [r["text"] for r in results], top_n=top_k)
     by_index = {i: results[i] for i in range(len(results))}
-    return [by_index[idx] for idx in indices if idx in by_index]
+    reranked: list[dict[str, Any]] = []
+    for idx in indices:
+        if idx in by_index:
+            reranked.append(by_index[idx])
+    return reranked
 
 
 def _asset_label(metadata: dict[str, Any]) -> str:

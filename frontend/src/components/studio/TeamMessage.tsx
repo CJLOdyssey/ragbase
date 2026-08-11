@@ -13,12 +13,58 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
+import type { RagSource } from '../../types';
 import type { Agent, Message } from '../../types/studio';
 import { CopyBtn } from './messages';
 import { markdownComponents, rehypeLinkify } from './thinking';
 import { ThinkingSection } from './ThinkingSection';
 import UserMessage from './UserMessage';
 import VersionPager from './VersionPager';
+
+function SourcesBlock({
+  sources,
+  t,
+}: {
+  sources: RagSource[];
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  if (sources.length === 0) return null;
+  return (
+    <div className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-hidden">
+      <button
+        className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium text-[var(--color-text-secondary)] cursor-pointer bg-transparent border-none hover:bg-[var(--color-surface-hover)] transition-colors duration-150"
+        onClick={() => setIsExpanded((v) => !v)}
+        aria-expanded={isExpanded}
+      >
+        <span>{t('teamMessage.sources', { count: sources.length })}</span>
+        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+      </button>
+      {isExpanded && (
+        <ul className="p-2 flex flex-col gap-1.5">
+          {sources.map((s, i) => (
+            <li
+              key={`${s.asset_id ?? s.asset_name ?? 'src'}-${i}`}
+              className="text-xs text-[var(--color-text-secondary)] leading-relaxed"
+            >
+              <span className="text-[var(--color-accent)]">
+                {s.asset_name || t('teamMessage.sourceAsset')}
+              </span>
+              {typeof s.similarity === 'number' && (
+                <span className="ml-1 text-[var(--color-text-muted)]">
+                  {Math.round(s.similarity * 100)}%
+                </span>
+              )}
+              <span className="block mt-0.5 line-clamp-3 text-[var(--color-text-muted)]">
+                {s.text}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function PlanCard({
   msg,
@@ -300,6 +346,9 @@ const TeamMessage = memo(function TeamMessage({
                 >
                   {msg.content}
                 </ReactMarkdown>
+                {msg.sources && msg.sources.length > 0 && (
+                  <SourcesBlock sources={msg.sources} t={t} />
+                )}
               </div>
             </div>
 

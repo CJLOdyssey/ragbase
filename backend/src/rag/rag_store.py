@@ -141,10 +141,14 @@ class PgVectorStore:
         session_id: str | None = None,
         tag_filter: list[str] | None = None,
         top_k: int = 5,
+        min_score: float | None = None,
     ) -> list[dict[str, Any]]:
         """Hybrid search: HNSW cosine leg + pg_trgm leg, fused via RRF.
 
         user_id is mandatory — chunks of other owners are never candidates.
+        min_score (optional) drops vector-leg hits below a similarity floor —
+        low-scoring chunks never enter the RRF fusion. The lexical leg is
+        already bounded by the pg_trgm word_similarity_threshold (0.3).
         Returns list of {text, tags, session_id, run_id, asset_id, metadata,
         similarity, score}, ordered by RRF score descending.
         """
@@ -168,6 +172,12 @@ class PgVectorStore:
                     tag_conditions.append(f":{param_name} = ANY(tags)")
                     params[param_name] = tag.lower()
                 where_clauses.append("(" + " OR ".join(tag_conditions) + ")")
+
+            if min_score is not None:
+                where_clauses.append(
+                    "(1 - (embedding <=> CAST(:emb AS vector))) >= :min_score"
+                )
+                params["min_score"] = min_score
 
             where_sql = " AND ".join(where_clauses)
 

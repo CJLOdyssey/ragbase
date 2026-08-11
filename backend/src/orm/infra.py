@@ -103,6 +103,11 @@ class FeedbackLog(Base):
     run_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     rating: Mapped[str] = mapped_column(String(8), nullable=False)
+    query: Mapped[str | None] = mapped_column(Text, nullable=True)
+    answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sources: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="JSON array of RAG citation sources at rating time"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

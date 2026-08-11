@@ -33,7 +33,7 @@ def mock_agent_deps():
         patch("tasks.agent_pipeline.StreamEmitter"),
         patch("tasks.agent_pipeline.SingleAgentGraph"),
         patch("tasks.agent_pipeline._build_session_context", return_value="session_ctx"),
-        patch("tasks.agent_pipeline._get_rag_context", new_callable=AsyncMock, return_value="rag_ctx"),
+        patch("tasks.agent_pipeline._get_rag_context", new_callable=AsyncMock, return_value=("rag_ctx", [])),
         patch("tasks.agent_pipeline._save_output_memories", new_callable=AsyncMock),
     ]
     mocks = {}

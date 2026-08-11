@@ -322,6 +322,37 @@ class TestPgVectorStore:
             assert results == []
 
     @pytest.mark.asyncio
+    async def test_search_with_min_score_appends_floor(self):
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = []
+        mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
+        with _patch_db(mock_session):
+            await store.search(
+                [0.1] * 1024, query_text="hi", user_id="u1", min_score=0.6
+            )
+            search_call = mock_session.execute.call_args_list[3]
+            query = str(search_call[0][0])
+            params = search_call[0][1]
+            assert "min_score" in query
+            assert params["min_score"] == 0.6
+            # floor bound to the vector similarity expression, not bare column
+            assert "(1 - (embedding <=> CAST(:emb AS vector))) >= :min_score" in query
+
+    @pytest.mark.asyncio
+    async def test_search_without_min_score_omits_floor(self):
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = []
+        mock_session.execute = AsyncMock(side_effect=[None, None, None, mock_result])
+        with _patch_db(mock_session):
+            await store.search([0.1] * 1024, query_text="hi", user_id="u1")
+            search_call = mock_session.execute.call_args_list[3]
+            assert "min_score" not in str(search_call[0][0])
+
+    @pytest.mark.asyncio
     async def test_search_result_with_none_tags(self):
         store = PgVectorStore()
         mock_session = AsyncMock()

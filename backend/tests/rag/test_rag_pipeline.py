@@ -178,6 +178,36 @@ class TestRagPipeline:
                 assert call_kwargs["top_k"] == 10
 
     @pytest.mark.asyncio
+    async def test_retrieve_default_min_score_applied(self):
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        with patch.object(rag_pipeline, "_embedding_provider", provider):
+            with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=[]) as mock_search:
+                await rag_pipeline.retrieve_context("query", user_id="u1")
+                call_kwargs = mock_search.call_args[1]
+                assert call_kwargs["min_score"] == rag_pipeline.DEFAULT_MIN_SCORE
+
+    @pytest.mark.asyncio
+    async def test_retrieve_explicit_min_score_override(self):
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        with patch.object(rag_pipeline, "_embedding_provider", provider):
+            with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=[]) as mock_search:
+                await rag_pipeline.retrieve_context("query", user_id="u1", min_score=0.7)
+                call_kwargs = mock_search.call_args[1]
+                assert call_kwargs["min_score"] == 0.7
+
+    @pytest.mark.asyncio
+    async def test_retrieve_min_score_disabled(self):
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        with patch.object(rag_pipeline, "_embedding_provider", provider):
+            with patch.object(rag_pipeline._vector_store, "search", new_callable=AsyncMock, return_value=[]) as mock_search:
+                await rag_pipeline.retrieve_context("query", user_id="u1", min_score=None)
+                call_kwargs = mock_search.call_args[1]
+                assert call_kwargs["min_score"] is None
+
+    @pytest.mark.asyncio
     async def test_ingest_messages_chunk_embeddings_assigned(self):
         provider = MagicMock()
         provider.embed = AsyncMock(return_value=[[0.1] * 1024])

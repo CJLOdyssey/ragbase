@@ -1,7 +1,7 @@
 """RAG quality feedback table — online eval loop intake (feedback_logs)."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "p9g3n009"
 down_revision = "p9g3n008"

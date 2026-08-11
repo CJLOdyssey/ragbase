@@ -13,6 +13,7 @@ from domain.model_types import infer_model_type
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from repository import get_api_keys
+
 from routers.providers import PROVIDERS
 
 logger = get_logger(__name__)

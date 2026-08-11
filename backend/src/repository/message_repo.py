@@ -1,13 +1,23 @@
 """Chat message repository — persistence for conversation messages."""
 
+import json
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from core.infra.database import ChatMessage, ProjectRun, get_session_factory
 from sqlalchemy import select
 
 
-async def save_message(run_id: str, role: str, agent_name: str, content: str, round_number: int, thinking: str | None = None) -> None:  # noqa: E501
+async def save_message(
+    run_id: str,
+    role: str,
+    agent_name: str,
+    content: str,
+    round_number: int,
+    thinking: str | None = None,
+    sources: list[dict[str, Any]] | None = None,
+) -> None:
     """Persist a chat message to the database."""
     msg = ChatMessage(
         id=str(uuid4()),
@@ -16,6 +26,7 @@ async def save_message(run_id: str, role: str, agent_name: str, content: str, ro
         agent_name=agent_name,
         content=content,
         thinking=thinking,
+        sources=json.dumps(sources, ensure_ascii=False) if sources else None,
         round_number=round_number,
         created_at=datetime.now(UTC),
     )

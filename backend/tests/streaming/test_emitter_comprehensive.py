@@ -548,6 +548,7 @@ class TestFlushBuffers:
                 content="hello world",
                 thinking="",
                 round_number=1,
+                sources=[],
             )
 
     @pytest.mark.asyncio

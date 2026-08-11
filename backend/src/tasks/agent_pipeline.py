@@ -101,6 +101,7 @@ async def _run_agent_pipeline(
     system_prompt = ""
 
     session_context = ""
+    rag_sources: list[dict[str, Any]] = []
     if session_id:
         try:
             # 分支树：记忆按当前 run 的父链过滤（MemoryEntry.run_id），
@@ -112,7 +113,7 @@ async def _run_agent_pipeline(
             ]
             if memories:
                 session_context = _build_session_context(memories)
-            rag_ctx = await _get_rag_context(requirement, session_id, user_id)
+            rag_ctx, rag_sources = await _get_rag_context(requirement, session_id, user_id)
             if rag_ctx:
                 session_context += "\n" + rag_ctx
         except Exception:
@@ -165,7 +166,7 @@ async def _run_agent_pipeline(
             logger.warning("Failed to load branch history for run %s", run_id)
 
     checkpointer = await create_checkpointer_async()
-    emitter = StreamEmitter(run_id)
+    emitter = StreamEmitter(run_id, sources=rag_sources)
     graph = SingleAgentGraph(
         model=effective_model,
         api_key=effective_api_key or "",

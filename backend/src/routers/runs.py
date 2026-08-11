@@ -1,6 +1,7 @@
 """Run API routes: create, list, detail, and WebSocket streaming."""
 
 import contextlib
+import json
 import time
 from typing import Any
 
@@ -20,6 +21,17 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["runs"])
 
 _MAX_REQUIREMENT_LENGTH = 2000
+
+
+def _parse_sources(raw: str | None) -> list[dict[str, Any]]:
+    """Deserialize the chat_messages.sources JSON column; malformed → empty."""
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, list) else []
+    except json.JSONDecodeError:
+        return []
 
 
 class RunRequest(BaseModel):
@@ -138,6 +150,7 @@ async def run_websocket(websocket: WebSocket, run_id: str) -> Any:
                             "agent_name": m.agent_name,
                             "content": m.content,
                             "round_number": m.round_number,
+                            "sources": _parse_sources(m.sources),
                         }
                     )
                 await websocket.send_json(

@@ -1,4 +1,7 @@
 // RagBase 类型定义（不含 Team 树相关类型）
+
+// 消息类型
+import type { RagSource } from '../types';
 import type { LucideIcon } from 'lucide-react';
 
 // Agent 配置
@@ -32,7 +35,6 @@ export interface Conversation {
   runCount?: number;
 }
 
-// 消息类型
 export interface Message {
   id: string;
   role: 'user' | 'agent';
@@ -61,6 +63,8 @@ export interface Message {
   runId?: string;
   /** 用户消息展示的附件（来自 run 绑定，下载 GET /api/attachments/{id}） */
   attachments?: { id: string; filename: string; size_bytes?: number }[];
+  /** RAG 引用来源（模型消息展示引用区） */
+  sources?: RagSource[];
 }
 
 // 计划步骤

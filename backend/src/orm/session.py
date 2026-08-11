@@ -141,6 +141,9 @@ class ChatMessage(Base):
     thinking_versions: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="JSON array of prior thinking versions"
     )
+    sources: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="JSON array of RAG citation sources"
+    )
     round_number: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

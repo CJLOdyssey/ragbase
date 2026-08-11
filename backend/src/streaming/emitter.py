@@ -14,8 +14,9 @@ STREAM_DEFAULT_MAX_BUFFER_SIZE = 20000
 
 
 class StreamEmitter:
-    def __init__(self, run_id: str):
+    def __init__(self, run_id: str, sources: list[dict[str, Any]] | None = None):
         self._run_id = run_id
+        self._sources = sources or []
         self._message_index = 0
         self._stream_buffer: list[str] = []
         self._thinking_buffer: list[str] = []
@@ -214,6 +215,7 @@ class StreamEmitter:
                 content=full_content,
                 thinking=thinking_text or None,
                 round_number=self._message_index,
+                sources=self._sources or None,
             )
             logger.info(
                 "Partial message persisted for cancelled run %s (content=%d, thinking=%d)",
@@ -261,6 +263,7 @@ class StreamEmitter:
                         "agent_name": "Agent",
                         "content": full_content,
                         "round_number": self._message_index,
+                        "sources": self._sources,
                     },
                 )
                 await save_message(
@@ -270,6 +273,7 @@ class StreamEmitter:
                     content=full_content,
                     thinking=thinking_text,
                     round_number=self._message_index,
+                    sources=self._sources,
                 )
                 saved_with_content = True
             except Exception:
@@ -304,6 +308,8 @@ class StreamEmitter:
             "content": content,
             "round_number": self._message_index,
         }
+        if msg_type == "message" and self._sources:
+            payload["sources"] = self._sources
         if not thinking and self._pending_thinking:
             thinking = self._pending_thinking
             self._pending_thinking = None
@@ -319,6 +325,7 @@ class StreamEmitter:
                     content=content,
                     thinking=thinking,
                     round_number=self._message_index,
+                    sources=self._sources or None,
                 )
         except Exception:
             logger.exception("Stream emit failed for run %s", self._run_id)

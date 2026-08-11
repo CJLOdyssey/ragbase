@@ -1,5 +1,7 @@
 /** WebSocket event types for chat streaming */
 
+import type { RagSource } from '../types';
+
 export interface WsStreamEvent {
   type: 'stream';
   content?: string;
@@ -21,6 +23,7 @@ export interface WsMessageEvent {
   role?: string;
   agent_name?: string;
   round_number?: number;
+  sources?: RagSource[];
 }
 
 export interface WsThinkingDoneEvent {

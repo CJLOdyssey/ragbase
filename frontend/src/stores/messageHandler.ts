@@ -22,6 +22,7 @@ export function handleMessageEvent(set: SetFn, msg: WsMessageEvent): void {
             ...m,
             content: msg.content!,
             thinking: msg.thinking ?? m.thinking,
+            sources: msg.sources ?? m.sources,
           };
         }),
         currentRole: msg.role!,
@@ -36,6 +37,7 @@ export function handleMessageEvent(set: SetFn, msg: WsMessageEvent): void {
       content: msg.content!,
       thinking: msg.thinking,
       round_number: msg.round_number ?? 0,
+      sources: msg.sources,
       created_at: new Date().toISOString(),
     };
     return {

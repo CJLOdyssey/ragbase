@@ -6,8 +6,9 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from repository.keys_crud import get_api_key_for_use
 from domain.model_types import infer_model_type
+
+from repository.keys_crud import get_api_key_for_use
 
 # SiliconFlow /models sub_type filter values (official OpenAPI) → model type.
 _SUB_TYPE_TO_MODEL_TYPE: dict[str, str] = {

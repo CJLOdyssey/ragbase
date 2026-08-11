@@ -300,29 +300,38 @@ class TestGetRagContext:
         )
         mock_ensure = MagicMock()
         mock_retrieve = AsyncMock(return_value="rag result")
+        mock_sources = AsyncMock(
+            return_value=[{"asset_id": "a1", "asset_name": "手册", "text": "…", "similarity": 0.9}]
+        )
 
         with patch("rag.rag_pipeline.ensure_embedding_provider", mock_ensure), \
              patch("rag.rag_pipeline.retrieve_context", mock_retrieve), \
+             patch("rag.rag_pipeline.retrieve_sources", mock_sources), \
              patch("repository.keys.get_embedding_config", mock_cfg):
-            result = await _get_rag_context("query", "sess-1")
+            context, sources = await _get_rag_context("query", "sess-1")
 
-        assert result == "rag result"
+        assert context == "rag result"
+        assert sources[0]["asset_id"] == "a1"
         mock_ensure.assert_called_once_with(
             "key-1", model="BAAI/bge-m3", base_url="https://api.siliconflow.cn/v1"
         )
+        mock_sources.assert_awaited_once()
+        mock_retrieve.assert_awaited_once()
 
     async def test_get_rag_context_no_key_returns_empty(self):
         from tasks.pipeline_utils import _get_rag_context
         mock_cfg = AsyncMock(return_value=None)
         with patch("repository.keys.get_embedding_config", mock_cfg):
-            result = await _get_rag_context("query", "sess-1")
-        assert result == ""
+            context, sources = await _get_rag_context("query", "sess-1")
+        assert context == ""
+        assert sources == []
 
     async def test_get_rag_context_exception_returns_empty(self):
         from tasks.pipeline_utils import _get_rag_context
         with patch("repository.keys.get_embedding_config", new_callable=AsyncMock, side_effect=Exception("fail")):
-            result = await _get_rag_context("query", "sess-1")
-        assert result == ""
+            context, sources = await _get_rag_context("query", "sess-1")
+        assert context == ""
+        assert sources == []
 
 
 # =============================================================================

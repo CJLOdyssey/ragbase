@@ -96,7 +96,9 @@
     "thinkingComplete": "Thought",
     "thinkingPending": "Thinking...",
     "thinkingStopped": "Thinking stopped",
-    "executeTask": "Execute {{count}} steps"
+    "executeTask": "Execute {{count}} steps",
+    "sources": "Sources ({{count}})",
+    "sourceAsset": "Asset"
   },
   "agent": {
     "welcome": "Hi! I can help answer questions from your knowledge base.",

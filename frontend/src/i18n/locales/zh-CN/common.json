@@ -96,7 +96,9 @@
     "thinkingComplete": "已思考",
     "thinkingPending": "思考中",
     "thinkingStopped": "思考已停止",
-    "executeTask": "执行 {{count}} 个步骤"
+    "executeTask": "执行 {{count}} 个步骤",
+    "sources": "引用来源 ({{count}})",
+    "sourceAsset": "素材"
   },
   "agent": {
     "welcome": "你好！我可以帮你解答知识库问题。",
