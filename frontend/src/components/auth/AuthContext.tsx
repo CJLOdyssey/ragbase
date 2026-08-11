@@ -172,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await getMe();
       if (!cancelled && me) {
         applySession(me);
-        await mergeGuest();
+        void mergeGuest();
         return true;
       }
       return false;
@@ -184,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const me = await getMe();
         if (!cancelled && me) {
           applySession(me);
-          await mergeGuest();
+          void mergeGuest();
         }
       } catch {
         // Refresh failed — guest stays
@@ -193,15 +193,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function init() {
       try {
-        const config = await getAuthConfig();
+        // B: identity restore and auth config run in parallel — a slow config
+        // request must not block showing the signed-in user on refresh.
+        const [config, restored] = await Promise.all([
+          getAuthConfig().catch(() => null),
+          (async () => {
+            try {
+              return await restoreSession();
+            } catch {
+              return false;
+            }
+          })(),
+        ]);
         if (cancelled) return;
-        const isLegacy = !config.enabled || config.mode === 'legacy';
+        const isLegacy = !config?.enabled || config?.mode === 'legacy';
         setLegacyMode(isLegacy);
 
-        // Tokens are httpOnly cookies — axios withCredentials carries them.
-        try {
-          await restoreSession();
-        } catch {
+        if (!restored) {
           if (isLegacy) {
             setLoading(false);
             return;
