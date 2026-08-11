@@ -27,7 +27,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not AUTH_ENABLED:
             return cast(Response, await call_next(request))
 
-        # Extract token from Authorization header
+        # Extract token from Authorization header, query param, or httpOnly cookie
         auth_header = request.headers.get("Authorization", "")
         token = ""
         if auth_header.startswith("Bearer "):
@@ -37,6 +37,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
             from urllib.parse import parse_qs
 
             token = parse_qs(str(request.url.query)).get("token", [""])[0]
+        else:
+            # Frontend 认证走 httpOnly access_token cookie — 同样参与用户校验，
+            # 否则 get_user_id 的 cookie 回退分支会绕过 sub 有效性检查。
+            token = request.cookies.get("access_token", "")
 
         client_ip = request.client.host if request.client else "?"
 
@@ -55,6 +59,24 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return cast(Response, await call_next(request))
 
         user_id = payload.get("sub", "unknown")
+        # 校验用户仍存在：用户合并/删除后旧 JWT 的 sub 已失效，继续信任会让
+        # key/附件等按 user 归属的解析命中不存在的用户，产生误导性 400。
+        if user_id != "unknown":
+            try:
+                from repository.auth import get_user_by_id
+
+                user = await get_user_by_id(user_id)
+            except Exception:
+                user = None
+            if user is None:
+                logger.warning(
+                    "Auth token user not found | user_id=%s | client=%s | path=%s",
+                    user_id, client_ip, path,
+                )
+                request.state.user_invalid_token = True
+                request.state.is_authenticated = False
+                return cast(Response, await call_next(request))
+
         # Attach user info to request state
         request.state.user_id = user_id
         request.state.is_authenticated = True

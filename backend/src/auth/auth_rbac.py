@@ -165,6 +165,11 @@ def get_user_id(request: Any) -> str:
     if user_id:
         return user_id
 
+    # JWT 有效但 sub 指向已删除/合并的用户（AuthMiddleware 已标记）——
+    # 不信任该身份，回退 anonymous，避免误导性 400（key/附件按 user 归属）。
+    if getattr(request.state, "user_invalid_token", False) and AUTH_ENABLED:
+        return "anonymous"
+
     # Check httpOnly access_token cookie (set by login/register/verify/refresh endpoints)
     token = request.cookies.get("access_token")
     if token:
