@@ -196,6 +196,9 @@ export function useHomeState() {
 
   const { data: models = [] } = useQuery({
     queryKey: ['models'],
+    // Backend returns 200 [] for unauthenticated GETs — only query once auth
+    // is established so the pre-auth empty result is never cached.
+    enabled: isAuthenticated,
     queryFn: async (): Promise<ModelOption[]> => {
       const infos = await listModels();
       return infos.map((m) => ({
