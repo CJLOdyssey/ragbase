@@ -376,3 +376,50 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     expect(mockDeleteAttachment).toHaveBeenCalledWith('att-9');
   });
 });
+
+describe('InputToolbar attachment bar & preview', { tags: ['unit'] }, () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUploadAttachment.mockResolvedValue({ id: 'att-1' });
+    mockDeleteAttachment.mockResolvedValue({});
+  });
+
+  const addDoneFile = async (name = 'a.txt') => {
+    const ref = createRef<InputToolbarHandle>();
+    render(<InputToolbar {...defaultProps} ref={ref} />);
+    act(() => {
+      ref.current?.addFiles([new File(['content'], name)]);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+  };
+
+  it('renders attachment bar above the textarea', async () => {
+    await addDoneFile();
+    const textarea = screen.getByPlaceholderText('Type a message...');
+    const bar = screen.getByTestId('attach-bar');
+    expect(bar).toBeInTheDocument();
+    expect(
+      bar.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('does not render attachment bar when no files', () => {
+    render(<InputToolbar {...defaultProps} />);
+    expect(screen.queryByTestId('attach-bar')).toBeNull();
+  });
+
+  it('opens preview modal when attachment name clicked', async () => {
+    await addDoneFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview a.txt' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('closes preview modal via close button', async () => {
+    await addDoneFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview a.txt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});

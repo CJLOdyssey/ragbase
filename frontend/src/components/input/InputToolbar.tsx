@@ -14,6 +14,7 @@ import {
   uploadAttachment,
 } from '../../api/client/attachments';
 import AttachmentList from './AttachmentList';
+import AttachmentPreviewModal from './AttachmentPreviewModal';
 import CommandDropdown from './CommandDropdown';
 import FileAttach from './FileAttach';
 import ModelSelector from './ModelSelector';
@@ -65,6 +66,7 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
     const reduce = useReducedMotion();
     const { toast } = useToast();
     const [files, setFiles] = useState<AttachedFile[]>([]);
+    const [previewFile, setPreviewFile] = useState<AttachedFile | null>(null);
     const { settings } = useSettings();
 
     const composer = useMessageComposer({
@@ -239,6 +241,19 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
             />
           )}
 
+          {files.length > 0 && (
+            <div
+              data-testid="attach-bar"
+              className="pt-3 border-b border-[var(--color-border)]"
+            >
+              <AttachmentList
+                files={files}
+                onRemove={removeFile}
+                onPreview={setPreviewFile}
+              />
+            </div>
+          )}
+
           <textarea
             className="w-full bg-transparent border-none px-6 py-5 min-h-[var(--da-input-height)] max-h-[200px] resize-none text-lg font-normal text-[var(--color-text-primary)] leading-[1.5] box-border scrollbar-thin scrollbar-thumb-transparent hover:scrollbar-thumb-[var(--color-border)] placeholder:text-[var(--color-text-muted)] placeholder:font-normal"
             style={{ outline: 'none' }}
@@ -250,8 +265,6 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
           />
-
-          <AttachmentList files={files} onRemove={removeFile} />
 
           <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-surface-raised)] border-t-0 min-h-[var(--da-toolbar-height)] rounded-b-[var(--da-input-radius)]">
             <div className="flex items-center gap-2">
@@ -294,6 +307,12 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
             )}
           </div>
         </div>
+        {previewFile && (
+          <AttachmentPreviewModal
+            file={previewFile}
+            onClose={() => setPreviewFile(null)}
+          />
+        )}
       </motion.div>
     );
   },
