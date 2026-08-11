@@ -10,7 +10,7 @@ import platform
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from broker import BROKER_URL, REDIS_URL, get_redis
+from broker import BROKER_URL, REDIS_URL, close_redis, get_redis
 from observability.startup_guard import mark_started, mark_stopped, record_crash
 
 from core.config import load_config
@@ -194,5 +194,9 @@ async def shutdown(app: FastAPI) -> None:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError, asyncio.TimeoutError):
                 await asyncio.wait_for(task, timeout=5)
+    from observability.store import get_store
+
+    get_store().close()
+    await close_redis()
     mark_stopped()
     logger.info("[LIFECYCLE] shutting down — app=%s | pid=%d", app.title, os.getpid())
