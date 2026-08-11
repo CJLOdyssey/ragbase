@@ -81,6 +81,7 @@ async def _run_agent_pipeline(
     api_base: str | None = None,
     model: str | None = None,
     user_id: str = 'system',
+    image_model: bool = False,
 ) -> dict[str, Any]:
     global _run_counter
     _run_counter += 1
@@ -172,6 +173,7 @@ async def _run_agent_pipeline(
         api_key=effective_api_key or "",
         base_url=effective_api_base,
         checkpointer=checkpointer,
+        image_model=image_model,
     )
     graph.set_stream_callback(emitter)
 

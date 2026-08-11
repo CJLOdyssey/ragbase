@@ -96,9 +96,11 @@ class SingleAgentGraph:
         temperature: float = 0.7,
         max_tokens: int = 16384,
         checkpointer: BaseCheckpointSaver[Any] | None = None,
+        image_model: bool = False,
     ):
         """Initialize the ReAct agent graph with LLM and checkpointer."""
         self.model = model
+        self.image_model = image_model
         self.api_key = api_key
         self.base_url = base_url
         self.temperature = temperature
@@ -190,6 +192,8 @@ class SingleAgentGraph:
 
     async def _agent_node(self, state: AgentState) -> dict[str, Any]:
         """LangGraph agent node — builds messages, calls LLM, returns AIMessage."""
+        if self.image_model:
+            return await self._image_node(state)
         messages = state.get("messages", [])
         system_prompt = state.get("system_prompt", "")
         session_context = state.get("session_context", "")
@@ -238,6 +242,50 @@ class SingleAgentGraph:
             await self._stream_cb({"event": "on_node_end", "data": {}})
 
         return {"messages": [AIMessage(**kwargs)]}
+
+    async def _image_node(self, state: AgentState) -> dict[str, Any]:
+        """Image-model node — calls the provider's /images/generations endpoint.
+
+        Non-chat models (model_types == "image", e.g. Kwai-Kolors/Kolors) cannot
+        consume chat prompts: the last user message text is used as the prompt
+        and the generated image URL is returned as markdown so the existing
+        frontend markdown renderer displays it inline.
+        """
+        messages = state.get("messages", [])
+        prompt = ""
+        for m in reversed(messages):
+            if getattr(m, "type", "") == "human":
+                prompt = str(m.content or "")
+                break
+        if not prompt.strip():
+            prompt = "请生成一张图片"
+
+        if self._stream_cb:
+            with contextlib.suppress(Exception):
+                await self._stream_cb({
+                    "event": "on_custom_thinking",
+                    "data": {"content": f"正在使用 {self.model} 生成图片…"},
+                })
+
+        from streaming.image_generation import generate_image
+
+        image_url = await generate_image(
+            self.api_key,
+            prompt,
+            model=self.model,
+            base_url=self.base_url,
+        )
+        content = f"![生成的图片]({image_url})"
+
+        if self._stream_cb:
+            with contextlib.suppress(Exception):
+                await self._stream_cb({
+                    "event": "on_custom_token",
+                    "data": {"content": content},
+                })
+            await self._stream_cb({"event": "on_node_end", "data": {}})
+
+        return {"messages": [AIMessage(content=content)]}
 
     async def _tools_node(self, state: AgentState) -> dict[str, Any]:
         """LangGraph tools node — executes tool calls."""

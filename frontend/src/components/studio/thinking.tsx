@@ -58,6 +58,15 @@ export function markdownComponents(t: (key: string) => string): Components {
     code({ className, children }) {
       return <CodeBlock className={className} children={children} t={t} />;
     },
+    img({ src, alt }) {
+      return (
+        <img
+          src={src}
+          alt={alt}
+          className="max-w-full h-auto rounded-lg border border-[var(--color-border)]"
+        />
+      );
+    },
   };
 }
 

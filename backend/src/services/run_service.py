@@ -97,17 +97,20 @@ class RunService:
         api_key: str | None = None
         api_base: str | None = None
         effective_model = model or config.model
+        image_model = False
 
         if key_id:
             key_entry = await get_api_key_for_use(key_id, user_id)
             if key_entry:
                 api_key = key_entry.get("api_key")
                 api_base = key_entry.get("base_url") or api_base
+                image_model = (key_entry.get("model_types") or {}).get(effective_model) == "image"
         if not api_key and effective_model:
             model_key = await get_api_key_for_model(effective_model, user_id)
             if model_key:
                 api_key = model_key.get("api_key")
                 api_base = model_key.get("base_url") or api_base
+                image_model = (model_key.get("model_types") or {}).get(effective_model) == "image"
         if not api_key:
             default_key = await get_default_api_key(user_id)
             if default_key:
@@ -207,6 +210,7 @@ class RunService:
                     api_base=api_base,
                     model=effective_model,
                     user_id=user_id,
+                    image_model=image_model,
                 )
             )
             self._register_task(run_id, task)
@@ -254,6 +258,7 @@ class RunService:
         api_key: str | None = None
         api_base: str | None = None
         effective_model = model or config.model
+        image_model = False
 
         try:
             if effective_model:
@@ -261,6 +266,7 @@ class RunService:
                 if model_key:
                     api_key = model_key["api_key"]
                     api_base = model_key["base_url"]
+                    image_model = (model_key.get("model_types") or {}).get(effective_model) == "image"
             if not api_key:
                 default_key = await get_default_api_key(user_id)
                 if default_key:
@@ -271,6 +277,9 @@ class RunService:
 
         if not api_key:
             raise ValueError("请先在设置中配置 API Key")
+
+        if image_model:
+            raise ValueError("图片生成模型不支持继续生成")
 
         # ── Persist run ─────────────────────────────────────────────
         run_id = await db_create_run(content, session_id=session_id)
