@@ -243,6 +243,7 @@ export function useHomeState() {
         currentAnswerVersion: m.currentAnswerVersion,
         userMsgId: m.userMsgId,
         runId: m.runId,
+        attachments: m.attachments,
       })),
     [messages],
   );
@@ -267,6 +268,9 @@ export function useHomeState() {
         undefined,
         undefined,
         ids?.length ? ids : undefined,
+        files
+          ?.filter((f) => f.attachmentId)
+          .map((f) => ({ id: f.attachmentId as string, filename: f.name })),
       );
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },

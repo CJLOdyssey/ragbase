@@ -4,7 +4,7 @@ import {
   submitRequirement as submitRequirementExternal,
 } from '../api/client';
 import { connectRun, disconnectRun } from '../api/websocket';
-import type { ChatMessage } from '../types';
+import type { AttachmentInfo, ChatMessage } from '../types';
 import Logger from '../utils/logger';
 import { useChatStore } from './chatStore';
 import { createStreamHandler } from './chatStreaming';
@@ -66,6 +66,7 @@ export async function submitRequirement(
   submissionConvId?: string | null,
   parent_run_id?: string | null,
   attachment_ids?: string[],
+  attachmentInfo?: AttachmentInfo[],
 ) {
   const s = useChatStore.getState();
   const effectiveSessionId = session_id || s.currentSessionId || undefined;
@@ -110,6 +111,8 @@ export async function submitRequirement(
     // 携带本 run 的 parent（流式生成时也记录，编辑时用于产生兄弟分支；
     // 若缺失会回退到 activeRunId，导致编辑根 turn 误成续写）
     parentRunId: effectiveParentRunId,
+    // 乐观 user 消息直接展示附件（刷新后由 buildPathTurns 从 run 恢复）
+    attachments: attachmentInfo,
   };
 
   useChatStore.setState({

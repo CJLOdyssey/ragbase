@@ -79,6 +79,10 @@ export function buildPathTurns(
         ...m,
         runId: run.id,
         parentRunId: run.parent_run_id ?? null,
+        // user 消息挂 run 绑定的附件（下载入口；内容已由后端注入模型）
+        ...(m.role === 'user' && run.attachments
+          ? { attachments: run.attachments }
+          : {}),
       });
     }
     // 版本计数：user 消息带分支点兄弟组（run 层）。分支判定只看 branchGroup

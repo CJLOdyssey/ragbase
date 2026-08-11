@@ -57,6 +57,8 @@ export interface Message {
   thumbsFeedback?: 'up' | 'down' | null;
   interrupted?: boolean;
   runId?: string;
+  /** 用户消息展示的附件（来自 run 绑定，下载 GET /api/attachments/{id}） */
+  attachments?: { id: string; filename: string; size_bytes?: number }[];
 }
 
 // 计划步骤

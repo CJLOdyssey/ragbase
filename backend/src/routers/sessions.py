@@ -6,7 +6,7 @@ from typing import Any
 from auth import get_user_id
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
-from core.models import SessionDetailResponse, SessionSummary
+from core.models import AttachmentResponse, SessionDetailResponse, SessionSummary
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from repository import (
@@ -22,6 +22,7 @@ from repository import (
     update_session_pin,
     update_session_title,
 )
+from repository.attachments import list_attachments_by_session
 from services.session_service import with_requirement_message
 from services.text_utils import parse_json_list
 from starlette.responses import Response
@@ -102,6 +103,29 @@ async def get_session_detail(request: Request, session_id: str) -> Any:
         runs = await get_session_runs(session_id)
         memories = await get_session_memories(session_id)
 
+        # Attachments by run: 让前端在用户消息里展示文件（下载链接）。
+        # 附件经 POST /runs 绑定 run_id（选中即传仅带 session_id）。
+        attachments_by_run: dict[str, list[AttachmentResponse]] = {}
+        try:
+            atts = await list_attachments_by_session(session_id)
+            for a in atts:
+                if not a.run_id:
+                    continue
+                attachments_by_run.setdefault(a.run_id, []).append(
+                    AttachmentResponse(
+                        id=a.id,
+                        session_id=a.session_id,
+                        run_id=a.run_id,
+                        filename=a.filename,
+                        content_type=a.content_type,
+                        size_bytes=a.size_bytes,
+                        has_extracted_text=bool(a.extracted_text),
+                        created_at=a.created_at,
+                    )
+                )
+        except Exception:
+            logger.warning("Failed to load attachments for session %s", session_id)
+
         # Load messages with thinking for all runs in batch
         all_messages = await get_session_messages(session_id)
         messages_by_run: dict[str, list[dict[str, Any]]] = {}
@@ -142,6 +166,7 @@ async def get_session_detail(request: Request, session_id: str) -> Any:
                     "created_at": r.created_at.isoformat() if r.created_at else None,
                     "updated_at": r.updated_at.isoformat() if r.updated_at else None,
                     "messages": with_requirement_message(r, msgs),
+                    "attachments": attachments_by_run.get(r.id, []),
                 }
                 for r, msgs in merged
             ],

@@ -118,6 +118,27 @@ async def _run_agent_pipeline(
         except Exception:
             logger.warning("Failed to load RAG context for session %s", session_id)
 
+    # ── Attachment context ────────────────────────────────────────
+    # 附件在 create_run 时绑定 run_id，但此前只用于结果消息注入下载链接，
+    # extracted_text 从未进模型输入 → 模型看不到文件内容。这里把当前 run
+    # 绑定附件的文本提取结果拼入 session_context，让模型能读到文件。
+    try:
+        atts = await list_attachments_by_run(run_id)
+        blocks = [
+            f"[附件: {a.filename}]\n{a.extracted_text}"
+            for a in atts
+            if a.extracted_text and a.extracted_text.strip()
+        ]
+        if blocks:
+            attachment_ctx = "\n\n".join(blocks)
+            session_context = (
+                session_context + "\n\n" + attachment_ctx
+                if session_context
+                else attachment_ctx
+            )
+    except Exception:
+        logger.warning("Failed to load attachment context for run %s", run_id)
+
     # ── Short-term memory: parent-chain turns (branch-aware) ──
     chat_history: list[BaseMessage] = []
     if session_id:

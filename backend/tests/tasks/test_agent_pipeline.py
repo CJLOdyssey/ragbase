@@ -230,3 +230,44 @@ class TestRunAgentPipeline:
         )
         kwargs = graph.run.call_args[1]
         assert kwargs.get("model") == "custom-model" or graph.run.call_args[0] or True
+
+    async def test_attachment_text_injected_into_session_context(self, mock_agent_deps):
+        """附件 extracted_text 必须注入模型输入（session_context）。"""
+        _default_mocks(mock_agent_deps)
+        att = MagicMock()
+        att.filename = "att_test.txt"
+        att.extracted_text = "Codex 配置 DeepSeek 完全指南"
+        mock_agent_deps["list_attachments_by_run"].return_value = [att]
+        await _run_agent_pipeline(
+            run_id="run-att",
+            requirement="这个文档写了什么",
+            session_id="sess-1",
+            user_id="user-1",
+            api_key="sk-test",
+            api_base=None,
+            model=None,
+        )
+        graph = mock_agent_deps["SingleAgentGraph"].return_value
+        session_context = graph.run.await_args.kwargs["session_context"]
+        assert "[附件: att_test.txt]" in session_context
+        assert "Codex 配置 DeepSeek 完全指南" in session_context
+
+    async def test_attachment_without_extracted_text_skipped(self, mock_agent_deps):
+        """无提取文本的附件不注入 session_context。"""
+        _default_mocks(mock_agent_deps)
+        att = MagicMock()
+        att.filename = "empty.bin"
+        att.extracted_text = None
+        mock_agent_deps["list_attachments_by_run"].return_value = [att]
+        await _run_agent_pipeline(
+            run_id="run-att-empty",
+            requirement="test",
+            session_id="sess-1",
+            user_id="user-1",
+            api_key="sk-test",
+            api_base=None,
+            model=None,
+        )
+        graph = mock_agent_deps["SingleAgentGraph"].return_value
+        session_context = graph.run.await_args.kwargs["session_context"]
+        assert "empty.bin" not in session_context

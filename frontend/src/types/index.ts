@@ -77,6 +77,16 @@ export interface ChatMessage {
   thumbsFeedback?: 'up' | 'down' | null;
   interrupted?: boolean;
   runId?: string;
+  /** 本消息对应 run 绑定的附件（用户消息展示下载入口） */
+  attachments?: AttachmentInfo[];
+}
+
+export interface AttachmentInfo {
+  id: string;
+  filename: string;
+  content_type?: string;
+  size_bytes?: number;
+  has_extracted_text?: boolean;
 }
 
 export interface ProjectRun {
@@ -93,6 +103,7 @@ export interface ProjectRun {
   parent_run_id?: string | null;
   requirement_versions?: string[] | null;
   messages?: ChatMessage[];
+  attachments?: AttachmentInfo[];
 }
 
 export interface SessionItem {

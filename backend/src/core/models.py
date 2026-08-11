@@ -171,6 +171,7 @@ class RunSummary(BaseModel):
     created_at: str | None = None
     updated_at: str | None = None
     messages: list["MessageItem"] = Field(default_factory=list)
+    attachments: list["AttachmentResponse"] = Field(default_factory=list)
 
 
 class MessageItem(BaseModel):

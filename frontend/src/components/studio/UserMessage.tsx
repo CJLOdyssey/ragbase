@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type * as React from 'react';
-import { Pencil } from 'lucide-react';
+import { Paperclip, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types/studio';
 import { CopyBtn } from './messages';
@@ -99,6 +99,23 @@ export default function UserMessage({
           <div className="px-4 py-3 rounded-[12px_12px_4px_12px] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]">
             {sanitizeHtml(msg.content)}
           </div>
+          {msg.attachments && msg.attachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 justify-end mt-1">
+              {msg.attachments.map((a) => (
+                <a
+                  key={a.id}
+                  href={`/api/attachments/${a.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] text-xs cursor-pointer no-underline transition-colors duration-150 hover:text-[var(--color-text-primary)]"
+                  title={a.filename}
+                >
+                  <Paperclip size={12} />
+                  <span className="max-w-[220px] truncate">{a.filename}</span>
+                </a>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-1 w-full justify-end">
             <CopyBtn text={msg.content} label={t('teamMessage.copy')} />
             <button
