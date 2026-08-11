@@ -28,6 +28,8 @@ export interface Conversation {
   agentId?: string;
   sessionId?: string;
   isPinned?: boolean;
+  /** 会话已产生的 run 数（后端 sessions 列表返回；列表消息恒空时用于判定是否已回复） */
+  runCount?: number;
 }
 
 // 消息类型

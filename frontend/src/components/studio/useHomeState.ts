@@ -79,6 +79,7 @@ function toConversation(s: SessionItem): Conversation {
     updatedAt: s.updated_at || '',
     messages: [],
     isPinned: s.is_pinned ?? false,
+    runCount: s.run_count ?? 0,
   };
 }
 
