@@ -143,7 +143,8 @@
     "totalCount": "{{count}} total"
   },
   "fileAttach": {
-    "attach": "Attach files"
+    "attach": "Attach files",
+    "dropHere": "Drop files to attach"
   },
   "history": {
     "loading": "Loading…"

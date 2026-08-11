@@ -143,7 +143,8 @@
     "totalCount": "共 {{count}} 条"
   },
   "fileAttach": {
-    "attach": "附加文件"
+    "attach": "附加文件",
+    "dropHere": "释放文件以添加附件"
   },
   "history": {
     "loading": "加载中…"

@@ -5,6 +5,7 @@ import HomeScreen from './HomeScreen';
 import MessagesPanel from './MessagesPanel';
 import Modals from './Modals';
 import RagBaseSidebar from './RagBaseSidebar';
+import { useDragAndDrop } from './useDragAndDrop';
 import { useHomeState } from './useHomeState';
 
 export default function RagBaseWorkstation() {
@@ -12,6 +13,12 @@ export default function RagBaseWorkstation() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputToolbarRef = useRef<InputToolbarHandle>(null);
+  const {
+    isPageDragOver,
+    handlePageDragOver,
+    handlePageDragLeave,
+    handlePageDrop,
+  } = useDragAndDrop(inputToolbarRef);
 
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
@@ -66,9 +73,17 @@ export default function RagBaseWorkstation() {
           </header>
 
           <main
-            className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[var(--color-surface)]"
+            className={`flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[var(--color-surface)] ${isPageDragOver ? 'ring-2 ring-inset ring-[var(--color-accent)]' : ''}`}
             id="main-content"
+            onDragOver={handlePageDragOver}
+            onDragLeave={handlePageDragLeave}
+            onDrop={handlePageDrop}
           >
+            {isPageDragOver && (
+              <div className="fixed inset-0 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-overlay))] border-[3px] border-dashed border-[var(--color-accent)] z-[900] text-xl font-bold text-[var(--color-accent)] pointer-events-none animate-[fadeIn_0.15s_ease]">
+                <span>{s.t('fileAttach.dropHere')}</span>
+              </div>
+            )}
             {s.apiStatus === 'error' && s.apiError && (
               <div
                 className="px-4 py-2 bg-[var(--color-danger)] text-[var(--color-text-on-accent)] text-center text-sm font-medium animate-[fadeIn_0.3s_ease] flex items-center justify-center gap-3"
