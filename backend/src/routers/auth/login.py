@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 import bcrypt
-from auth import AUTH_SECRET, CurrentUser, create_token, get_current_user
+from auth import AUTH_SECRET, create_token
 from broker import get_redis
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Request, Response
 from repository.auth import (
     consume_refresh_token,
     create_refresh_token,
@@ -110,7 +110,7 @@ async def refresh(request: Request, response: Response) -> Any:
 
 
 @router.post("/logout", status_code=204)
-async def logout(request: Request, response: Response, _user: CurrentUser = Depends(get_current_user)) -> None:
+async def logout(request: Request, response: Response) -> None:
     """Invalidate the refresh_token cookie and clear both auth cookies."""
     refresh_token = request.cookies.get("refresh_token")
     if refresh_token:

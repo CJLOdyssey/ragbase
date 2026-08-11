@@ -101,7 +101,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await refreshTokens();
       lastRefreshRef.current = Date.now();
       return true;
-    } catch {
+    } catch (err) {
+      // refresh 失败（401/403）→ 会话过期：登出，避免"幽灵登录"后业务请求
+      // 以 anonymous 身份报误导性 400。网络错误不登出（由定时器重试）。
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401 || status === 403) {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      }
       return false;
     }
   }, []);
@@ -139,14 +146,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void refreshSession();
       }
     };
+    const handleUnauthorized = () => {
+      setUser(null);
+      clearLocalConversations();
+      setLoginModalOpen(true);
+    };
     window.addEventListener('auth:login', start);
     window.addEventListener('auth:logout', stop);
     window.addEventListener('auth:unauthorized', stop);
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       window.removeEventListener('auth:login', start);
       window.removeEventListener('auth:logout', stop);
       window.removeEventListener('auth:unauthorized', stop);
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
       document.removeEventListener('visibilitychange', handleVisibility);
       stop();
     };
