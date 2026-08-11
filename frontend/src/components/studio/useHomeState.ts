@@ -293,6 +293,8 @@ export function useHomeState() {
 
   const loadConversationById = useCallback(async (convId: string) => {
     setRestoring(true);
+    // 立即清空旧会话消息，避免旧消息残留到新会话加载完成才整体跳变（视觉跳动）。
+    useChatStore.getState().clearMessages();
     const seq = ++loadSeqRef.current;
     try {
       const detail = await getSessionDetail(convId);

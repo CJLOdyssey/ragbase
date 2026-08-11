@@ -64,4 +64,6 @@ export interface ChatState {
     direction: 'prev' | 'next',
   ) => string | null;
   reset: () => void;
+  /** 切换会话时清空消息与流状态（保留 currentSessionId，由 loadConversation 更新）。 */
+  clearMessages: () => void;
 }
