@@ -83,8 +83,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // 页面常驻期间定时续期 access_token（httpOnly cookie 轮换），刷新页面时
-// cookie 仍然新鲜 → getMe 直接 200，跳过 401→refresh→me 串行链（对齐
-// agent-studio 的 token 保鲜机制，刷新体验更丝滑）。
+// cookie 仍然新鲜 → getMe 直接 200，跳过 401→refresh→me 串行链（token 保鲜机制，刷新体验更丝滑）。
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {

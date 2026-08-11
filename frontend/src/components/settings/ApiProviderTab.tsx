@@ -15,7 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { KeyItem } from '../../api/client';
 import CapabilityBadges from './CapabilityBadges';
-import WstaPagination from './WstaPagination';
+import KeyTablePagination from './KeyTablePagination';
 import {
   categoriesOf,
   CATEGORY_ORDER,
@@ -374,7 +374,7 @@ export default function ApiProviderTab({
         )}
       </div>
       {visibleKeys.length > 0 && (
-        <WstaPagination
+        <KeyTablePagination
           total={visibleKeys.length}
           current={page}
           pageSize={pageSize}

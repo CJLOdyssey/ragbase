@@ -5,11 +5,7 @@
 .ragbase-main,
 .ragbase-home,
 .ragbase-messages,
-.ragbase-modal,
-.wsta-root,
-.wsta-modal,
-.wsta-table,
-.wsta-toolbar {
+.ragbase-modal {
   transition:
     background-color 0.15s ease,
     color 0.15s ease,

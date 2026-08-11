@@ -7,7 +7,7 @@ import { installGlobalErrorHandlers } from './utils/errorHandler';
 import './i18n/index';
 import './styles/tailwind-entry.css';
 import './styles/modals/index.css';
-import './styles/workstation/index.css';
+import './styles/antd/index.css';
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN || '',

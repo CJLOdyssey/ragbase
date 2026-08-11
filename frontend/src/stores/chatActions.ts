@@ -387,7 +387,7 @@ export async function continueGeneration() {
   const interruptedMsg = s.messages[idx];
   const continuation = interruptedMsg.content;
   if (!continuation.trim() && !interruptedMsg.thinking?.trim()) {
-    // 思考与正文都未生成：没有可续写的原料（agent-studio 语义：思考链也可作续写原料）。
+    // 思考与正文都未生成：没有可续写的原料（思考链也可作续写原料）。
     Logger.warn(
       '[chat] continueGeneration — interrupted msg %s has no content/thinking, aborting',
       intId,

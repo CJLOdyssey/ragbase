@@ -1,4 +1,4 @@
-import WstaPagination from '../WstaPagination';
+import KeyTablePagination from '../KeyTablePagination';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -9,10 +9,10 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
-describe('WstaPagination', () => {
+describe('KeyTablePagination', () => {
   it('renders total count', () => {
     render(
-      <WstaPagination
+      <KeyTablePagination
         total={100}
         current={1}
         pageSize={10}
@@ -24,14 +24,19 @@ describe('WstaPagination', () => {
 
   it('returns null when total is zero', () => {
     const { container } = render(
-      <WstaPagination total={0} current={1} pageSize={10} onChange={vi.fn()} />,
+      <KeyTablePagination
+        total={0}
+        current={1}
+        pageSize={10}
+        onChange={vi.fn()}
+      />,
     );
     expect(container.firstChild).toBeNull();
   });
 
   it('renders on different current page', () => {
     render(
-      <WstaPagination
+      <KeyTablePagination
         total={50}
         current={2}
         pageSize={10}

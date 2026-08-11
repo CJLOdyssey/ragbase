@@ -12,7 +12,6 @@ import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
 
 const AssetsPage = lazy(() => import('./components/assets/AssetsPage'));
-const SettingsPage = lazy(() => import('./components/settings/SettingsPage'));
 
 function PageLoading() {
   return (
@@ -178,14 +177,6 @@ function ThemedApp() {
                     element={
                       <Suspense fallback={<PageLoading />}>
                         <AssetsPage />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/settings"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <SettingsPage />
                       </Suspense>
                     }
                   />

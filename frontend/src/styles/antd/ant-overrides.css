@@ -1,0 +1,233 @@
+/* ant-overrides.css — antd v6 theme overrides.
+   antd v6: all antd styles live in @layer antd (StyleProvider layer); this
+   file is unlayered, so it wins the cascade regardless of specificity —
+   !important is only kept where we must beat OUR OWN non-important rules. */
+
+/* ── Antd component overrides ── */
+
+.ant-pagination.ant-pagination {
+  margin: 0;
+}
+.ant-pagination.ant-pagination .ant-pagination-item {
+  background: transparent;
+  border-color: var(--color-border);
+  border-radius: var(--radius-btn);
+  min-width: 32px;
+  height: 32px;
+  line-height: 30px;
+  transition: all 0.15s ease;
+}
+.ant-pagination.ant-pagination .ant-pagination-item a {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.ant-pagination.ant-pagination .ant-pagination-item:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+}
+.ant-pagination.ant-pagination .ant-pagination-item:hover a {
+  color: var(--color-accent);
+}
+.ant-pagination.ant-pagination .ant-pagination-item-active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.ant-pagination.ant-pagination .ant-pagination-item-active a,
+.ant-pagination.ant-pagination .ant-pagination-item-active button {
+  color: var(--color-text-on-accent);
+  font-weight: 600;
+}
+.ant-pagination.ant-pagination .ant-pagination-item-active:hover {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.ant-pagination.ant-pagination .ant-pagination-item-active:hover a {
+  color: var(--color-text-on-accent);
+}
+.ant-pagination.ant-pagination .ant-pagination-prev,
+.ant-pagination.ant-pagination .ant-pagination-next {
+  min-width: 32px;
+  height: 32px;
+  line-height: 32px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  transition: all 0.15s ease;
+}
+.ant-pagination.ant-pagination .ant-pagination-prev:hover,
+.ant-pagination.ant-pagination .ant-pagination-next:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.ant-pagination.ant-pagination .ant-pagination-prev button,
+.ant-pagination.ant-pagination .ant-pagination-next button {
+  color: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+.ant-pagination.ant-pagination .ant-pagination-disabled,
+.ant-pagination.ant-pagination .ant-pagination-disabled:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ant-pagination.ant-pagination .ant-pagination-disabled .ant-pagination-item,
+.ant-pagination.ant-pagination
+  .ant-pagination-disabled:hover
+  .ant-pagination-item {
+  border-color: var(--color-border);
+  background: transparent;
+}
+.ant-pagination.ant-pagination .ant-pagination-disabled .ant-pagination-item a,
+.ant-pagination.ant-pagination
+  .ant-pagination-disabled:hover
+  .ant-pagination-item
+  a {
+  color: var(--color-text-muted);
+}
+.ant-pagination.ant-pagination .ant-pagination-jump-prev,
+.ant-pagination.ant-pagination .ant-pagination-jump-next {
+  min-width: 32px;
+  height: 32px;
+  line-height: 32px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+.ant-pagination.ant-pagination .ant-pagination-jump-prev:hover,
+.ant-pagination.ant-pagination .ant-pagination-jump-next:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.ant-pagination.ant-pagination .ant-pagination-options {
+  margin-left: 12px;
+}
+.ant-pagination.ant-pagination .ant-pagination-options-quick-jumper {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-left: 8px;
+}
+.ant-pagination.ant-pagination .ant-pagination-options-quick-jumper input {
+  background: transparent;
+  border-color: var(--color-border);
+  border-radius: var(--radius-btn);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  width: 48px;
+  height: 32px;
+  padding: 0 8px;
+  transition: all 0.15s ease;
+}
+.ant-pagination.ant-pagination
+  .ant-pagination-options-quick-jumper
+  input:hover {
+  border-color: var(--color-accent);
+}
+.ant-pagination.ant-pagination
+  .ant-pagination-options-quick-jumper
+  input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 15%, transparent);
+  outline: none;
+}
+.ant-pagination.ant-pagination .ant-pagination-total-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono), monospace;
+  margin-right: 12px;
+  height: 32px;
+  line-height: 32px;
+}
+
+.api-modal .ant-pagination-total-text::after {
+  content: none;
+}
+
+/* Select — v6 DOM: `.ant-select-selector` removed; bg/border live on
+   `.ant-select`. Only background overridden (border = same token value;
+   untouched to preserve v6 focus/hover accent borders).
+   `.ant-select-selection-item` still exists in v6 (select/style): the old
+   color override was dropped because selected-text color comes from the
+   antd `colorText` token (App.tsx ConfigProvider passes the
+   `--color-text-primary` value), which already matches the theme vars. */
+.ant-select-single.ant-select.ant-select {
+  background: var(--color-surface-raised);
+}
+
+.ant-select-dropdown.ant-select-dropdown {
+  background: var(--color-surface-overlay);
+}
+
+.ant-select-dropdown .ant-select-item-option.ant-select-item-option {
+  color: var(--color-text-secondary);
+}
+
+.ant-select-dropdown .ant-select-item-option.ant-select-item-option:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.ant-select-dropdown .ant-select-item-option.ant-select-item-option-active {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+/* ── Dropdown menus ── */
+.ant-dropdown .ant-dropdown-menu.ant-dropdown-menu {
+  background: var(--color-surface-overlay);
+  border-color: var(--color-border);
+}
+
+.ant-dropdown
+  .ant-dropdown-menu
+  .ant-dropdown-menu-item.ant-dropdown-menu-item {
+  height: 36px;
+  line-height: 36px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  border-radius: 0;
+}
+
+.ant-dropdown
+  .ant-dropdown-menu
+  .ant-dropdown-menu-item.ant-dropdown-menu-item:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-accent);
+}
+
+.ant-dropdown
+  .ant-dropdown-menu
+  .ant-dropdown-menu-item.ant-dropdown-menu-item.ant-dropdown-menu-item-danger {
+  color: var(--color-danger);
+}
+
+.ant-dropdown
+  .ant-dropdown-menu
+  .ant-dropdown-menu-item.ant-dropdown-menu-item.ant-dropdown-menu-item-danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+}
+
+.ant-dropdown .ant-dropdown-menu .ant-dropdown-menu-item-divider {
+  margin: 4px 0;
+  border-color: var(--color-border-subtle);
+}
+
+/* ── API key table overrides (previously inline in ApiProviderTab.tsx) ──
+   NOTE (v6 migration): !important removed — `.api-key-table` (0,2,1)+ is
+   unlayered and beats antd's layered .ant-table rules at normal priority.
+   v6 keeps the .ant-table-thead/tbody/row-selected class names. */
+.api-key-table .ant-table-thead > tr > th,
+.api-key-table .ant-table-tbody > tr > td {
+  border-bottom: none;
+}
+.api-key-table .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: transparent;
+}
+.api-key-table .ant-table-thead > tr > th,
+.api-key-table .ant-table-tbody > tr > td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}

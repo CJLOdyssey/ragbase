@@ -349,21 +349,6 @@ export default function SettingsModal({ onClose }: Props) {
                     </div>
                   ))}
                 </div>
-
-                {/* Footer note */}
-                <div
-                  style={{
-                    width: '100%',
-                    marginTop: 16,
-                    fontSize: 11,
-                    color: 'var(--color-text-muted)',
-                    textAlign: 'center',
-                    lineHeight: 1.6,
-                    opacity: 0.7,
-                  }}
-                >
-                  内容创作助手 — 小红书笔记 / 公众号文章 / 短视频脚本 / 营销文案
-                </div>
               </div>
             </div>
           )}

@@ -1,7 +1,7 @@
 import { Pagination, type PaginationProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 
-interface WstaPaginationProps extends Omit<
+interface KeyTablePaginationProps extends Omit<
   PaginationProps,
   'size' | 'showTotal'
 > {
@@ -11,13 +11,13 @@ interface WstaPaginationProps extends Omit<
   onChange: (page: number) => void;
 }
 
-export default function WstaPagination({
+export default function KeyTablePagination({
   total,
   current,
   pageSize,
   onChange,
   ...rest
-}: WstaPaginationProps) {
+}: KeyTablePaginationProps) {
   const { t } = useTranslation();
   if (total === 0) return null;
   return (

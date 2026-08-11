@@ -63,7 +63,7 @@ export function usePickerState(deps: PickerDeps) {
         }));
       })
       .catch(() => {});
-    // ponytail: tools/mcp/skills 无对应 API（workstation 已裁剪），留空等主窗口接入
+    // ponytail: tools/mcp/skills 无对应 API（主工作台已裁剪），留空等主窗口接入
     return () => {
       cancelled = true;
     };

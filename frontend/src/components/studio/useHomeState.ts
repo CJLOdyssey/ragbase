@@ -24,7 +24,7 @@ const MODEL_STORAGE_KEY = 'ragbase-selected-model';
 const MODEL_CHANGED_EVENT = 'ragbase-model-changed';
 const ACTIVE_CONV_KEY = 'ragbase-active-conv-id';
 // 会话列表渲染缓存：首帧先用本地缓存渲染（刷新丝滑，不等 auth 链），
-// 后端列表返回后刷新覆盖（对齐 agent-studio 的 localStorage 会话管理）。
+// 后端列表返回后刷新覆盖（localStorage 会话管理）。
 const SESSIONS_CACHE_KEY = 'ragbase-sessions-cache';
 
 function readSessionsCache(): SessionItem[] {
