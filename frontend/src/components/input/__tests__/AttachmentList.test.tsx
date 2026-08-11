@@ -1,7 +1,7 @@
 import AttachmentList from '@/components/input/AttachmentList';
 import { TestProviders } from '@/test/setup';
 import type { AttachedFile } from '@/types/input';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 function makeFile(
@@ -143,5 +143,102 @@ describe('AttachmentList', { tags: ['unit'] }, () => {
     expect(screen.getByText('a.txt')).toBeInTheDocument();
     expect(screen.getByText('b.txt')).toBeInTheDocument();
     expect(screen.getByText('c.txt')).toBeInTheDocument();
+  });
+});
+
+describe('AttachmentList preview & thumbnails', { tags: ['unit'] }, () => {
+  const imageFile = () =>
+    makeFile('f1', {
+      name: 'photo.png',
+      type: 'image/png',
+      status: 'done',
+      attachmentId: 'att-1',
+    });
+
+  it('renders thumbnail for uploaded image', () => {
+    render(
+      <TestProviders>
+        <AttachmentList
+          files={[imageFile()]}
+          onRemove={vi.fn()}
+          onPreview={vi.fn()}
+        />
+      </TestProviders>,
+    );
+    expect(screen.getByRole('img')).toHaveAttribute(
+      'src',
+      '/api/attachments/att-1',
+    );
+  });
+
+  it('does not render thumbnail while uploading (no attachmentId)', () => {
+    render(
+      <TestProviders>
+        <AttachmentList
+          files={[
+            makeFile('f1', {
+              name: 'photo.png',
+              type: 'image/png',
+              status: 'uploading',
+            }),
+          ]}
+          onRemove={vi.fn()}
+        />
+      </TestProviders>,
+    );
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('falls back to icon when thumbnail fails to load', () => {
+    render(
+      <TestProviders>
+        <AttachmentList files={[imageFile()]} onRemove={vi.fn()} />
+      </TestProviders>,
+    );
+    fireEvent.error(screen.getByRole('img'));
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('calls onPreview with the file when name button clicked', () => {
+    const onPreview = vi.fn();
+    render(
+      <TestProviders>
+        <AttachmentList
+          files={[imageFile()]}
+          onRemove={vi.fn()}
+          onPreview={onPreview}
+        />
+      </TestProviders>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Preview photo.png' }));
+    expect(onPreview).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'f1' }),
+    );
+  });
+
+  it('does not call onPreview when prop missing', () => {
+    const onPreview = vi.fn();
+    render(
+      <TestProviders>
+        <AttachmentList files={[imageFile()]} onRemove={vi.fn()} />
+      </TestProviders>,
+    );
+    fireEvent.click(screen.getByText('photo.png'));
+    expect(onPreview).not.toHaveBeenCalled();
+  });
+
+  it('remove button click does not trigger preview', () => {
+    const onPreview = vi.fn();
+    render(
+      <TestProviders>
+        <AttachmentList
+          files={[imageFile()]}
+          onRemove={vi.fn()}
+          onPreview={onPreview}
+        />
+      </TestProviders>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Remove photo.png' }));
+    expect(onPreview).not.toHaveBeenCalled();
   });
 });
