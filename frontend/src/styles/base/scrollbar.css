@@ -1,37 +1,41 @@
 /* ============================================
    Scrollbar — 全局滚动条样式（伪元素，无法用 Tailwind）。
-   !important：tailwind v4 会把本文件编译进 @layer base，
-   layer 内规则优先级低于浏览器默认（非 layer）滚动条规则，
-   不加 !important 会被覆盖（如 scrollbar-button 箭头无法隐藏）。
+   注意：必须独立 import（不经 @import ... layer(base)），
+   否则被并入 tailwind 的 @layer base，优先级低于浏览器默认
+   滚动条规则，scrollbar-button 箭头无法隐藏。
    ============================================ */
 
 ::-webkit-scrollbar {
-  width: 8px !important;
-  height: 8px !important;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-surface-sidebar) !important;
-  border-radius: 4px !important;
+  background: var(--color-surface-sidebar);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border) !important;
-  border-radius: 4px !important;
+  background: var(--color-border);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted) !important;
+  background: var(--color-text-muted);
 }
 
 ::-webkit-scrollbar-button {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  background: transparent !important;
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 * {
-  scrollbar-width: thin !important;
-  scrollbar-color: var(--color-border) var(--color-surface-sidebar) !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-surface-sidebar);
 }

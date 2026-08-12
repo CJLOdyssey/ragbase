@@ -1,19 +1,22 @@
 @layer theme, base, antd, components, utilities;
 
-@import "tailwindcss";
-@import "./base/index.css" layer(base);
+@import 'tailwindcss';
+@import './base/index.css' layer(base);
+@import './base/scrollbar.css';
 
 /* ── Geist font (variable) ── */
 @font-face {
   font-family: 'Geist';
-  src: url('../../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2') format('woff2');
+  src: url('../../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2')
+    format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Geist';
-  src: url('../../node_modules/geist/dist/fonts/geist-sans/Geist-Italic[wght].woff2') format('woff2');
+  src: url('../../node_modules/geist/dist/fonts/geist-sans/Geist-Italic[wght].woff2')
+    format('woff2');
   font-weight: 100 900;
   font-style: italic;
   font-display: swap;
@@ -40,8 +43,8 @@
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
-  --text-3xl: 1.875rem;     /* 展示标题 */
-  --text-4xl: 2.25rem;      /* 页面大标题 */
+  --text-3xl: 1.875rem; /* 展示标题 */
+  --text-4xl: 2.25rem; /* 页面大标题 */
 
   /* ── 圆角阶梯 ── */
   --radius-xs: 4px;
@@ -102,7 +105,7 @@
 
   --color-border: rgba(255, 255, 255, 0.12);
   --color-border-subtle: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.20);
+  --color-border-strong: rgba(255, 255, 255, 0.2);
   --color-border-light: rgba(0, 0, 0, 0.08);
 
   --color-overlay: rgba(0, 0, 0, 0.65);
@@ -127,8 +130,8 @@
 
   /* ── 弹窗尺寸 ── */
   --modal-sm: 420px;
-  --modal-m:  560px;
-  --modal-l:  1100px;
+  --modal-m: 560px;
+  --modal-l: 1100px;
   --modal-height: min(700px, 85vh);
 
   /* ── 间距 ── */
@@ -143,13 +146,15 @@
   --sp-12: 48px;
   --sp-16: 64px;
 
-  --radius-btn: 6px;        /* Button / Input / Select / Tag */
-  --radius-card: 10px;       /* Card / Modal / Table */
-  --radius-modal: 16px;      /* 大弹窗 */
-  --radius-full: 9999px;     /* Pill / Avatar */
+  --radius-btn: 6px; /* Button / Input / Select / Tag */
+  --radius-card: 10px; /* Card / Modal / Table */
+  --radius-modal: 16px; /* 大弹窗 */
+  --radius-full: 9999px; /* Pill / Avatar */
 
   /* ── 字体 ── */
-  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --font-sans:
+    'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
   /* ── 语法高亮 ── */
@@ -159,8 +164,8 @@
   --syntax-red: #ff4444;
 
   /* ── 阴影 ── */
-  --shadow-sm: 0 1px 2px rgba(255,255,255,0.10);
-  --shadow-md: 0 4px 8px -2px rgba(255,255,255,0.15);
+  --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.1);
+  --shadow-md: 0 4px 8px -2px rgba(255, 255, 255, 0.15);
   --shadow-lg: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
 }
 
@@ -191,9 +196,7 @@
 
   --color-overlay: rgba(0, 0, 0, 0.35);
 
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 2px 8px -1px rgba(0,0,0,0.07);
-  --shadow-lg: 0 8px 16px -3px rgba(0,0,0,0.10);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px -1px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 8px 16px -3px rgba(0, 0, 0, 0.1);
 }
-
-
