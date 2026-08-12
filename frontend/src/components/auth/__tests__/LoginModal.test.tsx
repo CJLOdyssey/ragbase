@@ -1,6 +1,12 @@
 import { type AuthModalView } from '@/components/auth/AuthContext';
 import LoginModal from '@/components/auth/LoginModal';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 
@@ -180,6 +186,225 @@ describe('LoginModal', { tags: ['unit'] }, () => {
       const { container } = render(<LoginModal onClose={onClose} />);
       const results = await axe(container, a11yOptions);
       expect(results).toHaveNoViolations();
+    });
+  });
+
+  describe('注册流程', () => {
+    function renderRegister() {
+      mockUseAuth.loginModalView = 'register';
+      return render(<LoginModal onClose={onClose} />);
+    }
+
+    it('submits register with email, code and password', async () => {
+      renderRegister();
+      fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+        target: { value: 'new@test.com' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('密码'), {
+        target: { value: 'Pass@123' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('确认密码'), {
+        target: { value: 'Pass@123' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('验证码'), {
+        target: { value: '123456' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+
+      await waitFor(() => {
+        expect(mockUseAuth.register).toHaveBeenCalledWith(
+          'new@test.com',
+          '123456',
+          'Pass@123',
+        );
+        expect(mockUseAuth.closeLoginModal).toHaveBeenCalled();
+      });
+    });
+
+    it('validates empty password, mismatch, email and code in order', async () => {
+      renderRegister();
+      fireEvent.submit(document.querySelector('form')!);
+      expect(await screen.findByText('请输入密码')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByPlaceholderText('密码'), {
+        target: { value: 'Pass@123' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('确认密码'), {
+        target: { value: 'Other@456' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      expect(await screen.findByText('两次密码输入不一致')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByPlaceholderText('确认密码'), {
+        target: { value: 'Pass@123' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      expect(await screen.findByText('请输入邮箱')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+        target: { value: 'new@test.com' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      expect(await screen.findByText('请输入验证码')).toBeInTheDocument();
+      expect(mockUseAuth.register).not.toHaveBeenCalled();
+    });
+
+    it('shows register API errors', async () => {
+      mockUseAuth.register.mockRejectedValueOnce(new Error('Email taken'));
+      renderRegister();
+      fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+        target: { value: 'new@test.com' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('密码'), {
+        target: { value: 'Pass@123' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('确认密码'), {
+        target: { value: 'Pass@123' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('验证码'), {
+        target: { value: '123456' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      expect(await screen.findByText('Email taken')).toBeInTheDocument();
+    });
+
+    it('send code requires an email first', async () => {
+      renderRegister();
+      fireEvent.click(screen.getByText('获取验证码'));
+      expect(await screen.findByText('请先输入邮箱')).toBeInTheDocument();
+      expect(mockUseAuth.sendRegisterCode).not.toHaveBeenCalled();
+    });
+
+    it('send code starts a 60s cooldown on success', async () => {
+      vi.useFakeTimers();
+      try {
+        renderRegister();
+        fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+          target: { value: 'new@test.com' },
+        });
+        fireEvent.click(screen.getByText('获取验证码'));
+        await act(async () => {
+          await Promise.resolve();
+        });
+        expect(mockUseAuth.sendRegisterCode).toHaveBeenCalledWith(
+          'new@test.com',
+        );
+        const sendBtn = screen
+          .getByText('60s')
+          .closest('button') as HTMLButtonElement;
+        expect(sendBtn.disabled).toBe(true);
+        // 推进 3 秒 → 倒计时 57s
+        await act(async () => {
+          vi.advanceTimersByTime(3000);
+        });
+        expect(screen.getByText('57s')).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('send code shows API failure message', async () => {
+      mockUseAuth.sendRegisterCode.mockRejectedValueOnce(
+        new Error('rate limited'),
+      );
+      renderRegister();
+      fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+        target: { value: 'new@test.com' },
+      });
+      fireEvent.click(screen.getByText('获取验证码'));
+      expect(await screen.findByText('rate limited')).toBeInTheDocument();
+    });
+
+    it('submitting disables the submit button', async () => {
+      mockUseAuth.register.mockImplementation(() => new Promise(() => {}));
+      renderRegister();
+      fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+        target: { value: 'new@test.com' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('密码'), {
+        target: { value: 'Pass@123' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('确认密码'), {
+        target: { value: 'Pass@123' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('验证码'), {
+        target: { value: '123456' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      const submitBtn = document.querySelector(
+        'button[type="submit"]',
+      ) as HTMLButtonElement;
+      await waitFor(() => expect(submitBtn).toBeDisabled());
+    });
+  });
+
+  describe('忘记密码 / 重置流程', () => {
+    beforeEach(() => {
+      mockUseAuth.forgotPassword.mockResolvedValue(undefined);
+      mockUseAuth.resetPassword.mockResolvedValue(undefined);
+    });
+
+    it('forgot view sends code via forgotPassword and stores email', async () => {
+      mockUseAuth.loginModalView = 'forgot';
+      render(<LoginModal onClose={onClose} />);
+      fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+        target: { value: 'user@test.com' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      await waitFor(() => {
+        expect(mockUseAuth.forgotPassword).toHaveBeenCalledWith(
+          'user@test.com',
+        );
+        expect(mockUseAuth.setLoginModalEmail).toHaveBeenCalledWith(
+          'user@test.com',
+        );
+      });
+    });
+
+    it('reset flow calls resetPassword then switches back to login', async () => {
+      mockUseAuth.loginModalView = 'reset';
+      render(<LoginModal onClose={onClose} />);
+      // 先走 email 步骤发送验证码，再进入 code 步骤
+      fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+        target: { value: 'user@test.com' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      await screen.findByPlaceholderText('验证码');
+      fireEvent.change(screen.getByPlaceholderText('验证码'), {
+        target: { value: '888888' },
+      });
+      const newPwd = screen.getByPlaceholderText('新密码 (至少8位)');
+      fireEvent.change(newPwd, { target: { value: 'New@Pass1' } });
+      fireEvent.change(screen.getByPlaceholderText('确认新密码'), {
+        target: { value: 'New@Pass1' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      await waitFor(() => {
+        expect(mockUseAuth.resetPassword).toHaveBeenCalledWith(
+          'user@test.com',
+          '888888',
+          'New@Pass1',
+        );
+        expect(mockUseAuth.setLoginModalView).toHaveBeenCalledWith('login');
+      });
+    });
+
+    it('back button returns to login view', () => {
+      mockUseAuth.loginModalView = 'forgot';
+      render(<LoginModal onClose={onClose} />);
+      fireEvent.click(screen.getByText('返回登录'));
+      expect(mockUseAuth.setLoginModalView).toHaveBeenCalledWith('login');
+    });
+
+    it('surfaces forgot-password API errors', async () => {
+      mockUseAuth.forgotPassword.mockRejectedValueOnce(new Error('no account'));
+      mockUseAuth.loginModalView = 'forgot';
+      render(<LoginModal onClose={onClose} />);
+      fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
+        target: { value: 'user@test.com' },
+      });
+      fireEvent.submit(document.querySelector('form')!);
+      expect(await screen.findByText('发送失败')).toBeInTheDocument();
     });
   });
 });

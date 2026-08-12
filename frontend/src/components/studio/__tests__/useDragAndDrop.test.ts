@@ -49,4 +49,42 @@ describe('useDragAndDrop', { tags: ['unit'] }, () => {
     expect(ref.current.addFiles).toHaveBeenCalledWith([file]);
     expect(result.current.isPageDragOver).toBe(false);
   });
+
+  it('keeps drag-over when moving between children inside the container', () => {
+    const { result } = renderHook(() => useDragAndDrop(createMockRef()));
+    act(() => {
+      result.current.handlePageDragOver({ preventDefault: vi.fn() } as any);
+    });
+    const container = document.createElement('div');
+    const from = document.createElement('span');
+    const to = document.createElement('span');
+    container.appendChild(from);
+    container.appendChild(to);
+    const e = {
+      currentTarget: container,
+      target: from,
+      relatedTarget: to,
+    } as any;
+    act(() => {
+      result.current.handlePageDragLeave(e);
+    });
+    // currentTarget !== target 且 relatedTarget 在容器内 → 不清除 drag-over
+    expect(result.current.isPageDragOver).toBe(true);
+  });
+
+  it('clears drag-over on drop without files and does not call addFiles', () => {
+    const ref = createMockRef();
+    const { result } = renderHook(() => useDragAndDrop(ref));
+    act(() => {
+      result.current.handlePageDragOver({ preventDefault: vi.fn() } as any);
+    });
+    act(() => {
+      result.current.handlePageDrop({
+        preventDefault: vi.fn(),
+        dataTransfer: { files: [] },
+      } as any);
+    });
+    expect(ref.current.addFiles).not.toHaveBeenCalled();
+    expect(result.current.isPageDragOver).toBe(false);
+  });
 });

@@ -1,4 +1,4 @@
-import { resumeRun, submitRequirement } from '../runs';
+import { cancelRun, resumeRun, submitRequirement } from '../runs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockApi } = vi.hoisted(() => ({
@@ -112,5 +112,18 @@ describe('resumeRun', { tags: ['unit'] }, () => {
       session_id: 's1',
       thinking: 'some thinking',
     });
+  });
+});
+
+describe('cancelRun', { tags: ['unit'] }, () => {
+  it('calls POST /runs/:id/cancel', async () => {
+    mockApi.post.mockResolvedValue({
+      data: { run_id: 'r3', status: 'cancelled' },
+    });
+
+    const result = await cancelRun('r3');
+
+    expect(mockApi.post).toHaveBeenCalledWith('/runs/r3/cancel');
+    expect(result).toEqual({ run_id: 'r3', status: 'cancelled' });
   });
 });
