@@ -53,9 +53,22 @@ export function ThinkingSection({
   const thinking = msg.thinking ?? '';
   const toggle = () => setIsExpanded(!isExpanded);
 
+  // 思考内容流式更新时跟随到底；用户手动滚动离开底部则暂停跟随。
+  const atBottomRef = useRef(true);
   useEffect(() => {
     const el = bodyRef.current;
-    if (el && isExpanded) {
+    if (!el) return;
+    const onScroll = () => {
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+      if (atBottom !== atBottomRef.current) atBottomRef.current = atBottom;
+    };
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (el && isExpanded && atBottomRef.current) {
       el.scrollTop = el.scrollHeight;
     }
   }, [msg.thinking?.length, isExpanded]);

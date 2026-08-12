@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { InputToolbar, type InputToolbarHandle } from '../input';
 import { Moon, PanelLeft, Sun } from 'lucide-react';
 import HomeScreen from './HomeScreen';
@@ -19,6 +19,51 @@ export default function RagBaseWorkstation() {
     handlePageDragLeave,
     handlePageDrop,
   } = useDragAndDrop(inputToolbarRef);
+
+  // 自动跟随滚动：模型输出时滚到底；用户手动滚动离开底部则暂停跟随
+  // （停留用户位置），滚回底部后恢复。程序滚动由 programmaticScrollRef 跳过。
+  const displayMessages = s.displayMessages;
+  const lastMsgLen = displayMessages.length;
+  const lastMsgStream = useMemo(() => {
+    const m = displayMessages[displayMessages.length - 1];
+    if (!m) return '';
+    return `${m.thinking ?? ''}|${m.content ?? ''}`;
+  }, [displayMessages]);
+  const followBottomRef = useRef(true);
+  const programmaticScrollRef = useRef(false);
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (programmaticScrollRef.current) {
+        programmaticScrollRef.current = false;
+        return;
+      }
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+      if (atBottom !== followBottomRef.current)
+        followBottomRef.current = atBottom;
+    };
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [messagesContainerRef]);
+
+  const prevLenRef = useRef(lastMsgLen);
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const lenChanged = lastMsgLen !== prevLenRef.current;
+    prevLenRef.current = lastMsgLen;
+    // 新增消息（发送/切换/加载）→ 无条件跟随；流式增量 → 仅在用户位于
+    // 底部时跟随（用户上滚看历史时暂停，不强制拉回）。
+    if (!lenChanged && !followBottomRef.current) return;
+    programmaticScrollRef.current = true;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
+  }, [lastMsgLen, lastMsgStream, messagesContainerRef]);
+
+  // 切换会话 → 恢复自动跟随滚动。
+  useEffect(() => {
+    followBottomRef.current = true;
+  }, [s.activeConvId]);
 
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-secondary)]">

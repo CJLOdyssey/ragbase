@@ -169,11 +169,35 @@ export function useHomeState() {
     () => sessionId !== undefined || readActiveConvId() !== null,
   );
   const [selectedModel, setSelectedModel] = useState(readStoredModel);
+  const [recentModelIds, setRecentModelIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('ragbase-recent-models');
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((x): x is string => typeof x === 'string')
+        : [];
+    } catch {
+      return [];
+    }
+  });
   // 加载竞态保护：快速切换会话/分支时，丢弃过期响应（仅最新一次落地）。
   const loadSeqRef = useRef(0);
 
   useEffect(() => {
-    const sync = () => setSelectedModel(readStoredModel());
+    const sync = () => {
+      setSelectedModel(readStoredModel());
+      try {
+        const raw = localStorage.getItem('ragbase-recent-models');
+        const parsed: unknown = raw ? JSON.parse(raw) : [];
+        setRecentModelIds(
+          Array.isArray(parsed)
+            ? parsed.filter((x): x is string => typeof x === 'string')
+            : [],
+        );
+      } catch {
+        // non-fatal
+      }
+    };
     window.addEventListener(MODEL_CHANGED_EVENT, sync);
     return () => window.removeEventListener(MODEL_CHANGED_EVENT, sync);
   }, []);
@@ -273,7 +297,12 @@ export function useHomeState() {
   );
 
   const hasMessages = displayMessages.length > 0;
-  const effectiveModel = selectedModel || models[0]?.id || '';
+  const effectiveModel = useMemo(() => {
+    if (selectedModel) return selectedModel;
+    // 未显式选择时，默认取用户最近使用过的模型（recent-models 顶部第一个）。
+    const recent = recentModelIds.find((id) => models.some((m) => m.id === id));
+    return recent || models[0]?.id || '';
+  }, [selectedModel, models, recentModelIds]);
 
   const handleSend = useCallback(
     async (
