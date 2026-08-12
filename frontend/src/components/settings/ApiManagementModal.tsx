@@ -130,7 +130,7 @@ export default function ApiManagementModal({ onClose }: Props) {
     const dup = keys.find((k) => k.key_masked === maskedNew);
     if (dup) {
       setModalError(
-        `密钥已存在于「${dup.label || dup.provider}」中，请勿重复添加`,
+        t('providerEdit.keyExists', { name: dup.label || dup.provider }),
       );
       return;
     }
@@ -390,18 +390,13 @@ export default function ApiManagementModal({ onClose }: Props) {
       )}
       {confirmDeleteIds && (
         <ConfirmModal
-          title={t('confirm.title', '确认删除')}
+          title={t('confirm.title')}
           message={
             confirmDeleteIds.length > 1
-              ? t(
-                  'api.deleteKeysConfirm',
-                  '确定要删除选中的 {{count}} 个 API Key 吗？此操作不可撤销。',
-                  { count: confirmDeleteIds.length },
-                )
-              : t(
-                  'api.deleteKeyConfirm',
-                  '确定要删除此 API Key 吗？此操作不可撤销。',
-                )
+              ? t('providerEdit.deleteKeysConfirm', {
+                  count: confirmDeleteIds.length,
+                })
+              : t('providerEdit.deleteKeyConfirm')
           }
           onConfirm={confirmDeleteAction}
           onCancel={() => setConfirmDeleteIds(null)}

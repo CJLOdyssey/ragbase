@@ -85,7 +85,7 @@ export default function SettingsModal({ onClose }: Props) {
                     value={i18n.language}
                     onChange={(e) => changeLanguage(e.target.value)}
                   >
-                    <option value="zh-CN">中文</option>
+                    <option value="zh-CN">{t('lang.zh')}</option>
                     <option value="en-US">English</option>
                   </select>
                 </div>

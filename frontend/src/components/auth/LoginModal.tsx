@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Loader2, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth, type AuthModalView } from './AuthContext';
 import ForgotPasswordForm from './ForgotPasswordForm';
 import { LoginFormFields, RegisterFormFields } from './LoginFormFields';
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function LoginModal({ onClose }: Props) {
+  const { t } = useTranslation();
   const {
     loginModalView: view,
     login,
@@ -32,8 +34,8 @@ export default function LoginModal({ onClose }: Props) {
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const tabs: { key: AuthModalView; label: string }[] = [
-    { key: 'login', label: '登录' },
-    { key: 'register', label: '注册' },
+    { key: 'login', label: t('auth.login') },
+    { key: 'register', label: t('auth.register') },
   ];
 
   function switchView(v: AuthModalView) {
@@ -48,7 +50,7 @@ export default function LoginModal({ onClose }: Props) {
 
   async function handleSendCode() {
     if (!email) {
-      setError('请先输入邮箱');
+      setError(t('auth.enterEmailFirst'));
       return;
     }
     if (codeCooldown > 0) return;
@@ -67,7 +69,7 @@ export default function LoginModal({ onClose }: Props) {
         });
       }, 1000);
     } catch (err: unknown) {
-      setError((err as { message?: string })?.message || '发送失败');
+      setError((err as { message?: string })?.message || t('auth.sendFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -76,19 +78,19 @@ export default function LoginModal({ onClose }: Props) {
   async function handleRegister() {
     setError('');
     if (!password) {
-      setError('请输入密码');
+      setError(t('auth.enterPassword'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('两次密码输入不一致');
+      setError(t('auth.passwordMismatch'));
       return;
     }
     if (!email) {
-      setError('请输入邮箱');
+      setError(t('auth.enterEmail'));
       return;
     }
     if (!code) {
-      setError('请输入验证码');
+      setError(t('auth.enterCode'));
       return;
     }
     setSubmitting(true);
@@ -96,7 +98,9 @@ export default function LoginModal({ onClose }: Props) {
       await register(email, code, password);
       closeLoginModal();
     } catch (err: unknown) {
-      setError((err as { message?: string })?.message || '注册失败');
+      setError(
+        (err as { message?: string })?.message || t('auth.registerFailed'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -105,11 +109,11 @@ export default function LoginModal({ onClose }: Props) {
   async function handleLogin() {
     setError('');
     if (!email) {
-      setError('请输入邮箱');
+      setError(t('auth.enterEmail'));
       return;
     }
     if (!password) {
-      setError('请输入密码');
+      setError(t('auth.enterPassword'));
       return;
     }
     setSubmitting(true);
@@ -117,7 +121,7 @@ export default function LoginModal({ onClose }: Props) {
       await login(email, password);
       closeLoginModal();
     } catch (err: unknown) {
-      setError((err as { message?: string })?.message || '登录失败');
+      setError((err as { message?: string })?.message || t('auth.loginFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -144,11 +148,11 @@ export default function LoginModal({ onClose }: Props) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-center relative px-6 py-4 border-b border-[var(--color-border)]">
-            <h3 className="m-0 text-lg font-bold">重置密码</h3>
+            <h3 className="m-0 text-lg font-bold">{t('auth.resetPassword')}</h3>
             <button
               className="bg-transparent border-none text-[var(--color-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded-md transition-[background,color] duration-150 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
               onClick={onClose}
-              aria-label="关闭"
+              aria-label={t('common.close')}
               style={{
                 position: 'absolute',
                 right: 16,
@@ -290,7 +294,7 @@ export default function LoginModal({ onClose }: Props) {
                   style={{ animation: 'spin 1s linear infinite' }}
                 />
               )}
-              {isRegister ? '注册' : '登录'}
+              {isRegister ? t('auth.register') : t('auth.login')}
             </button>
           </form>
 
@@ -307,7 +311,7 @@ export default function LoginModal({ onClose }: Props) {
                   'var(--color-text-tertiary)')
               }
             >
-              忘记密码？
+              {t('auth.forgotPassword')}
             </button>
           )}
 
@@ -317,21 +321,21 @@ export default function LoginModal({ onClose }: Props) {
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-[var(--color-border)]" />
                 <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
-                  或
+                  {t('auth.or')}
                 </span>
                 <div className="flex-1 h-px bg-[var(--color-border)]" />
               </div>
               <div className="flex justify-center gap-3 mt-3.5">
                 {[
                   { label: 'QQ', color: '#07c160' },
-                  { label: '微信', color: '#07c160' },
+                  { label: t('auth.wechat'), color: '#07c160' },
                 ].map((p) => (
                   <button
                     key={p.label}
                     type="button"
                     disabled
                     className="w-11 h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-text-tertiary)] text-xs font-semibold cursor-not-allowed opacity-40 transition-all duration-200"
-                    title={`${p.label}登录（即将支持）`}
+                    title={t('auth.socialLoginTitle', { label: p.label })}
                   >
                     {p.label}
                   </button>

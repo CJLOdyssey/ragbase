@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { File, FileText, Image, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { AttachedFile } from '../../types/input';
 
 interface Props {
@@ -63,6 +64,7 @@ function AttachmentChip({
   onPreview?: (file: AttachedFile) => void;
 }) {
   const [thumbFailed, setThumbFailed] = useState(false);
+  const { t } = useTranslation();
   const previewEnabled =
     !!onPreview && file.status === 'done' && !!file.attachmentId;
   const showThumb =
@@ -115,7 +117,9 @@ function AttachmentChip({
         </span>
       )}
       {file.status === 'error' && (
-        <span className="text-[var(--color-danger)] text-xs">失败</span>
+        <span className="text-[var(--color-danger)] text-xs">
+          {t('attachment.failed')}
+        </span>
       )}
       <button
         type="button"

@@ -45,7 +45,7 @@ export default function ModelSection({
                 <select
                   value={modelTypes[model] ?? typeDefaults[model] ?? ''}
                   onChange={(e) => onChangeModelType(model, e.target.value)}
-                  aria-label={`${model} 类型`}
+                  aria-label={t('providerEdit.modelTypeOf', { name: model })}
                   className="text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-1.5 py-0.5 text-[var(--color-text-secondary)] cursor-pointer shrink-0"
                 >
                   <option value="">—</option>

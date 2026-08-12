@@ -69,7 +69,7 @@ export default function ModelSelector({
         />
         <input
           type="text"
-          placeholder="搜索模型名称..."
+          placeholder={t('providerEdit.searchModel')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full py-2 pr-3 bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-md text-sm text-[var(--color-text-primary)] outline-none transition-colors focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-muted)]"
@@ -126,7 +126,7 @@ export default function ModelSelector({
           <div className="flex flex-col items-center justify-center py-8 text-[var(--color-text-muted)] text-center gap-2">
             <AlertCircle size={28} className="opacity-30" />
             <p className="text-sm">
-              {search ? '没有匹配的模型' : t('api.noKeys')}
+              {search ? t('providerEdit.noMatchingModel') : t('api.noKeys')}
             </p>
           </div>
         )}

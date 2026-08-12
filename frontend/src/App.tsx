@@ -4,6 +4,7 @@ import { StyleProvider } from '@ant-design/cssinjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, theme } from 'antd';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
+import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider, LoginModal, useAuth } from './components/auth';
 import RagBaseWorkstation from './components/studio/RagBaseWorkstation';
@@ -14,9 +15,10 @@ import { ToastProvider } from './utils/useToast';
 const AssetsPage = lazy(() => import('./components/assets/AssetsPage'));
 
 function PageLoading() {
+  const { t } = useTranslation();
   return (
     <div className="h-screen flex items-center justify-center text-sm text-[var(--color-text-muted)]">
-      加载中…
+      {t('common.loading')}
     </div>
   );
 }
@@ -38,7 +40,8 @@ const queryClient = new QueryClient({
 });
 
 function Fallback({ error, resetErrorBoundary }: FallbackProps) {
-  const message = (error as Error)?.message || '未知错误';
+  const { t } = useTranslation();
+  const message = (error as Error)?.message || t('common.unknownError');
   Logger.error('React render error caught by ErrorBoundary', {
     error: error as Error,
   });
@@ -48,13 +51,13 @@ function Fallback({ error, resetErrorBoundary }: FallbackProps) {
       className="flex flex-col items-center justify-center h-screen gap-4 p-8 text-center text-[var(--color-text-muted)]"
       role="alert"
     >
-      <h2>应用出错了</h2>
+      <h2>{t('common.appError')}</h2>
       <p>{message}</p>
       <button
         className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-elevated)] disabled:bg-[var(--color-surface-hover)] disabled:text-[var(--color-text-muted)] disabled:cursor-not-allowed"
         onClick={resetErrorBoundary}
       >
-        重试
+        {t('common.retry')}
       </button>
     </div>
   );
@@ -89,6 +92,7 @@ function getCssVar(name: string): string {
 
 function ThemedApp() {
   const { settings } = useSettings();
+  const { t } = useTranslation();
   const isDark = settings.theme === 'dark';
   const bgColor =
     getCssVar(CSS_VARS.surface) || (isDark ? '#0f1117' : '#ffffff');
@@ -157,7 +161,7 @@ function ThemedApp() {
             (e.target as HTMLElement).style.top = '-100%';
           }}
         >
-          跳转到主内容
+          {t('common.skipToContent')}
         </a>
         <AuthProvider>
           <BrowserRouter

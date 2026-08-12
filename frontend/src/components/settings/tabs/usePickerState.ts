@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type * as React from 'react';
 import { listPrompts } from '../../../api/client/prompts';
+import i18n from '../../../i18n/index';
 
 export interface PickerItem {
   id: string;
@@ -42,7 +43,7 @@ export function usePickerState(deps: PickerDeps) {
                   p.content.length > 120
                     ? p.content.slice(0, 120) + '…'
                     : p.content,
-                source: '提示词管理',
+                source: i18n.t('providerEdit.pickerPrompt'),
               }) as PickerItem,
           );
         const outputItems = items
@@ -53,7 +54,7 @@ export function usePickerState(deps: PickerDeps) {
                 id: o.id,
                 name: o.name,
                 description: o.content,
-                source: '输出管理',
+                source: i18n.t('providerEdit.pickerOutput'),
               }) as PickerItem,
           );
         setPickerItems((prev) => ({

@@ -23,80 +23,82 @@ export interface ApiProviderForm {
   status?: 'connected' | 'error' | 'untested';
 }
 
-const FALLBACK_PROVIDERS: ProvidersMap = {
-  openai: {
-    name: 'OpenAI',
-    base_url: 'https://api.openai.com/v1',
-    capabilities: ['chat', 'vector'],
-    docs_url: null,
-  },
-  deepseek: {
-    name: 'DeepSeek',
-    base_url: 'https://api.deepseek.com',
-    capabilities: ['chat'],
-    docs_url: null,
-  },
-  anthropic: {
-    name: 'Anthropic',
-    base_url: 'https://api.anthropic.com',
-    capabilities: ['chat'],
-    docs_url: null,
-  },
-  dashscope: {
-    name: 'DashScope',
-    base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    capabilities: ['chat', 'vector'],
-    docs_url: null,
-  },
-  custom_llm: {
-    name: '自定义大模型',
-    base_url: '',
-    capabilities: ['chat'],
-    docs_url: null,
-  },
-  custom_embedding: {
-    name: '自定义嵌入',
-    base_url: '',
-    capabilities: ['vector'],
-    docs_url: null,
-  },
-  custom_rerank: {
-    name: '自定义重排序',
-    base_url: '',
-    capabilities: ['rerank'],
-    docs_url: null,
-  },
-  custom_speech2text: {
-    name: '自定义语音转文字',
-    base_url: '',
-    capabilities: ['speech2text'],
-    docs_url: null,
-  },
-  custom_tts: {
-    name: '自定义文字转语音',
-    base_url: '',
-    capabilities: ['tts'],
-    docs_url: null,
-  },
-  custom_moderation: {
-    name: '自定义内容审核',
-    base_url: '',
-    capabilities: ['moderation'],
-    docs_url: null,
-  },
-  custom_image: {
-    name: '自定义图像',
-    base_url: '',
-    capabilities: ['image'],
-    docs_url: null,
-  },
-  custom_tool: {
-    name: '自定义工具',
-    base_url: '',
-    capabilities: ['tool'],
-    docs_url: null,
-  },
-};
+function fallbackProviders(t: (k: string) => string): ProvidersMap {
+  return {
+    openai: {
+      name: 'OpenAI',
+      base_url: 'https://api.openai.com/v1',
+      capabilities: ['chat', 'vector'],
+      docs_url: null,
+    },
+    deepseek: {
+      name: 'DeepSeek',
+      base_url: 'https://api.deepseek.com',
+      capabilities: ['chat'],
+      docs_url: null,
+    },
+    anthropic: {
+      name: 'Anthropic',
+      base_url: 'https://api.anthropic.com',
+      capabilities: ['chat'],
+      docs_url: null,
+    },
+    dashscope: {
+      name: 'DashScope',
+      base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      capabilities: ['chat', 'vector'],
+      docs_url: null,
+    },
+    custom_llm: {
+      name: t('providerEdit.customLlm'),
+      base_url: '',
+      capabilities: ['chat'],
+      docs_url: null,
+    },
+    custom_embedding: {
+      name: t('providerEdit.customEmbedding'),
+      base_url: '',
+      capabilities: ['vector'],
+      docs_url: null,
+    },
+    custom_rerank: {
+      name: t('providerEdit.customRerank'),
+      base_url: '',
+      capabilities: ['rerank'],
+      docs_url: null,
+    },
+    custom_speech2text: {
+      name: t('providerEdit.customSpeech2text'),
+      base_url: '',
+      capabilities: ['speech2text'],
+      docs_url: null,
+    },
+    custom_tts: {
+      name: t('providerEdit.customTts'),
+      base_url: '',
+      capabilities: ['tts'],
+      docs_url: null,
+    },
+    custom_moderation: {
+      name: t('providerEdit.customModeration'),
+      base_url: '',
+      capabilities: ['moderation'],
+      docs_url: null,
+    },
+    custom_image: {
+      name: t('providerEdit.customImage'),
+      base_url: '',
+      capabilities: ['image'],
+      docs_url: null,
+    },
+    custom_tool: {
+      name: t('providerEdit.customTool'),
+      base_url: '',
+      capabilities: ['tool'],
+      docs_url: null,
+    },
+  };
+}
 
 interface Props {
   provider: ApiProviderForm;
@@ -114,8 +116,8 @@ function shouldShowModels(caps: string[]): boolean {
   return caps.includes('chat') || caps.includes('image');
 }
 
-function fetchErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : '拉取模型失败';
+function fetchErrorMessage(err: unknown, t: (k: string) => string): string {
+  return err instanceof Error ? err.message : t('providerEdit.fetchFailed');
 }
 
 function modalTitle(isEdit: boolean, t: (k: string) => string): string {
@@ -164,7 +166,9 @@ export default function ProviderEditModal({
 }: Props) {
   const { t } = useTranslation();
 
-  const [providers, setProviders] = useState<ProvidersMap>(FALLBACK_PROVIDERS);
+  const [providers, setProviders] = useState<ProvidersMap>(
+    fallbackProviders(t),
+  );
   const [loadingProviders, setLoadingProviders] = useState(true);
   const [providerType, setProviderType] = useState(
     provider.provider || 'openai',
@@ -232,7 +236,7 @@ export default function ProviderEditModal({
         provider: providerType,
       });
       if (!result.success) {
-        setFetchError(result.message || '拉取模型失败');
+        setFetchError(result.message || t('providerEdit.fetchFailed'));
         return;
       }
       if (result.models.length > 0) {
@@ -243,7 +247,7 @@ export default function ProviderEditModal({
       }
       setModelTypes(result.types ?? {});
     } catch (err) {
-      setFetchError(fetchErrorMessage(err));
+      setFetchError(fetchErrorMessage(err, t));
     } finally {
       setFetchingModels(false);
     }

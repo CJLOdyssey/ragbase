@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   title: string | ReactNode;
@@ -26,6 +27,7 @@ export default function Modal({
   ariaLabel,
   width,
 }: Props) {
+  const { t } = useTranslation();
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,7 +95,7 @@ export default function Modal({
           <button
             className="bg-transparent border-none text-[var(--color-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded-md transition-[background,color] duration-150 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
             onClick={onClose}
-            aria-label="关闭"
+            aria-label={t('common.close')}
           >
             <X size={18} />
           </button>

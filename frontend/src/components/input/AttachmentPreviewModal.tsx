@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, Loader2, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { AttachedFile } from '../../types/input';
 
 interface Props {
@@ -20,6 +21,7 @@ function getExt(name: string) {
  * and shown (truncated), other types get a download link.
  */
 export default function AttachmentPreviewModal({ file, onClose }: Props) {
+  const { t } = useTranslation();
   const ext = getExt(file.name);
   const isImage = IMAGE_EXT.test(ext);
   const isText = TEXT_EXT.test(ext);
@@ -87,7 +89,7 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
 
   const truncated =
     text !== null && text.length > PREVIEW_CHAR_LIMIT
-      ? `${text.slice(0, PREVIEW_CHAR_LIMIT)}\n\n…(内容过长，已截断)`
+      ? `${text.slice(0, PREVIEW_CHAR_LIMIT)}\n\n${t('attachment.truncated')}`
       : text;
 
   return (
@@ -122,7 +124,7 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
             (imgFailed ? (
               <div className="py-8 text-center">
                 <p className="text-sm text-[var(--color-danger)] mb-4">
-                  图片加载失败
+                  {t('attachment.imageLoadFailed')}
                 </p>
                 <a
                   href={url}
@@ -130,7 +132,7 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
                   className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:underline"
                 >
                   <Download size={14} />
-                  下载文件
+                  {t('attachment.download')}
                 </a>
               </div>
             ) : (
@@ -145,14 +147,14 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
           {isText && loading && (
             <div className="flex items-center justify-center gap-2 py-10 text-[var(--color-text-muted)] text-sm">
               <Loader2 size={18} className="animate-spin" />
-              加载中…
+              {t('common.loading')}
             </div>
           )}
 
           {isText && failed && (
             <div className="py-8 text-center">
               <p className="text-sm text-[var(--color-danger)] mb-4">
-                预览加载失败
+                {t('attachment.previewLoadFailed')}
               </p>
               <a
                 href={url}
@@ -160,7 +162,7 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
                 className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:underline"
               >
                 <Download size={14} />
-                下载文件
+                {t('attachment.download')}
               </a>
             </div>
           )}
@@ -174,7 +176,7 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
           {!isImage && !isText && (
             <div className="py-8 text-center">
               <p className="text-sm text-[var(--color-text-muted)] mb-4">
-                暂不支持预览该类型
+                {t('attachment.unsupportedType')}
               </p>
               <a
                 href={url}
@@ -182,7 +184,7 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
                 className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:underline"
               >
                 <Download size={14} />
-                下载文件
+                {t('attachment.download')}
               </a>
             </div>
           )}

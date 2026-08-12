@@ -112,7 +112,9 @@ export default function FileAttach({ onAdd, onReject, fileCount = 0 }: Props) {
         className="p-2 bg-transparent border-none rounded-lg text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 flex items-center justify-center hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] relative"
         onClick={handleClick}
         title={
-          fileCount > 0 ? `${fileCount} 个文件已选择` : t('fileAttach.attach')
+          fileCount > 0
+            ? t('attachment.countSelected', { count: fileCount })
+            : t('fileAttach.attach')
         }
         type="button"
         aria-label={

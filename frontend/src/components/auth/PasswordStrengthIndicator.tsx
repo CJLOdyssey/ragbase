@@ -1,3 +1,6 @@
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
+
 interface Props {
   password: string;
   validated: boolean;
@@ -10,7 +13,7 @@ interface Check {
   pass: boolean;
 }
 
-function checks(password: string): Check[] {
+function checks(password: string, t: TFunction): Check[] {
   const common = new Set([
     'password',
     'password123',
@@ -34,15 +37,15 @@ function checks(password: string): Check[] {
     'michael',
   ]);
   return [
-    { label: '至少 8 位', pass: password.length >= 8 },
-    { label: '数字', pass: /\d/.test(password) },
-    { label: '小写', pass: /[a-z]/.test(password) },
-    { label: '大写', pass: /[A-Z]/.test(password) },
+    { label: t('auth.pwdLen8'), pass: password.length >= 8 },
+    { label: t('auth.pwdNumber'), pass: /\d/.test(password) },
+    { label: t('auth.pwdLower'), pass: /[a-z]/.test(password) },
+    { label: t('auth.pwdUpper'), pass: /[A-Z]/.test(password) },
     {
-      label: '特殊字符',
+      label: t('auth.pwdSpecial'),
       pass: [...password].some((c) => SPECIAL_CHARS.includes(c)),
     },
-    { label: '非常见密码', pass: !common.has(password.toLowerCase()) },
+    { label: t('auth.pwdCommon'), pass: !common.has(password.toLowerCase()) },
   ];
 }
 
@@ -50,9 +53,10 @@ export default function PasswordStrengthIndicator({
   password,
   validated,
 }: Props) {
+  const { t } = useTranslation();
   if (!password) return null;
 
-  const items = checks(password);
+  const items = checks(password, t);
   const passed = items.filter((c) => c.pass).length;
   const total = items.length;
   const failed = items.filter((c) => !c.pass);
@@ -84,7 +88,9 @@ export default function PasswordStrengthIndicator({
       )}
 
       {validated && passed === total && (
-        <div className="text-xs text-[var(--color-success)]">全部满足 ✓</div>
+        <div className="text-xs text-[var(--color-success)]">
+          {t('auth.allMet')}
+        </div>
       )}
     </div>
   );

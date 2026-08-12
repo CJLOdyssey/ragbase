@@ -54,7 +54,7 @@ describe('ModelSelector', { tags: ['unit'] }, () => {
       makeModel('gpt-4o', { type: 'llm' }),
       makeModel('text-embedding-3-small', { type: 'embedding' }),
     ]);
-    fireEvent.change(screen.getByPlaceholderText('搜索模型名称...'), {
+    fireEvent.change(screen.getByPlaceholderText('providerEdit.searchModel'), {
       target: { value: 'gpt' },
     });
     expect(

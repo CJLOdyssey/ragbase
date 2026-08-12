@@ -94,13 +94,13 @@ describe('ApiProviderTab', { tags: ['unit'] }, () => {
 
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[2]);
-    expect(screen.getByText('删除 (1)')).toBeInTheDocument();
+    expect(screen.getByText('confirm.delete (1)')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('providerEdit.category.tool'));
-    expect(screen.queryByText('删除 (1)')).toBeNull();
+    expect(screen.queryByText('confirm.delete (1)')).toBeNull();
 
     fireEvent.click(screen.getByText('providerEdit.filterAll'));
-    expect(screen.queryByText('删除 (1)')).toBeNull();
+    expect(screen.queryByText('confirm.delete (1)')).toBeNull();
     expect(onBatchDelete).not.toHaveBeenCalled();
   });
 });

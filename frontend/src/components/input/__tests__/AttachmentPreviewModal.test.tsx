@@ -84,7 +84,7 @@ describe('AttachmentPreviewModal', { tags: ['unit'] }, () => {
         />
       </TestProviders>,
     );
-    expect(screen.getByText('加载中…')).toBeInTheDocument();
+    expect(screen.getByText('加载中...')).toBeInTheDocument();
   });
 
   it('shows error and download link when fetch fails', async () => {

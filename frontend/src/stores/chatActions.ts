@@ -4,6 +4,7 @@ import {
   submitRequirement as submitRequirementExternal,
 } from '../api/client';
 import { connectRun, disconnectRun } from '../api/websocket';
+import i18n from '../i18n';
 import type { AttachmentInfo, ChatMessage } from '../types';
 import Logger from '../utils/logger';
 import { useChatStore } from './chatStore';
@@ -98,7 +99,7 @@ export async function submitRequirement(
   if (!keyId) {
     useChatStore.setState({
       status: 'error',
-      error: '请先在设置中配置 API Key',
+      error: i18n.t('chat.configureKeyFirst'),
       wsStatus: 'disconnected',
     });
     return;
@@ -107,7 +108,7 @@ export async function submitRequirement(
   const userMsg: ChatMessage = {
     id: uid(),
     role: 'user',
-    agent_name: '我',
+    agent_name: i18n.t('chat.me'),
     content: requirement,
     round_number: 0,
     created_at: new Date().toISOString(),
@@ -345,7 +346,7 @@ export async function retry() {
   if (!lastUserMsg) {
     useChatStore.setState({
       status: 'error',
-      error: '没有找到用户消息，无法重试',
+      error: i18n.t('chat.noUserMessage'),
     });
     return;
   }
@@ -367,7 +368,7 @@ export async function retry() {
   if (!keyId) {
     useChatStore.setState({
       status: 'error',
-      error: '请先在设置中配置 API Key',
+      error: i18n.t('chat.configureKeyFirst'),
       wsStatus: 'disconnected',
     });
     return;
@@ -421,7 +422,7 @@ export async function continueGeneration() {
     );
     useChatStore.setState({
       interruptedMessageId: null,
-      error: '没有可续写的内容，请重新生成',
+      error: i18n.t('chat.noContentContinue'),
     });
     return;
   }

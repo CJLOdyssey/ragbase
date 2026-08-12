@@ -77,8 +77,11 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
           const allFailed = pending.every((f) => f.status === 'error');
           toast(
             allFailed
-              ? t('home.uploadFailed', '部分文件上传失败，请移除后重试')
-              : t('home.uploading', '文件上传中，请稍候'),
+              ? t(
+                  'home.uploadFailed',
+                  'Some files failed to upload, remove and retry',
+                )
+              : t('home.uploading', 'Uploading files, please wait'),
             'error',
           );
           return;

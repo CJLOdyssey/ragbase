@@ -72,7 +72,7 @@ export default function ApiUsageTab({ usage, keyUsage }: Props) {
       {keyUsage && keyUsage.length > 0 && (
         <div className="border-t border-[var(--color-border)] pt-5">
           <h5 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3 tracking-tight">
-            各 Key 消耗明细
+            {t('providerEdit.usageDetail')}
           </h5>
           <div className="flex flex-col gap-2">
             {keyUsage.map((k) => (
@@ -95,20 +95,21 @@ export default function ApiUsageTab({ usage, keyUsage }: Props) {
                 </div>
                 <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)] shrink-0">
                   <span>
-                    今日:{' '}
+                    {t('providerEdit.today')}:{' '}
                     <strong className="text-[var(--color-text-primary)]">
                       {k.today_requests ?? ''}
                     </strong>
                   </span>
                   <span>
-                    本月:{' '}
+                    {t('providerEdit.thisMonth')}:{' '}
                     <strong className="text-[var(--color-text-primary)]">
                       {k.month_requests ?? ''}
                     </strong>
                   </span>
                   {k.last_used_at && (
                     <span>
-                      最后使用: {new Date(k.last_used_at).toLocaleDateString()}
+                      {t('providerEdit.lastUsedAt')}:{' '}
+                      {new Date(k.last_used_at).toLocaleDateString()}
                     </span>
                   )}
                 </div>

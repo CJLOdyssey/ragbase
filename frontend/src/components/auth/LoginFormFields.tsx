@@ -1,5 +1,6 @@
 import type * as React from 'react';
 import { Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
 const inputBase =
@@ -61,12 +62,13 @@ function EmailField({
   onFocusField,
   onBlurField,
 }: EmailFieldProps) {
+  const { t } = useTranslation();
   return (
     <div className="relative mb-3.5">
       <Mail style={iconBase} size={16} />
       <input
         type="email"
-        placeholder="邮箱地址"
+        placeholder={t('auth.emailPlaceholder')}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => onFocusField('email')}
@@ -101,13 +103,14 @@ function PasswordField({
   onFocusField,
   onBlurField,
 }: PasswordFieldProps) {
+  const { t } = useTranslation();
   return (
     <div className={wrapperClass}>
       <div className="relative">
         <Lock style={iconBase} size={16} />
         <input
           type={showPassword ? 'text' : 'password'}
-          placeholder="密码"
+          placeholder={t('auth.passwordPlaceholder')}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => onFocusField('password')}
@@ -148,12 +151,13 @@ function ConfirmPasswordField({
   onFocusField,
   onBlurField,
 }: ConfirmPasswordFieldProps) {
+  const { t } = useTranslation();
   return (
     <div className="relative mb-4">
       <Lock style={iconBase} size={16} />
       <input
         type={showPassword ? 'text' : 'password'}
-        placeholder="确认密码"
+        placeholder={t('auth.confirmPasswordPlaceholder')}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => onFocusField('confirm')}
@@ -164,7 +168,7 @@ function ConfirmPasswordField({
       />
       {value && passwordTouched && value !== password && (
         <div className="text-xs text-[var(--color-danger)] mt-1">
-          ○ 与密码不一致
+          {t('auth.mismatch')}
         </div>
       )}
     </div>
@@ -189,6 +193,7 @@ function CodeFieldRow({
   onFocusField,
   onBlurField,
 }: CodeFieldRowProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex gap-2 items-start mb-3">
       <div className="relative flex-1">
@@ -196,7 +201,7 @@ function CodeFieldRow({
         <input
           type="text"
           inputMode="numeric"
-          placeholder="验证码"
+          placeholder={t('auth.codePlaceholder')}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => onFocusField('code')}
@@ -223,7 +228,7 @@ function CodeFieldRow({
           cursor: codeCooldown > 0 ? 'default' : 'pointer',
         }}
       >
-        {codeCooldown > 0 ? `${codeCooldown}s` : '获取验证码'}
+        {codeCooldown > 0 ? `${codeCooldown}s` : t('auth.sendCode')}
       </button>
     </div>
   );
@@ -311,6 +316,7 @@ export function RegisterFormFields({
   onFocusField,
   onBlurField,
 }: RegisterFormFieldsProps) {
+  const { t } = useTranslation();
   return (
     <>
       <EmailField
@@ -334,7 +340,7 @@ export function RegisterFormFields({
           password &&
           !passwordTouched && (
             <div className="text-xs text-[var(--color-text-tertiary)] mt-1 opacity-60">
-              至少8位 · 数字 · 小写 · 大写 · 特殊字符
+              {t('auth.passwordHint')}
             </div>
           )
         }

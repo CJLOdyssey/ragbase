@@ -91,7 +91,7 @@ export default function HomeScreen({
               transition={{ delay: 0.4, duration: 0.25 }}
             >
               <Search size={16} />
-              <span>{t('features.search', '搜索')}</span>
+              <span>{t('features.search', 'Search')}</span>
             </motion.button>
             <motion.button
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-transparent border border-[var(--color-border)] rounded-md text-[var(--color-text-secondary)] text-sm cursor-pointer transition-colors duration-150 whitespace-nowrap hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-strong)]"
@@ -101,7 +101,7 @@ export default function HomeScreen({
               transition={{ delay: 0.45, duration: 0.25 }}
             >
               <BarChart3 size={16} />
-              <span>{t('features.data', '数据')}</span>
+              <span>{t('features.data', 'Data')}</span>
             </motion.button>
             <motion.button
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-transparent border border-[var(--color-border)] rounded-md text-[var(--color-text-secondary)] text-sm cursor-pointer transition-colors duration-150 whitespace-nowrap hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-strong)]"
@@ -111,7 +111,7 @@ export default function HomeScreen({
               transition={{ delay: 0.5, duration: 0.25 }}
             >
               <FileText size={16} />
-              <span>{t('features.document', '文档')}</span>
+              <span>{t('features.document', 'Documents')}</span>
             </motion.button>
             <motion.button
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-transparent border border-[var(--color-border)] rounded-md text-[var(--color-text-secondary)] text-sm cursor-pointer transition-colors duration-150 whitespace-nowrap hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-strong)]"
@@ -121,7 +121,7 @@ export default function HomeScreen({
               transition={{ delay: 0.55, duration: 0.25 }}
             >
               <Image size={16} />
-              <span>{t('features.image', '图片')}</span>
+              <span>{t('features.image', 'Images')}</span>
             </motion.button>
             <motion.button
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-transparent border border-[var(--color-border)] rounded-md text-[var(--color-text-secondary)] text-sm cursor-pointer transition-colors duration-150 whitespace-nowrap hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-strong)]"
@@ -131,7 +131,7 @@ export default function HomeScreen({
               transition={{ delay: 0.6, duration: 0.25 }}
             >
               <MoreHorizontal size={16} />
-              <span>{t('features.more', '更多')}</span>
+              <span>{t('features.more', 'More')}</span>
             </motion.button>
           </motion.div>
         </div>

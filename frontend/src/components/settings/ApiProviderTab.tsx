@@ -106,7 +106,7 @@ export default function ApiProviderTab({
   const columns: ColumnsType<KeyItem> = useMemo(() => {
     return [
       {
-        title: '名称',
+        title: t('providerEdit.name'),
         dataIndex: 'label',
         key: 'label',
         width: 90,
@@ -127,7 +127,7 @@ export default function ApiProviderTab({
         ),
       },
       {
-        title: '密钥',
+        title: t('providerEdit.secret'),
         dataIndex: 'key_masked',
         key: 'key_masked',
         width: 110,
@@ -144,7 +144,7 @@ export default function ApiProviderTab({
         ),
       },
       {
-        title: '用途',
+        title: t('providerEdit.purpose'),
         dataIndex: 'capabilities',
         key: 'capabilities',
         width: 150,
@@ -153,7 +153,7 @@ export default function ApiProviderTab({
         ),
       },
       {
-        title: '上次使用',
+        title: t('providerEdit.lastUsed'),
         dataIndex: 'last_used_at',
         key: 'last_used_at',
         width: 80,
@@ -170,7 +170,7 @@ export default function ApiProviderTab({
         ),
       },
       {
-        title: '创建日期',
+        title: t('providerEdit.createdAt'),
         dataIndex: 'created_at',
         key: 'created_at',
         width: 80,
@@ -187,7 +187,7 @@ export default function ApiProviderTab({
         ),
       },
       {
-        title: '状态',
+        title: t('providerEdit.status'),
         key: 'status',
         width: 56,
         align: 'center',
@@ -206,7 +206,7 @@ export default function ApiProviderTab({
         align: 'right',
         render: (_: unknown, record: KeyItem) => (
           <Space size={2}>
-            <Tooltip title="编辑">
+            <Tooltip title={t('providerEdit.edit')}>
               <Button
                 type="text"
                 size="small"
@@ -214,7 +214,7 @@ export default function ApiProviderTab({
                 onClick={() => onEdit(record)}
               />
             </Tooltip>
-            <Tooltip title="测试">
+            <Tooltip title={t('providerEdit.test')}>
               <Button
                 type="text"
                 size="small"
@@ -229,7 +229,7 @@ export default function ApiProviderTab({
                 disabled={testingId === record.id}
               />
             </Tooltip>
-            <Tooltip title="删除">
+            <Tooltip title={t('confirm.delete')}>
               <Button
                 type="text"
                 size="small"
@@ -242,12 +242,12 @@ export default function ApiProviderTab({
         ),
       },
     ];
-  }, [testingId, onEdit, onTest, onDelete, onToggleActive]);
+  }, [testingId, onEdit, onTest, onDelete, onToggleActive, t]);
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-4 shrink-0">
-        <h4>密钥管理</h4>
+        <h4>{t('providerEdit.keyManagement')}</h4>
         <div className="flex items-center gap-2">
           {selectedRowKeys.length > 0 && (
             <>
@@ -256,14 +256,14 @@ export default function ApiProviderTab({
                 onClick={() => handleBatchActivate(true)}
                 style={{ fontSize: 12, height: 28 }}
               >
-                启用 ({selectedRowKeys.length})
+                {t('providerEdit.enable')} ({selectedRowKeys.length})
               </Button>
               <Button
                 size="small"
                 onClick={() => handleBatchActivate(false)}
                 style={{ fontSize: 12, height: 28 }}
               >
-                禁用 ({selectedRowKeys.length})
+                {t('providerEdit.disable')} ({selectedRowKeys.length})
               </Button>
               <Button
                 size="small"
@@ -272,7 +272,7 @@ export default function ApiProviderTab({
                 onClick={handleBatchDelete}
                 style={{ fontSize: 12, height: 28 }}
               >
-                删除 ({selectedRowKeys.length})
+                {t('confirm.delete')} ({selectedRowKeys.length})
               </Button>
             </>
           )}
@@ -282,7 +282,7 @@ export default function ApiProviderTab({
             onClick={onAdd}
             style={{ fontSize: 12, height: 28 }}
           >
-            添加 Key
+            {t('providerEdit.addKey')}
           </Button>
         </div>
       </div>

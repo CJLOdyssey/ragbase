@@ -22,12 +22,13 @@ function PopoverItem({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       className={`flex items-center gap-3 w-full px-3 py-2.5 bg-transparent border-none rounded-md text-[var(--color-text-secondary)] text-base cursor-pointer transition-[color,background] duration-150 text-left hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]${disabled ? ' opacity-40 cursor-not-allowed hover:text-[var(--color-text-secondary)] hover:bg-transparent' : ''}`}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
-      title={disabled ? '登录后可管理' : undefined}
+      title={disabled ? t('user.loginToManage') : undefined}
     >
       {icon}
       <span>{label}</span>
@@ -116,7 +117,7 @@ export default function UserMenu({
               onClick={() => handleItemClick(() => openLoginModal())}
             >
               <LogIn size={16} className="w-4 h-4 mr-1" />
-              <span>登录 / 注册</span>
+              <span>{t('user.loginRegister')}</span>
             </button>
           )}
         </div>
@@ -153,7 +154,7 @@ export default function UserMenu({
               ) : isAuthenticated ? (
                 user?.username || user?.email
               ) : (
-                '游客'
+                t('user.guest')
               )}
             </div>
             <div className="text-sm text-[var(--color-text-secondary)] flex items-center gap-1 mt-0.5">
@@ -162,7 +163,9 @@ export default function UserMenu({
               ) : (
                 <>
                   <span className="w-2 h-2 rounded-full bg-[var(--color-success)]" />
-                  {isAuthenticated ? t('user.onlineStatus') : '未登录'}
+                  {isAuthenticated
+                    ? t('user.onlineStatus')
+                    : t('user.notLoggedIn')}
                 </>
               )}
             </div>

@@ -289,7 +289,7 @@ const ConversationsList = memo(function ConversationsList({
                 }
               }
             }}
-            aria-label="更多"
+            aria-label={t('sidebar.more')}
           >
             <MoreVertical size={15} />
           </button>
@@ -311,7 +311,7 @@ const ConversationsList = memo(function ConversationsList({
                   onClick={() => startRename(conv)}
                 >
                   <Pencil size={13} />
-                  重命名
+                  {t('sidebar.rename')}
                 </button>
                 <button
                   className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-[var(--color-text-primary)] bg-transparent border-none rounded-md cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-surface-hover)]"
@@ -321,7 +321,7 @@ const ConversationsList = memo(function ConversationsList({
                   }}
                 >
                   <Pin size={13} />
-                  {conv.isPinned ? '取消顶置' : '顶置'}
+                  {conv.isPinned ? t('sidebar.unpin') : t('sidebar.pin')}
                 </button>
                 <div className="h-px bg-[var(--color-border-subtle)] mx-2 my-1" />
                 <button
@@ -332,7 +332,7 @@ const ConversationsList = memo(function ConversationsList({
                   }}
                 >
                   <Trash2 size={13} />
-                  删除
+                  {t('confirm.delete')}
                 </button>
               </div>,
               document.body,

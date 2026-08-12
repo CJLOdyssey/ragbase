@@ -89,7 +89,7 @@ function SelectorLabel({
     return (
       <span className="inline-flex items-center justify-center gap-1 h-[16px]">
         <Loader2 size={10} className="animate-spin" />
-        <span>{t('model.loadingText') || '加载中'}</span>
+        <span>{t('model.loadingText')}</span>
       </span>
     );
   }

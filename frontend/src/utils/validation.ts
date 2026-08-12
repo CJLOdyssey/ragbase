@@ -18,6 +18,11 @@ const RESERVED_NAMES = ['新建', '默认', 'new', 'default'];
 /** 危险字符（XSS 风险） */
 const DANGEROUS_CHARS = /[<>&"'/]/;
 
+export type TranslateFn = (
+  key: string,
+  options?: Record<string, unknown>,
+) => string;
+
 export function validateInput(input: string): {
   valid: boolean;
   sanitized: string;
@@ -39,12 +44,14 @@ export function validateInput(input: string): {
 
 /**
  * 验证团队或 Agent 名称
+ * @param t - i18n 翻译函数（依赖注入）
  * @param name - 输入的名称
  * @param existingNames - 同级已存在的名称列表（用于查重）
  * @param excludeId - 排除自身 ID（编辑时排除自己）
  * @returns 验证结果
  */
 export function validateName(
+  t: TranslateFn,
   name: string,
   existingNames: string[] = [],
   excludeId?: string,
@@ -52,26 +59,32 @@ export function validateName(
   // 1. 空名检查
   const trimmed = name.trim();
   if (!trimmed) {
-    return { valid: false, error: '名称不能为空' };
+    return { valid: false, error: t('validation.nameEmpty') };
   }
 
   // 2. 长度检查
   if (trimmed.length > MAX_NAME_LENGTH) {
-    return { valid: false, error: `名称不能超过 ${MAX_NAME_LENGTH} 个字符` };
+    return {
+      valid: false,
+      error: t('validation.nameTooLong', { max: MAX_NAME_LENGTH }),
+    };
   }
 
   if (trimmed.length < 1) {
-    return { valid: false, error: '名称至少需要 1 个字符' };
+    return { valid: false, error: t('validation.nameTooShort') };
   }
 
   // 3. 特殊字符检查（XSS 防护）
   if (DANGEROUS_CHARS.test(trimmed)) {
-    return { valid: false, error: '名称包含非法字符 (< > & " \' /)' };
+    return { valid: false, error: t('validation.nameInvalidChars') };
   }
 
   // 4. 保留字检查
   if (RESERVED_NAMES.includes(trimmed)) {
-    return { valid: false, error: `"${trimmed}" 是系统保留名称` };
+    return {
+      valid: false,
+      error: t('validation.nameReserved', { name: trimmed }),
+    };
   }
 
   // 5. 去重检查（大小写不敏感）
@@ -84,7 +97,7 @@ export function validateName(
     if (excludeId && duplicates.length === 1) {
       return { valid: true };
     }
-    return { valid: false, error: '名称已存在，请使用其他名称' };
+    return { valid: false, error: t('validation.nameDuplicate') };
   }
 
   return { valid: true };
@@ -93,12 +106,15 @@ export function validateName(
 /**
  * 检查团队数量是否超限
  */
-export function checkTeamLimit(teamCount: number): {
-  valid: boolean;
-  error?: string;
-} {
+export function checkTeamLimit(
+  t: TranslateFn,
+  teamCount: number,
+): { valid: boolean; error?: string } {
   if (teamCount >= MAX_TEAMS) {
-    return { valid: false, error: `最多只能创建 ${MAX_TEAMS} 个团队` };
+    return {
+      valid: false,
+      error: t('validation.teamLimit', { max: MAX_TEAMS }),
+    };
   }
   return { valid: true };
 }
@@ -106,14 +122,14 @@ export function checkTeamLimit(teamCount: number): {
 /**
  * 检查每团队 Agent 数量是否超限
  */
-export function checkAgentLimit(agentCount: number): {
-  valid: boolean;
-  error?: string;
-} {
+export function checkAgentLimit(
+  t: TranslateFn,
+  agentCount: number,
+): { valid: boolean; error?: string } {
   if (agentCount >= MAX_AGENTS_PER_TEAM) {
     return {
       valid: false,
-      error: `每个团队最多 ${MAX_AGENTS_PER_TEAM} 个 Agent`,
+      error: t('validation.agentLimit', { max: MAX_AGENTS_PER_TEAM }),
     };
   }
   return { valid: true };

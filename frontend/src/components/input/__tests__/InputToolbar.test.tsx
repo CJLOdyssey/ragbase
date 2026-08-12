@@ -359,7 +359,7 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(screen.getByText('失败')).toBeInTheDocument();
+    expect(screen.getByText('attachment.failed')).toBeInTheDocument();
   });
 
   it('deletes server file when removing an uploaded attachment', async () => {

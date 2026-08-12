@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import Logger from '../utils/logger';
 import type { ChatState } from './chatTypes';
 import { uid } from './uid';
@@ -90,7 +91,7 @@ export function handleBalanceWarningEvent(
   Logger.error('[chat] balance warning:', msg.content);
   set((_s) => ({
     status: 'error' as ChatState['status'],
-    error: msg.content || '模型余额不足',
+    error: msg.content || i18n.t('chat.insufficientBalance'),
     streamingId: null,
     continuingId: null,
     editTargetId: null,

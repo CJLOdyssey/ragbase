@@ -9,7 +9,10 @@
     "hide": "Hide",
     "send": "Send",
     "cancel": "Cancel",
-    "noData": "No data"
+    "noData": "No data",
+    "unknownError": "Unknown error",
+    "appError": "App error",
+    "skipToContent": "Skip to main content"
   },
   "confirm": {
     "cancel": "Cancel",
@@ -29,7 +32,11 @@
     "error": "Operation failed, please retry"
   },
   "user": {
-    "onlineStatus": "Online"
+    "onlineStatus": "Online",
+    "loginToManage": "Log in to manage",
+    "loginRegister": "Log in / Sign up",
+    "guest": "Guest",
+    "notLoggedIn": "Not logged in"
   },
   "app": {
     "title": "RagBase",
@@ -58,7 +65,47 @@
   "auth": {
     "login": "Log in",
     "register": "Sign up",
-    "logout": "Log out"
+    "logout": "Log out",
+    "emailPlaceholder": "Email address",
+    "passwordPlaceholder": "Password",
+    "confirmPasswordPlaceholder": "Confirm password",
+    "codePlaceholder": "Verification code",
+    "mismatch": "○ Does not match password",
+    "sendCode": "Send code",
+    "passwordHint": "8+ chars · number · lowercase · uppercase · special",
+    "enterEmailFirst": "Please enter your email first",
+    "sendFailed": "Failed to send",
+    "enterPassword": "Please enter your password",
+    "passwordMismatch": "Passwords do not match",
+    "enterEmail": "Please enter your email",
+    "enterCode": "Please enter the verification code",
+    "registerFailed": "Registration failed",
+    "loginFailed": "Login failed",
+    "resetPassword": "Reset password",
+    "forgotPassword": "Forgot password?",
+    "or": "or",
+    "wechat": "WeChat",
+    "socialLoginTitle": "{{label}} login (coming soon)",
+    "passwordResetDone": "Password reset",
+    "reloginPrompt": "Please log in again with your new password",
+    "backToLogin": "Back to login",
+    "codeSentTo": "Code sent to {{email}}",
+    "newPasswordPlaceholder": "New password (8+ chars)",
+    "confirmNewPasswordPlaceholder": "Confirm new password",
+    "resetting": "Resetting...",
+    "sending": "Sending...",
+    "sendResetCode": "Send reset code",
+    "back": "Back",
+    "fillComplete": "Please fill in all fields",
+    "resetFailed": "Reset failed",
+    "emailHint": "Enter your registered email and we will send a code",
+    "pwdLen8": "At least 8 chars",
+    "pwdNumber": "Number",
+    "pwdLower": "Lowercase",
+    "pwdUpper": "Uppercase",
+    "pwdSpecial": "Special char",
+    "pwdCommon": "Not a common password",
+    "allMet": "All met ✓"
   },
   "sidebar": {
     "newChat": "New chat",
@@ -74,7 +121,11 @@
     "replied": "Replied",
     "settings": "Settings",
     "help": "Help",
-    "logout": "Log out"
+    "logout": "Log out",
+    "more": "More",
+    "rename": "Rename",
+    "pin": "Pin",
+    "unpin": "Unpin"
   },
   "teamMessage": {
     "copy": "Copy",
@@ -141,7 +192,38 @@
     },
     "filterAll": "All",
     "noModelsInGroup": "No models yet",
-    "totalCount": "{{count}} total"
+    "totalCount": "{{count}} total",
+    "secret": "Secret",
+    "purpose": "Purpose",
+    "lastUsed": "Last used",
+    "createdAt": "Created",
+    "status": "Status",
+    "test": "Test",
+    "keyManagement": "Key management",
+    "enable": "Enable",
+    "disable": "Disable",
+    "addKey": "Add Key",
+    "keyExists": "Key already exists in \"{{name}}\", please do not add duplicates",
+    "deleteKeysConfirm": "Delete the selected {{count}} API keys? This cannot be undone.",
+    "deleteKeyConfirm": "Delete this API key? This cannot be undone.",
+    "customLlm": "Custom LLM",
+    "customEmbedding": "Custom Embedding",
+    "customRerank": "Custom Rerank",
+    "customSpeech2text": "Custom Speech2text",
+    "customTts": "Custom TTS",
+    "customModeration": "Custom Moderation",
+    "customImage": "Custom Image",
+    "customTool": "Custom Tool",
+    "fetchFailed": "Failed to fetch models",
+    "usageDetail": "Usage details per key",
+    "today": "Today",
+    "thisMonth": "This month",
+    "lastUsedAt": "Last used",
+    "searchModel": "Search model name...",
+    "noMatchingModel": "No matching models",
+    "modelTypeOf": "{{name}} type",
+    "pickerPrompt": "Prompt management",
+    "pickerOutput": "Output management"
   },
   "fileAttach": {
     "attach": "Attach files",
@@ -156,5 +238,35 @@
     "document": "pdf/txt/md",
     "image": "Image assets",
     "more": "More"
+  },
+  "attachment": {
+    "truncated": "…(content too long, truncated)",
+    "imageLoadFailed": "Failed to load image",
+    "download": "Download file",
+    "previewLoadFailed": "Failed to load preview",
+    "unsupportedType": "Preview not supported for this type",
+    "failed": "Failed",
+    "countSelected": "{{count}} files selected"
+  },
+  "chat": {
+    "configureKeyFirst": "Please configure an API key in settings first",
+    "me": "Me",
+    "noUserMessage": "No user message found to retry",
+    "noContentContinue": "No content to continue, please regenerate",
+    "insufficientBalance": "Insufficient model balance"
+  },
+  "lang": {
+    "zh": "中文",
+    "en": "English"
+  },
+  "validation": {
+    "nameEmpty": "Name cannot be empty",
+    "nameTooLong": "Name cannot exceed {{max}} characters",
+    "nameTooShort": "Name must be at least 1 character",
+    "nameInvalidChars": "Name contains invalid characters (< > & \" ' /)",
+    "nameReserved": "\"{{name}}\" is a reserved name",
+    "nameDuplicate": "Name already exists, please use another one",
+    "teamLimit": "You can create at most {{max}} teams",
+    "agentLimit": "Each team can have at most {{max}} agents"
   }
 }

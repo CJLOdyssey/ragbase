@@ -9,7 +9,10 @@
     "hide": "隐藏",
     "send": "发送",
     "cancel": "取消",
-    "noData": "暂无数据"
+    "noData": "暂无数据",
+    "unknownError": "未知错误",
+    "appError": "应用出错了",
+    "skipToContent": "跳转到主内容"
   },
   "confirm": {
     "cancel": "取消",
@@ -29,7 +32,11 @@
     "error": "操作失败，请重试"
   },
   "user": {
-    "onlineStatus": "在线状态"
+    "onlineStatus": "在线状态",
+    "loginToManage": "登录后可管理",
+    "loginRegister": "登录 / 注册",
+    "guest": "游客",
+    "notLoggedIn": "未登录"
   },
   "app": {
     "title": "RagBase",
@@ -58,7 +65,47 @@
   "auth": {
     "login": "登录",
     "register": "注册",
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "emailPlaceholder": "邮箱地址",
+    "passwordPlaceholder": "密码",
+    "confirmPasswordPlaceholder": "确认密码",
+    "codePlaceholder": "验证码",
+    "mismatch": "○ 与密码不一致",
+    "sendCode": "获取验证码",
+    "passwordHint": "至少8位 · 数字 · 小写 · 大写 · 特殊字符",
+    "enterEmailFirst": "请先输入邮箱",
+    "sendFailed": "发送失败",
+    "enterPassword": "请输入密码",
+    "passwordMismatch": "两次密码输入不一致",
+    "enterEmail": "请输入邮箱",
+    "enterCode": "请输入验证码",
+    "registerFailed": "注册失败",
+    "loginFailed": "登录失败",
+    "resetPassword": "重置密码",
+    "forgotPassword": "忘记密码？",
+    "or": "或",
+    "wechat": "微信",
+    "socialLoginTitle": "{{label}}登录（即将支持）",
+    "passwordResetDone": "密码已重置",
+    "reloginPrompt": "请使用新密码重新登录",
+    "backToLogin": "返回登录",
+    "codeSentTo": "验证码已发送至 {{email}}",
+    "newPasswordPlaceholder": "新密码 (至少8位)",
+    "confirmNewPasswordPlaceholder": "确认新密码",
+    "resetting": "重置中...",
+    "sending": "发送中...",
+    "sendResetCode": "发送验证码",
+    "back": "返回",
+    "fillComplete": "请填写完整信息",
+    "resetFailed": "重置失败",
+    "emailHint": "输入注册邮箱，我们将发送验证码",
+    "pwdLen8": "至少 8 位",
+    "pwdNumber": "数字",
+    "pwdLower": "小写",
+    "pwdUpper": "大写",
+    "pwdSpecial": "特殊字符",
+    "pwdCommon": "非常见密码",
+    "allMet": "全部满足 ✓"
   },
   "sidebar": {
     "newChat": "新建对话",
@@ -74,7 +121,11 @@
     "replied": "已回复",
     "settings": "设置",
     "help": "帮助",
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "more": "更多",
+    "rename": "重命名",
+    "pin": "顶置",
+    "unpin": "取消顶置"
   },
   "teamMessage": {
     "copy": "复制",
@@ -141,7 +192,38 @@
     },
     "filterAll": "全部",
     "noModelsInGroup": "暂无可用模型",
-    "totalCount": "共 {{count}} 条"
+    "totalCount": "共 {{count}} 条",
+    "secret": "密钥",
+    "purpose": "用途",
+    "lastUsed": "上次使用",
+    "createdAt": "创建日期",
+    "status": "状态",
+    "test": "测试",
+    "keyManagement": "密钥管理",
+    "enable": "启用",
+    "disable": "禁用",
+    "addKey": "添加 Key",
+    "keyExists": "密钥已存在于「{{name}}」中，请勿重复添加",
+    "deleteKeysConfirm": "确定要删除选中的 {{count}} 个 API Key 吗？此操作不可撤销。",
+    "deleteKeyConfirm": "确定要删除此 API Key 吗？此操作不可撤销。",
+    "customLlm": "自定义大模型",
+    "customEmbedding": "自定义嵌入",
+    "customRerank": "自定义重排序",
+    "customSpeech2text": "自定义语音转文字",
+    "customTts": "自定义文字转语音",
+    "customModeration": "自定义内容审核",
+    "customImage": "自定义图像",
+    "customTool": "自定义工具",
+    "fetchFailed": "拉取模型失败",
+    "usageDetail": "各 Key 消耗明细",
+    "today": "今日",
+    "thisMonth": "本月",
+    "lastUsedAt": "最后使用",
+    "searchModel": "搜索模型名称...",
+    "noMatchingModel": "没有匹配的模型",
+    "modelTypeOf": "{{name}} 类型",
+    "pickerPrompt": "提示词管理",
+    "pickerOutput": "输出管理"
   },
   "fileAttach": {
     "attach": "附加文件",
@@ -156,5 +238,35 @@
     "document": "pdf/txt/md",
     "image": "图片素材",
     "more": "更多"
+  },
+  "attachment": {
+    "truncated": "…(内容过长，已截断)",
+    "imageLoadFailed": "图片加载失败",
+    "download": "下载文件",
+    "previewLoadFailed": "预览加载失败",
+    "unsupportedType": "暂不支持预览该类型",
+    "failed": "失败",
+    "countSelected": "{{count}} 个文件已选择"
+  },
+  "chat": {
+    "configureKeyFirst": "请先在设置中配置 API Key",
+    "me": "我",
+    "noUserMessage": "没有找到用户消息，无法重试",
+    "noContentContinue": "没有可续写的内容，请重新生成",
+    "insufficientBalance": "模型余额不足"
+  },
+  "lang": {
+    "zh": "中文",
+    "en": "English"
+  },
+  "validation": {
+    "nameEmpty": "名称不能为空",
+    "nameTooLong": "名称不能超过 {{max}} 个字符",
+    "nameTooShort": "名称至少需要 1 个字符",
+    "nameInvalidChars": "名称包含非法字符 (< > & \" ' /)",
+    "nameReserved": "\"{{name}}\" 是系统保留名称",
+    "nameDuplicate": "名称已存在，请使用其他名称",
+    "teamLimit": "最多只能创建 {{max}} 个团队",
+    "agentLimit": "每个团队最多 {{max}} 个 Agent"
   }
 }
