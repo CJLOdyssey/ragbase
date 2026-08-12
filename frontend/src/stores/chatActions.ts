@@ -8,6 +8,7 @@ import type { AttachmentInfo, ChatMessage } from '../types';
 import Logger from '../utils/logger';
 import { useChatStore } from './chatStore';
 import { createStreamHandler } from './chatStreaming';
+import { invalidateSessionCache } from './sessionCache';
 import { uid } from './uid';
 
 type KeyItem = Awaited<ReturnType<typeof listKeys>>[number];
@@ -70,6 +71,8 @@ export async function submitRequirement(
 ) {
   const s = useChatStore.getState();
   const effectiveSessionId = session_id || s.currentSessionId || undefined;
+  // 新生成改变会话内容 — 失效该会话的消息缓存（SWR 一致性）。
+  invalidateSessionCache(effectiveSessionId);
   // 显式传 parent_run_id（编辑分支，含 null=根）时按传入值；未传（正常续聊）
   // 才回退到 activeRunId。
   const effectiveParentRunId =

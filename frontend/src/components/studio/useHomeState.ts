@@ -16,6 +16,7 @@ import {
 } from '../../api/client/sessions';
 import { retry, submitRequirement } from '../../stores/chatActions';
 import { useChatStore } from '../../stores/chatStore';
+import { getSessionCache, setSessionCache } from '../../stores/sessionCache';
 import { buildPathTurns } from '../../utils/branchTurns';
 import Logger from '../../utils/logger';
 import { useSettings } from '../../contexts/SettingsContext';
@@ -293,8 +294,16 @@ export function useHomeState() {
 
   const loadConversationById = useCallback(async (convId: string) => {
     setRestoring(true);
-    // 立即清空旧会话消息，避免旧消息残留到新会话加载完成才整体跳变（视觉跳动）。
-    useChatStore.getState().clearMessages();
+    // 切换即时性（stale-while-revalidate）：已加载过的会话先渲染缓存（毫秒级），
+    // 网络详情返回后再覆盖（后端为准）。首次无缓存才需要等待网络。
+    const cached = getSessionCache(convId);
+    if (cached) {
+      useChatStore.getState().loadConversation(cached.loaded, convId);
+      useChatStore.getState().setActiveRunId(cached.active);
+    } else {
+      // 首次加载无缓存 — 立即清空旧会话消息，避免残留跳变。
+      useChatStore.getState().clearMessages();
+    }
     const seq = ++loadSeqRef.current;
     try {
       const detail = await getSessionDetail(convId);
@@ -308,6 +317,7 @@ export function useHomeState() {
           m.thinkingDone = true;
         }
       }
+      setSessionCache(convId, { loaded, active });
       useChatStore.getState().loadConversation(loaded, convId);
       useChatStore.getState().setActiveRunId(active);
       Logger.info(
