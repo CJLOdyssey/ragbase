@@ -301,7 +301,7 @@ export function useHomeState() {
     if (selectedModel) return selectedModel;
     // 未显式选择时，默认取用户最近使用过的模型（recent-models 顶部第一个）。
     const recent = recentModelIds.find((id) => models.some((m) => m.id === id));
-    return recent || models[0]?.id || '';
+    return recent || '';
   }, [selectedModel, models, recentModelIds]);
 
   const handleSend = useCallback(
