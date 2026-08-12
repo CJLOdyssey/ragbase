@@ -1,0 +1,30 @@
+{
+  "monitoring": {
+    "title": "质量监控",
+    "windowLabel": "统计窗口",
+    "windowDay": "近 24 小时",
+    "windowWeek": "近 7 天",
+    "retrieval": {
+      "title": "检索质量",
+      "requests": "检索请求数",
+      "emptyRecall": "空召回率",
+      "p50": "延迟 P50",
+      "p95": "延迟 P95",
+      "noSamples": "暂无数据"
+    },
+    "feedback": {
+      "title": "答案好评率",
+      "good": "好评",
+      "bad": "差评",
+      "noSamples": "暂无反馈"
+    },
+    "alerts": {
+      "title": "告警",
+      "none": "当前无告警",
+      "empty_recall_high": "空召回率 {{current}} 超过阈值 {{threshold}}",
+      "p95_latency_high": "延迟 P95 {{current}} 超过阈值 {{threshold}}",
+      "good_ratio_low": "好评率 {{current}} 低于阈值 {{threshold}}"
+    },
+    "loading": "加载中…"
+  }
+}

@@ -108,7 +108,7 @@ coverage.json
 # Internal (not for public repo)
 start.sh
 .secrets.baseline
-monitoring/
+/monitoring/
 .github/workflows/deploy*.yml
 .github/workflows/rollback.yml
 .github/workflows/sync-docs.yml

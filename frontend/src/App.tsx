@@ -14,6 +14,9 @@ import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
 
 const AssetsPage = lazy(() => import('./components/assets/AssetsPage'));
+const QualityMonitor = lazy(
+  () => import('./components/monitoring/QualityMonitor'),
+);
 
 function PageLoading() {
   const { t } = useTranslation();
@@ -182,6 +185,14 @@ function ThemedApp() {
                     element={
                       <Suspense fallback={<PageLoading />}>
                         <AssetsPage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/monitoring"
+                    element={
+                      <Suspense fallback={<PageLoading />}>
+                        <QualityMonitor />
                       </Suspense>
                     }
                   />
