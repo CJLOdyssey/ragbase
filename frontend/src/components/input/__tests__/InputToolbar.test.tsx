@@ -15,6 +15,98 @@ import {
   setMockComposerHasContent,
 } from './helpers/inputToolbarTestSetup';
 
+// vi.mock is hoisted above ALL imports — factories cannot reference top-level
+// bindings directly, so async factories re-import the shared mock helpers.
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (k: string) => k }),
+}));
+
+vi.mock('@/hooks/useMessageComposer', async () => {
+  const h = await import('./helpers/inputToolbarTestSetup');
+  return {
+    useMessageComposer: () => ({
+      value: '',
+      setValue: h.mockComposerSetValue,
+      submit: h.mockComposerSubmit,
+      handleKeyDown: h.mockComposerHandleKeyDown,
+      get hasContent() {
+        return h.getComposerHasContent();
+      },
+      charCount: 0,
+      maxLength: 2000,
+    }),
+  };
+});
+
+vi.mock('@/hooks/useCommandPalette', async () => {
+  const h = await import('./helpers/inputToolbarTestSetup');
+  return {
+    useCommandPalette: () => ({
+      filtered: h.paletteMock.filtered,
+      filteredCommands: [],
+      activeIndex: 0,
+      open: h.paletteMock.openValue,
+      updateFromValue: h.paletteMock.updateFromValue,
+      handleKeyDown: h.paletteMock.handleKeyDown,
+      selectCommand: h.paletteMock.selectCommand,
+      setActiveIndex: vi.fn(),
+      close: h.paletteMock.close,
+    }),
+  };
+});
+
+vi.mock('@/utils/useToast', async () => {
+  const h = await import('./helpers/inputToolbarTestSetup');
+  return {
+    useToast: () => ({ toast: h.mockToast }),
+  };
+});
+
+vi.mock('@/api/client/attachments', async () => {
+  const h = await import('./helpers/inputToolbarTestSetup');
+  return {
+    uploadAttachment: h.mockUploadAttachment,
+    deleteAttachment: h.mockDeleteAttachment,
+  };
+});
+
+vi.mock('@/contexts/SettingsContext', () => ({
+  useSettings: () => ({
+    settings: { sendOnEnter: true, sendMode: 'enter' },
+    updateSettings: vi.fn(),
+  }),
+}));
+
+vi.mock('@/components/input/ModelSelector', () => ({
+  default: ({ models }: { models: unknown[] }) =>
+    models?.length ? <div data-testid="model-selector" /> : null,
+}));
+
+vi.mock('@/components/input/FileAttach', () => ({
+  default: ({
+    onReject,
+  }: {
+    onReject: (
+      r: Array<{ file: File; reason: 'size_exceeded' | 'type_denied' }>,
+    ) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="file-attach"
+      onClick={() =>
+        onReject([
+          { file: new File(['x'], 'big.txt'), reason: 'size_exceeded' },
+          { file: new File(['y'], 'bad.txt'), reason: 'type_denied' },
+        ])
+      }
+    />
+  ),
+}));
+
+vi.mock('@/components/input/CommandDropdown', () => ({
+  default: () => <div data-testid="command-dropdown" />,
+}));
+
 const defaultProps = {
   onSend: vi.fn(),
   models: [],

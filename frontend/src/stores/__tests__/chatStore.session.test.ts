@@ -8,16 +8,22 @@ import {
   resetChatStoreState,
 } from './helpers/chatStoreTestUtils';
 
-vi.mock('../../api/websocket', () => ({
-  connectRun: chatStoreMocks.connectRun,
-  disconnectRun: chatStoreMocks.disconnectRun,
-}));
+vi.mock('../../api/websocket', async () => {
+  const h = await import('./helpers/chatStoreTestUtils');
+  return {
+    connectRun: h.chatStoreMocks.connectRun,
+    disconnectRun: h.chatStoreMocks.disconnectRun,
+  };
+});
 
-vi.mock('../../api/client', () => ({
-  submitRequirement: chatStoreMocks.submitRequirement,
-  cancelRun: chatStoreMocks.cancelRun,
-  listKeys: chatStoreMocks.listKeys,
-}));
+vi.mock('../../api/client', async () => {
+  const h = await import('./helpers/chatStoreTestUtils');
+  return {
+    submitRequirement: h.chatStoreMocks.submitRequirement,
+    cancelRun: h.chatStoreMocks.cancelRun,
+    listKeys: h.chatStoreMocks.listKeys,
+  };
+});
 
 beforeEach(async () => {
   await resetChatStoreState();

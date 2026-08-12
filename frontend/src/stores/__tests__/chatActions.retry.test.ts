@@ -1,6 +1,5 @@
-// NOTE: the helper module must be imported FIRST — it holds the shared mock
-// fns referenced by the vi.mock factories below, and must be fully evaluated
-// before those factories run (chatActions statically imports api/client).
+// NOTE: vi.mock is hoisted above ALL imports — factories must not reference
+// top-level bindings directly; async factories re-import the shared helpers.
 import { continueGeneration, retry } from '../chatActions';
 import { useChatStore } from '../chatStore';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,12 +17,15 @@ vi.mock('../../api/websocket', () => ({
   disconnectRun: vi.fn(),
 }));
 
-vi.mock('../../api/client', () => ({
-  submitRequirement: mockSubmitReq,
-  resumeRun: mockResumeRun,
-  listKeys: mockListKeys,
-  listAgents: vi.fn().mockResolvedValue([]),
-}));
+vi.mock('../../api/client', async () => {
+  const h = await import('./helpers/chatActionsTestUtils');
+  return {
+    submitRequirement: h.mockSubmitReq,
+    resumeRun: h.mockResumeRun,
+    listKeys: h.mockListKeys,
+    listAgents: vi.fn().mockResolvedValue([]),
+  };
+});
 
 vi.mock('../chatStreaming', () => ({
   createStreamHandler: vi.fn(() => vi.fn()),
