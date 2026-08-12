@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ModelOption } from '../../types/input';
 
@@ -87,8 +87,7 @@ function SelectorLabel({
   const { t } = useTranslation();
   if (!hasLoadedOnce) {
     return (
-      <span className="inline-flex items-center gap-1.5 h-[16px]">
-        <Loader2 size={10} className="animate-spin" />
+      <span className="inline-flex items-center justify-center h-[16px]">
         {t('model.loading') || '加载中'}
       </span>
     );
