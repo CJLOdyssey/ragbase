@@ -87,7 +87,7 @@ function SelectorLabel({
   const { t } = useTranslation();
   if (!hasLoadedOnce) {
     return (
-      <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center justify-center gap-1.5 h-[16px] min-w-[96px]">
         <Loader2 size={10} className="animate-spin" />
         {t('model.loading') || '加载中'}
       </span>
@@ -294,7 +294,7 @@ export default function ModelSelector({
   return (
     <div className="relative inline-flex items-center" ref={ref}>
       <button
-        className={`inline-flex items-center gap-1 px-2 py-1 border rounded-md bg-transparent text-xs font-[inherit] cursor-pointer transition-all duration-150 max-w-[180px] ${isEmpty ? 'border-[var(--color-accent-soft)] text-[var(--color-accent-soft)] hover:bg-[color-mix(in_srgb,var(--color-accent-soft)_10%,transparent)] hover:border-[var(--color-accent-soft)] hover:text-[var(--color-accent-soft)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]'}`}
+        className={`inline-flex items-center gap-1 px-2 h-[26px] border rounded-md bg-transparent text-xs font-[inherit] cursor-pointer transition-all duration-150 max-w-[180px] ${isEmpty && hasLoadedOnce ? 'border-[var(--color-accent-soft)] text-[var(--color-accent-soft)] hover:bg-[color-mix(in_srgb,var(--color-accent-soft)_10%,transparent)] hover:border-[var(--color-accent-soft)] hover:text-[var(--color-accent-soft)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]'}`}
         onClick={() => {
           if (isEmpty) {
             onConfigure?.();
