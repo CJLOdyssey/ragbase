@@ -49,9 +49,9 @@
     "loading": "Loading...",
     "noCommands": "No commands available",
     "noModels": "No models available",
-    "configure": "Configure API provider",
+    "configure": "Configure API Key",
     "manageKeys": "Manage API Keys",
-    "noModelsHint": "Configure an API provider to enable models",
+    "noModelsHint": "Configure an API Key to enable models",
     "recent": "Recent",
     "statusDeprecated": "Deprecated",
     "statusSunset": "Sunsetting"
