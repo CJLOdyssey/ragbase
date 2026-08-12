@@ -20,11 +20,26 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     if asset is None or asset.user_id != user_id:
         raise ValueError(f"asset {asset_id} not found or not owned by user")
 
+    from rag.rag_guard import ALLOWED_INDEX_SOURCES, scan_document
     from rag.rag_parsing import extract_text
+
+    # OWASP LLM08 source whitelist: only known ingestion channels may index.
+    if asset.source not in ALLOWED_INDEX_SOURCES:
+        raise ValueError(
+            f"asset source {asset.source!r} not allowed for indexing"
+        )
 
     text = extract_text(asset.storage_path)
     if not text.strip():
         raise ValueError("asset has no text content — cannot index")
+
+    # OWASP LLM08: reject poisoned/hidden-instruction text before it reaches
+    # the vector store — a flagged asset stays unindexed, fail-loud.
+    reasons = scan_document(text)
+    if reasons:
+        raise ValueError(
+            f"asset rejected by document guard: {'; '.join(reasons)}"
+        )
 
     cfg = await get_embedding_config()
     if cfg is None or cfg["api_key"] is None:

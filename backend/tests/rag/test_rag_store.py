@@ -282,6 +282,29 @@ class TestPgVectorStore:
             assert params["uid"] == "u-42"
 
     @pytest.mark.asyncio
+    async def test_search_lexical_leg_carries_user_filter(self):
+        """OWASP LLM08 #2: the pg_trgm leg must apply the same user_id filter."""
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = []
+        # 3 DDL + vector leg + SET LOCAL + lexical leg
+        mock_session.execute = AsyncMock(
+            side_effect=[None, None, None, mock_result, None, mock_result]
+        )
+        with _patch_db(mock_session):
+            await store.search(
+                [0.1] * 1024, query_text="postgres vector", user_id="u-7", top_k=5
+            )
+            vec_call = mock_session.execute.call_args_list[3]
+            lex_call = mock_session.execute.call_args_list[5]
+            assert "user_id = :uid" in str(vec_call[0][0])
+            assert "user_id = :uid" in str(lex_call[0][0])
+            assert vec_call[0][1]["uid"] == "u-7"
+            assert lex_call[0][1]["uid"] == "u-7"
+            assert "text <% :q" in str(lex_call[0][0])
+
+    @pytest.mark.asyncio
     async def test_search_with_session_id(self):
         store = PgVectorStore()
         mock_session = AsyncMock()

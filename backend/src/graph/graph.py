@@ -39,7 +39,25 @@ _BALANCE_ERROR_KEYWORDS = [
 
 logger = get_logger(__name__)
 
-logger = get_logger(__name__)
+# Identifier of the DB-stored context guard prompt (prompts table, editable +
+# versioned via the prompts API — prompt text is NEVER hardcoded in code).
+# Template holds a {context} placeholder; rendered around sanitized
+# retrieval/attachment text at the injection boundary (OWASP LLM01).
+CONTEXT_GUARD_PROMPT = "rag_context_guard"
+
+
+async def _load_context_guard_template() -> str | None:
+    """Fetch the active context-guard template from the prompts store."""
+    from repository.prompts import get_prompts_as_dicts
+
+    try:
+        prompts = await get_prompts_as_dicts()
+    except Exception:
+        return None
+    for p in prompts:
+        if p.get("name") == CONTEXT_GUARD_PROMPT and p.get("status") == "active":
+            return p.get("content")
+    return None
 
 
 def _is_balance_error(error_body: str) -> bool:
@@ -209,7 +227,24 @@ class SingleAgentGraph:
         if system_prompt:
             full_messages.append(SystemMessage(content=system_prompt))
         if session_context:
-            full_messages.append(SystemMessage(content=session_context))
+            # OWASP LLM01: untrusted retrieval/attachment text is sanitized
+            # deterministically (instruction markers neutralized — the model
+            # never sees the instruction text) and framed by the DB-configured
+            # guard template. No template configured → inject sanitized text
+            # plain rather than break the chat.
+            from rag.rag_guard import sanitize_context
+
+            safe_ctx = sanitize_context(session_context)
+            template = await _load_context_guard_template()
+            if template:
+                content = template.replace("{context}", safe_ctx)
+            else:
+                logger.debug(
+                    "context guard prompt %r not configured — injecting sanitized context",
+                    CONTEXT_GUARD_PROMPT,
+                )
+                content = safe_ctx
+            full_messages.append(SystemMessage(content=content))
         full_messages.extend(messages)
         content, thinking, raw_tool_calls = await self._raw_llm_stream(full_messages)
 

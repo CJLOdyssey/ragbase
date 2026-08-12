@@ -351,7 +351,11 @@ def main() -> None:
     parser.add_argument("--rerank", action="store_true", help="rerank candidates with cross-encoder")
     parser.add_argument("--ragas", action="store_true", help="run RAGAS-style quality metrics (needs LLM key)")
     parser.add_argument("--rewrite", action="store_true", help="rewrite queries with LLM before retrieval")
-    parser.add_argument("--multi-rewrite", action="store_true", help="multi-query retrieval: original + LLM rewrite fused by RRF")
+    parser.add_argument(
+        "--multi-rewrite",
+        action="store_true",
+        help="multi-query retrieval: original + LLM rewrite fused by RRF",
+    )
     parser.add_argument("--limit", type=int, default=0, help="evaluate only the first N cases (0 = all)")
     parser.add_argument("--fail-below", type=float, default=0.0, help="CI gate: exit 1 if recall@5/mrr below this")
     args = parser.parse_args()

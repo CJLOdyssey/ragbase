@@ -2,6 +2,7 @@
 
 import contextlib
 import json
+import os
 import time
 from typing import Any
 
@@ -11,6 +12,7 @@ from core.config import load_config
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from core.models import RunDetail, RunSummary
+from core.rate_limit import SlidingWindowLimiter
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
@@ -21,6 +23,13 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["runs"])
 
 _MAX_REQUIREMENT_LENGTH = 2000
+
+# OWASP LLM10 unbounded-consumption guard: per-user run rate limit.
+# In-process window; multi-instance deployments need a shared store.
+_run_limiter = SlidingWindowLimiter(
+    max_calls=int(os.environ.get("RUN_RATE_LIMIT_PER_MIN", "6")),
+    window_seconds=60,
+)
 
 
 def _parse_sources(raw: str | None) -> list[dict[str, Any]]:
@@ -65,6 +74,10 @@ async def create_run(req: RunRequest, request: Request) -> Any:
         raise error_response(ErrorCode.INVALID_REQUEST, detail="需求不能为空")
 
     user_id = get_user_id(request)
+    if not _run_limiter.allow(user_id):
+        raise error_response(
+            ErrorCode.RATE_LIMITED, detail="请求过于频繁，请稍后再试"
+        )
     try:
         result = await run_service.create_run(
             requirement=requirement,

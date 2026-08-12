@@ -157,6 +157,8 @@ async def _get_rag_context(
     never break the chat.
     """
     try:
+        import time
+
         from rag.rag_pipeline import ensure_embedding_provider, retrieve_context, retrieve_sources
         from repository.keys import get_embedding_config
 
@@ -166,12 +168,29 @@ async def _get_rag_context(
         ensure_embedding_provider(
             cfg["api_key"], model=cfg["model"], base_url=cfg["base_url"]
         )
+        started = time.perf_counter()
         sources = await retrieve_sources(
             query=query, user_id=user_id, session_id=session_id, top_k=3, rerank=True
         )
         context = await retrieve_context(
             query=query, user_id=user_id, session_id=session_id, top_k=3, rerank=True
         )
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        # OWASP LLM08: append-only retrieval activity log (query/sources/
+        # latency/user) — best-effort, must never break the chat.
+        with contextlib.suppress(Exception):
+            from repository.retrieval_logs import create_retrieval_log
+
+            await create_retrieval_log(
+                user_id=user_id,
+                session_id=session_id,
+                query=query,
+                latency_ms=latency_ms,
+                hit_count=len(sources),
+                sources=sources,
+                top_k=3,
+                rerank=True,
+            )
         return context, sources
     except Exception:
         logger.warning("RAG context retrieval failed for session %s", session_id, exc_info=True)

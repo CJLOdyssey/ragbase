@@ -195,3 +195,56 @@ class TestLiveVectorStore:
             ids = [r[0] for r in rows]
             assert "live-a1" not in ids
             assert "live-a2" in ids
+
+    async def test_cross_user_lexical_leg_isolated(self, engine, clean_test_rows):
+        """OWASP LLM08 #2: user B's keyword query must not match A's chunks."""
+        other = "live-other-" + uuid.uuid4().hex[:8]
+        await _insert_row(engine, "live-secret", _emb(0.0), _TEST_USER, "asset-secret")
+
+        async with engine.connect() as conn:
+            await conn.execute(text("SET LOCAL pg_trgm.word_similarity_threshold = 0.3"))
+            rows = (
+                await conn.execute(
+                    text(
+                        """
+                        SELECT id FROM vector_chunks
+                        WHERE user_id = :uid AND text <% :q
+                        """
+                    ),
+                    {"q": "postgres vector search", "uid": other},
+                )
+            ).all()
+        assert rows == []
+
+    async def test_cross_user_hybrid_attack_zero_hits(self, engine, clean_test_rows):
+        """OWASP LLM08 #2: exact-match query by user B surfaces zero of A's chunks."""
+        other = "live-other-" + uuid.uuid4().hex[:8]
+        await _insert_row(engine, "live-secret", _emb(0.95), _TEST_USER, "asset-secret")
+
+        async with engine.connect() as conn:
+            vec_rows = (
+                await conn.execute(
+                    text(
+                        """
+                        SELECT id FROM vector_chunks
+                        WHERE user_id = :uid
+                        ORDER BY embedding <=> CAST(:emb AS vector)
+                        """
+                    ),
+                    {"emb": _emb(0.95), "uid": other},
+                )
+            ).all()
+            await conn.execute(text("SET LOCAL pg_trgm.word_similarity_threshold = 0.3"))
+            lex_rows = (
+                await conn.execute(
+                    text(
+                        """
+                        SELECT id FROM vector_chunks
+                        WHERE user_id = :uid AND text <% :q
+                        """
+                    ),
+                    {"q": "chunk live-secret about postgres vector search", "uid": other},
+                )
+            ).all()
+        assert vec_rows == []
+        assert lex_rows == []

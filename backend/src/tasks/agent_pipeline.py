@@ -41,6 +41,64 @@ _run_counter = 0
 _AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "600"))  # 10 minutes default
 
 
+def _guard_input(requirement: str) -> list[str]:
+    """OWASP LLM01 input filtering.
+
+    Hidden control/zero-width characters in a user message are never
+    legitimate — reject hard. Instruction markers (visible text) pass
+    through; the caller logs them as suspicious.
+    """
+    from rag.rag_guard import scan_document
+
+    reasons = scan_document(requirement)
+    if any("zero-width/control" in r for r in reasons):
+        raise ValueError("输入包含不可见控制字符，已拒绝")
+    return reasons
+
+
+def _flag_output(text: str) -> list[str]:
+    """OWASP LLM01 output filtering: flag model answers carrying injection
+    markers (log + warning event only — an answer may legitimately quote one)."""
+    from rag.rag_guard import scan_document
+
+    return scan_document(text)
+
+
+async def _enforce_token_budget(user_id: str, run_id: str) -> bool:
+    """OWASP LLM10 unbounded-consumption guard.
+
+    Rolling 24h token budget per user (USER_DAILY_TOKEN_BUDGET env, 0 =
+    disabled). Over budget → run fails loud with a user-facing error.
+    """
+    budget = int(os.environ.get("USER_DAILY_TOKEN_BUDGET", "0"))
+    if budget <= 0 or user_id == "system":
+        return True
+    from datetime import UTC, datetime, timedelta
+
+    from repository.keys_crud import sum_user_tokens_since
+
+    used = await sum_user_tokens_since(
+        user_id, datetime.now(UTC) - timedelta(days=1)
+    )
+    if used < budget:
+        return True
+    logger.warning(
+        "[GUARD] user %s over 24h token budget %d (used %d)",
+        user_id, budget, used,
+    )
+    with contextlib.suppress(Exception):
+        await update_run_status(run_id, "error")
+    with contextlib.suppress(Exception):
+        await publish_run_message(
+            run_id,
+            {
+                "type": "error",
+                "message": f"近 24 小时 LLM 用量已达上限（{budget} tokens），请稍后或联系管理员",
+            },
+        )
+    return False
+
+
 def _kill_stuck_child_processes() -> None:
     """Kill any OS-level child processes left behind by a timed-out task.
 
@@ -95,6 +153,16 @@ async def _run_agent_pipeline(
     logger.info("=== ENTER _run_agent_pipeline run=#%s | run=%s ===", _run_counter, run_id)
     await update_run_status(run_id, "running")
     cfg = load_config()
+
+    # OWASP LLM01 input filter: hidden-control-char input fails loud before
+    # any LLM/token spend; visible instruction markers are logged.
+    for reason in _guard_input(requirement):
+        logger.warning("[GUARD] input flagged: %s", reason)
+
+    # OWASP LLM10: per-user rolling token budget — check before any LLM call.
+    if not await _enforce_token_budget(user_id, run_id):
+        return {"run_id": run_id, "status": "error"}
+
     effective_api_key = api_key
     effective_api_base = api_base
     effective_model = model or cfg.model
@@ -214,6 +282,21 @@ async def _run_agent_pipeline(
         if hasattr(m, "content") and m.content:
             last_content = str(m.content)
             break
+
+    # OWASP LLM01 output filter: a poisoned document may push the model into
+    # emitting instructions — flag for audit, surface a warning event.
+    output_reasons = _flag_output(last_content)
+    if output_reasons:
+        logger.warning("[GUARD] model output flagged: %s", "; ".join(output_reasons))
+        with contextlib.suppress(Exception):
+            await publish_run_message(
+                run_id,
+                {
+                    "type": "warning",
+                    "message": "回答疑似包含注入指令，已记录",
+                    "reasons": output_reasons,
+                },
+            )
 
     pm_document = ""
     code = last_content

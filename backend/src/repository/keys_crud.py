@@ -534,6 +534,24 @@ def _capabilities_contains(session: Any, capability: str) -> Any:
     return exists(select(elements.c.value).where(elements.c.value == capability))
 
 
+async def sum_user_tokens_since(user_id: str, since: datetime) -> int:
+    """Total LLM tokens consumed by a user since a timestamp (budget check).
+
+    Queries the append-only KeyUsageLog (tokens_total per call).
+    """
+    from sqlalchemy import func
+
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(func.coalesce(func.sum(KeyUsageLog.tokens_total), 0)).where(
+                KeyUsageLog.user_id == user_id,
+                KeyUsageLog.created_at >= since,
+            )
+        )
+        return int(result.scalar_one())
+
+
 async def log_key_usage(
     key_id: str | None,
     user_id: str,

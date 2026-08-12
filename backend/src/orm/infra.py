@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from core.base import Base
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -116,4 +116,30 @@ class FeedbackLog(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class RetrievalLogDB(Base):
+    """Append-only retrieval activity log (OWASP LLM08 — forensics + quality).
+
+    Written once per user question at the retrieval boundary; intentionally
+    exposes no update/delete path (immutability for audit).
+    """
+
+    __tablename__ = "retrieval_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    top_k: Mapped[int] = mapped_column(Integer, default=5)
+    rerank: Mapped[bool] = mapped_column(Boolean, default=False)
+    min_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    hit_count: Mapped[int] = mapped_column(Integer, default=0)
+    sources: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity}"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )

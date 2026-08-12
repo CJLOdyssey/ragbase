@@ -333,6 +333,60 @@ class TestGetRagContext:
         assert context == ""
         assert sources == []
 
+    async def test_get_rag_context_logs_retrieval(self):
+        from tasks.pipeline_utils import _get_rag_context
+        mock_cfg = AsyncMock(
+            return_value={
+                "api_key": "key-1",
+                "base_url": "https://api.siliconflow.cn/v1",
+                "model": "BAAI/bge-m3",
+            }
+        )
+        mock_ensure = MagicMock()
+        mock_retrieve = AsyncMock(return_value="rag result")
+        mock_sources = AsyncMock(
+            return_value=[{"asset_id": "a1", "asset_name": "手册", "text": "…", "similarity": 0.9}]
+        )
+        mock_log = AsyncMock()
+
+        with patch("rag.rag_pipeline.ensure_embedding_provider", mock_ensure), \
+             patch("rag.rag_pipeline.retrieve_context", mock_retrieve), \
+             patch("rag.rag_pipeline.retrieve_sources", mock_sources), \
+             patch("repository.keys.get_embedding_config", mock_cfg), \
+             patch("repository.retrieval_logs.create_retrieval_log", mock_log):
+            context, sources = await _get_rag_context("query", "sess-1", "u1")
+
+        assert context == "rag result"
+        mock_log.assert_awaited_once()
+        kwargs = mock_log.call_args.kwargs
+        assert kwargs["user_id"] == "u1"
+        assert kwargs["session_id"] == "sess-1"
+        assert kwargs["query"] == "query"
+        assert kwargs["hit_count"] == 1
+        assert kwargs["rerank"] is True
+        assert kwargs["top_k"] == 3
+        assert kwargs["latency_ms"] >= 0
+        assert kwargs["sources"][0]["asset_id"] == "a1"
+
+    async def test_get_rag_context_log_failure_does_not_break_chat(self):
+        from tasks.pipeline_utils import _get_rag_context
+        mock_cfg = AsyncMock(
+            return_value={"api_key": "key-1", "base_url": "https://api.siliconflow.cn/v1", "model": "BAAI/bge-m3"}
+        )
+        mock_retrieve = AsyncMock(return_value="rag result")
+        mock_sources = AsyncMock(return_value=[])
+        mock_log = AsyncMock(side_effect=Exception("db down"))
+
+        with patch("rag.rag_pipeline.ensure_embedding_provider", MagicMock()), \
+             patch("rag.rag_pipeline.retrieve_context", mock_retrieve), \
+             patch("rag.rag_pipeline.retrieve_sources", mock_sources), \
+             patch("repository.keys.get_embedding_config", mock_cfg), \
+             patch("repository.retrieval_logs.create_retrieval_log", mock_log):
+            context, sources = await _get_rag_context("query", "sess-1")
+
+        assert context == "rag result"
+        assert sources == []
+
 
 # =============================================================================
 # _save_output_memories
