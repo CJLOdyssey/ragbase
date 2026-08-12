@@ -315,7 +315,7 @@ export default function ModelSelector({
             current={current}
           />
         </span>
-        {hasLoadedOnce && (
+        {hasLoadedOnce && !isEmpty && (
           <ChevronDown
             size={10}
             className={`flex-shrink-0 text-[var(--color-text-muted)] transition-transform duration-150 ease ${open ? 'rotate-180' : ''}`}
