@@ -10,8 +10,8 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
-vi.mock('../../input', () => ({
-  InputToolbar: () => <div data-testid="mock-input-toolbar">toolbar</div>,
+vi.mock('../../input/InputToolbar', () => ({
+  default: () => <div data-testid="mock-input-toolbar">toolbar</div>,
 }));
 
 vi.mock('motion/react', () => ({

@@ -9,6 +9,10 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// setup.tsx globally mocks AuthContext for component tests; this suite tests
+// the REAL provider, so unmock it (hoisted before the imports above run).
+vi.unmock('@/components/auth/AuthContext');
+
 vi.mock('@/api/client/auth', () => ({
   getAuthConfig: vi.fn(),
   getMe: vi.fn(),

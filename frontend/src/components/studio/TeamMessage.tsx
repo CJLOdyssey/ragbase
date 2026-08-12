@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import type { RagSource } from '../../types';
 import type { Agent, Message } from '../../types/studio';
-import { CopyBtn } from './messages';
+import { CopyBtn } from './messages/CopyBtn';
 import { markdownComponents, rehypeLinkify } from './thinking';
 import { ThinkingSection } from './ThinkingSection';
 import UserMessage from './UserMessage';

@@ -77,12 +77,12 @@ vi.mock('../../../stores/chatActions', () => ({
   regenerateMessage: vi.fn(),
 }));
 
-vi.mock('../../../components/auth', () => ({
+vi.mock('../../../components/auth/AuthContext', () => ({
   useAuth: () => mocks.auth,
 }));
 
-vi.mock('../../input', () => ({
-  InputToolbar: () => <div data-testid="mock-input-toolbar" />,
+vi.mock('../../input/InputToolbar', () => ({
+  default: () => <div data-testid="mock-input-toolbar" />,
 }));
 
 function renderWorkstation() {

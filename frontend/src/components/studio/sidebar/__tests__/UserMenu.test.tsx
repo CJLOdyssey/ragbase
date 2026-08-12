@@ -19,7 +19,7 @@ const { authMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../../../auth', () => ({
+vi.mock('../../../auth/AuthContext', () => ({
   useAuth: () => authMock,
 }));
 

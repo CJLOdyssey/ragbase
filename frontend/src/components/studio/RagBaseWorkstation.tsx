@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { InputToolbar, type InputToolbarHandle } from '../input';
+import InputToolbar, { type InputToolbarHandle } from '../input/InputToolbar';
 import { Moon, PanelLeft, Sun } from 'lucide-react';
 import HomeScreen from './HomeScreen';
 import MessagesPanel from './MessagesPanel';

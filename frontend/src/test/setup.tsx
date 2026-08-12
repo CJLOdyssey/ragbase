@@ -25,7 +25,7 @@ console.error = (...args: unknown[]) => {
   _origErr.call(console, ...args);
 };
 
-vi.mock('../components/auth', () => ({
+vi.mock('../components/auth/AuthContext', () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useAuth: () => ({
     user: null,

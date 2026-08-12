@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type * as React from 'react';
-import { useAuth } from '../../auth';
+import { useAuth } from '../../auth/AuthContext';
 import { HelpCircle, Key, LogIn, LogOut, Settings, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 

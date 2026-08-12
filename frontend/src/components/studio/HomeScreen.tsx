@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { InputToolbar, type InputToolbarHandle } from '../input';
+import InputToolbar, { type InputToolbarHandle } from '../input/InputToolbar';
 import {
   BarChart3,
   Bot,

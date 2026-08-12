@@ -3,7 +3,7 @@ import type * as React from 'react';
 import { Paperclip, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types/studio';
-import { CopyBtn } from './messages';
+import { CopyBtn } from './messages/CopyBtn';
 import VersionPager from './VersionPager';
 import { sanitizeHtml } from '../../utils/sanitize';
 

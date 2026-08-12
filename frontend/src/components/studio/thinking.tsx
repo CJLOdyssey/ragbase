@@ -3,7 +3,7 @@ import type * as React from 'react';
 import type { ElementContent, Root } from 'hast';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import { visit } from 'unist-util-visit';
-import { CodeBlock } from './messages';
+import CodeBlock from './messages/LazyCodeBlock';
 
 function linkify(text: string): React.ReactNode {
   const parts = text.split(/(https?:\/\/[^\s"',)\]}]+)/g);
