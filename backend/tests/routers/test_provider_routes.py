@@ -69,7 +69,7 @@ class TestProviderRoutes:
         assert "deepseek" in data
         assert "anthropic" in data
         assert "dashscope" in data
-        assert "custom" in data
+        assert "custom_llm" in data
 
     def test_list_providers_has_capabilities(self, client):
         resp = client.get("/api/providers")

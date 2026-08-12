@@ -121,9 +121,10 @@ def _classify_models(
 
     SiliconFlow: one request per sub_type filter plus a type=audio request,
     fetched concurrently. On ANY fetch failure, degrade to a single full-list
-    request with an empty types map (pre-classification behavior); if the
-    degrade request also fails, report failure with the underlying message.
-    Other providers: single full-list request, types always empty.
+    request with types inferred via name heuristics; if the degrade request
+    also fails, report failure with the underlying message.
+    Other providers: single full-list request, types inferred via name
+    heuristics (infer_model_type).
     Returns (success, models, {model_id: type}, message).
     """
 

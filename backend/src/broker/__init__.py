@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import inspect
 import json
 import os
 from collections.abc import AsyncIterator
@@ -105,7 +106,13 @@ async def close_redis() -> None:
     loop = asyncio.get_running_loop()
     pool = _pools.pop(loop, None)
     if pool is not None:
-        await pool.aclose()
+        # Shutdown-path defense: tolerate pools injected by test mocks
+        # (MagicMock has no awaitable aclose), never crash teardown.
+        close = getattr(pool, "aclose", None)
+        if close is not None:
+            result = close()
+            if inspect.isawaitable(result):
+                await result
 
 
 async def publish_run_message(run_id: str, message: dict[str, Any]) -> None:

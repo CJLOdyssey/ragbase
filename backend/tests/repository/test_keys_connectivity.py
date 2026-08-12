@@ -240,9 +240,9 @@ class TestClassifyModels:
             "sf/chat-1": "llm",
             "sf/embed-1": "embedding",
             "sf/rerank-1": "rerank",
-            "sf/tti-1": "tool",
-            "sf/iti-1": "tool",
-            "sf/ttv-1": "tool",
+            "sf/tti-1": "image",
+            "sf/iti-1": "image",
+            "sf/ttv-1": "image",
             "sf/stt-1": "speech2text",
         }
 
@@ -303,7 +303,7 @@ class TestClassifyModels:
             )
         assert success is True
         assert models == ["gpt-4", "gpt-3.5"]
-        assert types == {}
+        assert types == {"gpt-4": "llm", "gpt-3.5": "llm"}
         assert mock_open.call_count == 1
 
     def test_fetch_failure_degrades_to_single_fetch(self):
@@ -318,7 +318,7 @@ class TestClassifyModels:
             )
         assert success is True
         assert models == ["m1", "m2"]
-        assert types == {}
+        assert types == {"m1": "llm", "m2": "llm"}
 
     def test_partial_failure_degrades(self):
         def side_effect(req, *args, **kwargs):
@@ -334,7 +334,7 @@ class TestClassifyModels:
             )
         assert success is True
         assert models == ["m1"]
-        assert types == {}
+        assert types == {"m1": "llm"}
 
     def test_single_fetch_failure_reports_failure(self):
         def side_effect(req, *args, **kwargs):
@@ -388,7 +388,7 @@ class TestTestConnectionSyncTypes:
             })
         assert result["success"] is True
         assert result["models"] == ["gpt-4"]
-        assert result["types"] == {}
+        assert result["types"] == {"gpt-4": "llm"}
         assert mock_open.call_count == 1
 
     def test_siliconflow_degrade_failure_reports_failure(self):
@@ -420,7 +420,7 @@ class TestTestConnectionSyncTypes:
             })
         assert result["success"] is True
         assert result["models"] == ["sf/fallback"]
-        assert result["types"] == {}
+        assert result["types"] == {"sf/fallback": "llm"}
 
     def test_connection_failure_includes_empty_types(self):
         with unittest.mock.patch("urllib.request.urlopen", side_effect=ConnectionError("refused")):

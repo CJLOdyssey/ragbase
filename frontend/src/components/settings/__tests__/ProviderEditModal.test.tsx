@@ -315,7 +315,7 @@ describe('ProviderEditModal 模型刷新链路', () => {
     await waitFor(() => expect(screen.getByText('gpt-4')).toBeInTheDocument());
 
     const list = screen.getByText('gpt-4').closest('div')?.parentElement;
-    expect(list?.className).toContain('max-h-64');
+    expect(list?.className).toContain('max-h-[84px]');
     expect(list?.className).toContain('overflow-y-auto');
   });
 });
