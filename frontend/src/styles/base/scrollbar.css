@@ -35,7 +35,12 @@
   background: transparent;
 }
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) var(--color-surface-sidebar);
+/* Chromium 一旦设置 scrollbar-width/scrollbar-color（非 auto）会忽略全部
+   ::-webkit-scrollbar-* 样式（含 button 箭头隐藏）。所以标准属性仅给
+   Firefox（不支持 ::-webkit-scrollbar selector）用。 */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) var(--color-surface-sidebar);
+  }
 }
