@@ -67,6 +67,18 @@ export function markdownComponents(t: (key: string) => string): Components {
         />
       );
     },
+    a({ href, children }) {
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline text-[var(--color-accent)] hover:opacity-80 break-all"
+        >
+          {children}
+        </a>
+      );
+    },
   };
 }
 
@@ -84,18 +96,6 @@ export function ThinkingMarkdown({
         ...markdownComponents(t),
         p({ children }) {
           return <p className="m-0">{children}</p>;
-        },
-        a({ href, children }) {
-          return (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-[var(--color-accent)] hover:opacity-80 break-all"
-            >
-              {children}
-            </a>
-          );
         },
       }}
     >

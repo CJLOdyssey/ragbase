@@ -328,21 +328,7 @@ const TeamMessage = memo(function TeamMessage({
                 />
                 <ReactMarkdown
                   rehypePlugins={[rehypeLinkify]}
-                  components={{
-                    ...markdownComponents(t),
-                    a({ href, children }) {
-                      return (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline text-[var(--color-accent)] hover:opacity-80 break-all"
-                        >
-                          {children}
-                        </a>
-                      );
-                    },
-                  }}
+                  components={markdownComponents(t)}
                 >
                   {msg.content}
                 </ReactMarkdown>

@@ -210,150 +210,149 @@ export default function SettingsModal({ onClose }: Props) {
           {activeTab === 'about' && (
             <div>
               <h4>{t('settings.about')}</h4>
-              <div
-                className="flex items-center justify-between py-4"
-                style={{
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  gap: 0,
-                  padding: 0,
-                  border: 'none',
-                }}
-              >
-                {/* App identity */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 16,
-                    padding: '24px 20px',
-                    width: '100%',
-                    background: 'var(--color-surface-raised)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-card)',
-                    marginBottom: 16,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 14,
-                      background:
-                        'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 40%, transparent), color-mix(in srgb, var(--color-accent) 10%, transparent))',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--color-accent)',
-                      flexShrink: 0,
-                      boxShadow:
-                        '0 2px 8px color-mix(in srgb, var(--color-accent) 20%, transparent)',
-                    }}
-                  >
-                    <Info size={24} />
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 650,
-                        color: 'var(--color-text-primary)',
-                        letterSpacing: '-0.02em',
-                      }}
-                    >
-                      RagBase
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        marginTop: 4,
-                      }}
-                    >
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          background:
-                            'color-mix(in srgb, var(--color-accent) 12%, transparent)',
-                          color: 'var(--color-accent)',
-                          fontSize: 11,
-                          fontWeight: 500,
-                        }}
-                      >
-                        v {VERSION}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: 'var(--color-text-muted)',
-                        }}
-                      >
-                        {BUILD_TIME}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Info grid */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 1,
-                    width: '100%',
-                    background: 'var(--color-border)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-card)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {[
-                    { label: 'Version', value: VERSION },
-                    { label: 'Build', value: BUILD_TIME },
-                    { label: 'Frontend', value: 'React 18 + Vite 6' },
-                    { label: 'Backend', value: 'FastAPI + Python 3.12' },
-                    { label: 'License', value: 'MIT' },
-                  ].map((row) => (
-                    <div
-                      key={row.label}
-                      style={{
-                        padding: '12px 16px',
-                        background: 'var(--color-surface-raised)',
-                        fontSize: 13,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2,
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: 'var(--color-text-muted)',
-                          fontSize: 11,
-                        }}
-                      >
-                        {row.label}
-                      </span>
-                      <span
-                        style={{
-                          color: 'var(--color-text-primary)',
-                          fontWeight: 450,
-                        }}
-                      >
-                        {row.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <AppIdentity />
+              <InfoGrid />
             </div>
           )}
         </div>
       </div>
     </Modal>
+  );
+}
+
+function AppIdentity() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        padding: '24px 20px',
+        width: '100%',
+        background: 'var(--color-surface-raised)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-card)',
+        marginBottom: 16,
+      }}
+    >
+      <div
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 14,
+          background:
+            'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 40%, transparent), color-mix(in srgb, var(--color-accent) 10%, transparent))',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--color-accent)',
+          flexShrink: 0,
+          boxShadow:
+            '0 2px 8px color-mix(in srgb, var(--color-accent) 20%, transparent)',
+        }}
+      >
+        <Info size={24} />
+      </div>
+      <div>
+        <div
+          style={{
+            fontSize: 18,
+            fontWeight: 650,
+            color: 'var(--color-text-primary)',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          RagBase
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 4,
+          }}
+        >
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 8px',
+              borderRadius: 4,
+              background:
+                'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+              color: 'var(--color-accent)',
+              fontSize: 11,
+              fontWeight: 500,
+            }}
+          >
+            v {VERSION}
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            {BUILD_TIME}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoGrid() {
+  const rows = [
+    { label: 'Version', value: VERSION },
+    { label: 'Build', value: BUILD_TIME },
+    { label: 'Frontend', value: 'React 18 + Vite 6' },
+    { label: 'Backend', value: 'FastAPI + Python 3.12' },
+    { label: 'License', value: 'MIT' },
+  ];
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 1,
+        width: '100%',
+        background: 'var(--color-border)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-card)',
+        overflow: 'hidden',
+      }}
+    >
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          style={{
+            padding: '12px 16px',
+            background: 'var(--color-surface-raised)',
+            fontSize: 13,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <span
+            style={{
+              color: 'var(--color-text-muted)',
+              fontSize: 11,
+            }}
+          >
+            {row.label}
+          </span>
+          <span
+            style={{
+              color: 'var(--color-text-primary)',
+              fontWeight: 450,
+            }}
+          >
+            {row.value}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
