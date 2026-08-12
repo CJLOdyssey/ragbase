@@ -95,7 +95,7 @@ function SelectorLabel({
   }
   return (
     <>
-      {isEmpty ? t('model.configure') : (current?.label ?? t('model.noModels'))}
+      {isEmpty ? t('model.configure') : (current?.label ?? t('model.select'))}
     </>
   );
 }
