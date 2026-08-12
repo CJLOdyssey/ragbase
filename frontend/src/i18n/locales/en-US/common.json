@@ -47,6 +47,7 @@
   },
   "model": {
     "loading": "Loading...",
+    "loadingText": "Loading",
     "noCommands": "No commands available",
     "noModels": "No models available",
     "configure": "Configure API Key",

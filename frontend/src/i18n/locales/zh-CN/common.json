@@ -47,6 +47,7 @@
   },
   "model": {
     "loading": "加载中...",
+    "loadingText": "加载中",
     "noCommands": "暂无可用命令",
     "noModels": "暂无可用模型",
     "configure": "配置 API Key",

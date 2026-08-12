@@ -88,7 +88,7 @@ function SelectorLabel({
   if (!hasLoadedOnce) {
     return (
       <span className="inline-flex items-center justify-center h-[16px]">
-        {t('model.loading') || '加载中'}
+        {t('model.loadingText') || '加载中'}
       </span>
     );
   }
