@@ -1,21 +1,27 @@
 /// <reference types="vitest/config" />
-import { defineConfig, loadEnv } from 'vite';
 import path from 'path';
-import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import csp from 'vite-plugin-csp';
+import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { defineConfig, loadEnv } from 'vite';
+import csp from 'vite-plugin-csp';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isDev = mode === 'development';
   // Shell env takes precedence over .env files, then defaults.
   // Ports per mode: hybrid 5174, full-container 5173, E2E 5175.
-  const devPort = Number(process.env.VITE_DEV_PORT ?? env.VITE_DEV_PORT) || 5174;
+  const devPort =
+    Number(process.env.VITE_DEV_PORT ?? env.VITE_DEV_PORT) || 5174;
   const apiOrigin =
-    process.env.VITE_API_BASE_URL || env.VITE_API_BASE_URL || 'http://localhost:8081';
+    process.env.VITE_API_BASE_URL ||
+    env.VITE_API_BASE_URL ||
+    'http://localhost:8081';
   // Derive WS origin from API origin or use env override
-  const wsOrigin = process.env.VITE_WS_URL || env.VITE_WS_URL || apiOrigin.replace(/^http/, 'ws');
+  const wsOrigin =
+    process.env.VITE_WS_URL ||
+    env.VITE_WS_URL ||
+    apiOrigin.replace(/^http/, 'ws');
 
   return {
     resolve: {
@@ -31,8 +37,8 @@ export default defineConfig(({ mode }) => {
           'default-src': ["'self'"],
           'script-src': ["'self'", "'strict-dynamic'"],
           'style-src': ["'self'", "'unsafe-inline'"],
-          'img-src': ["'self'", "data:", "https:"],
-          'font-src': ["'self'", "data:", "https:"],
+          'img-src': ["'self'", 'data:', 'https:'],
+          'font-src': ["'self'", 'data:', 'https:'],
           'connect-src': [
             "'self'",
             apiOrigin,
@@ -120,7 +126,6 @@ export default defineConfig(({ mode }) => {
           'src/**/__tests__/**',
           'src/test/**',
           'src/types/**',
-          'src/components/auth/**',
           'src/main.tsx',
           'src/App.tsx',
           'src/**/index.ts',

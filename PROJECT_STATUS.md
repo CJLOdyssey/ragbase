@@ -29,7 +29,7 @@ cd frontend && npm run dev
 
 ## 三、数据库与依赖环境
 
-- ragbase → `ragbase` 库（**独立容器** `ragbase-db`：5433，pgvector/pg16；alembic head = `p9g3n002`）
+- ragbase → `ragbase` 库（**独立容器** `ragbase-db`：5433，pgvector/pg16；alembic head = `p9g3n014`）
 - ragbase → `ragbase-redis`（**独立容器**：6380）
 
 ## 四、验证门

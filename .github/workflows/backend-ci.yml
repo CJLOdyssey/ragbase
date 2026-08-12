@@ -1,0 +1,42 @@
+# Backend CI — lint / typecheck / test with coverage (SPEC 4.2).
+name: Backend CI
+
+on:
+  push:
+    branches: [main, "feature/*"]
+    paths:
+      - "backend/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main, "feature/*"]
+    paths:
+      - "backend/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/backend-ci.yml"
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-lint-typecheck-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - name: Install dependencies
+        run: uv sync --group dev
+      - name: Lint
+        run: uv run ruff check backend/
+      - name: Typecheck
+        run: uv run mypy backend/src --strict --explicit-package-bases
+      # fail_under=89 enforced by [tool.coverage.report] in pyproject.toml
+      - name: Test with coverage
+        run: uv run pytest --cov=backend --cov-report=term-missing -m "not integration and not benchmark"
