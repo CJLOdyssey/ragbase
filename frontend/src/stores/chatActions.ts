@@ -1,65 +1,18 @@
 import {
   listKeys,
-  resumeRun,
   submitRequirement as submitRequirementExternal,
 } from '../api/client';
 import { connectRun, disconnectRun } from '../api/websocket';
 import i18n from '../i18n';
 import type { AttachmentInfo, ChatMessage } from '../types';
 import Logger from '../utils/logger';
+import { buildEditVersions, resolveKey } from './chatActionsUtils';
 import { useChatStore } from './chatStore';
 import { createStreamHandler } from './chatStreaming';
 import { invalidateSessionCache } from './sessionCache';
 import { uid } from './uid';
 
-type KeyItem = Awaited<ReturnType<typeof listKeys>>[number];
-
-function buildEditVersions(
-  old: ChatMessage,
-  trimmed: string,
-  editedRunId: string | null | undefined,
-): { userVersions: string[]; baseRunIds: string[] } {
-  // 本地版本链（乐观）：与新 run 的 requirement_versions 对应，驱动分页切换。
-  const history = old.userVersions ? [...old.userVersions] : [];
-  const userVersions =
-    history.length === 0 || history[history.length - 1] !== old.content
-      ? [...history, old.content, trimmed]
-      : [...history, trimmed];
-  // 版本 → runId：旧版本继承已加载的版本链；缺失时兜底为被编辑 turn 自身，
-  // 使切回（←）能定位到被编辑 turn 所在分支，而非停在当前分支。
-  const baseRunIds = old.versionRunIds
-    ? [...old.versionRunIds]
-    : editedRunId
-      ? [editedRunId]
-      : [];
-  return { userVersions, baseRunIds };
-}
-
-function resolveKey(
-  activeKeys: KeyItem[],
-  persistedModel: string | undefined,
-): { keyId?: string; model?: string } {
-  // Route to the key whose models contain the model the user actually selected in the UI,
-  // so a SiliconFlow/Groq model is never sent to a DeepSeek base URL.
-  const owningKey = persistedModel
-    ? activeKeys.find((k) => k.models.includes(persistedModel))
-    : undefined;
-  if (owningKey) {
-    return { keyId: owningKey.id, model: persistedModel ?? undefined };
-  }
-  const defaultKey =
-    activeKeys.find((k) => k.is_default && k.is_active) || activeKeys[0];
-  if (defaultKey) {
-    return {
-      keyId: defaultKey.id,
-      model:
-        persistedModel && defaultKey.models.includes(persistedModel)
-          ? persistedModel
-          : defaultKey.models[0],
-    };
-  }
-  return {};
-}
+export { continueGeneration } from './chatActionsContinue';
 
 export async function submitRequirement(
   requirement: string,
@@ -396,90 +349,5 @@ export async function retry() {
     Logger.error('[chat] retry failed:', err);
     const errMsg = err instanceof Error ? err.message : String(err);
     useChatStore.setState({ status: 'error', error: errMsg });
-  }
-}
-
-export async function continueGeneration() {
-  const s = useChatStore.getState();
-  const intId = s.interruptedMessageId;
-  if (!intId) return;
-  const idx = s.messages.findIndex((m) => m.id === intId);
-  if (idx < 0) {
-    useChatStore.setState({ interruptedMessageId: null });
-    return;
-  }
-  Logger.info(
-    '[chat] continueGeneration — continuing from interrupted msg %s',
-    intId,
-  );
-  const interruptedMsg = s.messages[idx];
-  const continuation = interruptedMsg.content;
-  if (!continuation.trim() && !interruptedMsg.thinking?.trim()) {
-    // 思考与正文都未生成：没有可续写的原料（思考链也可作续写原料）。
-    Logger.warn(
-      '[chat] continueGeneration — interrupted msg %s has no content/thinking, aborting',
-      intId,
-    );
-    useChatStore.setState({
-      interruptedMessageId: null,
-      error: i18n.t('chat.noContentContinue'),
-    });
-    return;
-  }
-  useChatStore.setState({
-    continuingId: intId,
-    skipThinking: false,
-    pendingVersions: null,
-    pendingThinkingVersions: null,
-  });
-  // 续写使用对话中选中的模型（与 submitRequirement 同一解析路径），
-  // 后端按该模型解析 key/base_url，避免落到 config 默认模型。
-  let model: string | undefined;
-  try {
-    const keys = await listKeys();
-    const activeKeys = keys.filter((k) => k.is_active);
-    const persistedModel = localStorage.getItem('ragbase-selected-model');
-    model = resolveKey(activeKeys, persistedModel ?? undefined).model;
-  } catch {
-    // Key vault unavailable — backend falls back to the default model
-  }
-  const prevRunId = s.currentRunId;
-  if (prevRunId) disconnectRun(prevRunId);
-  useChatStore.setState({ status: 'loading', error: null, result: null });
-  try {
-    // 原问题 = 被中断消息的前一条用户消息（prefix/partial 机制需要它做无缝续写）。
-    const prevUser = [...s.messages]
-      .slice(0, idx)
-      .reverse()
-      .find((m) => m.role === 'user');
-    const resp = await resumeRun(
-      continuation,
-      s.currentSessionId || undefined,
-      interruptedMsg.thinking,
-      model,
-      prevUser?.content,
-    );
-    const run_id = resp.run_id;
-    const returnedSessionId = resp.session_id || s.currentSessionId || null;
-    useChatStore.setState({
-      currentRunId: run_id,
-      currentSessionId: returnedSessionId,
-      status: 'running',
-      wsStatus: 'connecting',
-    });
-    connectRun(run_id, {
-      onMessage: createStreamHandler(
-        useChatStore.setState,
-        useChatStore.getState,
-      ),
-    });
-  } catch (err: unknown) {
-    Logger.error('[chat] continueGeneration failed:', err);
-    const errMsg = err instanceof Error ? err.message : String(err);
-    useChatStore.setState({
-      status: 'error',
-      error: errMsg,
-      continuingId: null,
-    });
   }
 }

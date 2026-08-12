@@ -4,115 +4,16 @@ import InputToolbar, {
 } from '@/components/input/InputToolbar';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (k: string) => k }),
-}));
-
-const { mockComposerSetValue, mockComposerSubmit, mockComposerHandleKeyDown } =
-  vi.hoisted(() => ({
-    mockComposerSetValue: vi.fn(),
-    mockComposerSubmit: vi.fn(),
-    mockComposerHandleKeyDown: vi.fn(),
-  }));
-
-let mockComposerHasContent = false;
-
-vi.mock('@/hooks/useMessageComposer', () => ({
-  useMessageComposer: () => ({
-    value: '',
-    setValue: mockComposerSetValue,
-    submit: mockComposerSubmit,
-    handleKeyDown: mockComposerHandleKeyDown,
-    get hasContent() {
-      return mockComposerHasContent;
-    },
-    charCount: 0,
-    maxLength: 2000,
-  }),
-}));
-
-const paletteMock = vi.hoisted(() => {
-  let open = false;
-  return {
-    filtered: [] as Array<{ id: string; label: string; source: string }>,
-    updateFromValue: vi.fn(),
-    handleKeyDown: vi.fn(() => false),
-    selectCommand: vi.fn(),
-    close: vi.fn(),
-    set openValue(v: boolean) {
-      open = v;
-    },
-    get openValue() {
-      return open;
-    },
-  };
-});
-
-vi.mock('@/hooks/useCommandPalette', () => ({
-  useCommandPalette: () => ({
-    filtered: paletteMock.filtered,
-    filteredCommands: [],
-    activeIndex: 0,
-    open: paletteMock.openValue,
-    updateFromValue: paletteMock.updateFromValue,
-    handleKeyDown: paletteMock.handleKeyDown,
-    selectCommand: paletteMock.selectCommand,
-    setActiveIndex: vi.fn(),
-    close: paletteMock.close,
-  }),
-}));
-
-const { mockToast } = vi.hoisted(() => ({ mockToast: vi.fn() }));
-
-vi.mock('@/utils/useToast', () => ({
-  useToast: () => ({ toast: mockToast }),
-}));
-
-const { mockUploadAttachment, mockDeleteAttachment } = vi.hoisted(() => ({
-  mockUploadAttachment: vi.fn(),
-  mockDeleteAttachment: vi.fn(),
-}));
-
-vi.mock('@/api/client/attachments', () => ({
-  uploadAttachment: mockUploadAttachment,
-  deleteAttachment: mockDeleteAttachment,
-}));
-
-vi.mock('@/contexts/SettingsContext', () => ({
-  useSettings: () => ({
-    settings: { sendOnEnter: true, sendMode: 'enter' },
-    updateSettings: vi.fn(),
-  }),
-}));
-
-vi.mock('@/components/input/ModelSelector', () => ({
-  default: ({ models }: { models: unknown[] }) =>
-    models?.length ? <div data-testid="model-selector" /> : null,
-}));
-vi.mock('@/components/input/FileAttach', () => ({
-  default: ({
-    onReject,
-  }: {
-    onReject: (
-      r: Array<{ file: File; reason: 'size_exceeded' | 'type_denied' }>,
-    ) => void;
-  }) => (
-    <button
-      type="button"
-      data-testid="file-attach"
-      onClick={() =>
-        onReject([
-          { file: new File(['x'], 'big.txt'), reason: 'size_exceeded' },
-          { file: new File(['y'], 'bad.txt'), reason: 'type_denied' },
-        ])
-      }
-    />
-  ),
-}));
-vi.mock('@/components/input/CommandDropdown', () => ({
-  default: () => <div data-testid="command-dropdown" />,
-}));
+import {
+  mockComposerHandleKeyDown,
+  mockComposerSetValue,
+  mockComposerSubmit,
+  mockDeleteAttachment,
+  mockToast,
+  mockUploadAttachment,
+  paletteMock,
+  setMockComposerHasContent,
+} from './helpers/inputToolbarTestSetup';
 
 const defaultProps = {
   onSend: vi.fn(),
@@ -184,7 +85,7 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
   });
 
   it('calls mockComposerSubmit when send button clicked with content', () => {
-    mockComposerHasContent = true;
+    setMockComposerHasContent(true);
     render(<InputToolbar {...defaultProps} />);
     fireEvent.click(screen.getByText('home.send'));
     expect(mockComposerSubmit).toHaveBeenCalled();
@@ -228,14 +129,14 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
   });
 
   it('send button is disabled when hasContent is false', () => {
-    mockComposerHasContent = false;
+    setMockComposerHasContent(false);
     render(<InputToolbar {...defaultProps} />);
     const sendBtn = screen.getByText('home.send').closest('button');
     expect(sendBtn).toBeDisabled();
   });
 
   it('send button is enabled when hasContent is true', () => {
-    mockComposerHasContent = true;
+    setMockComposerHasContent(true);
     render(<InputToolbar {...defaultProps} />);
     const sendBtn = screen.getByText('home.send').closest('button');
     expect(sendBtn).not.toBeDisabled();

@@ -19,21 +19,9 @@ vi.mock('axios', () => ({
       data: unknown;
       headers: Record<string, string>;
     };
-    constructor(
-      message: string,
-      code?: string,
-      response?: {
-        status: number;
-        data: unknown;
-        headers: Record<string, string>;
-      },
-      config?: Record<string, unknown>,
-    ) {
+    constructor(message: string) {
       super(message);
       this.name = 'AxiosError';
-      this.code = code;
-      this.response = response;
-      this.config = config;
     }
   },
 }));
@@ -55,6 +43,73 @@ vi.mock('../../utils/logger', () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+
+type RequestConfig = {
+  headers: Record<string, string>;
+  method?: string;
+  url?: string;
+};
+type RequestInterceptor = (config: RequestConfig) => RequestConfig;
+type ResponseSuccess = (response: unknown) => unknown;
+type ResponseError = (error: unknown) => Promise<unknown>;
+type MockResponse = {
+  status: number;
+  data: unknown;
+  headers: Record<string, string>;
+};
+
+interface CapturedHandlers {
+  request: RequestInterceptor | null;
+  onFulfilled: ResponseSuccess | null;
+  onRejected: ResponseError | null;
+}
+
+/**
+ * Registers `use` mocks on the mocked axios instance and returns a mutable
+ * object the interceptors instance.ts installs get captured into.
+ */
+function captureHandlers(): CapturedHandlers {
+  const handlers: CapturedHandlers = {
+    request: null,
+    onFulfilled: null,
+    onRejected: null,
+  };
+  mockAxiosInstance.interceptors.request.use.mockImplementation(
+    (fn: RequestInterceptor) => {
+      handlers.request = fn;
+    },
+  );
+  mockAxiosInstance.interceptors.response.use.mockImplementation(
+    (onFulfilled: ResponseSuccess, onRejected: ResponseError) => {
+      handlers.onFulfilled = onFulfilled;
+      handlers.onRejected = onRejected;
+    },
+  );
+  return handlers;
+}
+
+/** Builds an AxiosError from the mocked axios module. */
+async function makeAxiosError(
+  message: string,
+  config: Record<string, unknown> = {},
+  response: MockResponse = { status: 500, data: {}, headers: {} },
+  code = 'ERR_BAD_REQUEST',
+) {
+  const { AxiosError } = await import('axios');
+  const err = new AxiosError(message);
+  err.code = code;
+  err.config = config;
+  err.response = response;
+  return err;
+}
+
+/** Builds a 401 AxiosError for the given request URL. */
+const make401 = (url: string) =>
+  makeAxiosError(
+    'Unauthorized',
+    { method: 'GET', url, _retry: false, headers: {} },
+    { status: 401, data: { detail: 'Unauthorized' }, headers: {} },
+  );
 
 describe('instance', { tags: ['unit'] }, () => {
   beforeEach(() => {
@@ -78,65 +133,32 @@ describe('instance', { tags: ['unit'] }, () => {
 
   describe('request interceptor', () => {
     it('does not add Authorization header (access token is httpOnly cookie)', async () => {
-      let capturedInterceptor:
-        ((config: Record<string, unknown>) => Record<string, unknown>) | null =
-        null;
-      mockAxiosInstance.interceptors.request.use.mockImplementation(
-        (fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
-          capturedInterceptor = fn;
-        },
-      );
-
+      const handlers = captureHandlers();
       await import('../instance');
-
-      const config = { headers: {} as Record<string, string> };
-      const result = capturedInterceptor!(config);
-
+      const result = handlers.request!({ headers: {} });
       expect(result.headers.Authorization).toBeUndefined();
     });
 
     it('adds X-User-ID header', async () => {
-      let capturedInterceptor:
-        ((config: Record<string, unknown>) => Record<string, unknown>) | null =
-        null;
-      mockAxiosInstance.interceptors.request.use.mockImplementation(
-        (fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
-          capturedInterceptor = fn;
-        },
-      );
-
+      const handlers = captureHandlers();
       await import('../instance');
-
-      const config = {
-        headers: {} as Record<string, string>,
+      const result = handlers.request!({
+        headers: {},
         method: 'GET',
         url: '/test',
-      };
-      const result = capturedInterceptor!(config);
-
+      });
       expect(result.headers['X-User-ID']).toBeDefined();
     });
 
     it('generates user ID when none exists', async () => {
-      let capturedInterceptor:
-        ((config: Record<string, unknown>) => Record<string, unknown>) | null =
-        null;
-      mockAxiosInstance.interceptors.request.use.mockImplementation(
-        (fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
-          capturedInterceptor = fn;
-        },
-      );
-
+      const handlers = captureHandlers();
       await import('../instance');
-
-      const config = {
-        headers: {} as Record<string, string>,
+      const result = handlers.request!({
+        headers: {},
         method: 'GET',
         url: '/test',
-      };
-      const result = capturedInterceptor!(config);
-
-      const uid = result.headers['X-User-ID'] as string;
+      });
+      const uid = result.headers['X-User-ID'];
       expect(uid).toBeDefined();
       expect(uid.startsWith('u_')).toBe(true);
       expect(localStorage.getItem('ragbase_user_id')).toBe(uid);
@@ -144,135 +166,51 @@ describe('instance', { tags: ['unit'] }, () => {
 
     it('reuses existing user ID', async () => {
       localStorage.setItem('ragbase_user_id', 'existing-uid');
-
-      let capturedInterceptor:
-        ((config: Record<string, unknown>) => Record<string, unknown>) | null =
-        null;
-      mockAxiosInstance.interceptors.request.use.mockImplementation(
-        (fn: (config: Record<string, unknown>) => Record<string, unknown>) => {
-          capturedInterceptor = fn;
-        },
-      );
-
+      const handlers = captureHandlers();
       await import('../instance');
-
-      const config = { headers: {} as Record<string, string> };
-      const result = capturedInterceptor!(config);
-
+      const result = handlers.request!({ headers: {} });
       expect(result.headers['X-User-ID']).toBe('existing-uid');
     });
   });
 
   describe('response interceptor', () => {
     it('returns successful response as-is', async () => {
-      let successHandler: ((response: unknown) => unknown) | null = null;
-      mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (s: (response: unknown) => unknown) => {
-          successHandler = s;
-        },
-      );
-
+      const handlers = captureHandlers();
       await import('../instance');
-
       const response = {
         config: { method: 'GET', url: '/test' },
         status: 200,
         data: { ok: true },
       };
-
-      const result = successHandler!(response);
-      expect(result).toBe(response);
+      expect(handlers.onFulfilled!(response)).toBe(response);
     });
 
     it('rejects non-401 errors', async () => {
-      let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
-      mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (
-          _s: (response: unknown) => unknown,
-          e: (error: unknown) => Promise<unknown>,
-        ) => {
-          errorHandler = e;
-        },
-      );
-
+      const handlers = captureHandlers();
       await import('../instance');
-
-      const axiosErr = new (await import('axios')).AxiosError(
+      const axiosErr = await makeAxiosError(
         'Not Found',
-      ) as Error & {
-        code?: string;
-        config?: { method: string; url: string; _retry?: boolean };
-        response?: {
-          status: number;
-          data: unknown;
-          headers: Record<string, string>;
-        };
-      };
-      (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
-      (axiosErr as Record<string, unknown>).config = {
-        method: 'GET',
-        url: '/missing',
-        _retry: false,
-      };
-      (axiosErr as Record<string, unknown>).response = {
-        status: 404,
-        data: { detail: 'Not Found' },
-        headers: {},
-      };
-
-      try {
-        await errorHandler!(axiosErr);
-        expect.fail('Should have thrown');
-      } catch (e) {
-        expect(e).toBeDefined();
-      }
+        { method: 'GET', url: '/missing', _retry: false },
+        { status: 404, data: { detail: 'Not Found' }, headers: {} },
+      );
+      await expect(handlers.onRejected!(axiosErr)).rejects.toBeDefined();
     });
 
     it('rejects if already retrying', async () => {
-      let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
-      mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (
-          _s: (response: unknown) => unknown,
-          e: (error: unknown) => Promise<unknown>,
-        ) => {
-          errorHandler = e;
-        },
-      );
-
+      const handlers = captureHandlers();
       const config = {
         method: 'GET' as string,
         url: '/private',
         _retry: true,
         headers: {} as Record<string, string>,
       };
-
       await import('../instance');
-
-      const axiosErr = new (await import('axios')).AxiosError(
-        'Unauthorized',
-      ) as Error & {
-        code?: string;
-        config?: typeof config;
-        response?: {
-          status: number;
-          data: unknown;
-          headers: Record<string, string>;
-        };
-      };
-      (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
-      (axiosErr as Record<string, unknown>).config = config;
-      (axiosErr as Record<string, unknown>).response = {
+      const axiosErr = await makeAxiosError('Unauthorized', config, {
         status: 401,
         data: { detail: 'Unauthorized' },
         headers: {},
-      };
-
-      try {
-        await errorHandler!(axiosErr);
-        expect.fail('Should have thrown');
-      } catch (e) {
-        expect(e).toBeDefined();
-      }
+      });
+      await expect(handlers.onRejected!(axiosErr)).rejects.toBeDefined();
     });
 
     it('refreshes token on 401 and retries', async () => {
@@ -280,52 +218,12 @@ describe('instance', { tags: ['unit'] }, () => {
       (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockResolvedValue(
         undefined,
       );
-
-      let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
-      mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (
-          _s: (response: unknown) => unknown,
-          e: (error: unknown) => Promise<unknown>,
-        ) => {
-          errorHandler = e;
-        },
-      );
-
+      const handlers = captureHandlers();
       await import('../instance');
-
-      const axiosErr = new (await import('axios')).AxiosError(
-        'Unauthorized',
-      ) as Error & {
-        code?: string;
-        config?: {
-          method: string;
-          url: string;
-          _retry?: boolean;
-          headers: Record<string, string>;
-        };
-        response?: {
-          status: number;
-          data: unknown;
-          headers: Record<string, string>;
-        };
-      };
-      (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
-      (axiosErr as Record<string, unknown>).config = {
-        method: 'GET',
-        url: '/private',
-        _retry: false,
-        headers: {} as Record<string, string>,
-      };
-      (axiosErr as Record<string, unknown>).response = {
-        status: 401,
-        data: { detail: 'Unauthorized' },
-        headers: {},
-      };
-
+      const axiosErr = await make401('/private');
       try {
-        await errorHandler!(axiosErr);
+        await handlers.onRejected!(axiosErr);
       } catch {}
-
       expect(mockRefresh.refreshTokens).toHaveBeenCalledWith();
     });
 
@@ -334,59 +232,13 @@ describe('instance', { tags: ['unit'] }, () => {
       (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Refresh failed'),
       );
-
-      let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
-      mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (
-          _s: (response: unknown) => unknown,
-          e: (error: unknown) => Promise<unknown>,
-        ) => {
-          errorHandler = e;
-        },
-      );
-
+      const handlers = captureHandlers();
       const authSpy = vi.fn();
       window.addEventListener('auth:unauthorized', authSpy);
-
       await import('../instance');
-
-      const axiosErr = new (await import('axios')).AxiosError(
-        'Unauthorized',
-      ) as Error & {
-        code?: string;
-        config?: {
-          method: string;
-          url: string;
-          _retry?: boolean;
-          headers: Record<string, string>;
-        };
-        response?: {
-          status: number;
-          data: unknown;
-          headers: Record<string, string>;
-        };
-      };
-      (axiosErr as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
-      (axiosErr as Record<string, unknown>).config = {
-        method: 'GET',
-        url: '/private',
-        _retry: false,
-        headers: {} as Record<string, string>,
-      };
-      (axiosErr as Record<string, unknown>).response = {
-        status: 401,
-        data: { detail: 'Unauthorized' },
-        headers: {},
-      };
-
-      try {
-        await errorHandler!(axiosErr);
-        expect.fail('Should have thrown');
-      } catch (e) {
-        expect(e).toBeDefined();
-        expect(authSpy).toHaveBeenCalled();
-      }
-
+      const axiosErr = await make401('/private');
+      await expect(handlers.onRejected!(axiosErr)).rejects.toBeDefined();
+      expect(authSpy).toHaveBeenCalled();
       window.removeEventListener('auth:unauthorized', authSpy);
     });
 
@@ -399,57 +251,15 @@ describe('instance', { tags: ['unit'] }, () => {
       (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockReturnValue(
         refreshGate,
       );
-
-      let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
-      mockAxiosInstance.interceptors.response.use.mockImplementation(
-        (
-          _s: (response: unknown) => unknown,
-          e: (error: unknown) => Promise<unknown>,
-        ) => {
-          errorHandler = e;
-        },
-      );
-
+      const handlers = captureHandlers();
       await import('../instance');
-
-      const make401 = async (url: string) => {
-        const err = new (await import('axios')).AxiosError(
-          'Unauthorized',
-        ) as Error & {
-          code?: string;
-          config?: {
-            method: string;
-            url: string;
-            _retry?: boolean;
-            headers: Record<string, string>;
-          };
-          response?: {
-            status: number;
-            data: unknown;
-            headers: Record<string, string>;
-          };
-        };
-        (err as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
-        (err as Record<string, unknown>).config = {
-          method: 'GET',
-          url,
-          _retry: false,
-          headers: {} as Record<string, string>,
-        };
-        (err as Record<string, unknown>).response = {
-          status: 401,
-          data: { detail: 'Unauthorized' },
-          headers: {},
-        };
-        return err;
-      };
 
       // Two parallel 401s (StrictMode double-init): the first starts the
       // refresh, the second queues behind it.
       const err1 = await make401('/private');
       const err2 = await make401('/private-2');
-      const p1 = errorHandler!(err1);
-      const p2 = errorHandler!(err2);
+      const p1 = handlers.onRejected!(err1);
+      const p2 = handlers.onRejected!(err2);
 
       rejectRefresh(new Error('Refresh failed'));
 
