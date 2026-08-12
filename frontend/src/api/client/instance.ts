@@ -29,8 +29,13 @@ interface RetryConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+interface PendingRequest {
+  resolve: (value: unknown) => void;
+  reject: (reason?: unknown) => void;
+}
+
 let isRefreshing = false;
-let pendingQueue: Array<() => void> = [];
+let pendingQueue: Array<PendingRequest> = [];
 
 if (api.interceptors?.request) {
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -89,9 +94,16 @@ if (api.interceptors?.response) {
       }
 
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          pendingQueue.push(() => resolve(api(retryConfig)));
-        });
+        // Queue behind the in-flight refresh. Entries must carry a reject —
+        // if the refresh fails and queued promises are dropped unsolved, the
+        // caller hangs forever. With StrictMode's double-mounted AuthContext
+        // init, two parallel getMe 401s race: one starts the refresh, the
+        // other queues, and a failed refresh leaves Promise.all pending →
+        // loading never converges → avatar skeleton stuck.
+        retryConfig._retry = true;
+        return new Promise<unknown>((resolve, reject) => {
+          pendingQueue.push({ resolve, reject });
+        }).then(() => api(retryConfig));
       }
 
       retryConfig._retry = true;
@@ -99,12 +111,16 @@ if (api.interceptors?.response) {
 
       try {
         await refreshTokens();
-        pendingQueue.forEach((cb) => cb());
+        pendingQueue.forEach(({ resolve }) => resolve(undefined));
         pendingQueue = [];
         // New access_token was set as httpOnly cookie by server — auto-sent on retry
         return api(retryConfig);
-      } catch {
+      } catch (err) {
+        // Drain the queue by rejecting every entry — dropping it would leave
+        // the queued 401 callers pending forever (same hang as above).
+        const failed = pendingQueue;
         pendingQueue = [];
+        failed.forEach(({ reject }) => reject(err));
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
         return Promise.reject(normalizeError(error));
       } finally {

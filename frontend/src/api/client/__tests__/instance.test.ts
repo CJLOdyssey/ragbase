@@ -389,5 +389,78 @@ describe('instance', { tags: ['unit'] }, () => {
 
       window.removeEventListener('auth:unauthorized', authSpy);
     });
+
+    it('settles queued 401 requests when the in-flight refresh fails (no hang)', async () => {
+      let rejectRefresh!: (err: Error) => void;
+      const refreshGate = new Promise<void>((_, rej) => {
+        rejectRefresh = rej;
+      });
+      const mockRefresh = await import('../auth');
+      (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockReturnValue(
+        refreshGate,
+      );
+
+      let errorHandler: ((error: unknown) => Promise<unknown>) | null = null;
+      mockAxiosInstance.interceptors.response.use.mockImplementation(
+        (
+          _s: (response: unknown) => unknown,
+          e: (error: unknown) => Promise<unknown>,
+        ) => {
+          errorHandler = e;
+        },
+      );
+
+      await import('../instance');
+
+      const make401 = async (url: string) => {
+        const err = new (await import('axios')).AxiosError(
+          'Unauthorized',
+        ) as Error & {
+          code?: string;
+          config?: {
+            method: string;
+            url: string;
+            _retry?: boolean;
+            headers: Record<string, string>;
+          };
+          response?: {
+            status: number;
+            data: unknown;
+            headers: Record<string, string>;
+          };
+        };
+        (err as Record<string, unknown>).code = 'ERR_BAD_REQUEST';
+        (err as Record<string, unknown>).config = {
+          method: 'GET',
+          url,
+          _retry: false,
+          headers: {} as Record<string, string>,
+        };
+        (err as Record<string, unknown>).response = {
+          status: 401,
+          data: { detail: 'Unauthorized' },
+          headers: {},
+        };
+        return err;
+      };
+
+      // Two parallel 401s (StrictMode double-init): the first starts the
+      // refresh, the second queues behind it.
+      const err1 = await make401('/private');
+      const err2 = await make401('/private-2');
+      const p1 = errorHandler!(err1);
+      const p2 = errorHandler!(err2);
+
+      rejectRefresh(new Error('Refresh failed'));
+
+      // Both callers must settle — the queued one used to be dropped and
+      // stayed pending forever, leaving AuthContext's Promise.all unresolved
+      // and loading stuck on the skeleton.
+      await expect(p1).rejects.toBeDefined();
+      await expect(p2).rejects.toThrow('Refresh failed');
+      // Queued retry is single-shot: a 401 on retry rejects instead of
+      // recursing into another refresh.
+      expect(err2.config?._retry).toBe(true);
+    });
   });
 });
