@@ -1,5 +1,4 @@
 import { RefObject, useCallback } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
 import type { Agent, Message } from '../../types/studio';
 import {
   continueGeneration,
@@ -27,7 +26,6 @@ export default function MessagesPanel({
   messagesEndRef,
   onSwitchBranch,
 }: Props) {
-  const reduce = useReducedMotion();
   const interruptedMessageId = useChatStore((s) => s.interruptedMessageId);
   const continuingId = useChatStore((s) => s.continuingId);
   const setThumbsFeedback = useChatStore((s) => s.setThumbsFeedback);
@@ -88,14 +86,7 @@ export default function MessagesPanel({
           <LoadingSkeleton />
         ) : (
           displayMessages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={
-                reduce || msg.thinkingDone ? false : { opacity: 0, y: 12 }
-              }
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <div key={msg.id}>
               <TeamMessage
                 msg={msg}
                 allAgents={allAgents}
@@ -108,7 +99,7 @@ export default function MessagesPanel({
                 isContinuing={msg.id === continuingId}
                 onThumbsFeedback={handleThumbsFeedback}
               />
-            </motion.div>
+            </div>
           ))
         )}
         <BrowserFrame />
@@ -127,14 +118,7 @@ export default function MessagesPanel({
           <LoadingSkeleton />
         ) : (
           displayMessages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={
-                reduce || msg.thinkingDone ? false : { opacity: 0, y: 12 }
-              }
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <div key={msg.id}>
               <TeamMessage
                 msg={msg}
                 allAgents={allAgents}
@@ -147,7 +131,7 @@ export default function MessagesPanel({
                 isContinuing={msg.id === continuingId}
                 onThumbsFeedback={handleThumbsFeedback}
               />
-            </motion.div>
+            </div>
           ))
         )}
         <BrowserFrame />
