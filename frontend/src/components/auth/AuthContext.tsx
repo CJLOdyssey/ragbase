@@ -149,6 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleUnauthorized = () => {
       setUser(null);
       clearLocalConversations();
+      localStorage.removeItem('ragbase-selected-model');
+      localStorage.removeItem('ragbase-recent-models');
       setLoginModalOpen(true);
     };
     window.addEventListener('auth:login', start);
@@ -320,7 +322,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     clearLocalConversations();
     localStorage.removeItem('ragbase_user_id');
+    localStorage.removeItem('ragbase-selected-model');
+    localStorage.removeItem('ragbase-recent-models');
     useChatStore.getState().reset();
+    setLoginModalOpen(true);
     window.dispatchEvent(new CustomEvent('auth:logout'));
   }, []);
 

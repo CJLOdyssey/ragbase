@@ -187,7 +187,9 @@ export function useHomeState() {
     queryFn: async () => {
       const data = await listSessions();
       setCachedSessions(data);
-      writeSessionsCache(data);
+      // 登出竞态守卫：invalidate 触发的 refetch 可能在登出后仍执行，
+      // 不把登录用户会话写回 localStorage（登出已清缓存）。
+      if (isAuthenticated) writeSessionsCache(data);
       return data;
     },
     // Sessions are user-owned: only fetch once authentication is ready, and
@@ -209,6 +211,23 @@ export function useHomeState() {
       }));
     },
   });
+
+  // 退出登录：重置模型选择、清空会话列表、失效会话/模型查询并回首页
+  // （登出已清 store/localStorage，这里清组件内 useState + 查询缓存 —
+  // '/' 与 '/chat/:id' 同组件，navigate 不会卸载重置）。
+  useEffect(() => {
+    const onLogout = () => {
+      setSelectedModel('');
+      setCachedSessions([]);
+      // sessions 缓存直接移除（不 invalidate，避免登出瞬间 refetch 把
+      // 登录用户会话写回 localStorage）；models 无本地缓存，invalidate 即可。
+      queryClient.removeQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+      navigate('/');
+    };
+    window.addEventListener('auth:logout', onLogout);
+    return () => window.removeEventListener('auth:logout', onLogout);
+  }, [queryClient, navigate]);
 
   const [localTweaks, setLocalTweaks] = useState<
     Record<string, { title?: string; isPinned?: boolean }>
