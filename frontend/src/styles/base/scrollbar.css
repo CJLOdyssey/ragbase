@@ -1,27 +1,37 @@
 /* ============================================
-   Scrollbar — 全局滚动条样式（伪元素，无法用 Tailwind）
+   Scrollbar — 全局滚动条样式（伪元素，无法用 Tailwind）。
+   !important：tailwind v4 会把本文件编译进 @layer base，
+   layer 内规则优先级低于浏览器默认（非 layer）滚动条规则，
+   不加 !important 会被覆盖（如 scrollbar-button 箭头无法隐藏）。
    ============================================ */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 8px !important;
+  height: 8px !important;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-surface-sidebar);
-  border-radius: 4px;
+  background: var(--color-surface-sidebar) !important;
+  border-radius: 4px !important;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
+  background: var(--color-border) !important;
+  border-radius: 4px !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+  background: var(--color-text-muted) !important;
+}
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) var(--color-surface-sidebar);
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--color-border) var(--color-surface-sidebar) !important;
 }
