@@ -25,8 +25,8 @@ class TestContinueRun:
 
         with (
             patch("services.run_service.load_config") as mock_config,
-            patch("services.run_service.get_api_key_for_model", return_value=None),
-            patch("services.run_service.get_default_api_key") as mock_key,
+            patch("services.run_resolve.get_api_key_for_model", return_value=None),
+            patch("services.run_resolve.get_default_api_key") as mock_key,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
@@ -54,8 +54,8 @@ class TestContinueRun:
 
         with (
             patch("services.run_service.load_config") as mock_config,
-            patch("services.run_service.get_api_key_for_model", return_value=None),
-            patch("services.run_service.get_default_api_key") as mock_key,
+            patch("services.run_resolve.get_api_key_for_model", return_value=None),
+            patch("services.run_resolve.get_default_api_key") as mock_key,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
@@ -82,8 +82,8 @@ class TestContinueRun:
 
         with (
             patch("services.run_service.load_config") as mock_config,
-            patch("services.run_service.get_api_key_for_model", return_value=None),
-            patch("services.run_service.get_default_api_key") as mock_key,
+            patch("services.run_resolve.get_api_key_for_model", return_value=None),
+            patch("services.run_resolve.get_default_api_key") as mock_key,
         ):
             mock_config.return_value = MagicMock(model="test-model")
             mock_key.return_value = None
@@ -102,8 +102,8 @@ class TestContinueRun:
 
         with (
             patch("services.run_service.load_config") as mock_config,
-            patch("services.run_service.get_api_key_for_model", return_value=None),
-            patch("services.run_service.get_default_api_key") as mock_key,
+            patch("services.run_resolve.get_api_key_for_model", return_value=None),
+            patch("services.run_resolve.get_default_api_key") as mock_key,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
             patch("services.run_service.buffer_run_messages"),
@@ -129,8 +129,8 @@ class TestContinueRun:
 
         with (
             patch("services.run_service.load_config") as mock_config,
-            patch("services.run_service.get_api_key_for_model", return_value=None),
-            patch("services.run_service.get_default_api_key") as mock_key,
+            patch("services.run_resolve.get_api_key_for_model", return_value=None),
+            patch("services.run_resolve.get_default_api_key") as mock_key,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
             patch("services.run_service.buffer_run_messages"),
@@ -155,8 +155,8 @@ class TestContinueRun:
 
         with (
             patch("services.run_service.load_config") as mock_config,
-            patch("services.run_service.get_api_key_for_model", return_value=None),
-            patch("services.run_service.get_default_api_key") as mock_key,
+            patch("services.run_resolve.get_api_key_for_model", return_value=None),
+            patch("services.run_resolve.get_default_api_key") as mock_key,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
             patch("services.run_service.buffer_run_messages"),

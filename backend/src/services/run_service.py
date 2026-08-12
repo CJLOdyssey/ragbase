@@ -17,9 +17,6 @@ from core.config import load_config
 from core.infra.logging_config import get_logger
 from repository import (
     create_session,
-    get_api_key_for_model,
-    get_api_key_for_use,
-    get_default_api_key,
     get_messages,
     get_run,
     get_runs,
@@ -29,6 +26,8 @@ from repository import (
     update_session_title,
 )
 
+from services.run_resolve import resolve_credentials
+from services.run_serializers import serialize_run
 from services.text_utils import parse_json_list
 
 logger = get_logger(__name__)
@@ -94,28 +93,10 @@ class RunService:
                 session_id = sess.id
 
         # ── Key resolution ──────────────────────────────────────────
-        api_key: str | None = None
-        api_base: str | None = None
         effective_model = model or config.model
-        image_model = False
-
-        if key_id:
-            key_entry = await get_api_key_for_use(key_id, user_id)
-            if key_entry:
-                api_key = key_entry.get("api_key")
-                api_base = key_entry.get("base_url") or api_base
-                image_model = (key_entry.get("model_types") or {}).get(effective_model) == "image"
-        if not api_key and effective_model:
-            model_key = await get_api_key_for_model(effective_model, user_id)
-            if model_key:
-                api_key = model_key.get("api_key")
-                api_base = model_key.get("base_url") or api_base
-                image_model = (model_key.get("model_types") or {}).get(effective_model) == "image"
-        if not api_key:
-            default_key = await get_default_api_key(user_id)
-            if default_key:
-                api_key = default_key["api_key"]
-                api_base = default_key["base_url"] or api_base
+        api_key, api_base, image_model = await resolve_credentials(
+            user_id, effective_model, key_id=key_id
+        )
 
         if not api_key:
             raise ValueError("请先在设置中配置 API Key")
@@ -255,25 +236,10 @@ class RunService:
             session_id = sess.id
 
         # ── Key resolution ──────────────────────────────────────────
-        api_key: str | None = None
-        api_base: str | None = None
         effective_model = model or config.model
-        image_model = False
-
-        try:
-            if effective_model:
-                model_key = await get_api_key_for_model(effective_model, user_id)
-                if model_key:
-                    api_key = model_key["api_key"]
-                    api_base = model_key["base_url"]
-                    image_model = (model_key.get("model_types") or {}).get(effective_model) == "image"
-            if not api_key:
-                default_key = await get_default_api_key(user_id)
-                if default_key:
-                    api_key = default_key["api_key"]
-                    api_base = default_key["base_url"]
-        except Exception:
-            logger.warning("Key vault lookup failed in continue_run — using env var fallback")
+        api_key, api_base, image_model = await resolve_credentials(
+            user_id, effective_model, tolerate_vault_errors=True
+        )
 
         if not api_key:
             raise ValueError("请先在设置中配置 API Key")
@@ -376,49 +342,12 @@ class RunService:
         if run is None:
             return None
         messages = await get_messages(run_id)
-        return {
-            "id": run.id,
-            "session_id": run.session_id,
-            "requirement": run.requirement,
-            "pm_document": run.pm_document,
-            "code": run.code,
-            "review": run.review,
-            "approved": run.approved,
-            "status": run.status,
-            "created_at": run.created_at.isoformat() if run.created_at else None,
-            "updated_at": run.updated_at.isoformat() if run.updated_at else None,
-            "messages": [
-                {
-                    "id": m.id,
-                    "role": m.role,
-                    "agent_name": m.agent_name,
-                    "content": m.content,
-                    "thinking": m.thinking,
-                    "round_number": m.round_number,
-                    "created_at": m.created_at.isoformat() if m.created_at else None,
-                }
-                for m in messages
-            ],
-        }
+        return serialize_run(run, messages)
 
     async def list_runs(self, limit: int = 20) -> list[dict[str, Any]]:
         """List recent runs."""
         runs = await get_runs(limit=min(limit, 100))
-        return [
-            {
-                "id": r.id,
-                "session_id": r.session_id,
-                "requirement": r.requirement,
-                "pm_document": r.pm_document,
-                "code": r.code,
-                "review": r.review,
-                "approved": r.approved,
-                "status": r.status,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
-            }
-            for r in runs
-        ]
+        return [serialize_run(r) for r in runs]
 
 
 # Singleton for convenience (stateless service)

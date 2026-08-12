@@ -34,9 +34,9 @@ class TestRunService:
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
-            patch("services.run_service.get_api_key_for_use") as mock_get_key,
-            patch("services.run_service.get_api_key_for_model") as mock_get_model,
-            patch("services.run_service.get_default_api_key") as mock_get_default,
+            patch("services.run_resolve.get_api_key_for_use") as mock_get_key,
+            patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
+            patch("services.run_resolve.get_default_api_key") as mock_get_default,
         ):
             mock_load.return_value.model = "gpt-4"
             mock_sess = MagicMock()
@@ -62,7 +62,7 @@ class TestRunService:
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
-            patch("services.run_service.get_api_key_for_use") as mock_get_key,
+            patch("services.run_resolve.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages") as mock_buffer,
             patch("services.run_service.asyncio.create_task"),
             patch("services.run_service.get_session") as mock_get_sess,
@@ -96,9 +96,9 @@ class TestRunService:
         with (
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.get_session") as mock_get_sess,
-            patch("services.run_service.get_api_key_for_use"),
-            patch("services.run_service.get_api_key_for_model") as mock_get_model,
-            patch("services.run_service.get_default_api_key") as mock_get_default,
+            patch("services.run_resolve.get_api_key_for_use"),
+            patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
+            patch("services.run_resolve.get_default_api_key") as mock_get_default,
             patch("services.run_service.buffer_run_messages"),
             patch("services.run_service.asyncio.create_task"),
             patch("services.run_service.update_session_title"),
@@ -131,8 +131,8 @@ class TestRunService:
             patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
-            patch("services.run_service.get_api_key_for_model") as mock_get_model,
-            patch("services.run_service.get_default_api_key") as mock_get_default,
+            patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
+            patch("services.run_resolve.get_default_api_key") as mock_get_default,
             patch("services.run_service.buffer_run_messages"),
             patch("services.run_service.asyncio.create_task"),
             patch("services.run_service.update_session_title"),
@@ -163,8 +163,8 @@ class TestRunService:
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
-            patch("services.run_service.get_api_key_for_model") as mock_get_model,
-            patch("services.run_service.get_default_api_key") as mock_get_default,
+            patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
+            patch("services.run_resolve.get_default_api_key") as mock_get_default,
             patch("repository.create_run") as mock_db_create_run,
         ):
             mock_load.return_value.model = "gpt-4"
@@ -191,8 +191,8 @@ class TestRunService:
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
-            patch("services.run_service.get_api_key_for_model") as mock_get_model,
-            patch("services.run_service.get_default_api_key") as mock_get_default,
+            patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
+            patch("services.run_resolve.get_default_api_key") as mock_get_default,
             patch("services.run_service.buffer_run_messages"),
             patch("services.run_service.asyncio.create_task"),
             patch("repository.create_run") as mock_db_create_run,
@@ -220,8 +220,8 @@ class TestRunService:
         svc = RunService()
         with (
             patch("services.run_service.load_config"),
-            patch("services.run_service.get_api_key_for_model") as mock_get_model,
-            patch("services.run_service.get_default_api_key") as mock_get_default,
+            patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
+            patch("services.run_resolve.get_default_api_key") as mock_get_default,
         ):
             mock_get_model.side_effect = Exception("vault down")
             mock_get_default.side_effect = Exception("vault down")
@@ -333,7 +333,7 @@ class TestRunService:
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
-            patch("services.run_service.get_api_key_for_use") as mock_get_key,
+            patch("services.run_resolve.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages"),
             patch("services.run_service.asyncio.create_task") as mock_create_task,
             patch("services.run_service.get_session") as mock_get_sess,
@@ -372,7 +372,7 @@ class TestRunService:
             patch("services.run_service.load_config") as mock_load,
             patch("services.run_service.create_session") as mock_create_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
-            patch("services.run_service.get_api_key_for_use") as mock_get_key,
+            patch("services.run_resolve.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages"),
             patch("services.run_service.asyncio.create_task") as mock_create_task,
             patch("services.run_service.get_session") as mock_get_sess,
