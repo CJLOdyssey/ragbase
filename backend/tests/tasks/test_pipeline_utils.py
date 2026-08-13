@@ -416,3 +416,52 @@ class TestSaveOutputMemories:
         call_kwargs = mock_create.call_args[1]
         assert len(call_kwargs["summary"]) <= 200
         assert len(call_kwargs["details"]) <= 2000
+
+
+# =============================================================================
+# _run_shadow_retrieval (O4)
+# =============================================================================
+
+class TestShadowRetrieval:
+
+    @pytest.mark.asyncio
+    async def test_disabled_without_env(self, monkeypatch):
+        monkeypatch.delenv("RAG_SHADOW_VARIANTS", raising=False)
+        from tasks.pipeline_utils import _run_shadow_retrieval
+
+        with patch("rag.rag_pipeline.retrieve_sources", new_callable=AsyncMock) as mock_retrieve, \
+             patch("repository.shadow_retrieval.create_shadow_log", new_callable=AsyncMock) as mock_log:
+            await _run_shadow_retrieval("q", "s1", "u1")
+
+        mock_retrieve.assert_not_awaited()
+        mock_log.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_replays_variant_when_configured(self, monkeypatch):
+        monkeypatch.setenv("RAG_SHADOW_VARIANTS", "rerank:false,min_score:0.55")
+        from tasks.pipeline_utils import _run_shadow_retrieval
+
+        with patch("rag.rag_pipeline.retrieve_sources", new_callable=AsyncMock) as mock_retrieve, \
+             patch("repository.shadow_retrieval.create_shadow_log", new_callable=AsyncMock) as mock_log:
+            mock_retrieve.return_value = [{"asset_id": "a1", "text": "spec"}]
+            await _run_shadow_retrieval("q", "s1", "u1")
+
+        kwargs = mock_retrieve.call_args[1]
+        assert kwargs["rerank"] is False
+        assert kwargs["min_score"] == 0.55
+        log_kwargs = mock_log.call_args[1]
+        assert log_kwargs["variant"] == "rerank:false,min_score:0.55"
+        assert log_kwargs["hit_count"] == 1
+        assert log_kwargs["rerank"] is False
+
+    @pytest.mark.asyncio
+    async def test_ignores_unknown_variant_keys(self, monkeypatch):
+        monkeypatch.setenv("RAG_SHADOW_VARIANTS", "bogus:1")
+        from tasks.pipeline_utils import _run_shadow_retrieval
+
+        with patch("rag.rag_pipeline.retrieve_sources", new_callable=AsyncMock) as mock_retrieve, \
+             patch("repository.shadow_retrieval.create_shadow_log", new_callable=AsyncMock) as mock_log:
+            await _run_shadow_retrieval("q", "s1", "u1")
+
+        mock_retrieve.assert_not_awaited()
+        mock_log.assert_not_awaited()

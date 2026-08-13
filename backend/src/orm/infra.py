@@ -143,3 +143,31 @@ class RetrievalLogDB(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
+
+
+class ShadowRetrievalLogDB(Base):
+    """O4: append-only shadow retrieval log (variant config comparison).
+
+    Written once per user question when RAG_SHADOW_VARIANTS is set; mirrors
+    retrieval_logs plus the variant label. Kept separate so shadow replays
+    never pollute retrieval_logs / the online monitoring metrics.
+    """
+
+    __tablename__ = "shadow_retrieval_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    top_k: Mapped[int] = mapped_column(Integer, default=5)
+    rerank: Mapped[bool] = mapped_column(Boolean, default=False)
+    min_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    hit_count: Mapped[int] = mapped_column(Integer, default=0)
+    sources: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity}"
+    )
+    variant: Mapped[str] = mapped_column(String(256), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
+    )

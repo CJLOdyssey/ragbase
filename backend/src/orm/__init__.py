@@ -15,6 +15,7 @@ from orm.infra import (
     CommandLogDB,
     FeedbackLog,
     RetrievalLogDB,
+    ShadowRetrievalLogDB,
 )
 from orm.key import KeyUsageLog, UserApiKey
 from orm.prompt_db import PromptDB, VersionDB
@@ -36,6 +37,7 @@ __all__ = [
     "RetrievalLogDB",
     "RoleDB",
     "SessionDB",
+    "ShadowRetrievalLogDB",
     "UserApiKey",
     "UserDB",
     "UserRoleDB",

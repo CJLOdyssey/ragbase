@@ -191,10 +191,69 @@ async def _get_rag_context(
                 top_k=3,
                 rerank=True,
             )
+        # O4: shadow variant replay (env-gated, best-effort) — separate table.
+        with contextlib.suppress(Exception):
+            await _run_shadow_retrieval(query, session_id, user_id)
         return context, sources
     except Exception:
         logger.warning("RAG context retrieval failed for session %s", session_id, exc_info=True)
         return "", []
+
+
+async def _run_shadow_retrieval(
+    query: str, session_id: str | None, user_id: str
+) -> None:
+    """O4: shadow retrieval — replay the query under a variant config.
+
+    Enabled by env RAG_SHADOW_VARIANTS, e.g. "rerank:false,min_score:0.55"
+    (key:value pairs overriding the primary config). Results go to the
+    append-only shadow_retrieval_logs table — never into retrieval_logs,
+    which would pollute the online monitoring metrics. Best-effort.
+    """
+    variants_raw = os.environ.get("RAG_SHADOW_VARIANTS")
+    if not variants_raw:
+        return
+    kwargs: dict[str, Any] = {}
+    for pair in variants_raw.split(","):
+        key, _, value = pair.strip().partition(":")
+        if not key or not value:
+            continue
+        if key == "rerank":
+            kwargs["rerank"] = value.lower() == "true"
+        elif key == "top_k":
+            kwargs["top_k"] = int(value)
+        elif key == "min_score":
+            kwargs["min_score"] = float(value)
+    if not kwargs:
+        return
+
+    import time
+
+    from rag.rag_pipeline import retrieve_sources
+    from repository.shadow_retrieval import create_shadow_log
+
+    started = time.perf_counter()
+    sources = await retrieve_sources(
+        query=query,
+        user_id=user_id,
+        session_id=session_id,
+        top_k=kwargs.get("top_k", 3),
+        rerank=kwargs.get("rerank", True),
+        min_score=kwargs.get("min_score"),
+    )
+    shadow_ms = int((time.perf_counter() - started) * 1000)
+    await create_shadow_log(
+        user_id=user_id,
+        session_id=session_id,
+        query=query,
+        variant=variants_raw,
+        latency_ms=shadow_ms,
+        hit_count=len(sources),
+        sources=sources,
+        top_k=kwargs.get("top_k", 3),
+        rerank=kwargs.get("rerank", True),
+        min_score=kwargs.get("min_score"),
+    )
 
 
 async def _save_output_memories(session_id: str, run_id: str, response: str, metadata: dict[str, Any]) -> None:
