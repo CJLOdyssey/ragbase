@@ -299,6 +299,24 @@ async def _run_agent_pipeline(
                 },
             )
 
+    # OWASP LLM02 / S5: PII in the model answer (leaked from indexed docs or
+    # hallucinated) — audit + warning event, never silently altered.
+    from rag.rag_pii import scan_pii
+
+    pii_hits = scan_pii(last_content)
+    if pii_hits:
+        pii_types = sorted({h["type"] for h in pii_hits})
+        logger.warning("[GUARD] model output contains PII: %s", ", ".join(pii_types))
+        with contextlib.suppress(Exception):
+            await publish_run_message(
+                run_id,
+                {
+                    "type": "warning",
+                    "message": "回答疑似包含敏感信息（PII），已记录",
+                    "reasons": [f"pii:{t}" for t in pii_types],
+                },
+            )
+
     pm_document = ""
     code = last_content
     review = ""
