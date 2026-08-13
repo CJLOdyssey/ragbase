@@ -3,7 +3,35 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from core.seed import seed_default_roles_and_admin
+from core.seed import resolve_admin_password, seed_default_roles_and_admin
+
+# =============================================================================
+# resolve_admin_password
+# =============================================================================
+
+
+class TestResolveAdminPassword:
+    def test_env_set_wins_in_any_environment(self, monkeypatch):
+        monkeypatch.setenv("SEED_ADMIN_PASSWORD", "S3cureProdPass!")
+        monkeypatch.setenv("RAGBASE_ENV", "production")
+        assert resolve_admin_password() == "S3cureProdPass!"
+
+    def test_production_without_env_raises(self, monkeypatch):
+        monkeypatch.delenv("SEED_ADMIN_PASSWORD", raising=False)
+        monkeypatch.setenv("RAGBASE_ENV", "production")
+        with pytest.raises(RuntimeError, match="SEED_ADMIN_PASSWORD"):
+            resolve_admin_password()
+
+    def test_dev_without_env_uses_default(self, monkeypatch):
+        monkeypatch.delenv("SEED_ADMIN_PASSWORD", raising=False)
+        monkeypatch.setenv("RAGBASE_ENV", "development")
+        assert resolve_admin_password() == "admin123"
+
+    def test_env_unset_defaults_to_development(self, monkeypatch):
+        monkeypatch.delenv("SEED_ADMIN_PASSWORD", raising=False)
+        monkeypatch.delenv("RAGBASE_ENV", raising=False)
+        assert resolve_admin_password() == "admin123"
+
 
 # =============================================================================
 # seed_default_roles_and_admin
