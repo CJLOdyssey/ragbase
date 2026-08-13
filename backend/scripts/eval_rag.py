@@ -19,7 +19,8 @@ break the SiliconFlow CI gate). CI passes env keys — no seeded row needed.
 
 Usage (needs embedding key + live pgvector):
     DATABASE_URL=... PYTHONPATH=backend/src \
-      uv run python backend/scripts/eval_rag.py --corpus docs/SPEC.md --golden backend/tests/eval/golden_qa.json
+      uv run python backend/scripts/eval_rag.py \\
+          --corpus backend/tests/eval/corpus/SPEC.md --golden backend/tests/eval/golden_qa.json
     # CI gate (bge-m3 embed + rerank, per-metric thresholds + negative precision):
       EMBEDDING_API_KEY=... RERANK_API_KEY=... \
       ... --rerank --recall-fail-below 0.97 --mrr-fail-below 0.9 --negative-fail-below 0.65
@@ -437,7 +438,7 @@ async def _ragas_metrics(
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--corpus", nargs="+", default=["docs/SPEC.md"])
+    parser.add_argument("--corpus", nargs="+", default=["backend/tests/eval/corpus/SPEC.md"])
     parser.add_argument("--golden", type=Path, default=Path("backend/tests/eval/golden_qa.json"))
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--user-id", default="eval")

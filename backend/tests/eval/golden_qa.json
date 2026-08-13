@@ -1,7 +1,7 @@
 {
   "meta": {
     "corpus": [
-      "docs/SPEC.md"
+      "backend/tests/eval/corpus/SPEC.md"
     ],
     "note": "RAG retrieval golden set. expected_snippets must be exact substrings of the corpus so recall@k is deterministic (no LLM). category: lexical = code/ids/spec names where dense vectors fail; semantic = paraphrase queries. negative_snippets (optional) are corpus verbatim text that must NOT be retrieved for the query — negative_pass_rate gates retrieval precision (Q4 noise guard).",
     "minimum": 30,

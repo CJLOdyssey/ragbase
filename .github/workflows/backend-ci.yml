@@ -79,6 +79,6 @@ jobs:
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
           RERANK_API_KEY: ${{ secrets.RERANK_API_KEY }}
         run: |
-          uv run python backend/scripts/eval_rag.py --corpus docs/SPEC.md \
+          uv run python backend/scripts/eval_rag.py --corpus backend/tests/eval/corpus/SPEC.md \
             --golden backend/tests/eval/golden_qa.json --rerank \
             --recall-fail-below 0.97 --mrr-fail-below 0.9 --negative-fail-below 0.65
