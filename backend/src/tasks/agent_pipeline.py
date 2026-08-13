@@ -254,6 +254,7 @@ async def _run_agent_pipeline(
                 chat_history=chat_history,
                 thread_id=run_id,
                 run_id=run_id,
+                no_rag_hits=not rag_sources,
             )
     except TimeoutError:
         logger.error("[TASKS] Agent pipeline timed out after %ds (run=%s)", _AGENT_TIMEOUT, run_id)

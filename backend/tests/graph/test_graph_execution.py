@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from graph.graph import SingleAgentGraph
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 
 
@@ -73,3 +73,44 @@ class TestImageNode:
 
         args, _ = mock_gen.call_args
         assert args[1] == "画一朵云"
+
+
+class TestNoRagHitsRefusal:
+    """R1: zero retrieval hits injects deterministic refusal guidance."""
+
+    @pytest.mark.asyncio
+    async def test_injects_refusal_guidance_when_no_rag_hits(self, graph: SingleAgentGraph):
+        from graph.helpers import NO_RAG_HITS_PROMPT
+
+        with patch.object(graph, "_raw_llm_stream", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = ("回答", "", [])
+            await graph._agent_node(
+                {
+                    "messages": [HumanMessage(content="知识库问题")],
+                    "system_prompt": "",
+                    "session_context": "",
+                    "no_rag_hits": True,
+                }
+            )
+
+        sent = mock_llm.call_args[0][0]
+        assert any(isinstance(m, SystemMessage) and m.content == NO_RAG_HITS_PROMPT for m in sent)
+
+    @pytest.mark.asyncio
+    async def test_no_refusal_guidance_when_hits_exist(self, graph: SingleAgentGraph):
+        """反例：有检索结果绝不注入拒答指引（防 answer_relevancy 0.253 回归）。"""
+        from graph.helpers import NO_RAG_HITS_PROMPT
+
+        with patch.object(graph, "_raw_llm_stream", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = ("回答", "", [])
+            await graph._agent_node(
+                {
+                    "messages": [HumanMessage(content="知识库问题")],
+                    "system_prompt": "",
+                    "session_context": "",
+                    "no_rag_hits": False,
+                }
+            )
+
+        sent = mock_llm.call_args[0][0]
+        assert not any(isinstance(m, SystemMessage) and m.content == NO_RAG_HITS_PROMPT for m in sent)

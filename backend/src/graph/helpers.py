@@ -14,6 +14,17 @@ logger = get_logger(__name__)
 # retrieval/attachment text at the injection boundary (OWASP LLM01).
 CONTEXT_GUARD_PROMPT = "rag_context_guard"
 
+# Deterministic refusal guidance injected ONLY when retrieval returned zero
+# hits (no_rag_hits). Conditioned injection matters: the earlier
+# unconditional "如上下文不足请说明" phrasing made the model conservative
+# even WITH context (answer_relevancy 0.253 regression) — never inject this
+# unless the pipeline has proof there is no knowledge-base context.
+NO_RAG_HITS_PROMPT = (
+    "【知识库检索结果】本次检索在知识库中未命中任何相关内容。"
+    "若用户的问题需要知识库/文档内容才能回答，你必须明确说明无法基于知识库回答，"
+    "不得编造或猜测来源；若为通用知识、闲聊或无需检索即可回答的问题，正常回答。"
+)
+
 # Balance/quota error keywords used to detect API billing failures
 _BALANCE_ERROR_KEYWORDS = [
     "insufficient_quota", "insufficient_balance", "insufficient balance", "余额不足",

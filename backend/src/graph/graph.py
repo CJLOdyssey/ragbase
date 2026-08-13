@@ -126,6 +126,7 @@ class SingleAgentGraph(GraphNodesMixin):
         chat_history: list[Any] | None = None,
         thread_id: str = "",
         run_id: str = "",
+        no_rag_hits: bool = False,
     ) -> dict[str, Any]:
         """Run the agent graph with the given requirement and return results."""
         if run_id:
@@ -145,6 +146,7 @@ class SingleAgentGraph(GraphNodesMixin):
                 "messages": initial_messages,
                 "system_prompt": system_prompt,
                 "session_context": session_context,
+                "no_rag_hits": no_rag_hits,
             },
             config,
         )
@@ -156,7 +158,9 @@ class SingleAgentGraph(GraphNodesMixin):
             "model": self.model,
         }
 
-    async def arun(self, message: str, system_prompt: str = "", session_context: str = "") -> str:
+    async def arun(
+        self, message: str, system_prompt: str = "", session_context: str = "", no_rag_hits: bool = False
+    ) -> str:
         """Run one turn synchronously and return the response text."""
         config = cast(RunnableConfig, {"configurable": {"thread_id": str(id(self))}, "recursion_limit": 25})
         result = await self._graph.ainvoke(
@@ -164,6 +168,7 @@ class SingleAgentGraph(GraphNodesMixin):
                 "messages": [HumanMessage(content=message)],
                 "system_prompt": system_prompt,
                 "session_context": session_context,
+                "no_rag_hits": no_rag_hits,
             },
             config,
         )

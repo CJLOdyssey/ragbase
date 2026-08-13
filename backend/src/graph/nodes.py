@@ -134,6 +134,13 @@ class GraphNodesMixin:
         full_messages.append(SystemMessage(content=date_context))
         if system_prompt:
             full_messages.append(SystemMessage(content=system_prompt))
+        # R1: zero retrieval hits → deterministic refusal guidance. Conditioned
+        # on state.no_rag_hits only — never inject with context present (the
+        # unconditional phrasing caused the answer_relevancy 0.253 regression).
+        if state.get("no_rag_hits"):
+            from graph.helpers import NO_RAG_HITS_PROMPT
+
+            full_messages.append(SystemMessage(content=NO_RAG_HITS_PROMPT))
         if session_context:
             # OWASP LLM01: untrusted retrieval/attachment text is sanitized
             # deterministically (instruction markers neutralized — the model

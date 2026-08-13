@@ -14,6 +14,10 @@ class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     system_prompt: str
     session_context: str
+    # True when retrieval returned zero hits — _agent_node injects the
+    # deterministic refusal guidance (NO_RAG_HITS_PROMPT) instead of letting
+    # the model answer with no knowledge-base context (R1).
+    no_rag_hits: bool
 
 
 __all__ = ["AgentState"]

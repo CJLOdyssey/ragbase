@@ -154,6 +154,38 @@ class TestRunAgentPipeline:
         )
         mock_agent_deps["_get_rag_context"].assert_awaited_once()
 
+    async def test_no_rag_hits_signal_true_when_zero_sources(self, mock_agent_deps):
+        """R1: 检索 0 命中 → graph 收到 no_rag_hits=True（注入拒答指引）。"""
+        _default_mocks(mock_agent_deps)
+        mock_agent_deps["_get_rag_context"].return_value = ("rag_ctx", [])
+        await _run_agent_pipeline(
+            run_id="run-rag-empty",
+            requirement="知识库问题",
+            session_id="sess-r1",
+            user_id="user-1",
+            api_key="sk-test",
+            api_base=None,
+            model=None,
+        )
+        graph = mock_agent_deps["SingleAgentGraph"].return_value
+        assert graph.run.call_args[1]["no_rag_hits"] is True
+
+    async def test_no_rag_hits_signal_false_when_sources_exist(self, mock_agent_deps):
+        """R1 反例：有检索命中 → 不注入拒答指引（防 0.253 式保守化）。"""
+        _default_mocks(mock_agent_deps)
+        mock_agent_deps["_get_rag_context"].return_value = ("rag_ctx", [{"id": "c1", "text": "spec"}])
+        await _run_agent_pipeline(
+            run_id="run-rag-hit",
+            requirement="知识库问题",
+            session_id="sess-r1b",
+            user_id="user-1",
+            api_key="sk-test",
+            api_base=None,
+            model=None,
+        )
+        graph = mock_agent_deps["SingleAgentGraph"].return_value
+        assert graph.run.call_args[1]["no_rag_hits"] is False
+
     async def test_key_usage_logged(self, mock_agent_deps):
         _default_mocks(mock_agent_deps)
         await _run_agent_pipeline(
