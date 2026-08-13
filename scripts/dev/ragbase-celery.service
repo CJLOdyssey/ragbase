@@ -1,0 +1,29 @@
+[Unit]
+Description=RagBase Celery Worker + Beat (async indexing / reindex sweep)
+Documentation=https://github.com/ragbase/ragbase
+After=network-online.target
+Wants=network-online.target
+# StartLimitIntervalSec lives here (not in [Service]).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=3
+
+# Same venv/interpreter convention as ragbase-backend.service.
+WorkingDirectory=/home/odyssey/PyCharmProjects/Agent/projects/ragbase
+ExecStart=/home/odyssey/PyCharmProjects/Agent/projects/ragbase/.venv/bin/celery -A broker:celery_app worker --beat --loglevel=info --concurrency=2 --pool=threads
+Environment=PYTHONPATH=/home/odyssey/PyCharmProjects/Agent/projects/ragbase/backend/src
+Environment=DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5433/ragbase
+Environment=HOME=/home/odyssey
+
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

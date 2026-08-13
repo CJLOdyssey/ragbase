@@ -1,5 +1,6 @@
 """Database engine and session factory with slow-query detection."""
 
+import asyncio
 import os
 import time
 from collections.abc import AsyncIterator
@@ -45,7 +46,22 @@ DATABASE_URL = os.environ.get(
 )
 
 _async_engine: AsyncEngine | None = None
+_engine_loop: asyncio.AbstractEventLoop | None = None
 _async_session_factory: async_sessionmaker[AsyncSession] | None = None
+_factory_loop: asyncio.AbstractEventLoop | None = None
+
+# Only native async drivers bind connections to an event loop (asyncpg);
+# sqlite/psycopg2 (sync dialects) must NOT trigger per-loop engine rebuilds —
+# sqlite :memory: is a brand-new empty DB per connection, so recreating the
+# engine mid-test would drop all tables.
+_LOOP_BOUND_DRIVER = "asyncpg" in DATABASE_URL
+
+
+def _current_loop() -> asyncio.AbstractEventLoop | None:
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return None
 
 def _attach_slow_query_listeners(engine: AsyncEngine) -> None:
     @event.listens_for(engine.sync_engine, "before_cursor_execute")
@@ -67,9 +83,17 @@ def _attach_slow_query_listeners(engine: AsyncEngine) -> None:
             )
 
 def get_async_engine() -> AsyncEngine:
-    """Return or create the singleton async SQLAlchemy engine."""
-    global _async_engine
-    if _async_engine is None:
+    """Return an async engine bound to the CURRENT event loop.
+
+    Celery's threads pool runs each task under a fresh ``asyncio.run()`` loop;
+    an asyncpg engine created on an earlier loop fails with "attached to a
+    different loop" when reused. Recreate when the running loop changed.
+    """
+    global _async_engine, _engine_loop
+    loop = _current_loop()
+    if _async_engine is None or (_LOOP_BOUND_DRIVER and loop is not None and loop is not _engine_loop):
+        if _async_engine is not None:
+            logger.info("async engine loop changed — recreating (thread-per-task)")
         pool_size = int(os.environ.get("DATABASE_POOL_SIZE", "20"))
         max_overflow = int(os.environ.get("DATABASE_POOL_OVERFLOW", "10"))
         kwargs: dict[str, object] = dict(echo=False)
@@ -83,13 +107,17 @@ def get_async_engine() -> AsyncEngine:
             kwargs["pool_recycle"] = 3600
         _async_engine = create_async_engine(DATABASE_URL, **kwargs)
         _attach_slow_query_listeners(_async_engine)
+        _engine_loop = loop
     return _async_engine
 
+
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
-    """Return or create the singleton async session factory."""
-    global _async_session_factory
-    if _async_session_factory is None:
+    """Return a session factory bound to the current event loop."""
+    global _async_session_factory, _factory_loop
+    loop = _current_loop()
+    if _async_session_factory is None or (_LOOP_BOUND_DRIVER and loop is not None and loop is not _factory_loop):
         _async_session_factory = async_sessionmaker(get_async_engine(), expire_on_commit=False)
+        _factory_loop = loop
     return _async_session_factory
 
 async def init_db() -> None:
