@@ -32,7 +32,7 @@ jobs:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v6
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev --group test
       - name: Lint
         run: uv run ruff check backend/
       - name: Typecheck
@@ -43,8 +43,11 @@ jobs:
 
   # Retrieval quality gate (Q2/Q4): golden-set recall/MRR + negative precision.
   # Needs GitHub secrets EMBEDDING_API_KEY / RERANK_API_KEY (SiliconFlow,
-  # BAAI/bge-m3 + bge-reranker-v2-m3) — set them in repo settings.
+  # BAAI/bge-m3 + bge-reranker-v2-m3) — set them in repo settings. The gate
+  # skips cleanly until both secrets exist, then activates automatically
+  # (deployment placeholder: no action needed beyond adding the secrets).
   eval-gate:
+    if: ${{ secrets.EMBEDDING_API_KEY != '' && secrets.RERANK_API_KEY != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -68,7 +71,7 @@ jobs:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v6
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev --group test
       - name: Migrate schema to head
         env:
           DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5433/ragbase
