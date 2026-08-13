@@ -1,13 +1,15 @@
 """Document text extraction for asset indexing.
 
-Suffix-driven: PDF → pypdf; DOCX/XLSX → zipfile + XML (stdlib, no extra
-deps — both are OOXML zip containers); everything else reads as UTF-8 text.
+Suffix-driven: PDF → pypdf; DOCX/XLSX → zipfile + XML via defusedxml
+(XXE-hardened — uploaded files are untrusted input); everything else reads
+as UTF-8 text.
 """
 
 import re
 import zipfile
 from pathlib import Path
-from xml.etree import ElementTree
+
+from defusedxml import ElementTree  # type: ignore[import-untyped]
 
 _DOCX_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 _XLSX_NS = {

@@ -24,6 +24,10 @@ concurrency:
   group: backend-ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege token (OpenSSF Scorecard Token-Permissions / GitHub hardening).
+permissions:
+  contents: read
+
 jobs:
   backend-lint-typecheck-test:
     runs-on: ubuntu-latest
@@ -91,3 +95,55 @@ jobs:
           uv run python backend/scripts/eval_rag.py --corpus backend/tests/eval/corpus/SPEC.md \
             --golden backend/tests/eval/golden_qa.json --rerank \
             --recall-fail-below 0.97 --mrr-fail-below 0.9 --negative-fail-below 0.65
+
+  # Dependency vulnerability audit + Python SAST (mirrors agent-studio
+  # backend-security: pip-audit + bandit; uv audit covers the lockfile).
+  backend-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - name: Install dependencies
+        run: uv sync --group dev --group test
+      - name: Dependency audit (uv audit)
+        run: uv audit
+      - name: SAST (bandit)
+        run: uv run bandit -c pyproject.toml -r backend/ -ll
+
+  # Secret scanning — any code change may introduce credentials.
+  secrets-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for secrets with gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Container config scan — Dockerfiles are build-inputs for deployments.
+  container-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan docker/Dockerfile
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: config
+          scan-ref: docker/Dockerfile
+          severity: CRITICAL,HIGH
+          exit-code: 1
+      - name: Scan frontend/Dockerfile
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: config
+          scan-ref: frontend/Dockerfile
+          severity: CRITICAL,HIGH
+          exit-code: 1
