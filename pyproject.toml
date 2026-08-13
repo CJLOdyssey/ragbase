@@ -35,7 +35,11 @@ dependencies = [
     "websockets==15.0.1",
 ]
 
-[project.optional-dependencies]
+# PEP 735 dependency groups — `uv sync --group dev --group test` (uv 0.6+).
+# NOTE: CI (astral-sh/setup-uv@v6) installs a current uv that only reads this
+# table — the legacy [project.optional-dependencies] `dev` group made every CI
+# run fail with "Group dev is not defined".
+[dependency-groups]
 dev = [
     "bandit>=1.7.0",
     "diff-cover==9.2.3",

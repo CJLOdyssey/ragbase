@@ -76,10 +76,16 @@ class TestMonitoringRoutes:
         assert "p95_latency_high" in codes
 
     def test_summary_scoped_to_current_user(self, client):
+        # Baseline-relative: rows from a previous test may share the owner id
+        # (per-worker shared SQLite engine), so never assert an absolute 0.
+        baseline = client.get("/api/monitoring/summary").json()["retrieval"]["total"]
         client.portal.call(_seed_row, "other", 999, 0)
         resp = client.get("/api/monitoring/summary")
         assert resp.status_code == 200
-        assert resp.json()["retrieval"]["total"] == 0
+        assert resp.json()["retrieval"]["total"] == baseline  # other's rows never leak in
+        client.portal.call(_seed_row, OWNER, 120, 1)
+        resp = client.get("/api/monitoring/summary")
+        assert resp.json()["retrieval"]["total"] == baseline + 1  # own rows are visible
 
     def test_validation_rejects_bad_window(self, client):
         resp = client.get("/api/monitoring/summary", params={"window_hours": 0})

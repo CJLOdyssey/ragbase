@@ -70,7 +70,8 @@ class TestBrokerRedis:
 
     @patch("core.infra.redis_sentinel.AsyncRedis.from_url")
     @patch("broker.asyncio.get_running_loop")
-    def test_get_redis_creates_pool(self, mock_loop, mock_from_url):
+    def test_get_redis_creates_pool(self, mock_loop, mock_from_url, monkeypatch):
+        monkeypatch.setenv("REDIS_POOL_SIZE", "20")
         mock_loop.return_value = loop = MagicMock()
         loop_id = id(loop)
         mock_redis = MagicMock()
@@ -184,6 +185,7 @@ class TestBrokerFull:
         from broker import _pools, get_redis
 
         monkeypatch.setenv("REDIS_URL", "redis://custom-host:7777/5")
+        monkeypatch.setenv("REDIS_POOL_SIZE", "20")
         mock_loop.return_value = MagicMock()
         mock_redis = MagicMock()
         mock_from_url.return_value = mock_redis
