@@ -1,16 +1,19 @@
 # Backend CI — lint / typecheck / test with coverage (SPEC 4.2).
+# GitHub Flow: push to develop/main triggers; feature branches run CI via
+# pull_request (mirrors agent-studio ci.yml). paths whitelist keeps docs-only
+# and frontend-only changes from burning runner time.
 name: Backend CI
 
 on:
   push:
-    branches: [main, "feature/*"]
+    branches: [main, develop]
     paths:
       - "backend/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/backend-ci.yml"
   pull_request:
-    branches: [main, "feature/*"]
+    branches: [main, develop]
     paths:
       - "backend/**"
       - "pyproject.toml"
