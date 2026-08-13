@@ -63,9 +63,11 @@ class TestCancelRun:
         with (
             patch("services.run_service.RUN_DISPATCH", "celery"),
             patch("services.run_service.update_run_status", new_callable=AsyncMock) as mock_update,
+            patch("broker.celery_app.control.revoke") as mock_revoke,
         ):
             result = await service.cancel_run("celery-1")
 
+        mock_revoke.assert_called_once_with("celery-1", terminate=False)
         assert result["cancelled"] is True
         mock_update.assert_awaited_once_with("celery-1", "cancelled")
 

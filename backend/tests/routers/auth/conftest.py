@@ -69,10 +69,10 @@ def client():
                 {"id": "admin", "email": "admin@example.com"},
                 {"id": "admin-login", "email": "admin@test.com"},
             ]:
-                existing = await session.execute(
-                    select(UserDB).where(UserDB.id == user_data["id"])
-                )
-                if not existing.scalar_one_or_none():
+                user = (
+                    await session.execute(select(UserDB).where(UserDB.id == user_data["id"]))
+                ).scalar_one_or_none()
+                if user is None:
                     user = UserDB(
                         id=user_data["id"],
                         username=user_data["id"],
@@ -85,6 +85,13 @@ def client():
                     await session.flush()
                     if admin_role:
                         session.add(UserRoleDB(user_id=user.id, role_id=admin_role.id))
+                elif not bcrypt.checkpw(b"admin123", user.password_hash.encode()):
+                    # Self-heal: the router-level _reset_db autouse fixture can
+                    # occasionally not run under xdist worksteal, leaving a
+                    # leftover user (e.g. from a register test) with a different
+                    # password that would turn login into 401. Re-seed the
+                    # password so login tests stay hermetic.
+                    user.password_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
             await session.commit()
 
     lifespan_mod.init_db = _safe_init_db
