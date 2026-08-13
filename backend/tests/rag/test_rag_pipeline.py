@@ -56,6 +56,41 @@ class TestRagPipeline:
                 assert result == ""
 
     @pytest.mark.asyncio
+    async def test_search_results_reranks_when_over_top_k(self):
+        """_search_results: rerank=True with more results than top_k → rerank."""
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        store = MagicMock()
+        store.search = AsyncMock(
+            return_value=[{"asset_id": f"a-{i}", "metadata": {}} for i in range(3)]
+        )
+        with (
+            patch.object(rag_pipeline, "_embedding_provider", provider),
+            patch.object(rag_pipeline, "_vector_store", store),
+            patch.object(rag_pipeline, "_rerank_results", new_callable=AsyncMock) as m_rerank,
+        ):
+            out = await rag_pipeline._search_results(
+                "query", user_id="u1", top_k=2, rerank=True
+            )
+        m_rerank.assert_awaited_once_with("query", store.search.return_value, 2)
+        assert out is m_rerank.return_value
+
+    @pytest.mark.asyncio
+    async def test_search_results_skips_rerank_within_top_k(self):
+        """rerank=True but results ≤ top_k → no rerank call."""
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        store = MagicMock()
+        store.search = AsyncMock(return_value=[{"asset_id": "a-1"}])
+        with (
+            patch.object(rag_pipeline, "_embedding_provider", provider),
+            patch.object(rag_pipeline, "_vector_store", store),
+            patch.object(rag_pipeline, "_rerank_results", new_callable=AsyncMock) as m_rerank,
+        ):
+            await rag_pipeline._search_results("query", user_id="u1", top_k=5, rerank=True)
+        m_rerank.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_ingest_messages_success(self):
         provider = MagicMock()
         provider.embed = AsyncMock(return_value=[[0.1] * 1024, [0.2] * 1024])

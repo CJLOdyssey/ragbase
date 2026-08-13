@@ -83,6 +83,41 @@ class TestReindexSweep:
         assert result == {"queued": 0}
         task.delay.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_uses_created_at_when_updated_at_missing(self, tmp_path):
+        """updated_at is None → falls back to created_at for mtime comparison."""
+        f = tmp_path / "doc.md"
+        f.write_text("v1", encoding="utf-8")
+        past = datetime.now(UTC) - timedelta(minutes=10)
+        asset = _asset("a1", "u1", str(f), indexed=True, updated_at=None)
+        asset.created_at = past
+
+        session = _session_with_assets([asset])
+        with (
+            patch("core.infra.database.get_session_factory", return_value=lambda: _SessionCtx(session)),
+            patch("tasks.registry.index_asset") as task,
+        ):
+            result = await _reindex_sweep()
+        assert result == {"queued": 1}  # file (now) newer than created_at (10m ago) -> reindex
+        task.delay.assert_called_once()
+
+    def test_run_reindex_sweep_sync_wrapper(self, tmp_path):
+        """Sync entrypoint delegates to the async sweep."""
+        f = tmp_path / "doc.md"
+        f.write_text("v1", encoding="utf-8")
+        asset = _asset("a1", "u1", str(f), indexed=False, updated_at=datetime.now(UTC))
+
+        session = _session_with_assets([asset])
+        with (
+            patch("core.infra.database.get_session_factory", return_value=lambda: _SessionCtx(session)),
+            patch("tasks.registry.index_asset") as task,
+        ):
+            from tasks.reindex_sweep import run_reindex_sweep
+
+            result = run_reindex_sweep()
+        assert result == {"queued": 1}
+        task.delay.assert_called_once()
+
 
 
 def _session_with_assets(assets):

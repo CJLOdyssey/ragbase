@@ -249,6 +249,19 @@ class TestAuthMiddlewareDispatch:
         assert resp.status_code == 200
         assert not hasattr(request.state, "user_id")
         assert request.state.user_invalid_token is True
+
+    @pytest.mark.asyncio
+    async def test_token_user_lookup_error_degrades_to_guest(self):
+        """get_user_by_id raising (DB down) → same degrade path as missing user."""
+        mw = AuthMiddleware(app=None)
+        request = _make_request(path="/api/models", headers={"Authorization": "Bearer real.jwt"})
+        with patch("auth.auth_middleware.AUTH_ENABLED", True), \
+             patch("auth.auth_middleware.decode_jwt", return_value={"sub": "uid-9"}), \
+             patch("repository.auth.get_user_by_id", side_effect=RuntimeError("db down")):
+            resp = await mw.dispatch(request, _noop_call_next)
+        assert resp.status_code == 200
+        assert request.state.is_authenticated is False
+        assert request.state.user_invalid_token is True
         assert request.state.is_authenticated is False
 
     @pytest.mark.asyncio

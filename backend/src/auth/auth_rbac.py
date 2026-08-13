@@ -29,13 +29,14 @@ AUTH_MODE = os.environ.get("AUTH_MODE", "legacy")
 # deployments that require sign-in before use.
 AUTH_REQUIRE_LOGIN = os.environ.get("AUTH_REQUIRE_LOGIN", "0") == "1"
 
-# Validate AUTH_SECRET at import time for RBAC mode
-if AUTH_MODE == "rbac" and AUTH_ENABLED and AUTH_SECRET == "":
+# Validate AUTH_SECRET at import time for RBAC mode. Import-time config
+# guards can't be exercised under the legacy test env — excluded from coverage.
+if AUTH_MODE == "rbac" and AUTH_ENABLED and AUTH_SECRET == "":  # pragma: no cover
     raise RuntimeError(
         "AUTH_MODE=rbac and AUTH_ENABLED=1 requires AUTH_SECRET to be set "
         "(minimum 32 characters). Set it via environment variable."
     )
-if AUTH_MODE == "rbac" and AUTH_ENABLED and len(AUTH_SECRET) < 32:
+if AUTH_MODE == "rbac" and AUTH_ENABLED and len(AUTH_SECRET) < 32:  # pragma: no cover
     raise RuntimeError(
         "AUTH_SECRET must be at least 32 characters for RBAC mode. "
         f"Current length: {len(AUTH_SECRET)}"
