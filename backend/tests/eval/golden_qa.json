@@ -3,9 +3,10 @@
     "corpus": [
       "docs/SPEC.md"
     ],
-    "note": "RAG retrieval golden set. expected_snippets must be exact substrings of the corpus so recall@k is deterministic (no LLM). category: lexical = code/ids/spec names where dense vectors fail; semantic = paraphrase queries.",
+    "note": "RAG retrieval golden set. expected_snippets must be exact substrings of the corpus so recall@k is deterministic (no LLM). category: lexical = code/ids/spec names where dense vectors fail; semantic = paraphrase queries. negative_snippets (optional) are corpus verbatim text that must NOT be retrieved for the query — negative_pass_rate gates retrieval precision (Q4 noise guard).",
     "minimum": 30,
-    "reference_cases": 15
+    "reference_cases": 15,
+    "negative_minimum": 10
   },
   "cases": [
     {
@@ -22,14 +23,20 @@
         "pdf/txt/md ≤20MB"
       ],
       "category": "lexical",
-      "expected_answer": "上传文档大小限制为 20MB。"
+      "expected_answer": "上传文档大小限制为 20MB。",
+      "negative_snippets": [
+        "单文件 ≤400 行，超限拆分"
+      ]
     },
     {
       "query": "RAG 向量化用什么模型",
       "expected_snippets": [
         "DashScope text-embedding-v3"
       ],
-      "category": "lexical"
+      "category": "lexical",
+      "negative_snippets": [
+        "line-length=120"
+      ]
     },
     {
       "query": "embedding 向量维度",
@@ -37,7 +44,10 @@
         "1024 维"
       ],
       "category": "lexical",
-      "expected_answer": "embedding 向量维度为 1024。"
+      "expected_answer": "embedding 向量维度为 1024。",
+      "negative_snippets": [
+        "Node 22"
+      ]
     },
     {
       "query": "数据库端口是多少",
@@ -45,7 +55,10 @@
         "5433"
       ],
       "category": "lexical",
-      "expected_answer": "数据库端口是 5433。"
+      "expected_answer": "数据库端口是 5433。",
+      "negative_snippets": [
+        "`assets` 语义"
+      ]
     },
     {
       "query": "数据库用什么版本",
@@ -60,7 +73,10 @@
         "line-length=120"
       ],
       "category": "lexical",
-      "expected_answer": "ruff 行长为 120。"
+      "expected_answer": "ruff 行长为 120。",
+      "negative_snippets": [
+        "核心路径 ≥80%"
+      ]
     },
     {
       "query": "mypy 用什么模式",
@@ -88,7 +104,10 @@
       "expected_snippets": [
         "禁止 langchain 高层 Agent 抽象"
       ],
-      "category": "semantic"
+      "category": "semantic",
+      "negative_snippets": [
+        "`content`/`generation` 语义代码不得重新引入"
+      ]
     },
     {
       "query": "graph 引擎基于什么构建",
@@ -96,14 +115,20 @@
         "langgraph StateGraph 底层"
       ],
       "category": "lexical",
-      "expected_answer": "graph 引擎基于 langgraph StateGraph 底层构建。"
+      "expected_answer": "graph 引擎基于 langgraph StateGraph 底层构建。",
+      "negative_snippets": [
+        "Celery + Redis"
+      ]
     },
     {
       "query": "API Key 怎么管理",
       "expected_snippets": [
         "API Key 走 vault"
       ],
-      "category": "semantic"
+      "category": "semantic",
+      "negative_snippets": [
+        "分支：`feature/<名称>` / `fix/<名称>`"
+      ]
     },
     {
       "query": "上传大小限制用哪个中间件",
@@ -169,7 +194,10 @@
       "expected_snippets": [
         "pdf/txt/md"
       ],
-      "category": "lexical"
+      "category": "lexical",
+      "negative_snippets": [
+        "单文件 ≤400 行，超限拆分"
+      ]
     },
     {
       "query": "会话级附件上传端点",
@@ -213,7 +241,10 @@
         "核心路径 ≥80%"
       ],
       "category": "lexical",
-      "expected_answer": "核心路径覆盖率门槛为 80%。"
+      "expected_answer": "核心路径覆盖率门槛为 80%。",
+      "negative_snippets": [
+        "line-length=120"
+      ]
     },
     {
       "query": "哪些模块必须覆盖",
@@ -248,7 +279,10 @@
       "expected_snippets": [
         "禁止直接提交 main"
       ],
-      "category": "semantic"
+      "category": "semantic",
+      "negative_snippets": [
+        "`assets` 语义"
+      ]
     },
     {
       "query": "哪些命名不得重新引入",
@@ -263,7 +297,10 @@
       "expected_snippets": [
         "`assets` 语义"
       ],
-      "category": "semantic"
+      "category": "semantic",
+      "negative_snippets": [
+        "单文件 ≤400 行，超限拆分"
+      ]
     },
     {
       "query": "前端组件命名规范",
@@ -300,21 +337,30 @@
         "Celery + Redis"
       ],
       "category": "lexical",
-      "expected_answer": "任务队列用 Celery 和 Redis。"
+      "expected_answer": "任务队列用 Celery 和 Redis。",
+      "negative_snippets": [
+        "`content`/`generation` 语义代码不得重新引入"
+      ]
     },
     {
       "query": "后端框架技术栈",
       "expected_snippets": [
         "FastAPI + SQLAlchemy(async) + asyncpg"
       ],
-      "category": "lexical"
+      "category": "lexical",
+      "negative_snippets": [
+        "核心路径 ≥80%"
+      ]
     },
     {
       "query": "前端 UI 用什么组件库",
       "expected_snippets": [
         "Ant Design"
       ],
-      "category": "lexical"
+      "category": "lexical",
+      "negative_snippets": [
+        "line-length=120"
+      ]
     },
     {
       "query": "问答时检索入口在哪",

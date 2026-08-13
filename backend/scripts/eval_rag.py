@@ -2,18 +2,29 @@
 
 Retrieval (default, no LLM): recall@k / MRR over the golden set — "does any
 expected_snippet appear verbatim in the retrieved chunks", deterministic and
-CI-stable.
+CI-stable. Cases may declare ``negative_snippets`` (corpus verbatim text that
+must NOT be retrieved for that query) — the reported negative_pass_rate gates
+the precision side (Q4: irrelevant high-scoring chunks hurt answers).
 
 --ragas adds RAGAS-style quality metrics (faithfulness / answer relevancy /
 context precision / context recall) judged by the configured LLM (OpenAI-
 compatible chat endpoint, e.g. SiliconFlow). Same metric definitions as
 docs.ragas.io, implemented locally with zero new dependencies.
 
+Embedding/rerank endpoints: EMBEDDING_API_KEY / RERANK_API_KEY (+ *_BASE_URL)
+env wins, else the configured DB key; --embedding-model / --rerank-model override
+the model (the ambient EMBEDDING_MODEL env is deliberately ignored — backend/.env
+sets text-embedding-v3 for the DashScope legacy path, which would silently
+break the SiliconFlow CI gate). CI passes env keys — no seeded row needed.
+
 Usage (needs embedding key + live pgvector):
     DATABASE_URL=... PYTHONPATH=backend/src \
       uv run python backend/scripts/eval_rag.py --corpus docs/SPEC.md --golden backend/tests/eval/golden_qa.json
-    # with rerank + RAGAS:
-      ... --rerank --ragas
+    # CI gate (bge-m3 embed + rerank, per-metric thresholds + negative precision):
+      EMBEDDING_API_KEY=... RERANK_API_KEY=... \
+      ... --rerank --recall-fail-below 0.97 --mrr-fail-below 0.9 --negative-fail-below 0.65
+    # with RAGAS (needs an LLM-capable key):
+      ... --ragas
 
 Metrics reported overall and split by case category (lexical vs semantic) —
 the lexical split exists to prove the pg_trgm leg earns its keep on
@@ -23,6 +34,7 @@ codes/ids/spec names where dense vectors fail.
 import argparse
 import asyncio
 import json
+import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -99,9 +111,7 @@ async def _retrieve(
         top_k=20 if args.rerank else args.top_k,
     )
     if args.rerank and len(results) > args.top_k:
-        from rag.rag_pipeline import _rerank_results
-
-        results = await _rerank_results(query, results, args.top_k)
+        results = await _rerank_eval(args, query, results)
     return results
 
 
@@ -133,10 +143,68 @@ async def _retrieve_multi(
 
     results = _rrf_fuse(legs, 20 if args.rerank else args.top_k)
     if args.rerank and len(results) > args.top_k:
-        from rag.rag_pipeline import _rerank_results
-
-        results = await _rerank_results(query, results, args.top_k)
+        results = await _rerank_eval(args, query, results)
     return results
+
+
+async def _resolve_embedding_config(args: argparse.Namespace) -> dict | None:
+    """Embedding endpoint, preferring explicit env over DB keys.
+
+    CI passes EMBEDDING_API_KEY (+ optional EMBEDDING_BASE_URL/MODEL) so the
+    eval gate runs without seeding user_api_keys; locally we fall back to the
+    configured DB key. --embedding-model overrides the model either way.
+    """
+    env_key = os.environ.get("EMBEDDING_API_KEY")
+    if env_key:
+        # Never inherit the ambient EMBEDDING_MODEL (e.g. backend/.env sets
+        # text-embedding-v3 for the DashScope legacy path) — the model is the
+        # CLI override or the built-in default only.
+        return {
+            "api_key": env_key,
+            "base_url": os.environ.get("EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1"),
+            "model": args.embedding_model or "BAAI/bge-m3",
+        }
+    cfg = await get_embedding_config()
+    if cfg is None or cfg["api_key"] is None:
+        return None
+    if args.embedding_model:
+        cfg["model"] = args.embedding_model
+    return cfg
+
+
+async def _resolve_rerank_config(args: argparse.Namespace) -> dict | None:
+    """Rerank endpoint, preferring explicit env over DB keys (CI symmetry)."""
+    env_key = os.environ.get("RERANK_API_KEY")
+    if env_key:
+        return {
+            "api_key": env_key,
+            "base_url": os.environ.get("RERANK_BASE_URL", "https://api.siliconflow.cn/v1"),
+            "model": args.rerank_model or "BAAI/bge-reranker-v2-m3",
+        }
+    return await get_rerank_config()
+
+
+async def _rerank_eval(args: argparse.Namespace, query: str, results: list[dict]) -> list[dict]:
+    """Cross-encoder rerank with the eval-resolved endpoint; no-op when unavailable.
+
+    Mirrors rag_pipeline._rerank_results but resolves the endpoint from env
+    first, so the CI gate reranks without a seeded user_api_keys row.
+    """
+    cfg = await _resolve_rerank_config(args)
+    if cfg is None or cfg["api_key"] is None:
+        print("rerank requested but no rerank key configured — skipping", file=sys.stderr)
+        return results
+    from rag.rag_rerank import RerankProvider
+
+    provider = RerankProvider(api_key=cfg["api_key"], base_url=cfg["base_url"], model=cfg["model"])
+    indices = await provider.rerank(query, [r["text"] for r in results], top_n=args.top_k)
+    by_index = {i: results[i] for i in range(len(results))}
+    return [by_index[i] for i in indices if i in by_index]
+
+
+def _negative_hits(results: list[dict], negatives: list[str]) -> bool:
+    """True when any retrieved chunk contains any negative snippet."""
+    return any(n in r["text"] for r in results for n in negatives)
 
 
 async def _main(args: argparse.Namespace) -> int:
@@ -145,8 +213,8 @@ async def _main(args: argparse.Namespace) -> int:
         cases = cases[: args.limit]
     corpus = _load_corpus(args.corpus)
 
-    cfg = await get_embedding_config()
-    if cfg is None or cfg["api_key"] is None:
+    cfg = await _resolve_embedding_config(args)
+    if cfg is None:
         print("no embedding API key configured — cannot run eval", file=sys.stderr)
         return 2
 
@@ -175,6 +243,7 @@ async def _main(args: argparse.Namespace) -> int:
 
     async def evaluate(selected: list[dict]) -> dict:
         hits, rr_sum, n = 0, 0.0, len(selected)
+        neg_hits, neg_cases = 0, 0
         for case in selected:
             results = await _retrieve(args, provider, store, case["query"])
             found_at = next(
@@ -188,11 +257,20 @@ async def _main(args: argparse.Namespace) -> int:
             if found_at:
                 hits += 1
                 rr_sum += 1.0 / found_at
-        return {
+            negatives = case.get("negative_snippets") or []
+            if negatives:
+                neg_cases += 1
+                if _negative_hits(results, negatives):
+                    neg_hits += 1
+        metrics: dict = {
             "cases": n,
             f"recall@{args.top_k}": round(hits / n, 3) if n else 0.0,
             "mrr": round(rr_sum / n, 3) if n else 0.0,
         }
+        if neg_cases:
+            metrics["negative_pass_rate"] = round(1 - neg_hits / neg_cases, 3)
+            metrics["negative_cases"] = neg_cases
+        return metrics
 
     overall = await evaluate(cases)
     for category in ("lexical", "semantic"):
@@ -200,10 +278,26 @@ async def _main(args: argparse.Namespace) -> int:
         if sub:
             overall[category] = await evaluate(sub)
     print(json.dumps(overall, ensure_ascii=False, indent=2))
-    if args.fail_below:
-        ok = all(float(v) >= args.fail_below for k, v in overall.items() if k in ("recall@5", "mrr"))
-        if not ok:
-            print(f"GATE FAILED: recall@5/mrr below {args.fail_below}", file=sys.stderr)
+    if args.recall_fail_below:
+        recall = float(overall[f"recall@{args.top_k}"])
+        if recall < args.recall_fail_below:
+            print(
+                f"GATE FAILED: recall@{args.top_k} {recall} below {args.recall_fail_below}",
+                file=sys.stderr,
+            )
+            return 1
+    if args.mrr_fail_below:
+        mrr = float(overall["mrr"])
+        if mrr < args.mrr_fail_below:
+            print(f"GATE FAILED: mrr {mrr} below {args.mrr_fail_below}", file=sys.stderr)
+            return 1
+    if args.negative_fail_below:
+        neg_rate = float(overall.get("negative_pass_rate", 1.0))
+        if neg_rate < args.negative_fail_below:
+            print(
+                f"GATE FAILED: negative_pass_rate {neg_rate} below {args.negative_fail_below}",
+                file=sys.stderr,
+            )
             return 1
     return 0
 
@@ -341,7 +435,7 @@ async def _ragas_metrics(
     }
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--corpus", nargs="+", default=["docs/SPEC.md"])
     parser.add_argument("--golden", type=Path, default=Path("backend/tests/eval/golden_qa.json"))
@@ -357,8 +451,36 @@ def main() -> None:
         help="multi-query retrieval: original + LLM rewrite fused by RRF",
     )
     parser.add_argument("--limit", type=int, default=0, help="evaluate only the first N cases (0 = all)")
-    parser.add_argument("--fail-below", type=float, default=0.0, help="CI gate: exit 1 if recall@5/mrr below this")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--recall-fail-below", type=float, default=0.0, help="CI gate: exit 1 if recall@k below this (0 = disabled)"
+    )
+    parser.add_argument(
+        "--mrr-fail-below",
+        type=float,
+        default=0.0,
+        help="CI gate: exit 1 if mrr below this (0 = disabled)",
+    )
+    parser.add_argument(
+        "--negative-fail-below",
+        type=float,
+        default=0.0,
+        help="CI gate: exit 1 if negative_pass_rate below this (0 = disabled)",
+    )
+    parser.add_argument(
+        "--embedding-model",
+        default="",
+        help="override the embedding model (e.g. Qwen/Qwen3-Embedding-0.6B)",
+    )
+    parser.add_argument(
+        "--rerank-model",
+        default="",
+        help="override the reranker model (e.g. BAAI/bge-reranker-v2-m3)",
+    )
+    return parser
+
+
+def main() -> None:
+    args = _build_parser().parse_args()
     raise SystemExit(asyncio.run(_main(args)))
 
 

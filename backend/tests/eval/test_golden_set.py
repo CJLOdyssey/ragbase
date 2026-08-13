@@ -52,3 +52,33 @@ class TestGoldenSet:
         with_ref = [c for c in cases if c.get("expected_answer")]
         assert len(with_ref) >= _load_golden()["meta"]["reference_cases"]
         assert all(c["expected_answer"].strip() for c in with_ref)
+
+    def test_negative_minimum_coverage(self):
+        """Precision gate needs enough negative cases to be meaningful."""
+        cases = _load_golden()["cases"]
+        with_neg = [c for c in cases if c.get("negative_snippets")]
+        assert len(with_neg) >= _load_golden()["meta"]["negative_minimum"]
+        assert all(
+            isinstance(c["negative_snippets"], list) and c["negative_snippets"]
+            for c in with_neg
+        )
+
+    def test_negative_snippets_in_corpus(self):
+        """Negatives must be corpus verbatim — otherwise they gate nothing."""
+        corpus = SPEC.read_text(encoding="utf-8")
+        for case in _load_golden()["cases"]:
+            for snippet in case.get("negative_snippets") or []:
+                assert snippet in corpus, (
+                    f"negative snippet not in {SPEC.name}: {snippet!r} "
+                    f"(query: {case['query']})"
+                )
+
+    def test_negative_not_overlapping_positive(self):
+        """A snippet cannot be both expected and forbidden for the same query."""
+        for case in _load_golden()["cases"]:
+            pos = set(case["expected_snippets"])
+            for snippet in case.get("negative_snippets") or []:
+                assert snippet not in pos, (
+                    f"snippet both expected and negative: {snippet!r} "
+                    f"(query: {case['query']})"
+                )
