@@ -1,0 +1,15 @@
+[Unit]
+Description=RagBase database backup (pg_dump)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /home/odyssey/PyCharmProjects/Agent/projects/ragbase/scripts/dev/backup.sh
+Environment=PGUSER=postgres
+Environment=PGPASSWORD=postgres
+Environment=PGHOST=localhost
+Environment=PGPORT=5433
+Environment=PGDB=ragbase
+
+[Install]
+WantedBy=default.target

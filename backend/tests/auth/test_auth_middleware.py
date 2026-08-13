@@ -54,6 +54,25 @@ class TestAuthMiddleware:
         # Should get a response (not 401), just maybe empty data
         assert resp.status_code < 500
 
+    def test_login_wall_rejects_anonymous_when_enabled(self):
+        """AUTH_REQUIRE_LOGIN=1 → business API returns 401 without a token."""
+        import auth.auth_middleware as mw
+
+        with patch.object(mw, "AUTH_ENABLED", True), patch.object(mw, "AUTH_REQUIRE_LOGIN", True):
+            with TestClient(app) as client:
+                resp = client.get("/api/models")
+        assert resp.status_code == 401
+        assert resp.json()["detail"]["error"]["code"] == "AUTH_001"
+
+    def test_login_wall_still_exempts_public_paths(self):
+        """Public paths stay reachable even with the login wall enabled."""
+        import auth.auth_middleware as mw
+
+        with patch.object(mw, "AUTH_REQUIRE_LOGIN", True):
+            with TestClient(app) as client:
+                resp = client.get("/api/health")
+        assert resp.status_code in (200, 503)
+
     def test_invalid_token_passes_as_guest(self, client):
         """Invalid token doesn't block — passes as guest."""
         resp = client.get("/api/models", headers={"Authorization": "Bearer invalid.token.here"})

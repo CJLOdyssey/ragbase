@@ -8,7 +8,7 @@ from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from auth.auth_jwt import AUTH_SECRET, decode_jwt
-from auth.auth_rbac import AUTH_ENABLED, PUBLIC_PATHS, PUBLIC_PREFIXES
+from auth.auth_rbac import AUTH_ENABLED, AUTH_REQUIRE_LOGIN, PUBLIC_PATHS, PUBLIC_PREFIXES
 
 logger = get_logger(__name__)
 
@@ -45,8 +45,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "?"
 
         # ── Guest mode: no token → pass through as unauthenticated ────
+        # AUTH_REQUIRE_LOGIN=1 turns the guest namespace into a login wall:
+        # business APIs reject unauthenticated requests (401) so public
+        # deployments can require sign-in before any use.
         if not token:
             request.state.is_authenticated = False
+            if AUTH_REQUIRE_LOGIN:
+                from fastapi.responses import JSONResponse
+
+                logger.warning("Login wall rejected anonymous request | path=%s", path)
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "detail": {
+                            "error": {"code": "AUTH_001", "message": "未登录或会话已过期"}
+                        }
+                    },
+                )
             return cast(Response, await call_next(request))
 
         payload = decode_jwt(token, AUTH_SECRET)

@@ -1,0 +1,10 @@
+[Unit]
+Description=RagBase database backup — daily 03:17 (avoid :00/:30 herd)
+Requires=ragbase-backup.service
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -23,6 +23,12 @@ logger = get_logger(__name__)
 AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "0") == "1"
 AUTH_MODE = os.environ.get("AUTH_MODE", "legacy")
 
+# Login wall: when enabled, unauthenticated business API requests are rejected
+# with 401 instead of passing through as the "anonymous" guest namespace.
+# Default off — guest access is the product default; set to 1 for public
+# deployments that require sign-in before use.
+AUTH_REQUIRE_LOGIN = os.environ.get("AUTH_REQUIRE_LOGIN", "0") == "1"
+
 # Validate AUTH_SECRET at import time for RBAC mode
 if AUTH_MODE == "rbac" and AUTH_ENABLED and AUTH_SECRET == "":
     raise RuntimeError(

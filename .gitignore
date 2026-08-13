@@ -130,3 +130,5 @@ CLAUDE.md
 RUNBOOK.md
 .mutmut-cache
 celerybeat-schedule*
+backups/
+tls/
