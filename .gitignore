@@ -127,6 +127,10 @@ scripts/test_tools_verified.py
 # Internal docs (not for public repo)
 docs/
 AGENTS.md
+
+# Development process artifacts (never commit — source-code repos only)
+PROJECT_STATUS.md
+**/tasks/**/progress.md
 CLAUDE.md
 RUNBOOK.md
 .mutmut-cache
