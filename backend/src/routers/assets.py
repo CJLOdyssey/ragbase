@@ -77,6 +77,7 @@ def _to_item(asset: Any) -> AssetItem:
 
 @router.get("/api/assets", response_model=list[AssetItem])
 async def list_assets(request: Request) -> Any:
+    """List the current user's assets."""
     user_id = get_user_id(request)
     assets = await list_assets_by_user(user_id)
     return [_to_item(a) for a in assets]
@@ -88,6 +89,7 @@ async def upload_asset(
     file: UploadFile = File(...),  # noqa: B008
     name: str | None = Form(None),
 ) -> Any:
+    """Upload a file as an asset, validating type and size limits."""
     user_id = get_user_id(request)
     content_type = file.content_type or "application/octet-stream"
     content = await file.read()
@@ -186,6 +188,7 @@ async def _resolve_host(hostname: str) -> str:
 
 @router.put("/api/assets/{asset_id}", response_model=AssetItem)
 async def rename_asset(asset_id: str, request: Request, name: str) -> Any:
+    """Rename an asset owned by the current user."""
     user_id = get_user_id(request)
     asset = await get_asset(asset_id)
     if asset is None or asset.user_id != user_id:
@@ -202,6 +205,7 @@ async def rename_asset(asset_id: str, request: Request, name: str) -> Any:
 
 @router.delete("/api/assets/{asset_id}")
 async def remove_asset(asset_id: str, request: Request) -> Any:
+    """Delete an asset and purge its vector chunks from the store."""
     user_id = get_user_id(request)
     asset = await get_asset(asset_id)
     if asset is None or asset.user_id != user_id:
@@ -219,6 +223,7 @@ async def remove_asset(asset_id: str, request: Request) -> Any:
 
 @router.post("/api/assets/{asset_id}/index")
 async def index_asset(asset_id: str, request: Request) -> Any:
+    """Queue asynchronous indexing of a document asset in Celery."""
     user_id = get_user_id(request)
     asset = await get_asset(asset_id)
     if asset is None or asset.user_id != user_id:

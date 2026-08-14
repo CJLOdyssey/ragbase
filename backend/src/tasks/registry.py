@@ -32,6 +32,7 @@ def run_agent(
     model: str | None = None,
     user_id: str = "system",
 ) -> Any:
+    """Run the agent pipeline for a requirement in the background."""
     t0 = time.time()
     logger.info(
         "Celery task START | run=%s | session=%s | model=%s | retry=%d",
@@ -123,6 +124,7 @@ def complete_agent(
     thinking: str | None = None,
     question: str | None = None,
 ) -> Any:
+    """Persist a completed run's final answer in the background."""
     t0 = time.time()
     logger.info(
         "Celery complete START | run=%s | model=%s | thinking=%s | retry=%d",

@@ -2,14 +2,14 @@ from typing import Any
 
 """RAG pipeline: analysis → chunking → embedding → vector store → retrieval.
 
-Steps 8-15 of the single-agent template:
-  8.  Analyze & preprocess session content
-  9.  Semantic chunking
-  10. Text vectorization (DashScope text-embedding-v3, 1024d)
-  11. Store in pgvector
-  12. On new input: vectorize query
-  13. Hybrid retrieval (tag match + cosine similarity via pgvector)
-  14. Inject results into LLM context
+Pipeline stages:
+  1.  Analyze & preprocess session content
+  2.  Semantic chunking
+  3.  Text vectorization (DashScope text-embedding-v3)
+  4.  Store in pgvector
+  5.  On new input: vectorize query
+  6.  Hybrid retrieval (tag match + cosine similarity via pgvector)
+  7.  Inject results into LLM context
 
 Production stack:
   - Embedding: Alibaba DashScope (text-embedding-v3)
@@ -31,6 +31,7 @@ _vector_store = PgVectorStore()
 
 
 def get_rag_pipeline() -> tuple[EmbeddingProvider | None, PgVectorStore]:
+    """Return the process-global (embedding provider, vector store)."""
     return _embedding_provider, _vector_store
 
 
@@ -39,6 +40,7 @@ def ensure_embedding_provider(
     model: str | None = None,
     base_url: str | None = None,
 ) -> None:
+    """Set the global embedding provider from an API key; None disables embedding."""
     global _embedding_provider
     _embedding_provider = (
         EmbeddingProvider(
@@ -55,7 +57,7 @@ async def ingest_session_messages(
     messages: list[dict[str, Any]],
     user_id: str = "anonymous",
 ) -> None:
-    """Steps 8-11: Ingest conversation messages into pgvector.
+    """Ingest conversation messages into the pgvector store.
 
     1. Concatenate messages → text
     2. Chunk semantically
@@ -99,7 +101,7 @@ async def retrieve_context(
     rerank: bool = False,
     min_score: float | None = DEFAULT_MIN_SCORE,
 ) -> str:
-    """Steps 13-14: Retrieve relevant context for a user query.
+    """Retrieve relevant context for a user query.
 
     1. Embed query
     2. Hybrid search (HNSW ‖ pg_trgm + RRF), filtered to user_id

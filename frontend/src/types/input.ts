@@ -25,13 +25,17 @@ export interface CommandOption {
 
 // ── File / Attachment ──
 
+/**
+ * A file attached to a message. Upload starts immediately on selection —
+ * `status` tracks the in-flight upload ('uploading' → 'done'), and
+ * `attachmentId` holds the server-side id that the sent message references.
+ */
 export interface AttachedFile {
   id: string;
   name: string;
   size: number;
   type: string;
   file?: File;
-  /** Pre-upload state (upload on select, industry pattern) */
   status?: 'uploading' | 'done' | 'error';
   progress?: number;
   attachmentId?: string;

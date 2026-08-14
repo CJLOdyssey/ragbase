@@ -51,6 +51,7 @@ async def _snapshot_for_run(run_id: str) -> tuple[str | None, str | None, list[d
 
 
 async def create_feedback(run_id: str, user_id: str, rating: str) -> dict[str, Any]:
+    """Record a rating for a run, snapshotting its query, answer, and sources."""
     if rating not in VALID_RATINGS:
         raise ValueError(f"rating must be one of {sorted(VALID_RATINGS)}")
     query, answer, sources = await _snapshot_for_run(run_id)
@@ -79,6 +80,7 @@ async def create_feedback(run_id: str, user_id: str, rating: str) -> dict[str, A
 
 
 async def list_feedback(user_id: str, limit: int = 200) -> list[dict[str, Any]]:
+    """Return a user's feedback entries, newest first."""
     factory = get_session_factory()
     async with factory() as session:
         stmt = (
