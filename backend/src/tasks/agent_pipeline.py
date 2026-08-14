@@ -10,7 +10,7 @@ import tracemalloc
 from typing import Any
 
 from broker import publish_run_message
-from checkpoint import create_checkpointer_async
+from checkpoint import close_checkpointer, create_checkpointer_async
 from core.config import load_config
 from core.infra.logging_config import get_logger
 from graph.graph import SingleAgentGraph
@@ -275,6 +275,10 @@ async def _run_agent_pipeline(
         with contextlib.suppress(Exception):
             await publish_run_message(run_id, {"type": "cancelled", "run_id": run_id})
         raise
+    finally:
+        # Postgres/sqlite checkpointers hold an open connection; close it on
+        # every exit path (done, timeout, cancel, error) or each run leaks one.
+        await close_checkpointer(checkpointer)
 
     # ── Extract artifacts ──
     messages = result.get("messages", [])

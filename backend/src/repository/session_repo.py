@@ -4,7 +4,10 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from core.infra.database import SessionDB, get_session_factory
-from sqlalchemy import desc, select
+from core.infra.logging_config import get_logger
+from sqlalchemy import desc, select, text
+
+logger = get_logger(__name__)
 
 
 async def create_session(
@@ -109,3 +112,25 @@ async def delete_session(session_id: str) -> bool:
         await session.delete(obj)
         await session.commit()
         return True
+
+
+async def delete_vector_chunks_by_session(session_id: str) -> None:
+    """Remove vector chunks orphaned by a session deletion (best-effort).
+
+    Fail-open: a cleanup failure (e.g. vector_chunks absent in some
+    environments) must never break the session deletion itself.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        try:
+            await session.execute(
+                text("DELETE FROM vector_chunks WHERE session_id = :sid"),
+                {"sid": session_id},
+            )
+            await session.commit()
+        except Exception:
+            logger.warning(
+                "Failed to clean vector chunks for session %s; orphans may remain",
+                session_id,
+                exc_info=True,
+            )

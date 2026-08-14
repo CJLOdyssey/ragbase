@@ -17,6 +17,9 @@ SENTINEL_HOSTS_STR = os.environ.get("REDIS_SENTINEL_HOSTS", "sentinel-1:26379,se
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "")
 SERVICE_NAME = os.environ.get("REDIS_SENTINEL_SERVICE", "ragbase-redis")
 SENTINEL_DB = int(os.environ.get("REDIS_SENTINEL_DB", "0"))
+# Per-command read timeout. Without it a hung-but-connected Redis (half-open
+# TCP, e.g. process freeze) blocks publish/incr forever instead of failing fast.
+SOCKET_TIMEOUT = int(os.environ.get("REDIS_SOCKET_TIMEOUT", "10"))
 
 _sentinel: Sentinel | None = None
 
@@ -33,6 +36,7 @@ def _get_sentinel() -> Sentinel:
             "decode_responses": True,
             "socket_keepalive": True,
             "socket_connect_timeout": 10,
+            "socket_timeout": SOCKET_TIMEOUT,
         }
         if REDIS_PASSWORD:
             kwargs["password"] = REDIS_PASSWORD
@@ -54,6 +58,7 @@ def create_redis() -> Any:
             "decode_responses": True,
             "socket_keepalive": True,
             "socket_connect_timeout": 10,
+            "socket_timeout": SOCKET_TIMEOUT,
             "health_check_interval": 30,
             "retry_on_timeout": True,
             "max_connections": max_connections,
@@ -71,6 +76,7 @@ def create_redis() -> Any:
         decode_responses=True,
         socket_keepalive=True,
         socket_connect_timeout=10,
+        socket_timeout=SOCKET_TIMEOUT,
         health_check_interval=30,
         retry_on_timeout=True,
     )

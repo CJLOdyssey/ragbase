@@ -102,6 +102,7 @@ from repository.run_repo import (
 from repository.session_repo import (
     create_session,
     delete_session,
+    delete_vector_chunks_by_session,
     get_session,
     get_sessions,
     update_session_pin,
@@ -139,6 +140,7 @@ __all__ = [
     "delete_memory_entry",
     "delete_prompt",
     "delete_session",
+    "delete_vector_chunks_by_session",
     "get_api_key_for_model",
     "get_api_key_for_use",
     "get_api_keys",

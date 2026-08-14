@@ -59,10 +59,15 @@ async def api_create_version(
 ) -> Any:
     """Create a version snapshot for any resource type."""
     user_id = get_user_id(request)
-    return await create_version(
+    result = await create_version(
         session,
         req.resource_type,
         req.resource_id,
         req.snapshot,
         user_id,
     )
+    # The Depends(get_session) dependency closes the session on exit, which
+    # rolls back uncommitted changes — commit here or the snapshot silently
+    # never persists (API returns 201 but writes nothing).
+    await session.commit()
+    return result

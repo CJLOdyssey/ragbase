@@ -165,19 +165,29 @@ async def count_runs_by_parent(parent_run_id: str) -> int:
 async def get_run_ancestors(run_id: str) -> list[ProjectRun]:
     """Return the run and all its ancestors via parent_run_id, root-first.
 
-    Guards against cycles (corrupt data) by capping the walk at the run count.
+    Fetches the whole chain in one recursive CTE query instead of walking one
+    ``session.get`` per ancestor level. Depth is capped to guard against
+    cycles in corrupt data (previously capped by a seen-set walk).
     """
+    from sqlalchemy import desc, literal, select
+    from sqlalchemy.orm import aliased
+
     factory = get_session_factory()
     async with factory() as session:
-        rows: list[ProjectRun] = []
-        seen: set[str] = set()
-        current_id: str | None = run_id
-        while current_id and current_id not in seen:
-            seen.add(current_id)
-            run = await session.get(ProjectRun, current_id)
-            if run is None:
-                break
-            rows.append(run)
-            current_id = run.parent_run_id or None
-        rows.reverse()
-        return rows
+        parent = aliased(ProjectRun)
+        chain = (
+            select(ProjectRun.id, ProjectRun.parent_run_id, literal(0).label("depth"))
+            .where(ProjectRun.id == run_id)
+            .cte(name="run_chain", recursive=True)
+        )
+        chain = chain.union_all(
+            select(parent.id, parent.parent_run_id, chain.c.depth + 1)
+            .join(chain, parent.id == chain.c.parent_run_id)
+            .where(chain.c.depth < 100)
+        )
+        result = await session.execute(
+            select(ProjectRun)
+            .join(chain, ProjectRun.id == chain.c.id)
+            .order_by(desc(chain.c.depth))
+        )
+        return list(result.scalars().all())

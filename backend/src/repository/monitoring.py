@@ -1,15 +1,20 @@
 """Online quality metrics aggregation + alert evaluation (R3, ENTERPRISE_RAG_TOP_BAR §4 #7).
 
 Read-only analytics over the append-only retrieval_logs and feedback_logs.
-Percentiles are computed in Python from the window's latency samples —
-SQLite has no native percentile aggregate, and per-user windows are small.
+Counts are aggregated in SQL; latency percentiles are computed in Python
+from a bounded sample of the window (SQLite has no native percentile
+aggregate, and percentiles over a capped sample stay stable for alerting).
 """
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.infra.database import FeedbackLog, RetrievalLogDB, get_session_factory
-from sqlalchemy import select
+from sqlalchemy import func, select
+
+# Cap latency samples pulled for percentile computation (defensive bound for
+# very large windows — alerting percentiles stay stable beyond this).
+_LATENCY_SAMPLE_LIMIT = 10000
 
 
 async def retrieval_summary(user_id: str, window_hours: int) -> dict[str, Any]:
@@ -17,18 +22,28 @@ async def retrieval_summary(user_id: str, window_hours: int) -> dict[str, Any]:
     since = datetime.now(UTC) - timedelta(hours=window_hours)
     factory = get_session_factory()
     async with factory() as session:
-        stmt = (
-            select(RetrievalLogDB.hit_count, RetrievalLogDB.latency_ms)
+        agg = (
+            select(
+                func.count().label("total"),
+                func.count().filter(RetrievalLogDB.hit_count <= 0).label("empty"),
+            ).where(
+                RetrievalLogDB.user_id == user_id,
+                RetrievalLogDB.created_at >= since,
+            )
+        )
+        row = (await session.execute(agg)).one()
+        total = int(row.total)
+        empty_recall = int(row.empty)
+        latency_stmt = (
+            select(RetrievalLogDB.latency_ms)
             .where(
                 RetrievalLogDB.user_id == user_id,
                 RetrievalLogDB.created_at >= since,
             )
             .order_by(RetrievalLogDB.created_at)
+            .limit(_LATENCY_SAMPLE_LIMIT)
         )
-        rows = (await session.execute(stmt)).all()
-    latencies = [r.latency_ms for r in rows]
-    total = len(rows)
-    empty_recall = sum(1 for r in rows if r.hit_count <= 0)
+        latencies = list((await session.execute(latency_stmt)).scalars())
     return {
         "total": total,
         "empty_recall_count": empty_recall,

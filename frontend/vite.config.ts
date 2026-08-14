@@ -61,6 +61,7 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiOrigin,
           changeOrigin: true,
+          ws: true,
         },
         '/ws': {
           target: wsOrigin,

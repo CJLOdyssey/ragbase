@@ -49,9 +49,8 @@ services:
       RUN_DISPATCH: celery
       # 初始 admin 密码（首次 seed 生效）——生产必须显式设置
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD must be set in .env for production}
-      # celery threads-pool 每次任务新建 event loop：QueuePool 连接池跨 loop 会
-      # 抛 "Future attached to a different loop"。NullPool 每次新连接，规避。
-      DATABASE_POOL_SIZE: "0"
+      # API 用连接池（asyncio 单 event loop 下 QueuePool 安全）
+      DATABASE_POOL_SIZE: "20"
     healthcheck:
       test: ["CMD", "python3", "scripts/health.py", "--port", "8080"]
       interval: 15s
@@ -74,6 +73,8 @@ services:
       SKIP_MIGRATIONS: "1"
       PYTHONFAULTHANDLER: "1"
       PYTHONFAULTHANDLER_ALL_THREADS: "1"
+      # celery threads-pool 每次任务新建 event loop：QueuePool 连接池跨 loop 会
+      # 抛 "Future attached to a different loop"。NullPool 每次新连接，规避。
       DATABASE_POOL_SIZE: "0"
     healthcheck:
       test: ["CMD-SHELL", "celery -A broker inspect ping >/dev/null 2>&1 || exit 1"]

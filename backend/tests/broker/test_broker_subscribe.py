@@ -22,11 +22,9 @@ class TestSubscribeRun:
         msg1 = {"type": "message", "data": json.dumps({"type": "text", "content": "hi"})}
         msg2 = {"type": "message", "data": json.dumps({"type": "stream", "content": "ok"})}
 
-        async def fake_listen():
-            for m in [msg1, msg2]:
-                yield m
-
-        mock_pubsub.listen = fake_listen
+        # get_message() yields the stream, then "blocks" until the idle
+        # timeout fires — mirroring subscribe_run's wait_for(60s) guard.
+        mock_pubsub.get_message = AsyncMock(side_effect=[msg1, msg2, TimeoutError])
         mock_pubsub.unsubscribe = AsyncMock()
         mock_pubsub.close = AsyncMock()
         mock_redis.pubsub.return_value = mock_pubsub
@@ -47,11 +45,7 @@ class TestSubscribeRun:
         mock_redis = MagicMock()
         mock_pubsub = AsyncMock()
 
-        async def empty_listen():
-            return
-            yield  # make it an async generator
-
-        mock_pubsub.listen = empty_listen
+        mock_pubsub.get_message = AsyncMock(side_effect=TimeoutError)
         mock_pubsub.unsubscribe = AsyncMock()
         mock_pubsub.close = AsyncMock()
         mock_redis.pubsub.return_value = mock_pubsub
@@ -68,14 +62,11 @@ class TestSubscribeRun:
         mock_redis = MagicMock()
         mock_pubsub = AsyncMock()
 
-        sub_msg = {"type": "subscribe", "data": 1}
+        # subscribe confirmations are dropped by ignore_subscribe_messages;
+        # only the real message reaches the generator.
         msg = {"type": "message", "data": json.dumps({"type": "done"})}
 
-        async def listen():
-            for m in [sub_msg, msg]:
-                yield m
-
-        mock_pubsub.listen = listen
+        mock_pubsub.get_message = AsyncMock(side_effect=[msg, TimeoutError])
         mock_pubsub.unsubscribe = AsyncMock()
         mock_pubsub.close = AsyncMock()
         mock_redis.pubsub.return_value = mock_pubsub
@@ -94,10 +85,7 @@ class TestSubscribeRun:
 
         msg_bytes = {"type": "message", "data": b"\x00\x01"}
 
-        async def listen():
-            yield msg_bytes
-
-        mock_pubsub.listen = listen
+        mock_pubsub.get_message = AsyncMock(side_effect=[msg_bytes, TimeoutError])
         mock_pubsub.unsubscribe = AsyncMock()
         mock_pubsub.close = AsyncMock()
         mock_redis.pubsub.return_value = mock_pubsub
@@ -108,16 +96,67 @@ class TestSubscribeRun:
 
     @patch("broker.get_redis")
     @pytest.mark.asyncio
+    async def test_stops_stream_after_result(self, mock_get_redis):
+        from broker import subscribe_run
+
+        mock_redis = MagicMock()
+        mock_pubsub = AsyncMock()
+
+        result_msg = {
+            "type": "message",
+            "data": json.dumps({"type": "result", "content": "fin"}),
+        }
+        trailing = {
+            "type": "message",
+            "data": json.dumps({"type": "text", "content": "late"}),
+        }
+
+        mock_pubsub.get_message = AsyncMock(side_effect=[result_msg, trailing, TimeoutError])
+        mock_pubsub.unsubscribe = AsyncMock()
+        mock_pubsub.close = AsyncMock()
+        mock_redis.pubsub.return_value = mock_pubsub
+        mock_get_redis.return_value = mock_redis
+
+        results = [m async for m in subscribe_run("r7")]
+        assert results == [{"type": "result", "content": "fin"}]
+        # stream closed on result — trailing message is never consumed
+        assert mock_pubsub.get_message.await_count == 1
+        mock_pubsub.unsubscribe.assert_awaited_once_with("run:r7")
+        mock_pubsub.close.assert_awaited_once()
+
+    @patch("broker.get_redis")
+    @pytest.mark.asyncio
+    async def test_idle_timeout_closes_stream(self, mock_get_redis):
+        from broker import subscribe_run
+
+        mock_redis = MagicMock()
+        mock_pubsub = AsyncMock()
+
+        mock_pubsub.get_message = AsyncMock(side_effect=TimeoutError)
+        mock_pubsub.unsubscribe = AsyncMock()
+        mock_pubsub.close = AsyncMock()
+        mock_redis.pubsub.return_value = mock_pubsub
+        mock_get_redis.return_value = mock_redis
+
+        results = [m async for m in subscribe_run("r8")]
+        assert results == []
+        mock_pubsub.unsubscribe.assert_awaited_once_with("run:r8")
+        mock_pubsub.close.assert_awaited_once()
+
+    @patch("broker.get_redis")
+    @pytest.mark.asyncio
     async def test_unsubscribes_and_closes_in_finally(self, mock_get_redis):
         from broker import subscribe_run
 
         mock_redis = MagicMock()
         mock_pubsub = AsyncMock()
 
-        async def listen():
-            yield {"type": "message", "data": json.dumps({"a": 1})}
-
-        mock_pubsub.listen = listen
+        mock_pubsub.get_message = AsyncMock(
+            side_effect=[
+                {"type": "message", "data": json.dumps({"a": 1})},
+                TimeoutError,
+            ]
+        )
         mock_pubsub.unsubscribe = AsyncMock()
         mock_pubsub.close = AsyncMock()
         mock_redis.pubsub.return_value = mock_pubsub
@@ -136,10 +175,12 @@ class TestSubscribeRun:
         mock_redis = MagicMock()
         mock_pubsub = AsyncMock()
 
-        async def listen():
-            yield {"type": "message", "data": json.dumps({"x": 1})}
-
-        mock_pubsub.listen = listen
+        mock_pubsub.get_message = AsyncMock(
+            side_effect=[
+                {"type": "message", "data": json.dumps({"x": 1})},
+                TimeoutError,
+            ]
+        )
         mock_pubsub.unsubscribe = AsyncMock(side_effect=RuntimeError("gone"))
         mock_pubsub.close = AsyncMock()
         mock_redis.pubsub.return_value = mock_pubsub
@@ -320,6 +361,20 @@ class TestBufferRunMessages:
         mock_pubsub.subscribe.assert_awaited_once_with("run:run-sub")
 
         await stop_buffer("run-sub")
+
+    @patch("broker.get_redis")
+    @pytest.mark.asyncio
+    async def test_buffer_fail_open_on_redis_outage(self, mock_get_redis):
+        from broker import _buffers, buffer_run_messages, stop_buffer
+
+        _buffers.clear()
+        mock_get_redis.side_effect = ConnectionError("redis down")
+
+        # Must not raise; an empty buffer is registered so the run proceeds.
+        await buffer_run_messages("run-failopen")
+        assert "run-failopen" in _buffers
+        assert _buffers["run-failopen"] == []
+        await stop_buffer("run-failopen")
 
 
 # ---------------------------------------------------------------------------

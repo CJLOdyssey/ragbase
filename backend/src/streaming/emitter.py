@@ -72,7 +72,9 @@ class StreamEmitter:
                         },
                     )
                 except Exception:
-                    logger.exception("Stream chunk publish failed for run %s", self._run_id)
+                    # Per-token chunk: debug level to avoid log flooding on
+                    # sustained Redis issues (final message publish keeps exception).
+                    logger.debug("Stream chunk publish failed for run %s", self._run_id, exc_info=True)
 
         elif kind == "on_custom_thinking":
             rc = data.get("content", "")
@@ -90,7 +92,7 @@ class StreamEmitter:
                         },
                     )
                 except Exception:
-                    logger.exception("Thinking stream publish failed for run %s", self._run_id)
+                    logger.debug("Thinking stream publish failed for run %s", self._run_id, exc_info=True)
 
         elif kind == "on_node_end":
             await self._flush_buffers()
@@ -266,6 +268,9 @@ class StreamEmitter:
                         "sources": self._sources,
                     },
                 )
+            except Exception:
+                logger.exception("Stream publish failed for run %s", self._run_id)
+            try:
                 await save_message(
                     run_id=self._run_id,
                     role="Agent",
@@ -277,7 +282,9 @@ class StreamEmitter:
                 )
                 saved_with_content = True
             except Exception:
-                logger.exception("Stream publish failed for run %s", self._run_id)
+                # Publish and save are independent: a failed publish must not
+                # drop the message from history (and vice versa).
+                logger.exception("Stream save failed for run %s", self._run_id)
 
         if thinking_text:
             try:

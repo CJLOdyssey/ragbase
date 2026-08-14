@@ -23,6 +23,7 @@ from routers import (
     assets,
     attachments,
     auth,
+    events,
     feedback,
     keys,
     models,
@@ -161,7 +162,7 @@ app.add_middleware(RequestSizeLimitMiddleware)
 
 
 # ── Routers ─────────────────────────────────────────────────────────────────
-routers = [auth, runs, run_continue, sessions, attachments, models, keys,
+routers = [auth, events, runs, run_continue, sessions, attachments, models, keys,
            prompts, providers, versions, assets, feedback, monitoring]
 for r in routers:
     app.include_router(r.router)
