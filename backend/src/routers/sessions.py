@@ -15,6 +15,7 @@ from repository import (
     create_session,
     delete_memory_entry,
     delete_session,
+    delete_vector_chunks_by_session,
     get_runs_by_session_ids,
     get_session,
     get_session_memories,
@@ -257,6 +258,7 @@ async def remove_session(request: Request, session_id: str) -> Any:
         deleted = await delete_session(session_id)
         if not deleted:
             raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        await delete_vector_chunks_by_session(session_id)
         await _publish_session_event(user_id, "session.deleted", session_id)
         return {"status": "deleted"}
     except HTTPException:

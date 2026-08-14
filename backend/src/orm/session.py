@@ -14,7 +14,7 @@ class SessionDB(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     title: Mapped[str] = mapped_column(String(256), default="新对话")
-    user_id: Mapped[str] = mapped_column(String(128), default="default")
+    user_id: Mapped[str] = mapped_column(String(128), default="default", index=True)
     kind: Mapped[str] = mapped_column(String(16), default="normal")
     is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="f")
     created_at: Mapped[datetime] = mapped_column(
