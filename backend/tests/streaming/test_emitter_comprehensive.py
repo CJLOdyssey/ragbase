@@ -641,6 +641,22 @@ class TestFlushBuffers:
             await emitter._flush_buffers()
 
     @pytest.mark.asyncio
+    async def test_save_failure_keeps_publish_independent(self):
+        from streaming.emitter import StreamEmitter
+
+        emitter = StreamEmitter("run-45b")
+        with (
+            patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub,
+            patch("streaming.emitter.save_message", side_effect=Exception("db down")),
+        ):
+            emitter._stream_buffer = ["content"]
+            # Save failure must not raise, and publish must have happened
+            # (publish/save are decoupled so a failed publish never drops
+            # the message from history and vice versa).
+            await emitter._flush_buffers()
+            assert mock_pub.await_count == 1
+
+    @pytest.mark.asyncio
     async def test_publish_thinking_done_failure_handled(self):
         from streaming.emitter import StreamEmitter
 
