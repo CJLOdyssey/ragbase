@@ -1,9 +1,11 @@
 """Session and Memory API routes."""
 
 import json
+import time
 from typing import Any
 
 from auth import get_user_id
+from broker import publish_user_event
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from core.models import AttachmentResponse, SessionDetailResponse, SessionSummary
@@ -30,6 +32,14 @@ from starlette.responses import Response
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["sessions"])
+
+
+async def _publish_session_event(user_id: str, event_type: str, session_id: str) -> None:
+    """Notify the user's other clients that a session changed (fail-open)."""
+    await publish_user_event(
+        user_id,
+        {"type": event_type, "session_id": session_id, "ts": int(time.time())},
+    )
 
 
 class SessionCreateRequest(BaseModel):
@@ -78,6 +88,7 @@ async def add_session(request: Request, req: SessionCreateRequest) -> Any:
     try:
         user_id = get_user_id(request)
         sess = await create_session(title=req.title, user_id=user_id)
+        await _publish_session_event(user_id, "session.created", sess.id)
         return {
             "id": sess.id,
             "title": sess.title,
@@ -202,6 +213,7 @@ async def rename_session(request: Request, session_id: str, req: SessionUpdateRe
         sess = await update_session_title(session_id, req.title)
         if not sess:
             raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        await _publish_session_event(user_id, "session.updated", session_id)
         return {"id": sess.id, "title": sess.title, "status": "updated"}
     except HTTPException:
         raise
@@ -223,6 +235,7 @@ async def pin_session(request: Request, session_id: str, req: SessionPinRequest)
         sess = await update_session_pin(session_id, req.is_pinned)
         if not sess:
             raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        await _publish_session_event(user_id, "session.updated", session_id)
         return {"id": sess.id, "is_pinned": sess.is_pinned, "status": "updated"}
     except HTTPException:
         raise
@@ -244,6 +257,7 @@ async def remove_session(request: Request, session_id: str) -> Any:
         deleted = await delete_session(session_id)
         if not deleted:
             raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        await _publish_session_event(user_id, "session.deleted", session_id)
         return {"status": "deleted"}
     except HTTPException:
         raise
