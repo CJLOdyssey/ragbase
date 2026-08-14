@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="var(--color-surface, #0f1117)" />
+    <meta name="description" content="RagBase - RAG 知识库问答平台" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="/api" />
+    <link rel="dns-prefetch" href="/api" />
+    <link rel="stylesheet" href="/src/styles/tailwind-entry.css" />
+    <link rel="modulepreload" href="/src/main.tsx" />
+    <link rel="preload" as="font" crossorigin href="/node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2" />
+    <link rel="preload" as="font" crossorigin href="/node_modules/geist/dist/fonts/geist-sans/Geist-Italic.woff2" />
+    <link rel="modulepreload" href="/src/App.tsx" />
+    <script>
+      (function(){
+        try {
+          var s = JSON.parse(localStorage.getItem('ragbase-settings'));
+          var theme = s && s.theme ? s.theme : 'dark';
+          if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch(e){}
+      })();
+    </script>
+    <!-- Prevent layout shift: define sizing vars before CSS loads. Values match tailwind-entry.css. -->
+    <style>
+      html { background: #f5f5f7; }
+      html.dark { background: #0f1117; }
+      :root { --da-sidebar-width: clamp(17.5rem, 18vw, 20rem); --da-input-height: 56px; --da-input-radius: 16px; --da-toolbar-height: 48px; --modal-m: 560px; }
+    </style>
+    <title>RagBase</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
