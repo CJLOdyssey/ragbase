@@ -1,4 +1,4 @@
-# Frontend CI — typecheck / lint / unit tests / build (mirrors agent-studio).
+# Frontend CI — typecheck / lint / unit tests / build.
 # GitHub Flow triggers (main/develop push + PR); frontend/** path whitelist.
 name: Frontend CI
 
