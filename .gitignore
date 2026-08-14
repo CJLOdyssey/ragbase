@@ -119,11 +119,11 @@ scripts/run_mutmut.sh
 scripts/test_tools_in_ai_response.py
 scripts/test_tools_verified.py
 
-# Web prototype leftovers (never commit)
-index.html
-!frontend/index.html
-script.js
-styles.css
+# Web prototype leftovers (never commit) — scoped to prototypes/ so it doesn't
+# match frontend/index.html
+/prototypes/index.html
+/prototypes/script.js
+/prototypes/styles.css
 # Internal docs (not for public repo)
 docs/
 AGENTS.md
