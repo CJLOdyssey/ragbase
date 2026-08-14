@@ -1,6 +1,6 @@
 # Backend CI — lint / typecheck / test with coverage (SPEC 4.2).
 # GitHub Flow: push to develop/main triggers; feature branches run CI via
-# pull_request (mirrors agent-studio ci.yml). paths whitelist keeps docs-only
+# pull_request. paths whitelist keeps docs-only
 # and frontend-only changes from burning runner time.
 name: Backend CI
 
@@ -96,8 +96,8 @@ jobs:
             --golden backend/tests/eval/golden_qa.json --rerank \
             --recall-fail-below 0.97 --mrr-fail-below 0.9 --negative-fail-below 0.65
 
-  # Dependency vulnerability audit + Python SAST (mirrors agent-studio
-  # backend-security: pip-audit + bandit; uv audit covers the lockfile).
+  # Dependency vulnerability audit + Python SAST (uv audit covers the lockfile;
+  # bandit scans backend/ for Python security issues).
   backend-security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
