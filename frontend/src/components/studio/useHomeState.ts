@@ -8,6 +8,7 @@ import type { ModelOption } from '../../types/input';
 import type { Message } from '../../types/studio';
 import { listModels } from '../../api/client/models';
 import { getSessionDetail, listSessions } from '../../api/client/sessions';
+import type { UserEvent } from '../../api/userEvents';
 import { retry, submitRequirement } from '../../stores/chatActions';
 import { useChatStore } from '../../stores/chatStore';
 import {
@@ -21,6 +22,7 @@ import {
   writeSessionsCache,
 } from '../../stores/sessionCache';
 import { useSessionOps } from './useSessionOps';
+import { useUserEvents } from './useUserEvents';
 import {
   buildBranchPath,
   buildPathTurns,
@@ -67,6 +69,26 @@ export function useHomeState() {
   });
   // 加载竞态保护：快速切换会话/分支时，丢弃过期响应（仅最新一次落地）。
   const loadSeqRef = useRef(0);
+
+  // 跨端实时同步：其他端会话增删改 → 刷新本地会话列表（DB 权威最终一致；
+  // WS 重连也触发全量对齐）。当前会话被其他端删除 → 回首页。
+  useUserEvents(
+    useCallback(
+      (event: UserEvent) => {
+        if (
+          event.type === 'session.deleted' &&
+          activeConvId === event.session_id
+        ) {
+          navigate('/');
+        }
+        queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      },
+      [activeConvId, navigate, queryClient],
+    ),
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    }, [queryClient]),
+  );
 
   useEffect(() => {
     const sync = () => {
