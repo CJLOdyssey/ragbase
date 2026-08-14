@@ -164,7 +164,10 @@ class RunService:
             pass
 
         # ── Redis buffer (subscribe *before* task starts) ───────────
-        await buffer_run_messages(run_id)
+        try:
+            await buffer_run_messages(run_id)
+        except Exception:
+            logger.warning("Redis buffer setup failed for run %s; continuing without buffer", run_id, exc_info=True)
 
         # ── Dispatch pipeline ───────────────────────────────────────
         try:
@@ -265,7 +268,10 @@ class RunService:
             logger.warning("Failed to persist user message for continuation run %s", run_id)
 
         # ── Redis buffer ────────────────────────────────────────────
-        await buffer_run_messages(run_id)
+        try:
+            await buffer_run_messages(run_id)
+        except Exception:
+            logger.warning("Redis buffer setup failed for run %s; continuing without buffer", run_id, exc_info=True)
 
         # ── Dispatch background pipeline ────────────────────────────
         if RUN_DISPATCH == "celery":

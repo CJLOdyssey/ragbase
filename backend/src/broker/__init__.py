@@ -134,11 +134,21 @@ async def subscribe_run(run_id: str) -> AsyncIterator[dict[str, Any]]:
     pubsub = r.pubsub()
     await pubsub.subscribe(_channel(run_id))
     try:
-        async for msg in pubsub.listen():
-            if msg["type"] == "message":
+        while True:
+            try:
+                msg = await asyncio.wait_for(
+                    pubsub.get_message(ignore_subscribe_messages=True, timeout=None),
+                    timeout=60.0,
+                )
+            except TimeoutError:
+                return  # idle keepalive window exhausted — stop the stream
+            if msg and msg["type"] == "message":
                 data = msg["data"]
                 if isinstance(data, str):
-                    yield json.loads(data)
+                    payload = json.loads(data)
+                    yield payload
+                    if payload.get("type") == "result":
+                        return  # run finished — close the stream
     finally:
         with contextlib.suppress(Exception):
             await pubsub.unsubscribe(_channel(run_id))
@@ -208,9 +218,16 @@ async def buffer_run_messages(run_id: str) -> None:
     _buffers[run_id] = buf
     logger = get_logger(__name__)
 
-    r = get_redis()
-    pubsub = r.pubsub()
-    await pubsub.subscribe(f"run:{run_id}")
+    try:
+        r = get_redis()
+        pubsub = r.pubsub()
+        await pubsub.subscribe(f"run:{run_id}")
+    except Exception:
+        # Fail-open: a Redis outage must never 500 the POST /runs request.
+        # With the subscription down nothing can be published either, so an
+        # empty buffer degrades gracefully (WS drains nothing, run proceeds).
+        logger.warning("Redis buffer subscribe failed for run %s; buffering disabled", run_id, exc_info=True)
+        return
 
     async def _worker() -> None:
         try:
