@@ -14,7 +14,6 @@ interface UseMessageComposerOptions {
 interface UseMessageComposerReturn {
   value: string;
   setValue: (v: string) => void;
-  /** Deferred value for filtering/search (avoids stutter on fast typing) */
   submit: () => boolean;
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   /** True when the input contains non-whitespace content */
@@ -62,13 +61,11 @@ export function useMessageComposer({
       if (e.nativeEvent.isComposing) return;
 
       if (sendMode === 'enter') {
-        // Enter sends, Shift+Enter inserts newline
         if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           submit();
         }
       } else {
-        // Ctrl+Enter sends, Enter inserts newline
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
           e.preventDefault();
           submit();

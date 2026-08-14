@@ -1,5 +1,10 @@
 import DOMPurify from 'dompurify';
 
+/**
+ * Sanitize HTML before rendering. Security decision: only a whitelist of
+ * text-formatting/layout tags and safe attributes survives — scripts,
+ * iframes and inline event handlers are stripped by DOMPurify.
+ */
 export function sanitizeHtml(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [

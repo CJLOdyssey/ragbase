@@ -61,7 +61,7 @@ async def log_key_usage(
 
 
 async def get_key_usage_stats(user_id: str | None = None) -> dict[str, Any]:
-    """Get usage statistics for API keys usage.
+    """Return today's and month-to-date request/token totals.
 
     If user_id is None or 'anonymous', returns stats across all users.
     """
@@ -69,7 +69,6 @@ async def get_key_usage_stats(user_id: str | None = None) -> dict[str, Any]:
     async with factory() as session:
         from sqlalchemy import func
 
-        # Today's stats
         today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
         stmt_today = select(
             func.count(KeyUsageLog.id).label("requests"),
@@ -83,7 +82,6 @@ async def get_key_usage_stats(user_id: str | None = None) -> dict[str, Any]:
         result_today = await session.execute(stmt_today)
         today = result_today.one()
 
-        # Month's stats
         month_start = today_start.replace(day=1)
         stmt_month = select(
             func.count(KeyUsageLog.id).label("requests"),

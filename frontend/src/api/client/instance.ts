@@ -16,11 +16,11 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Tokens live in httpOnly cookies only — JS never holds or reads them (OWASP).
-// Access token is not readable from JS; refresh token is sent by the browser
-// on /auth/refresh and /auth/logout via withCredentials.
-
-/** Access token is an httpOnly cookie — not readable from JS. Returns null. */
+/**
+ * Tokens live in httpOnly cookies only — JS never holds or reads them (OWASP).
+ * The access token is not readable from JS; the refresh token is sent by the
+ * browser on /auth/refresh and /auth/logout via withCredentials.
+ */
 export function getAccessToken(): string | null {
   return null;
 }

@@ -6,10 +6,38 @@ from orm import RoleDB, UserDB, UserRoleDB
 from sqlalchemy import select
 
 from core.infra.database import get_session_factory
+from core.infra.logging_config import get_logger
 
-# Bootstrap admin password. Dev default only — production must override via env.
+logger = get_logger(__name__)
+
+# Bootstrap admin password. Dev/test default only — production must inject it.
 DEFAULT_ADMIN_PASSWORD = "admin123"
 ADMIN_PASSWORD_ENV = "SEED_ADMIN_PASSWORD"
+ENVIRONMENT_ENV = "RAGBASE_ENV"
+
+
+def resolve_admin_password() -> str:
+    """Admin bootstrap password with environment-aware enforcement.
+
+    - SEED_ADMIN_PASSWORD set → use it (any environment).
+    - RAGBASE_ENV=production without it → fail loud: never ship the dev
+      default admin password to production (CWE-798 / 12-factor config).
+    - Otherwise (dev/test) → documented default with a warning.
+    """
+    password = os.environ.get(ADMIN_PASSWORD_ENV)
+    if password:
+        return password
+    if os.environ.get(ENVIRONMENT_ENV, "development") == "production":
+        raise RuntimeError(
+            f"{ENVIRONMENT_ENV}=production requires {ADMIN_PASSWORD_ENV} to be "
+            "set (refusing to seed the admin user with the dev default password)."
+        )
+    logger.warning(
+        "%s not set — using the development default admin password "
+        "(dev/test only; production must inject it)",
+        ADMIN_PASSWORD_ENV,
+    )
+    return DEFAULT_ADMIN_PASSWORD
 
 
 async def seed_default_roles_and_admin() -> None:
@@ -36,7 +64,7 @@ async def seed_default_roles_and_admin() -> None:
                 username="admin",
                 email="admin@example.com",
                 password_hash=bcrypt.hashpw(
-                    os.environ.get(ADMIN_PASSWORD_ENV, DEFAULT_ADMIN_PASSWORD).encode(),
+                    resolve_admin_password().encode(),
                     bcrypt.gensalt(),
                 ).decode(),
                 is_active=True,

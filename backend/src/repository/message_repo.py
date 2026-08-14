@@ -83,7 +83,6 @@ async def get_session_messages(
     """
     factory = get_session_factory()
     async with factory() as session:
-        # Get all run IDs for this session
         runs_stmt = select(ProjectRun.id).where(ProjectRun.session_id == session_id)
         if exclude_run_id:
             runs_stmt = runs_stmt.where(ProjectRun.id != exclude_run_id)
@@ -93,7 +92,6 @@ async def get_session_messages(
         if not run_ids:
             return []
 
-        # Get all messages for these runs
         msgs_stmt = (
             select(ChatMessage)
             .where(ChatMessage.run_id.in_(run_ids))

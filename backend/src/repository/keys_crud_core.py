@@ -69,18 +69,13 @@ async def get_api_keys(
     """
     factory = get_session_factory()
     async with factory() as session:
-        # Collect unique candidate IDs
-        candidates = {user_id}
-        if fallback_ids:
-            candidates.update(fbid for fbid in fallback_ids if fbid and fbid != user_id)
-
         rows: list[UserApiKey] = []
         seen_ids: set[str] = set()
-        # Search candidates in priority order, deduplicating by key id.
+        # Search candidate IDs in priority order, deduplicating by key id.
         # "anonymous" is a real key namespace (guest-configured + pre-configured
         # defaults) — AUTH_ENABLED resolves every unauthenticated request to it,
         # so skipping it here would make guest chats and guest-configured keys
-        # permanently invisible.  ponytail: just query it like any other id.
+        # permanently invisible.
         for cid in [user_id] + (fallback_ids or []):
             if not cid:
                 continue

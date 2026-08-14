@@ -22,6 +22,7 @@ async def create_retrieval_log(
     min_score: float | None = None,
     sources: list[dict[str, Any]] | None = None,
 ) -> None:
+    """Append a retrieval activity log entry (write-only by design)."""
     entry = RetrievalLogDB(
         user_id=user_id,
         session_id=session_id,

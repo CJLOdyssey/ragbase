@@ -45,7 +45,7 @@ class AgentConfig(BaseModel):
 class Message(BaseModel):
     """A chat message with role, content, and optional thinking."""
 
-    role: str  # Now a string (role_identifier), not enum
+    role: str  # string role identifier, not enum
     content: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     round_number: int = Field(default=1, ge=1)
