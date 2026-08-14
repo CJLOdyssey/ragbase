@@ -61,9 +61,10 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6380/0")
 # Keyed by the loop OBJECT (not id()): asyncio.run() creates a fresh loop per
 # task; after the task the loop is garbage-collected and its id() can be
 # REUSED by the next task's loop. Keying by id() then hits the stale pool
-# whose connections belong to a closed loop -> redis calls hang forever
-# (redis-py has no socket_timeout on publish). Keying by the loop object and
-# dropping entries whose loop is gone fixes both the stale-hit and the leak.
+# whose connections belong to a closed loop -> redis calls hang forever.
+# Keying by the loop object and dropping entries whose loop is gone fixes
+# both the stale-hit and the leak (socket_timeout on the pool is a last-resort
+# guard against a hung-but-connected Redis).
 _pools: dict[asyncio.AbstractEventLoop, Any] = {}
 CHANNEL_PREFIX = "run:"
 
