@@ -504,3 +504,62 @@ class TestBrokerFull:
         assert buf == [payload]
 
 
+# ── Per-user cross-client event channel ─────────────────────────────────────
+
+
+async def test_publish_user_event_publishes_to_user_channel(monkeypatch: MonkeyPatch) -> None:
+    from broker import _user_channel, publish_user_event
+
+    mock_redis = MagicMock()
+    monkeypatch.setattr("broker.get_redis", lambda: mock_redis)
+    event = {"type": "session.deleted", "session_id": "s1", "ts": 1}
+    await publish_user_event("u1", event)
+    mock_redis.publish.assert_called_once_with(
+        _user_channel("u1"), json.dumps(event, ensure_ascii=False)
+    )
+
+
+async def test_publish_user_event_fails_open(monkeypatch: MonkeyPatch) -> None:
+    from broker import publish_user_event
+
+    def _boom() -> None:
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr("broker.get_redis", _boom)
+    await publish_user_event("u1", {"type": "session.deleted"})  # must not raise
+
+
+async def test_subscribe_user_events_yields_parsed_messages(monkeypatch: MonkeyPatch) -> None:
+    import asyncio
+
+    from broker import subscribe_user_events
+
+    payload = {"type": "session.updated", "session_id": "s2", "ts": 2}
+    msg_queue: list[dict[str, object]] = [
+        {"type": "subscribe"},
+        {"type": "message", "data": json.dumps(payload)},
+    ]
+
+    class FakePubSub:
+        async def subscribe(self, *args: object) -> None:
+            pass
+
+        async def get_message(self, **kwargs: object) -> dict[str, object] | None:
+            if msg_queue:
+                return msg_queue.pop(0)
+            raise asyncio.CancelledError()
+
+        async def close(self) -> None:
+            pass
+
+    mock_redis = MagicMock()
+    mock_redis.pubsub.return_value = FakePubSub()
+    monkeypatch.setattr("broker.get_redis", lambda: mock_redis)
+
+    received: list[dict[str, object]] = []
+    async for ev in subscribe_user_events("u1"):
+        received.append(ev)
+        break
+    assert received == [payload]
+
+

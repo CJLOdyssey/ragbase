@@ -12,6 +12,8 @@ from celery import Celery
 from core.infra.logging_config import get_logger
 from redis.asyncio import Redis as AsyncRedis  # noqa: F401  # re-exported for backward compat
 
+logger = get_logger(__name__)
+
 # ---------------------------------------------------------------------------
 # Celery app
 # ---------------------------------------------------------------------------
@@ -140,6 +142,46 @@ async def subscribe_run(run_id: str) -> AsyncIterator[dict[str, Any]]:
     finally:
         with contextlib.suppress(Exception):
             await pubsub.unsubscribe(_channel(run_id))
+        with contextlib.suppress(Exception):
+            await pubsub.close()
+
+
+def _user_channel(user_id: str) -> str:
+    return f"user:{user_id}:events"
+
+
+async def publish_user_event(user_id: str, event: dict[str, Any]) -> None:
+    """Publish a domain event to a user's cross-client event channel.
+
+    Fail-open: a Redis outage must never break the primary request path.
+    """
+    try:
+        r = get_redis()
+        await r.publish(_user_channel(user_id), json.dumps(event, ensure_ascii=False))
+    except Exception:
+        logger.debug("publish_user_event failed for %s", user_id, exc_info=True)
+
+
+async def subscribe_user_events(user_id: str) -> AsyncIterator[dict[str, Any]]:
+    """Yield domain events published for *user_id*. Caller cancels to stop."""
+    r = get_redis()
+    pubsub = r.pubsub()
+    await pubsub.subscribe(_user_channel(user_id))
+    try:
+        while True:
+            try:
+                msg = await asyncio.wait_for(
+                    pubsub.get_message(ignore_subscribe_messages=True, timeout=None),
+                    timeout=60.0,
+                )
+            except TimeoutError:
+                continue  # idle keepalive; connection health-checked by redis-py
+            if msg and msg["type"] == "message":
+                try:
+                    yield json.loads(msg["data"])
+                except (TypeError, ValueError):
+                    continue
+    finally:
         with contextlib.suppress(Exception):
             await pubsub.close()
 
