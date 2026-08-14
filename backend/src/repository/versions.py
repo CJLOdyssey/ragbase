@@ -20,7 +20,6 @@ async def create_version(
     created_by: str | None = None,
 ) -> dict[str, Any]:
     """Create a new version snapshot. Returns the created version dict."""
-    # Compute next version number
     result = await session.execute(
         select(VersionDB.version_num)
         .where(

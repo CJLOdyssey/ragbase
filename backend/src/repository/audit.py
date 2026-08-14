@@ -10,6 +10,7 @@ async def create_audit_entry(
     entity_name: str = "",
     detail: str = "",
 ) -> None:
+    """Append an entry to the audit log."""
     entry = AuditLogDB(
         action=action,
         entity_type=entity_type,

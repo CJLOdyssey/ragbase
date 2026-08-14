@@ -60,7 +60,6 @@ const ConversationsList = memo(function ConversationsList({
   const editInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
   useEffect(() => {
     if (!openMenuConvId) return;
     const h = (e: MouseEvent) => {
@@ -72,8 +71,6 @@ const ConversationsList = memo(function ConversationsList({
     return () => document.removeEventListener('mousedown', h);
   }, [openMenuConvId]);
 
-  // Fallback: if the prop is empty but localStorage has conversations (e.g.
-  // when React state propagation fails through memo boundaries), read directly.
   const [localFallback, setLocalFallback] = useState<Conversation[] | null>(
     null,
   );

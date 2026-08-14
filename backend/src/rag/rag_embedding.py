@@ -38,7 +38,7 @@ class EmbeddingProvider:
         self.base_url = base_url
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        """Batch-embed a list of texts. Returns list of 1024-dim vectors.
+        """Batch-embed a list of texts, returning one vector per text.
 
         Raises RuntimeError on any failure — callers must handle; zero-vector
         fallback would silently poison the vector store with fake embeddings.
@@ -87,5 +87,6 @@ class EmbeddingProvider:
         raise RuntimeError("DashScope embedding response missing embeddings")
 
     async def embed_query(self, query: str) -> list[float]:
+        """Embed a single query string, returning one vector."""
         embeddings = await self.embed([query])
         return embeddings[0]

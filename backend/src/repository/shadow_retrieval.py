@@ -24,6 +24,7 @@ async def create_shadow_log(
     min_score: float | None = None,
     sources: list[dict[str, Any]] | None = None,
 ) -> None:
+    """Append a shadow retrieval log entry for variant comparison."""
     entry = ShadowRetrievalLogDB(
         user_id=user_id,
         session_id=session_id,

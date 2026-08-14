@@ -157,7 +157,7 @@ async def _build_user_response(user_id: str, email: str, username: str | None) -
     )
 
 
-ACCESS_TOKEN_TTL = 900  # 15 minutes — matches create_token default aligns with short-lived token best practice
+ACCESS_TOKEN_TTL = 900  # 15 minutes — short-lived access token per best practice
 
 
 def _set_access_token_cookie(response: Response, access_token: str) -> None:

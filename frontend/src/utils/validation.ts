@@ -56,13 +56,11 @@ export function validateName(
   existingNames: string[] = [],
   excludeId?: string,
 ): { valid: boolean; error?: string } {
-  // 1. 空名检查
   const trimmed = name.trim();
   if (!trimmed) {
     return { valid: false, error: t('validation.nameEmpty') };
   }
 
-  // 2. 长度检查
   if (trimmed.length > MAX_NAME_LENGTH) {
     return {
       valid: false,
@@ -74,12 +72,10 @@ export function validateName(
     return { valid: false, error: t('validation.nameTooShort') };
   }
 
-  // 3. 特殊字符检查（XSS 防护）
   if (DANGEROUS_CHARS.test(trimmed)) {
     return { valid: false, error: t('validation.nameInvalidChars') };
   }
 
-  // 4. 保留字检查
   if (RESERVED_NAMES.includes(trimmed)) {
     return {
       valid: false,
@@ -87,7 +83,6 @@ export function validateName(
     };
   }
 
-  // 5. 去重检查（大小写不敏感）
   const normalized = trimmed.toLowerCase();
   const duplicates = existingNames.filter(
     (n) => n.toLowerCase() === normalized,
@@ -103,9 +98,6 @@ export function validateName(
   return { valid: true };
 }
 
-/**
- * 检查团队数量是否超限
- */
 export function checkTeamLimit(
   t: TranslateFn,
   teamCount: number,
@@ -119,9 +111,6 @@ export function checkTeamLimit(
   return { valid: true };
 }
 
-/**
- * 检查每团队 Agent 数量是否超限
- */
 export function checkAgentLimit(
   t: TranslateFn,
   agentCount: number,

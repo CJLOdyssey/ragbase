@@ -13,6 +13,7 @@ async def create_asset(
     source: str = "upload",
     source_ref: str | None = None,
 ) -> AssetDB:
+    """Create and persist an asset row; returns the created asset."""
     asset = AssetDB(
         user_id=user_id,
         name=name,
@@ -30,6 +31,7 @@ async def create_asset(
 
 
 async def get_asset(asset_id: str) -> AssetDB | None:
+    """Fetch an asset by ID, or None if it does not exist."""
     factory = get_session_factory()
     async with factory() as session:
         return await session.get(AssetDB, asset_id)
@@ -46,6 +48,7 @@ async def get_asset_for_user(asset_id: str, user_id: str) -> AssetDB | None:
 
 
 async def list_assets_by_user(user_id: str) -> list[AssetDB]:
+    """List a user's assets, newest first."""
     factory = get_session_factory()
     async with factory() as session:
         result = await session.execute(
@@ -68,6 +71,7 @@ async def delete_asset(asset_id: str) -> str | None:
 
 
 async def increment_asset_usage(asset_id: str) -> None:
+    """Increment an asset's usage_count by one, if the asset exists."""
     factory = get_session_factory()
     async with factory() as session:
         asset = await session.get(AssetDB, asset_id)
@@ -77,6 +81,7 @@ async def increment_asset_usage(asset_id: str) -> None:
 
 
 async def set_asset_indexed(asset_id: str, indexed: bool) -> None:
+    """Set whether an asset has been indexed into the vector store."""
     factory = get_session_factory()
     async with factory() as session:
         asset = await session.get(AssetDB, asset_id)

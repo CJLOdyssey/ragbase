@@ -115,6 +115,11 @@ function connect(runId: string, options: ConnectOptions): ConnState {
   return state;
 }
 
+/**
+ * Subscribe to a run's WS stream. Sockets are shared per runId — multiple
+ * callers attach as listeners. The returned function unsubscribes and closes
+ * the socket once the last listener leaves.
+ */
 export function connectRun(
   runId: string,
   onMessageOrOptions: WsCallback | ConnectOptions,

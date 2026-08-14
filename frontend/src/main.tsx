@@ -16,9 +16,7 @@ Sentry.init({
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration(),
   ],
-  // Performance Monitoring
   tracesSampleRate: 1.0, // Capture 100% of transactions in dev; reduce in prod
-  // Session Replay
   replaysSessionSampleRate: 0.1, // 10% of sessions
   replaysOnErrorSampleRate: 1.0, // 100% of error sessions
   enabled: !!import.meta.env.VITE_SENTRY_DSN,
