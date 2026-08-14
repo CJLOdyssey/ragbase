@@ -5,6 +5,7 @@ restarts and can be resumed from where they left off.
 """
 
 from checkpoint.factory import (
+    close_checkpointer,
     create_checkpointer,
     create_checkpointer_async,
 )
@@ -18,6 +19,7 @@ from checkpoint.repository import (
 __all__ = [
     "AgentCheckpoint",
     "CheckpointDB",
+    "close_checkpointer",
     "create_checkpointer",
     "create_checkpointer_async",
     "list_checkpoints",

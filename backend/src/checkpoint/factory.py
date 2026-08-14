@@ -51,6 +51,9 @@ async def _create_checkpointer_async(backend: str, dsn: str | None) -> BaseCheck
         )
         saver = AsyncPostgresSaver(conn)
         await saver.setup()
+        # Keep a reference to the underlying connection so close_checkpointer()
+        # can release it — previously every run leaked a physical PG connection.
+        setattr(saver, "_ckpt_conn", conn)  # noqa: B010 — dynamic attr on BaseCheckpointSaver
         return saver
 
     if backend == "sqlite":
@@ -66,7 +69,10 @@ async def _create_checkpointer_async(backend: str, dsn: str | None) -> BaseCheck
                 "and `aiosqlite` package"
             ) from exc
 
-        return AsyncSqliteSaver(await aiosqlite.connect(dsn))
+        aconn = await aiosqlite.connect(dsn)
+        sqlite_saver = AsyncSqliteSaver(aconn)
+        setattr(sqlite_saver, "_ckpt_conn", aconn)  # noqa: B010 — dynamic attr on BaseCheckpointSaver
+        return sqlite_saver
 
     logger.info("Creating MemorySaver checkpointer (in-memory, no persistence)")
     return MemorySaver()
@@ -116,3 +122,20 @@ async def create_checkpointer_async(
     """
     backend, dsn = _resolve_backend(backend, dsn)
     return await _create_checkpointer_async(backend, dsn)
+
+
+async def close_checkpointer(saver: BaseCheckpointSaver[Any]) -> None:
+    """Close the underlying connection of a checkpointer, if any.
+
+    Pipelines create a fresh checkpointer per run (LangGraph graphs are
+    compiled per run); without this the underlying psycopg/aiosqlite
+    connection leaks. ``MemorySaver`` has no connection — no-op for it.
+    """
+    conn = getattr(saver, "_ckpt_conn", None)
+    close = getattr(conn, "close", None) if conn is not None else None
+    if close is None:
+        return
+    try:
+        await close()
+    except Exception:
+        logger.debug("checkpointer close failed", exc_info=True)
