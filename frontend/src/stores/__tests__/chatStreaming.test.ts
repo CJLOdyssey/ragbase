@@ -27,7 +27,7 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
           created_at: new Date().toISOString(),
         },
       ],
-      status: 'streaming',
+      status: 'running',
       currentRole: 'Agent',
       wsStatus: 'connected',
       skipThinking: false,

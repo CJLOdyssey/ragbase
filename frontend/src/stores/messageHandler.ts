@@ -15,6 +15,9 @@ type SetFn = (fn: (state: ChatState) => Partial<ChatState>) => void;
 
 export function handleMessageEvent(set: SetFn, msg: WsMessageEvent): void {
   set((s) => {
+    // Run finished (result → status idle): WS reconnect replays buffered events.
+    // Ignore them — appending would duplicate the completed conversation.
+    if (s.status !== 'running') return {};
     if (s.streamingId) {
       return {
         messages: s.messages.map((m) => {
