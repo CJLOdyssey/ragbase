@@ -140,7 +140,7 @@ export function useHomeState() {
     });
   }, [currentSessionId]);
 
-  useQuery<SessionItem[]>({
+  const sessionsQuery = useQuery<SessionItem[]>({
     queryKey: ['sessions'],
     // 首帧渲染缓存，拉到最新列表后刷新缓存（queryFn 内落缓存，非 effect）。
     queryFn: async () => {
@@ -159,6 +159,15 @@ export function useHomeState() {
     // re-fetch when it flips (login/refresh completes after initial mount).
     enabled: isAuthenticated,
   });
+
+  // 权威兜底（两项目统一）：会话列表已从 server 加载后，URL 指向的会话不存在
+  // （跨端删除 / 本地删除 / 刷新已删 URL）→ 回首页。与 session.deleted 即时
+  // navigate 双保险；isSuccess 防初始加载竞态误跳。
+  useEffect(() => {
+    if (!activeConvId || !sessionsQuery.isSuccess) return;
+    const exists = cachedSessions.some((s) => s.id === activeConvId);
+    if (!exists) navigate('/');
+  }, [activeConvId, cachedSessions, sessionsQuery.isSuccess, navigate]);
 
   const { data: models = [] } = useQuery({
     queryKey: ['models'],
