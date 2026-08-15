@@ -201,6 +201,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled && me) {
           applySession(me);
           void mergeGuest();
+        } else if (!cancelled) {
+          // Refresh returned 200 but getMe still fails (e.g. Secure cookie was
+          // dropped by the http client) — do NOT keep the ghost login where the
+          // UI shows a user while every request runs anonymous (silent fallback
+          // to the default key). Force a real login.
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
         }
       } catch {
         // Refresh failed — guest stays

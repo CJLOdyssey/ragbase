@@ -160,22 +160,23 @@ async def _build_user_response(user_id: str, email: str, username: str | None) -
 ACCESS_TOKEN_TTL = 900  # 15 minutes — short-lived access token per best practice
 
 
-def _set_access_token_cookie(response: Response, access_token: str) -> None:
+def _set_access_token_cookie(response: Response, access_token: str, *, secure: bool) -> None:
     """Set the access token as an httpOnly cookie (prevents XSS theft).
 
     The cookie is httpOnly (inaccessible to JS), SameSite=Lax (CSRF-safe
-    for top-level navigations), and secure only when not in dev mode.
+    for top-level navigations). ``secure`` follows the request scheme
+    (https → Secure; http dev → no Secure flag, else http clients silently
+    drop the cookie and the frontend gets stuck on a "ghost login" where
+    requests run anonymous while the UI still shows the user).
     The path is scoped to ``/api`` so the token is only sent to API
     endpoints, not static assets or unrelated routes.
     """
-    import os
-
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         samesite="lax",
-        secure=os.environ.get("DEV_MODE", "") != "1",
+        secure=secure,
         max_age=ACCESS_TOKEN_TTL,
         path="/api",
     )
@@ -196,21 +197,19 @@ def _clear_access_token_cookie(response: Response) -> None:
 REFRESH_TOKEN_TTL = 7 * 86400  # 7 days — matches create_refresh_token default ttl_days=7
 
 
-def _set_refresh_token_cookie(response: Response, refresh_token: str) -> None:
+def _set_refresh_token_cookie(response: Response, refresh_token: str, *, secure: bool) -> None:
     """Set the refresh token as an httpOnly cookie (prevents XSS theft).
 
     httpOnly (inaccessible to JS) + SameSite=Lax + existing XSRF header
     pattern per OWASP CSRF Prevention. Path scoped to /api. Read
     server-side only by the refresh/logout endpoints.
     """
-    import os
-
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
         samesite="lax",
-        secure=os.environ.get("DEV_MODE", "") != "1",
+        secure=secure,
         max_age=REFRESH_TOKEN_TTL,
         path="/api",
     )

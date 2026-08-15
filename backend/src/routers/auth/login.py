@@ -79,8 +79,8 @@ async def login(body: LoginRequest, request: Request, response: Response) -> Any
     logger.info("User logged in: %s", _mask_email(email))
 
     auth_resp = await _create_auth_response(user.id, user.email, user.username, body.remember_me)
-    _set_access_token_cookie(response, auth_resp.access_token)
-    _set_refresh_token_cookie(response, auth_resp.refresh_token)
+    _set_access_token_cookie(response, auth_resp.access_token, secure=request.url.scheme == "https")
+    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=request.url.scheme == "https")
     return AuthResponse(
         access_token=auth_resp.access_token,
         refresh_token="",
@@ -104,8 +104,8 @@ async def refresh(request: Request, response: Response) -> Any:
     access_token = create_token(user.id, AUTH_SECRET, ttl=ACCESS_TOKEN_TTL)
     user_resp = await _build_user_response(user.id, user.email, user.username)
 
-    _set_access_token_cookie(response, access_token)
-    _set_refresh_token_cookie(response, new_refresh_token_raw)
+    _set_access_token_cookie(response, access_token, secure=request.url.scheme == "https")
+    _set_refresh_token_cookie(response, new_refresh_token_raw, secure=request.url.scheme == "https")
     return AuthResponse(access_token="", refresh_token="", expires_in=ACCESS_TOKEN_TTL, user=user_resp)
 
 
