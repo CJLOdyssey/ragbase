@@ -202,6 +202,16 @@ export function useHomeState() {
       files?: import('../../types/input').AttachedFile[],
     ) => {
       if (!text.trim()) return;
+      // 模型选择的单一事实源：UI 生效模型（selectedModel 或 recent 回退）在
+      // 提交前同步到 localStorage，否则 chatActions.resolveKey 读到 null →
+      // 默认 key（历史上"一直走 deepseek"的根因之一）。
+      if (effectiveModel) {
+        try {
+          localStorage.setItem(MODEL_STORAGE_KEY, effectiveModel);
+        } catch {
+          // non-fatal
+        }
+      }
       // 附件已由 InputToolbar 选中即传（pre-session），这里只带已上传的 id
       const ids = files
         ?.map((f) => f.attachmentId)
@@ -219,7 +229,7 @@ export function useHomeState() {
       );
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
-    [queryClient],
+    [effectiveModel, queryClient],
   );
 
   const handleModelChange = useCallback((id: string) => {

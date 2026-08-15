@@ -19,8 +19,8 @@ import {
   verify as apiVerify,
   getAuthConfig,
   getMe,
-  refreshTokens,
 } from '../../api/client/auth';
+import { refreshAccessToken } from '../../api/client/refresh';
 import { useChatStore } from '../../stores/chatStore';
 
 function clearLocalConversations() {
@@ -97,8 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastRefreshRef = useRef(0);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
+    // Single-flight refresh: the axios 401 interceptor and this timer share the
+    // same coordinator so the rotated refresh_token is never double-consumed
+    // (a race would 401 one path and spuriously log the user out).
     try {
-      await refreshTokens();
+      await refreshAccessToken();
       lastRefreshRef.current = Date.now();
       return true;
     } catch (err) {
@@ -149,8 +152,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleUnauthorized = () => {
       setUser(null);
       clearLocalConversations();
-      localStorage.removeItem('ragbase-selected-model');
-      localStorage.removeItem('ragbase-recent-models');
+      // 模型选择/最近模型是用户偏好，与认证无关 —— 不清除，否则重新登录后
+      // 仍走默认模型（历史上"一直走 deepseek"的根因之一）。
       setLoginModalOpen(true);
     };
     window.addEventListener('auth:login', start);
@@ -196,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function refreshAndRestore(): Promise<void> {
       try {
-        await refreshTokens();
+        await refreshAccessToken();
         const me = await getMe();
         if (!cancelled && me) {
           applySession(me);

@@ -3,8 +3,8 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { refreshTokens } from './auth';
 import { normalizeError } from './errors';
+import { refreshAccessToken } from './refresh';
 import Logger from '../../utils/logger';
 
 const api = axios.create({
@@ -28,14 +28,6 @@ export function getAccessToken(): string | null {
 interface RetryConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
-
-interface PendingRequest {
-  resolve: (value: unknown) => void;
-  reject: (reason?: unknown) => void;
-}
-
-let isRefreshing = false;
-let pendingQueue: Array<PendingRequest> = [];
 
 if (api.interceptors?.request) {
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -86,45 +78,22 @@ if (api.interceptors?.response) {
       }
 
       // Refresh endpoint failures are terminal — never recurse into this
-      // interceptor or queue behind a refresh that is itself failing, or
-      // isRefreshing would stay true forever and stall every request
-      // (用户菜单等依赖 loading 收敛的 UI 会永久骨架).
+      // interceptor or queue behind a refresh that is itself failing.
       if (retryConfig.url === '/auth/refresh') {
         return Promise.reject(normalizeError(error));
       }
 
-      if (isRefreshing) {
-        // Queue behind the in-flight refresh. Entries must carry a reject —
-        // if the refresh fails and queued promises are dropped unsolved, the
-        // caller hangs forever. With StrictMode's double-mounted AuthContext
-        // init, two parallel getMe 401s race: one starts the refresh, the
-        // other queues, and a failed refresh leaves Promise.all pending →
-        // loading never converges → avatar skeleton stuck.
-        retryConfig._retry = true;
-        return new Promise<unknown>((resolve, reject) => {
-          pendingQueue.push({ resolve, reject });
-        }).then(() => api(retryConfig));
-      }
-
+      // Single-flight refresh: refreshAccessToken collapses concurrent 401s
+      // (interceptor + AuthContext) into one backend call — the server rotates
+      // the refresh token, so a race would 401 one path and log the user out.
       retryConfig._retry = true;
-      isRefreshing = true;
-
       try {
-        await refreshTokens();
-        pendingQueue.forEach(({ resolve }) => resolve(undefined));
-        pendingQueue = [];
+        await refreshAccessToken();
         // New access_token was set as httpOnly cookie by server — auto-sent on retry
         return api(retryConfig);
-      } catch (err) {
-        // Drain the queue by rejecting every entry — dropping it would leave
-        // the queued 401 callers pending forever (same hang as above).
-        const failed = pendingQueue;
-        pendingQueue = [];
-        failed.forEach(({ reject }) => reject(err));
+      } catch {
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
         return Promise.reject(normalizeError(error));
-      } finally {
-        isRefreshing = false;
       }
     },
   );

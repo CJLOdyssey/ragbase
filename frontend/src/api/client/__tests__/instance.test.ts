@@ -265,9 +265,11 @@ describe('instance', { tags: ['unit'] }, () => {
 
       // Both callers must settle — the queued one used to be dropped and
       // stayed pending forever, leaving AuthContext's Promise.all unresolved
-      // and loading stuck on the skeleton.
+      // and loading stuck on the skeleton. With the single-flight coordinator
+      // both reject with their own 401 error; the refresh failure surfaces via
+      // the auth:unauthorized event.
       await expect(p1).rejects.toBeDefined();
-      await expect(p2).rejects.toThrow('Refresh failed');
+      await expect(p2).rejects.toBeDefined();
       // Queued retry is single-shot: a 401 on retry rejects instead of
       // recursing into another refresh.
       expect(err2.config?._retry).toBe(true);
