@@ -132,8 +132,10 @@ async def subscribe_run(run_id: str) -> AsyncIterator[dict[str, Any]]:
     """
     r = get_redis()
     pubsub = r.pubsub()
-    await pubsub.subscribe(_channel(run_id))
     try:
+        # subscribe inside try: a failing subscribe (pool exhausted) must not
+        # leak the pubsub/connection — finally closes it.
+        await pubsub.subscribe(_channel(run_id))
         while True:
             try:
                 msg = await asyncio.wait_for(
@@ -176,8 +178,10 @@ async def subscribe_user_events(user_id: str) -> AsyncIterator[dict[str, Any]]:
     """Yield domain events published for *user_id*. Caller cancels to stop."""
     r = get_redis()
     pubsub = r.pubsub()
-    await pubsub.subscribe(_user_channel(user_id))
     try:
+        # subscribe inside try: a failing subscribe (pool exhausted) must not
+        # leak the pubsub/connection — finally closes it.
+        await pubsub.subscribe(_user_channel(user_id))
         while True:
             try:
                 msg = await asyncio.wait_for(

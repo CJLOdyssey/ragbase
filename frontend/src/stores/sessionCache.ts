@@ -26,7 +26,11 @@ export function readSessionsCache(): SessionItem[] {
 
 export function writeSessionsCache(items: SessionItem[]): void {
   try {
-    localStorage.setItem(SESSIONS_CACHE_KEY, JSON.stringify(items));
+    // 乐观占位（temp）不落盘：刷新后以 server 为准
+    localStorage.setItem(
+      SESSIONS_CACHE_KEY,
+      JSON.stringify(items.filter((s) => !s.temp)),
+    );
   } catch {
     // non-fatal
   }

@@ -121,6 +121,14 @@ async def _complete_pipeline(
         await update_run_status(run_id, "error")
         await publish_run_message(run_id, {"type": "error", "detail": f"保存失败: {e}"})
     finally:
+        # run 结束即释放 buffer pubsub 连接（continue_run 里 buffer_run_messages
+        # 订阅；不释放则每次续写泄漏一个 Redis 连接，池耗尽 → MaxConnectionsError）
+        try:
+            from broker import stop_buffer
+
+            await stop_buffer(run_id)
+        except Exception:
+            logger.debug("stop_buffer failed for run %s", run_id, exc_info=True)
         gc.collect()
         try:
             pid = os.getpid()

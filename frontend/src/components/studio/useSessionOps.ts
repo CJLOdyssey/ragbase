@@ -19,6 +19,7 @@ import {
   toConversation,
   writeSessionsCache,
 } from '../../stores/sessionCache';
+import { mergeSessions } from '../../stores/sessionMerge';
 import Logger from '../../utils/logger';
 
 interface SessionOpsParams {
@@ -46,8 +47,12 @@ export function useSessionOps({
   const refetchSessions = useCallback(() => {
     listSessions()
       .then((data) => {
-        setCachedSessions(data);
-        writeSessionsCache(data);
+        // 唯一化归并：保留发送中的乐观占位（temp）
+        setCachedSessions((prev) => {
+          const merged = mergeSessions(prev, data);
+          writeSessionsCache(merged);
+          return merged;
+        });
       })
       .catch(() => {
         // non-fatal
@@ -108,6 +113,8 @@ export function useSessionOps({
         writeSessionsCache(next);
         return next;
       });
+      // 乐观占位（temp-*）无 server 会话，仅本地删除
+      if (convId.startsWith('temp-')) return;
       deleteSession(convId).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to delete session %s: %s',
@@ -142,6 +149,8 @@ export function useSessionOps({
         writeSessionsCache(next);
         return next;
       });
+      // 乐观占位（temp-*）无 server 会话，仅本地更新
+      if (convId.startsWith('temp-')) return;
       renameSession(convId, trimmed).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to rename session %s: %s',
@@ -171,6 +180,8 @@ export function useSessionOps({
         writeSessionsCache(updated);
         return updated;
       });
+      // 乐观占位（temp-*）无 server 会话，仅本地更新
+      if (convId.startsWith('temp-')) return;
       pinSession(convId, next).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to pin session %s: %s',

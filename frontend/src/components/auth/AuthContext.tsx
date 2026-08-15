@@ -19,8 +19,8 @@ import {
   verify as apiVerify,
   getAuthConfig,
   getMe,
-  refreshTokens,
 } from '../../api/client/auth';
+import { refreshAccessToken } from '../../api/client/refresh';
 import { useChatStore } from '../../stores/chatStore';
 
 function clearLocalConversations() {
@@ -97,18 +97,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastRefreshRef = useRef(0);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
+    // Single-flight refresh: the axios 401 interceptor and this timer share the
+    // same coordinator so the rotated refresh_token is never double-consumed
+    // (a race would 401 one path and spuriously log the user out).
     try {
-      await refreshTokens();
+      await refreshAccessToken();
       lastRefreshRef.current = Date.now();
       return true;
-    } catch (err) {
-      // refresh 失败（401/403）→ 会话过期：登出，避免"幽灵登录"后业务请求
-      // 以 anonymous 身份报误导性 400。网络错误不登出（由定时器重试）。
-      const status = (err as { response?: { status?: number } })?.response
-        ?.status;
-      if (status === 401 || status === 403) {
-        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-      }
+    } catch {
+      // 401/403 已由 errors.ts normalizeError 统一 dispatch
+      // 'auth:unauthorized'（此处 err 已被转成 ApiError，无 AxiosError 的
+      // response 结构，原 status 判断为死代码）——本分支只负责返回失败
+      // 状态：网络错误不登出（由定时器重试）。
       return false;
     }
   }, []);
@@ -149,8 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleUnauthorized = () => {
       setUser(null);
       clearLocalConversations();
-      localStorage.removeItem('ragbase-selected-model');
-      localStorage.removeItem('ragbase-recent-models');
+      // 模型选择/最近模型是用户偏好，与认证无关 —— 不清除，否则重新登录后
+      // 仍走默认模型（历史上"一直走 deepseek"的根因之一）。
       setLoginModalOpen(true);
     };
     window.addEventListener('auth:login', start);
@@ -196,14 +196,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function refreshAndRestore(): Promise<void> {
       try {
-        await refreshTokens();
+        await refreshAccessToken();
         const me = await getMe();
         if (!cancelled && me) {
           applySession(me);
           void mergeGuest();
+        } else if (!cancelled) {
+          // Refresh returned 200 but getMe still fails (e.g. Secure cookie was
+          // dropped by the http client) — do NOT keep the ghost login where the
+          // UI shows a user while every request runs anonymous (silent fallback
+          // to the default key). Force a real login.
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
         }
-      } catch {
-        // Refresh failed — guest stays
+      } catch (err) {
+        // Refresh failed. 401/403 = refresh_token 已过期（会话真正失效）→ 登出，
+        // 避免"幽灵登录"（UI 显示 admin、业务请求却 anonymous 报"配置 API Key"）。
+        // 网络错误不登出（由定时器重试）。
+        const status = (err as { response?: { status?: number } })?.response
+          ?.status;
+        if (status === 401 || status === 403) {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
       }
     }
 

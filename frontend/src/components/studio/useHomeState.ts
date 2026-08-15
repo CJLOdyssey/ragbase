@@ -21,6 +21,7 @@ import {
   setSessionCache,
   writeSessionsCache,
 } from '../../stores/sessionCache';
+import { makeTempSession, mergeSessions } from '../../stores/sessionMerge';
 import { useSessionOps } from './useSessionOps';
 import { useUserEvents } from './useUserEvents';
 import {
@@ -69,6 +70,10 @@ export function useHomeState() {
   });
   // 加载竞态保护：快速切换会话/分支时，丢弃过期响应（仅最新一次落地）。
   const loadSeqRef = useRef(0);
+  // 正式模式：发送中乐观占位（temp）id —— server 确认（run 响应 session_id）
+  // 时原位替换为真实会话 id。
+  const pendingTempIdRef = useRef<string | null>(null);
+  const currentSessionId = useChatStore((s) => s.currentSessionId);
 
   // 跨端实时同步：其他端会话增删改 → 刷新本地会话列表（DB 权威最终一致；
   // WS 重连也触发全量对齐）。当前会话被其他端删除 → 回首页。
@@ -112,21 +117,57 @@ export function useHomeState() {
   // 首帧渲染缓存中的会话列表（同步），后台 API 返回后刷新覆盖。
   const [cachedSessions, setCachedSessions] =
     useState<SessionItem[]>(readSessionsCache);
-  useQuery<SessionItem[]>({
+
+  // server 确认：run 响应返回 session_id → 乐观占位原位替换（id→session_id，
+  // temp 标记清除）+ 唯一化（同 id 只保留一条，删除 WS 先到被 merge 的空 server 条）。
+  useEffect(() => {
+    if (!currentSessionId) return;
+    const tempId = pendingTempIdRef.current;
+    if (!tempId) return;
+    pendingTempIdRef.current = null;
+    setCachedSessions((prev) => {
+      const replaced = prev.map((s) =>
+        s.id === tempId ? { ...s, id: currentSessionId, temp: false } : s,
+      );
+      const seen = new Set<string>();
+      const unique = replaced.filter((s) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+      writeSessionsCache(unique);
+      return unique;
+    });
+  }, [currentSessionId]);
+
+  const sessionsQuery = useQuery<SessionItem[]>({
     queryKey: ['sessions'],
     // 首帧渲染缓存，拉到最新列表后刷新缓存（queryFn 内落缓存，非 effect）。
     queryFn: async () => {
       const data = await listSessions();
-      setCachedSessions(data);
-      // 登出竞态守卫：invalidate 触发的 refetch 可能在登出后仍执行，
-      // 不把登录用户会话写回 localStorage（登出已清缓存）。
-      if (isAuthenticated) writeSessionsCache(data);
+      // 唯一化归并：保留发送中的乐观占位（temp），server 权威会话照常进入。
+      setCachedSessions((prev) => {
+        const merged = mergeSessions(prev, data);
+        // 登出竞态守卫：invalidate 触发的 refetch 可能在登出后仍执行，
+        // 不把登录用户会话写回 localStorage（登出已清缓存）。
+        if (isAuthenticated) writeSessionsCache(merged);
+        return merged;
+      });
       return data;
     },
     // Sessions are user-owned: only fetch once authentication is ready, and
     // re-fetch when it flips (login/refresh completes after initial mount).
     enabled: isAuthenticated,
   });
+
+  // 权威兜底（两项目统一）：会话列表已从 server 加载后，URL 指向的会话不存在
+  // （跨端删除 / 本地删除 / 刷新已删 URL）→ 回首页。与 session.deleted 即时
+  // navigate 双保险；isSuccess 防初始加载竞态误跳。
+  useEffect(() => {
+    if (!activeConvId || !sessionsQuery.isSuccess) return;
+    const exists = cachedSessions.some((s) => s.id === activeConvId);
+    if (!exists) navigate('/');
+  }, [activeConvId, cachedSessions, sessionsQuery.isSuccess, navigate]);
 
   const { data: models = [] } = useQuery({
     queryKey: ['models'],
@@ -202,10 +243,29 @@ export function useHomeState() {
       files?: import('../../types/input').AttachedFile[],
     ) => {
       if (!text.trim()) return;
+      // 模型选择的单一事实源：UI 生效模型（selectedModel 或 recent 回退）在
+      // 提交前同步到 localStorage，否则 chatActions.resolveKey 读到 null →
+      // 默认 key（历史上"一直走 deepseek"的根因之一）。
+      if (effectiveModel) {
+        try {
+          localStorage.setItem(MODEL_STORAGE_KEY, effectiveModel);
+        } catch {
+          // non-fatal
+        }
+      }
       // 附件已由 InputToolbar 选中即传（pre-session），这里只带已上传的 id
       const ids = files
         ?.map((f) => f.attachmentId)
         .filter((x): x is string => !!x);
+      // 正式模式：乐观占位——仅新会话（无当前会话 id）时创建，server 确认
+      // （currentSessionId 变化）后原位替换。已有会话内发消息会话已在列表，
+      // 且 currentSessionId 不变时替换 effect 不触发，无条件创建会留下
+      // 无法替换的幽灵条目（点击进 /chat/temp-* 加载失败卡死）。
+      if (!currentSessionId) {
+        const temp = makeTempSession(text);
+        pendingTempIdRef.current = temp.id;
+        setCachedSessions((prev) => [temp, ...prev]);
+      }
       await submitRequirement(
         text,
         undefined,
@@ -219,7 +279,7 @@ export function useHomeState() {
       );
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
-    [queryClient],
+    [currentSessionId, effectiveModel, queryClient, setCachedSessions],
   );
 
   const handleModelChange = useCallback((id: string) => {

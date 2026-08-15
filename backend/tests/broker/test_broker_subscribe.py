@@ -292,6 +292,8 @@ class TestBufferRunMessages:
         messages = [
             {"type": "subscribe"},
             {"type": "message", "data": json.dumps({"type": "text", "content": "a"})},
+            # 非 str data（如二进制）必须跳过，不进入 buffer
+            {"type": "message", "data": b"\x00\x01"},
             {"type": "message", "data": json.dumps({"type": "stream", "content": "b"})},
         ]
         call_idx = {"i": 0}
@@ -407,3 +409,38 @@ class TestStopBuffer:
         await stop_buffer("run-st")
         assert "run-st" not in _buffer_tasks
         assert "run-st" not in _buffers
+
+
+# ---------------------------------------------------------------------------
+# subscribe_user_events — per-user domain event stream
+# ---------------------------------------------------------------------------
+
+class TestSubscribeUserEvents:
+    @patch("broker.get_redis")
+    @pytest.mark.asyncio
+    async def test_skips_non_json_messages(self, mock_get_redis):
+        """非 JSON data 跳过（不 yield 不 raise），流保持存活。"""
+        from broker import subscribe_user_events
+
+        mock_redis = MagicMock()
+        mock_pubsub = AsyncMock()
+        mock_pubsub.get_message = AsyncMock(
+            side_effect=[
+                {"type": "message", "data": "not-json"},
+                {"type": "message", "data": "also-bad"},
+                asyncio.CancelledError(),
+            ]
+        )
+        mock_pubsub.close = AsyncMock()
+        mock_redis.pubsub.return_value = mock_pubsub
+        mock_get_redis.return_value = mock_redis
+
+        results = []
+        try:
+            async for m in subscribe_user_events("u1"):
+                results.append(m)
+        except asyncio.CancelledError:
+            pass
+
+        assert results == []
+        mock_pubsub.close.assert_awaited_once()

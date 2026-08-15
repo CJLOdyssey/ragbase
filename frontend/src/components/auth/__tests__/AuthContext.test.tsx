@@ -458,7 +458,7 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
     });
   });
 
-  it('refresh failure with 401 dispatches auth:unauthorized', async () => {
+  it('refresh failure does not re-dispatch auth:unauthorized (errors.ts owns it)', async () => {
     vi.useFakeTimers();
     try {
       vi.mocked(authApi.refreshTokens).mockRejectedValue({
@@ -481,11 +481,14 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
         await Promise.resolve();
       });
 
+      // 401/403 的登出 dispatch 已由 api/client/errors.ts normalizeError
+      // 单点负责（instance.test.ts 覆盖）——AuthContext 不再重复触发，
+      // 避免双发 auth:unauthorized。
       expect(
         dispatchSpy.mock.calls.some(
           (c) => (c[0] as Event).type === 'auth:unauthorized',
         ),
-      ).toBe(true);
+      ).toBe(false);
     } finally {
       vi.useRealTimers();
     }

@@ -71,6 +71,21 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 client_ip, path,
             )
             request.state.is_authenticated = False
+            # 登录墙：无效/过期 token 与无 token 同等对待 → 401。否则放行
+            # anonymous 让列表端点返回 200 []，前端在认证瞬时失效窗口 refetch
+            # 会覆盖缓存清空列表（"最近对话消失，需刷新才恢复"）。
+            if AUTH_REQUIRE_LOGIN:
+                from fastapi.responses import JSONResponse
+
+                logger.warning("Login wall rejected expired token | path=%s", path)
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "detail": {
+                            "error": {"code": "AUTH_001", "message": "未登录或会话已过期"}
+                        }
+                    },
+                )
             return cast(Response, await call_next(request))
 
         user_id = payload.get("sub", "unknown")

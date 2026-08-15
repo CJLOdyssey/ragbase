@@ -1,3 +1,4 @@
+import { disconnectRun } from '../api/websocket';
 import type { ChatMessage, RunResult } from '../types';
 import Logger from '../utils/logger';
 import type { ChatState } from './chatTypes';
@@ -164,6 +165,9 @@ export function handleResultEvent(
   });
   Logger.info('[chat] result received — status set to idle');
   activeStreamMsgIds.delete(runId || '');
+  // Run done: stop the WS stream. Otherwise onclose auto-reconnects and the
+  // backend drain_buffer replay duplicates the completed conversation.
+  if (runId) disconnectRun(runId);
 }
 
 export function handleTeamResultEvent(
@@ -205,6 +209,7 @@ export function handleTeamResultEvent(
     artifactCount,
   );
   activeStreamMsgIds.delete(runId || '');
+  if (runId) disconnectRun(runId);
 }
 
 export function handleThumbsEvent(set: SetFn, msg: WsThumbsEvent): void {

@@ -1,0 +1,28 @@
+[Unit]
+Description=RagBase Frontend (Vite dev server)
+Documentation=https://github.com/ragbase/ragbase
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=3
+
+# Node via nvm — PATH pinned so systemd finds npm AND node (vite shebang is
+# `#!/usr/bin/env node`). VITE_DEV_PORT read from frontend/.env by loadEnv.
+WorkingDirectory=/home/odyssey/PyCharmProjects/Agent/projects/ragbase/frontend
+ExecStart=/home/odyssey/.nvm/versions/node/v24.15.0/bin/npm run dev
+Environment=PATH=/home/odyssey/.nvm/versions/node/v24.15.0/bin:/usr/bin:/bin
+Environment=HOME=/home/odyssey
+
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
