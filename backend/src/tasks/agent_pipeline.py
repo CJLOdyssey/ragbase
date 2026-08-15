@@ -6,10 +6,11 @@ import contextlib
 import gc
 import os
 import subprocess
+import time
 import tracemalloc
 from typing import Any
 
-from broker import publish_run_message
+from broker import publish_run_message, publish_user_event
 from checkpoint import close_checkpointer, create_checkpointer_async
 from core.config import load_config
 from core.infra.logging_config import get_logger
@@ -39,6 +40,23 @@ logger = get_logger(__name__)
 
 _run_counter = 0
 _AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "600"))  # 10 minutes default
+
+
+async def _notify_session_changed(user_id: str, session_id: str | None) -> None:
+    """Broadcast a session update to other clients (cross-client sync). Fail-open."""
+    if not session_id or not user_id:
+        return
+    try:
+        await publish_user_event(
+            user_id,
+            {
+                "type": "session.updated",
+                "session_id": session_id,
+                "ts": int(time.time()),
+            },
+        )
+    except Exception:
+        logger.debug("session sync notify failed for %s", session_id, exc_info=True)
 
 
 def _guard_input(requirement: str) -> list[str]:
@@ -262,6 +280,7 @@ async def _run_agent_pipeline(
         await update_run_status(run_id, "timeout")
         # Kill any OS child processes spawned by the timed-out task
         _kill_stuck_child_processes()
+        await _notify_session_changed(user_id, session_id)
         return {"run_id": run_id, "status": "timeout"}
     except asyncio.CancelledError:
         # "停止生成"：task.cancel() 沿 await 链传播，上游 LLM 请求随之中断。
@@ -272,6 +291,7 @@ async def _run_agent_pipeline(
             await emitter.persist_partial()
         with contextlib.suppress(Exception):
             await update_run_status(run_id, "cancelled")
+        await _notify_session_changed(user_id, session_id)
         with contextlib.suppress(Exception):
             await publish_run_message(run_id, {"type": "cancelled", "run_id": run_id})
         raise
@@ -339,6 +359,7 @@ async def _run_agent_pipeline(
         approved=True,
         status="converged",
     )
+    await _notify_session_changed(user_id, session_id)
 
     # ── Attach download links to the final message ──
     # The model often references generated files by filename without a URL;

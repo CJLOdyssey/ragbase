@@ -10,9 +10,10 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import time
 from typing import Any, cast
 
-from broker import buffer_run_messages
+from broker import buffer_run_messages, publish_user_event
 from core.config import load_config
 from core.infra.logging_config import get_logger
 from repository import (
@@ -124,6 +125,18 @@ class RunService:
         except Exception as e:
             logger.error("Failed to create run: %s", e, exc_info=True)
             raise
+
+        # ── Cross-client sync ─────────────────────────────────────────
+        # 发消息（新 run）后广播会话更新：其他浏览器/端收到事件即失效并
+        # 重拉会话列表（创建时的会话 updated/run 数变化）。fail-open。
+        await publish_user_event(
+            user_id,
+            {
+                "type": "session.updated",
+                "session_id": session_id,
+                "ts": int(time.time()),
+            },
+        )
 
         # ── Bind pre-uploaded attachments ─────────────────────────────
         # Pre-uploaded files (POST /api/attachments) carry session_id but no
