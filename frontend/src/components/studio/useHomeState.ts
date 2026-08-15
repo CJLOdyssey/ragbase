@@ -21,6 +21,7 @@ import {
   setSessionCache,
   writeSessionsCache,
 } from '../../stores/sessionCache';
+import { makeTempSession, mergeSessions } from '../../stores/sessionMerge';
 import { useSessionOps } from './useSessionOps';
 import { useUserEvents } from './useUserEvents';
 import {
@@ -69,6 +70,10 @@ export function useHomeState() {
   });
   // 加载竞态保护：快速切换会话/分支时，丢弃过期响应（仅最新一次落地）。
   const loadSeqRef = useRef(0);
+  // 正式模式：发送中乐观占位（temp）id —— server 确认（run 响应 session_id）
+  // 时原位替换为真实会话 id。
+  const pendingTempIdRef = useRef<string | null>(null);
+  const currentSessionId = useChatStore((s) => s.currentSessionId);
 
   // 跨端实时同步：其他端会话增删改 → 刷新本地会话列表（DB 权威最终一致；
   // WS 重连也触发全量对齐）。当前会话被其他端删除 → 回首页。
@@ -112,15 +117,42 @@ export function useHomeState() {
   // 首帧渲染缓存中的会话列表（同步），后台 API 返回后刷新覆盖。
   const [cachedSessions, setCachedSessions] =
     useState<SessionItem[]>(readSessionsCache);
+
+  // server 确认：run 响应返回 session_id → 乐观占位原位替换（id→session_id，
+  // temp 标记清除）+ 唯一化（同 id 只保留一条，删除 WS 先到被 merge 的空 server 条）。
+  useEffect(() => {
+    if (!currentSessionId) return;
+    const tempId = pendingTempIdRef.current;
+    if (!tempId) return;
+    pendingTempIdRef.current = null;
+    setCachedSessions((prev) => {
+      const replaced = prev.map((s) =>
+        s.id === tempId ? { ...s, id: currentSessionId, temp: false } : s,
+      );
+      const seen = new Set<string>();
+      const unique = replaced.filter((s) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+      writeSessionsCache(unique);
+      return unique;
+    });
+  }, [currentSessionId]);
+
   useQuery<SessionItem[]>({
     queryKey: ['sessions'],
     // 首帧渲染缓存，拉到最新列表后刷新缓存（queryFn 内落缓存，非 effect）。
     queryFn: async () => {
       const data = await listSessions();
-      setCachedSessions(data);
-      // 登出竞态守卫：invalidate 触发的 refetch 可能在登出后仍执行，
-      // 不把登录用户会话写回 localStorage（登出已清缓存）。
-      if (isAuthenticated) writeSessionsCache(data);
+      // 唯一化归并：保留发送中的乐观占位（temp），server 权威会话照常进入。
+      setCachedSessions((prev) => {
+        const merged = mergeSessions(prev, data);
+        // 登出竞态守卫：invalidate 触发的 refetch 可能在登出后仍执行，
+        // 不把登录用户会话写回 localStorage（登出已清缓存）。
+        if (isAuthenticated) writeSessionsCache(merged);
+        return merged;
+      });
       return data;
     },
     // Sessions are user-owned: only fetch once authentication is ready, and
@@ -216,6 +248,11 @@ export function useHomeState() {
       const ids = files
         ?.map((f) => f.attachmentId)
         .filter((x): x is string => !!x);
+      // 正式模式：乐观占位——发送瞬间列表立即出现（等待回复），server 确认
+      // （currentSessionId）后原位替换为真实会话。
+      const temp = makeTempSession(text);
+      pendingTempIdRef.current = temp.id;
+      setCachedSessions((prev) => [temp, ...prev]);
       await submitRequirement(
         text,
         undefined,
@@ -229,7 +266,7 @@ export function useHomeState() {
       );
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
-    [effectiveModel, queryClient],
+    [effectiveModel, queryClient, setCachedSessions],
   );
 
   const handleModelChange = useCallback((id: string) => {

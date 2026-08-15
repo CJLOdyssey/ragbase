@@ -125,6 +125,8 @@ export interface SessionItem {
   is_pinned?: boolean;
   created_at: string | null;
   updated_at: string | null;
+  /** 乐观占位：发送中未获 server 确认（id=temp-*，确认后原位替换为 sessionId） */
+  temp?: boolean;
 }
 
 interface MemoryEntry {

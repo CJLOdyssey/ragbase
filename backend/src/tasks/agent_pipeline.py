@@ -308,6 +308,14 @@ async def _run_agent_pipeline(
         # Postgres/sqlite checkpointers hold an open connection; close it on
         # every exit path (done, timeout, cancel, error) or each run leaks one.
         await close_checkpointer(checkpointer)
+        # run 结束即释放 buffer pubsub 连接（不依赖 WS 断开/60s idle 兜底），
+        # 防 Redis 池（REDIS_POOL_SIZE=20）耗尽 → MaxConnectionsError。
+        try:
+            from broker import stop_buffer
+
+            await stop_buffer(run_id)
+        except Exception:
+            logger.debug("stop_buffer failed for run %s", run_id, exc_info=True)
 
     # ── Extract artifacts ──
     messages = result.get("messages", [])
