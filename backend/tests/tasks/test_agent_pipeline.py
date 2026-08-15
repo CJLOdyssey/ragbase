@@ -244,8 +244,9 @@ class TestRunAgentPipeline:
         )
         assert result["status"] == "error"
         mock_agent_deps["update_run_status"].assert_awaited_with("run-8", "error")
+        # 错误消息已脱敏：不向客户端透出原始异常（含 httpx URL/内部细节）。
         mock_agent_deps["publish_run_message"].assert_any_await(
-            "run-8", {"type": "error", "message": "执行失败: LLM down"}
+            "run-8", {"type": "error", "message": "执行失败，请查看服务日志"}
         )
 
     async def test_model_override(self, mock_agent_deps):

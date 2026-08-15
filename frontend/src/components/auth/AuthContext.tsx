@@ -104,14 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await refreshAccessToken();
       lastRefreshRef.current = Date.now();
       return true;
-    } catch (err) {
-      // refresh 失败（401/403）→ 会话过期：登出，避免"幽灵登录"后业务请求
-      // 以 anonymous 身份报误导性 400。网络错误不登出（由定时器重试）。
-      const status = (err as { response?: { status?: number } })?.response
-        ?.status;
-      if (status === 401 || status === 403) {
-        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-      }
+    } catch {
+      // 401/403 已由 errors.ts normalizeError 统一 dispatch
+      // 'auth:unauthorized'（此处 err 已被转成 ApiError，无 AxiosError 的
+      // response 结构，原 status 判断为死代码）——本分支只负责返回失败
+      // 状态：网络错误不登出（由定时器重试）。
       return false;
     }
   }, []);

@@ -159,6 +159,7 @@ class TestAuthMiddlewareDispatch:
         mw = AuthMiddleware(app=None)
         request = _make_request(path="/api/models", headers={"Authorization": "Bearer bad.token"})
         with patch("auth.auth_middleware.AUTH_ENABLED", True), \
+             patch("auth.auth_middleware.AUTH_REQUIRE_LOGIN", False), \
              patch("auth.auth_middleware.decode_jwt", return_value=None):
             resp = await mw.dispatch(request, _noop_call_next)
         assert resp.status_code == 200

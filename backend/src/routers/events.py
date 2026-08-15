@@ -84,7 +84,7 @@ async def user_events_ws(websocket: WebSocket) -> Any:
         # 关键：取消 pump → subscribe_user_events 的 finally close pubsub →
         # Redis 连接归还池，不累积。
         pump_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
+        with contextlib.suppress(Exception):
             await pump_task
         logger.info(
             "User events WS closed | user=%s | client=%s",

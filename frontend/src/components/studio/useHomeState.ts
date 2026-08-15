@@ -257,11 +257,15 @@ export function useHomeState() {
       const ids = files
         ?.map((f) => f.attachmentId)
         .filter((x): x is string => !!x);
-      // 正式模式：乐观占位——发送瞬间列表立即出现（等待回复），server 确认
-      // （currentSessionId）后原位替换为真实会话。
-      const temp = makeTempSession(text);
-      pendingTempIdRef.current = temp.id;
-      setCachedSessions((prev) => [temp, ...prev]);
+      // 正式模式：乐观占位——仅新会话（无当前会话 id）时创建，server 确认
+      // （currentSessionId 变化）后原位替换。已有会话内发消息会话已在列表，
+      // 且 currentSessionId 不变时替换 effect 不触发，无条件创建会留下
+      // 无法替换的幽灵条目（点击进 /chat/temp-* 加载失败卡死）。
+      if (!currentSessionId) {
+        const temp = makeTempSession(text);
+        pendingTempIdRef.current = temp.id;
+        setCachedSessions((prev) => [temp, ...prev]);
+      }
       await submitRequirement(
         text,
         undefined,
@@ -275,7 +279,7 @@ export function useHomeState() {
       );
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
-    [effectiveModel, queryClient, setCachedSessions],
+    [currentSessionId, effectiveModel, queryClient, setCachedSessions],
   );
 
   const handleModelChange = useCallback((id: string) => {

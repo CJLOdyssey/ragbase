@@ -1,3 +1,4 @@
+import { disconnectRun } from '../api/websocket';
 import type { ChatState } from './chatTypes';
 import {
   handleBalanceWarningEvent,
@@ -56,11 +57,16 @@ export function createStreamHandler(set: SetFn, get: GetFn) {
 
     if (msg.type === 'error') {
       handleErrorEvent(set, msg);
+      // 后端 error 事件后 run 已终态：主动断开 WS。subscribe_run 只在
+      // result 时关闭流，否则挂到 60s idle——每次 error 占 pubsub 一分钟，
+      // 与 Redis 泄漏治理目标相悖。
+      disconnectRun(get().currentRunId || '');
       return;
     }
 
     if (msg.type === 'balance_warning') {
       handleBalanceWarningEvent(set, msg);
+      disconnectRun(get().currentRunId || '');
       return;
     }
 

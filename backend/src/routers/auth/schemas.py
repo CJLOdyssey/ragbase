@@ -160,6 +160,19 @@ async def _build_user_response(user_id: str, email: str, username: str | None) -
 ACCESS_TOKEN_TTL = 900  # 15 minutes — short-lived access token per best practice
 
 
+def _cookie_secure(request: Request) -> bool:
+    """Secure flag: https (direct or proxy-forwarded) → Secure; http dev → none.
+
+    Reverse proxies must forward X-Forwarded-Proto (uvicorn --proxy-headers
+    handles it); without it a production request behind TLS looks like http
+    and the cookie would silently lose Secure, sending tokens in cleartext.
+    """
+    if request.url.scheme == "https":
+        return True
+    forwarded = request.headers.get("X-Forwarded-Proto")
+    return "https" in (forwarded or "").lower().split(",")
+
+
 def _set_access_token_cookie(response: Response, access_token: str, *, secure: bool) -> None:
     """Set the access token as an httpOnly cookie (prevents XSS theft).
 

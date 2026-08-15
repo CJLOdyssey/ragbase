@@ -56,6 +56,11 @@ function toApiError(
       throw new ApiError(message, status, 'UNAUTHORIZED', data);
     }
     case 403:
+      // 403（权限/会话失效）与 401 同处理：触发登出，避免 UI 停留在
+      // 已失效会话状态。
+      window.dispatchEvent(
+        new CustomEvent('auth:unauthorized', { detail: { status: 403 } }),
+      );
       throw new ApiError(message, status, 'FORBIDDEN', data);
     case 404:
       throw new ApiError(message, status, 'NOT_FOUND', data);

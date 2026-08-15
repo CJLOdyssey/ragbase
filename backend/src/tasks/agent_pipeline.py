@@ -300,7 +300,8 @@ async def _run_agent_pipeline(
         # of the task ("Task exception was never retrieved") nor leave the run
         # stuck in running. Surface an error event + mark the run failed.
         logger.error("[TASKS] Agent pipeline failed (run=%s): %s", run_id, exc)
-        await publish_run_message(run_id, {"type": "error", "message": f"执行失败: {exc}"})
+        # 不向客户端透出原始异常（可能含 httpx URL/内部细节），详情在服务日志。
+        await publish_run_message(run_id, {"type": "error", "message": "执行失败，请查看服务日志"})
         await update_run_status(run_id, "error")
         await _notify_session_changed(user_id, session_id)
         return {"run_id": run_id, "status": "error"}
@@ -368,15 +369,24 @@ async def _run_agent_pipeline(
             if "<review>" in m.content:
                 review = m.content
 
-    await update_run_result(
-        run_id=run_id,
-        pm_document=pm_document,
-        code=code,
-        review=review,
-        approved=True,
-        status="converged",
-    )
-    await _notify_session_changed(user_id, session_id)
+    try:
+        await update_run_result(
+            run_id=run_id,
+            pm_document=pm_document,
+            code=code,
+            review=review,
+            approved=True,
+            status="converged",
+        )
+        await _notify_session_changed(user_id, session_id)
+    except Exception:
+        # 成功路径的落库/通知失败不得逃逸 task（同 LLM 失败处理：标记 error）。
+        logger.error("[TASKS] Failed to persist converged result (run=%s)", run_id, exc_info=True)
+        with contextlib.suppress(Exception):
+            await publish_run_message(run_id, {"type": "error", "message": "结果保存失败，请查看服务日志"})
+        with contextlib.suppress(Exception):
+            await update_run_status(run_id, "error")
+        return {"run_id": run_id, "status": "error"}
 
     # ── Attach download links to the final message ──
     # The model often references generated files by filename without a URL;

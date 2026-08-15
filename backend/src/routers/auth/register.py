@@ -20,6 +20,7 @@ from .schemas import (
     VerifyRequest,
     _check_rate_limit,
     _client_ip,
+    _cookie_secure,
     _create_auth_response,
     _generate_code,
     _mask_email,
@@ -112,8 +113,8 @@ async def register(body: RegisterRequest, request: Request, response: Response) 
 
     logger.info("User registered and verified: %s", _mask_email(email))
     auth_resp = await _create_auth_response(user.id, user.email, user.username)
-    _set_access_token_cookie(response, auth_resp.access_token, secure=request.url.scheme == "https")
-    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=request.url.scheme == "https")
+    _set_access_token_cookie(response, auth_resp.access_token, secure=_cookie_secure(request))
+    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=_cookie_secure(request))
     return auth_resp.model_copy(update={"refresh_token": ""})
 
 
@@ -158,8 +159,8 @@ async def verify(body: VerifyRequest, request: Request, response: Response) -> A
     logger.info("Email verified: %s", _mask_email(email))
 
     auth_resp = await _create_auth_response(user.id, user.email, user.username)
-    _set_access_token_cookie(response, auth_resp.access_token, secure=request.url.scheme == "https")
-    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=request.url.scheme == "https")
+    _set_access_token_cookie(response, auth_resp.access_token, secure=_cookie_secure(request))
+    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=_cookie_secure(request))
     return auth_resp.model_copy(update={"refresh_token": ""})
 
 
