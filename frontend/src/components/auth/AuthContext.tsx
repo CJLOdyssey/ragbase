@@ -211,8 +211,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // to the default key). Force a real login.
           window.dispatchEvent(new CustomEvent('auth:unauthorized'));
         }
-      } catch {
-        // Refresh failed — guest stays
+      } catch (err) {
+        // Refresh failed. 401/403 = refresh_token 已过期（会话真正失效）→ 登出，
+        // 避免"幽灵登录"（UI 显示 admin、业务请求却 anonymous 报"配置 API Key"）。
+        // 网络错误不登出（由定时器重试）。
+        const status = (err as { response?: { status?: number } })?.response
+          ?.status;
+        if (status === 401 || status === 403) {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
       }
     }
 
