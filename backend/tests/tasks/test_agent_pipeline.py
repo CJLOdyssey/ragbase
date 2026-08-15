@@ -233,16 +233,20 @@ class TestRunAgentPipeline:
         graph = MagicMock()
         graph.run = AsyncMock(side_effect=RuntimeError("LLM down"))
         mock_agent_deps["SingleAgentGraph"].return_value = graph
-        with pytest.raises(RuntimeError):
-            await _run_agent_pipeline(
-                run_id="run-8",
-                requirement="写文案",
-                session_id=None,
-                user_id="user-1",
-                api_key="sk-test",
-                api_base=None,
-                model=None,
-                )
+        result = await _run_agent_pipeline(
+            run_id="run-8",
+            requirement="写文案",
+            session_id=None,
+            user_id="user-1",
+            api_key="sk-test",
+            api_base=None,
+            model=None,
+        )
+        assert result["status"] == "error"
+        mock_agent_deps["update_run_status"].assert_awaited_with("run-8", "error")
+        mock_agent_deps["publish_run_message"].assert_any_await(
+            "run-8", {"type": "error", "message": "执行失败: LLM down"}
+        )
 
     async def test_model_override(self, mock_agent_deps):
         cfg = MagicMock()

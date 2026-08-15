@@ -295,6 +295,15 @@ async def _run_agent_pipeline(
         with contextlib.suppress(Exception):
             await publish_run_message(run_id, {"type": "cancelled", "run_id": run_id})
         raise
+    except Exception as exc:
+        # LLM API failures (HTTPStatusError 402/401/429 etc.) must not leak out
+        # of the task ("Task exception was never retrieved") nor leave the run
+        # stuck in running. Surface an error event + mark the run failed.
+        logger.error("[TASKS] Agent pipeline failed (run=%s): %s", run_id, exc)
+        await publish_run_message(run_id, {"type": "error", "message": f"执行失败: {exc}"})
+        await update_run_status(run_id, "error")
+        await _notify_session_changed(user_id, session_id)
+        return {"run_id": run_id, "status": "error"}
     finally:
         # Postgres/sqlite checkpointers hold an open connection; close it on
         # every exit path (done, timeout, cancel, error) or each run leaks one.
