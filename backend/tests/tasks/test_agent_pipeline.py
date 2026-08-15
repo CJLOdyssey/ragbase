@@ -268,6 +268,148 @@ class TestRunAgentPipeline:
         kwargs = graph.run.call_args[1]
         assert kwargs.get("model") == "custom-model" or graph.run.call_args[0] or True
 
+    async def test_converged_save_failure_marks_error(self, mock_agent_deps):
+        """成功路径落库失败（update_run_result 抛）→ 标记 error，不逃逸 task。"""
+        cfg = MagicMock()
+        cfg.model = "default-model"
+        mock_agent_deps["load_config"].return_value = cfg
+        graph = MagicMock()
+        graph.run = AsyncMock(return_value={"messages": [], "input_tokens": 0, "output_tokens": 0})
+        mock_agent_deps["SingleAgentGraph"].return_value = graph
+        mock_agent_deps["update_run_result"].side_effect = RuntimeError("db down")
+
+        result = await _run_agent_pipeline(
+            run_id="run-savefail",
+            requirement="写文案",
+            session_id=None,
+            user_id="user-1",
+            api_key="sk-test",
+            api_base=None,
+            model=None,
+        )
+        assert result["status"] == "error"
+        mock_agent_deps["publish_run_message"].assert_any_await(
+            "run-savefail", {"type": "error", "message": "结果保存失败，请查看服务日志"}
+        )
+        mock_agent_deps["update_run_status"].assert_any_await("run-savefail", "error")
+
+    async def test_rag_ingest_failure_handled(self, mock_agent_deps):
+        """首轮 RAG ingest 失败 → 只 warning，不中断成功路径。"""
+        cfg = MagicMock()
+        cfg.model = "default-model"
+        mock_agent_deps["load_config"].return_value = cfg
+        graph = MagicMock()
+        graph.run = AsyncMock(return_value={"messages": [], "input_tokens": 0, "output_tokens": 0})
+        mock_agent_deps["SingleAgentGraph"].return_value = graph
+        mock_agent_deps["get_session_messages"] = AsyncMock(return_value=[])
+        with patch(
+            "rag.rag_pipeline.ingest_session_messages",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("ingest down"),
+        ):
+            result = await _run_agent_pipeline(
+                run_id="run-ingest",
+                requirement="写文案",
+                session_id="s-1",
+                user_id="user-1",
+                api_key="sk-test",
+                api_base=None,
+                model=None,
+            )
+        assert result["status"] == "completed"
+
+    async def test_timeout_marks_run_failed(self, mock_agent_deps):
+        """graph.run 超时（asyncio.timeout）→ 标记 timeout，返回错误态。"""
+        cfg = MagicMock()
+        cfg.model = "default-model"
+        mock_agent_deps["load_config"].return_value = cfg
+        graph = MagicMock()
+        graph.run = AsyncMock(side_effect=TimeoutError("slow"))
+        mock_agent_deps["SingleAgentGraph"].return_value = graph
+
+        result = await _run_agent_pipeline(
+            run_id="run-timeout",
+            requirement="写文案",
+            session_id=None,
+            user_id="user-1",
+            api_key="sk-test",
+            api_base=None,
+            model=None,
+        )
+        assert result["status"] == "timeout"
+        mock_agent_deps["update_run_status"].assert_any_await("run-timeout", "timeout")
+
+    async def test_cancel_marks_run_cancelled(self, mock_agent_deps):
+        """task.cancel()（CancelledError）→ 半截内容落库 + 标记 cancelled + 重抛。"""
+        import asyncio as _asyncio
+
+        cfg = MagicMock()
+        cfg.model = "default-model"
+        mock_agent_deps["load_config"].return_value = cfg
+        graph = MagicMock()
+        graph.run = AsyncMock(side_effect=_asyncio.CancelledError())
+        mock_agent_deps["SingleAgentGraph"].return_value = graph
+
+        with pytest.raises(_asyncio.CancelledError):
+            await _run_agent_pipeline(
+                run_id="run-cancel",
+                requirement="写文案",
+                session_id=None,
+                user_id="user-1",
+                api_key="sk-test",
+                api_base=None,
+                model=None,
+            )
+        mock_agent_deps["update_run_status"].assert_any_await("run-cancel", "cancelled")
+        mock_agent_deps["publish_run_message"].assert_any_await(
+            "run-cancel", {"type": "cancelled", "run_id": "run-cancel"}
+        )
+
+    async def test_flagged_output_publishes_warning(self, mock_agent_deps):
+        """OWASP LLM01 输出注入标记 → 发 warning 事件。"""
+        cfg = MagicMock()
+        cfg.model = "default-model"
+        mock_agent_deps["load_config"].return_value = cfg
+        graph = MagicMock()
+        graph.run = AsyncMock(return_value={"messages": [], "input_tokens": 0, "output_tokens": 0})
+        mock_agent_deps["SingleAgentGraph"].return_value = graph
+        with patch("tasks.agent_pipeline._flag_output", return_value=["injection"]):
+            await _run_agent_pipeline(
+                run_id="run-flag",
+                requirement="写文案",
+                session_id=None,
+                user_id="user-1",
+                api_key="sk-test",
+                api_base=None,
+                model=None,
+            )
+        mock_agent_deps["publish_run_message"].assert_any_await(
+            "run-flag", {"type": "warning", "message": "回答疑似包含注入指令，已记录", "reasons": ["injection"]}
+        )
+
+    async def test_pii_hits_publish_warning(self, mock_agent_deps):
+        """OWASP LLM02 / S5 PII 命中 → 发 warning 事件。"""
+        cfg = MagicMock()
+        cfg.model = "default-model"
+        mock_agent_deps["load_config"].return_value = cfg
+        graph = MagicMock()
+        graph.run = AsyncMock(return_value={"messages": [], "input_tokens": 0, "output_tokens": 0})
+        mock_agent_deps["SingleAgentGraph"].return_value = graph
+        with patch("rag.rag_pii.scan_pii", return_value=[{"type": "ID"}]):
+            await _run_agent_pipeline(
+                run_id="run-pii",
+                requirement="写文案",
+                session_id=None,
+                user_id="user-1",
+                api_key="sk-test",
+                api_base=None,
+                model=None,
+            )
+        mock_agent_deps["publish_run_message"].assert_any_await(
+            "run-pii",
+            {"type": "warning", "message": "回答疑似包含敏感信息（PII），已记录", "reasons": ["pii:ID"]},
+        )
+
     async def test_attachment_text_injected_into_session_context(self, mock_agent_deps):
         """附件 extracted_text 必须注入模型输入（session_context）。"""
         _default_mocks(mock_agent_deps)

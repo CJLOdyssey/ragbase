@@ -115,6 +115,12 @@ class TestSessions:
             resp = client.get("/api/sessions", headers={"X-User-ID": "admin"})
             assert resp.status_code == 500
 
+    def test_list_sessions_login_wall_401_anonymous(self, client):
+        """登录墙（AUTH_REQUIRE_LOGIN=1）下 anonymous 列表 → 401 而非 200 []。"""
+        with patch("routers.sessions.AUTH_REQUIRE_LOGIN", True):
+            resp = client.get("/api/sessions")  # 无 X-User-ID → anonymous
+            assert resp.status_code == 401
+
     def test_create_session(self, client):
         resp = client.post("/api/sessions", json={"title": "new-sess"}, headers={"X-User-ID": "admin"})
         assert resp.status_code == 201

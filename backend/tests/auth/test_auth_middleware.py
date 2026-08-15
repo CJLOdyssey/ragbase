@@ -1,5 +1,6 @@
 """Tests for auth middleware (backend/auth/auth_middleware.py)."""
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -164,6 +165,18 @@ class TestAuthMiddlewareDispatch:
             resp = await mw.dispatch(request, _noop_call_next)
         assert resp.status_code == 200
         assert request.state.is_authenticated is False
+
+    @pytest.mark.asyncio
+    async def test_invalid_token_login_wall_401(self):
+        """无效 token + 登录墙（AUTH_REQUIRE_LOGIN=1）→ 401（与无 token 同待遇）。"""
+        mw = AuthMiddleware(app=None)
+        request = _make_request(path="/api/models", headers={"Authorization": "Bearer bad.token"})
+        with patch("auth.auth_middleware.AUTH_ENABLED", True), \
+             patch("auth.auth_middleware.AUTH_REQUIRE_LOGIN", True), \
+             patch("auth.auth_middleware.decode_jwt", return_value=None):
+            resp = await mw.dispatch(request, _noop_call_next)
+        assert resp.status_code == 401
+        assert json.loads(resp.body)["detail"]["error"]["code"] == "AUTH_001"
 
     @pytest.mark.asyncio
     async def test_query_param_token_extracted(self):
