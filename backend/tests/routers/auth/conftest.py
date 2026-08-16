@@ -85,13 +85,19 @@ def client():
                     await session.flush()
                     if admin_role:
                         session.add(UserRoleDB(user_id=user.id, role_id=admin_role.id))
-                elif not bcrypt.checkpw(b"admin123", user.password_hash.encode()):
+                else:
                     # Self-heal: the router-level _reset_db autouse fixture can
                     # occasionally not run under xdist worksteal, leaving a
-                    # leftover user (e.g. from a register test) with a different
-                    # password that would turn login into 401. Re-seed the
-                    # password so login tests stay hermetic.
-                    user.password_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
+                    # leftover user with a different password, failed-login
+                    # lock, or deactivated/unverified state that would turn
+                    # login into 401/403. Re-seed password and clear all
+                    # lock-related state so login tests stay hermetic.
+                    if not bcrypt.checkpw(b"admin123", user.password_hash.encode()):
+                        user.password_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
+                    user.failed_login_attempts = 0
+                    user.locked_until = None
+                    user.is_active = True
+                    user.is_verified = True
             await session.commit()
 
     lifespan_mod.init_db = _safe_init_db
