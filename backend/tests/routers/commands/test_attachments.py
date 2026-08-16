@@ -22,7 +22,7 @@ class TestAttachments:
         session_id = resp.json()["id"]
 
         from core.error_codes import ErrorCode, error_response
-        with patch("routers.attachments._validate_upload",
+        with patch("routers.attachments.validate_upload",
                    side_effect=error_response(ErrorCode.ATTACHMENT_TOO_LARGE, detail="文件超过 10MB 限制")):
             large_content = b"x" * 100
             resp = client.post(
@@ -187,20 +187,28 @@ class TestAttachments:
             assert resp.json()["success"] is True
 
     def test_extract_text_failure(self):
-        from routers.attachments import _extract_text
+        from extract import extract_text
         with patch("pathlib.Path.read_text", side_effect=Exception("IO error")):
-            result = _extract_text(Path("/fake/path.txt"), "text/plain")
+            result = extract_text(Path("/fake/path.txt"), "text/plain")
             assert result == ""
 
     def test_validate_upload_too_large(self):
-        from routers.attachments import _validate_upload
+        from extract import validate_upload
         with pytest.raises(HTTPException):
-            _validate_upload("text/plain", 11 * 1024 * 1024)
+            validate_upload("text/plain", 11 * 1024 * 1024)
 
     def test_validate_upload_invalid_type(self):
-        from routers.attachments import _validate_upload
+        from extract import validate_upload
         with pytest.raises(HTTPException):
-            _validate_upload("application/x-executable", 100)
+            validate_upload("application/x-executable", 100)
+
+    async def test_upload_config_exposes_whitelist(self, client):
+        resp = client.get("/api/attachments/upload-config")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "application/pdf" in data["allowed_content_types"]
+        assert "text/plain" in data["allowed_content_types"]
+        assert data["max_file_size_mb"] == 10
 
     async def test_upload_traversal_session_id(self, client):
         resp = client.post(

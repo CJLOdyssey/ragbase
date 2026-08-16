@@ -161,7 +161,7 @@ async def _run_agent_pipeline(
 ) -> dict[str, Any]:
     global _run_counter
     _run_counter += 1
-    if not tracemalloc.is_tracing():
+    if os.environ.get("MEM_TRACE", "").lower() in ("1", "true", "yes") and not tracemalloc.is_tracing():
         tracemalloc.start(25)
         logger.info("[MEM] tracemalloc started")
     # ponytail: tracemalloc snapshot/diff is heavy sync CPU work (500MB heap, 25

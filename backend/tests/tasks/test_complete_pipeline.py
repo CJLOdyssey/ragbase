@@ -246,10 +246,12 @@ class TestCompletePipeline:
         assert result is None
 
     async def test_tracemalloc_starts_when_not_tracing(self, mock_deps):
-        """Line 41: tracemalloc.start() called when not already tracing."""
+        """Line 41: tracemalloc.start() called when MEM_TRACE on and not already tracing."""
         mock_deps["stream_prefix_completion"].return_value = (" output", [])
 
-        with patch("tasks.complete_pipeline.tracemalloc") as mock_tm:
+        with patch("tasks.complete_pipeline.tracemalloc") as mock_tm, patch.dict(
+            "os.environ", {"MEM_TRACE": "1"}
+        ):
             mock_tm.is_tracing.return_value = False
             await _complete_pipeline(
                 content="test",

@@ -39,7 +39,7 @@ async def _complete_pipeline(
         logger.info("[MEM] complete run=#%s pid=%s rss=%dKB", _complete_counter, pid, rss_kb)
     except Exception:
         pass
-    if not tracemalloc.is_tracing():
+    if os.environ.get("MEM_TRACE", "").lower() in ("1", "true", "yes") and not tracemalloc.is_tracing():
         tracemalloc.start(25)
 
     cfg = load_config()
