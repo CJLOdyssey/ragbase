@@ -4,26 +4,24 @@ from unittest.mock import patch
 
 
 class TestAuthLogin:
-    def test_login_inactive_user(self, client):
+    async def test_login_inactive_user(self, client):
+        # Use the pytest-asyncio loop: a fresh `asyncio.new_event_loop()`
+        # (old version) could bind/use aiosqlite connections across loops
+        # and leave admin deactivated if teardown silently failed.
         from core.infra.database import UserDB, get_session_factory
         from sqlalchemy import update
         factory = get_session_factory()
-        async def _deactivate():
-            async with factory() as s:
-                await s.execute(update(UserDB).where(UserDB.email == "admin@test.com").values(is_active=False))
-                await s.commit()
-        import asyncio
-        asyncio.new_event_loop().run_until_complete(_deactivate())
+        async with factory() as s:
+            await s.execute(update(UserDB).where(UserDB.email == "admin@test.com").values(is_active=False))
+            await s.commit()
         resp = client.post(
             "/api/auth/login",
             json={"email": "admin@test.com", "password": "admin123"},
         )
         assert resp.status_code == 403
-        async def _reactivate():
-            async with factory() as s:
-                await s.execute(update(UserDB).where(UserDB.email == "admin@test.com").values(is_active=True))
-                await s.commit()
-        asyncio.new_event_loop().run_until_complete(_reactivate())
+        async with factory() as s:
+            await s.execute(update(UserDB).where(UserDB.email == "admin@test.com").values(is_active=True))
+            await s.commit()
 
     def test_login_valid(self, client):
         resp = client.post(

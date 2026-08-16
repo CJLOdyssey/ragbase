@@ -58,6 +58,9 @@ def client():
     async def _init_db():
         engine = db_mod.get_async_engine()
         async with engine.begin() as conn:
+            # Self-contained reset: don't rely on the _reset_db autouse
+            # fixture (not reliably ordered under xdist worksteal).
+            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         from core.seed import seed_default_roles_and_admin
         await seed_default_roles_and_admin()

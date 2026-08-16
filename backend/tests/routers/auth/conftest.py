@@ -38,6 +38,11 @@ def client():
     async def _safe_init_db():
         engine = db_mod.get_async_engine()
         async with engine.begin() as conn:
+            # Self-contained reset: the router-level _reset_db autouse fixture
+            # is not reliably ordered under xdist worksteal, so drop here —
+            # every client entry gets a fresh schema, then seed below. No
+            # leftover user from a prior test can survive into this one.
+            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         # Create roles and users with explicit IDs for legacy mode compatibility.
         # Use raw seeding (not seed_default_roles_and_admin) so admin user gets
