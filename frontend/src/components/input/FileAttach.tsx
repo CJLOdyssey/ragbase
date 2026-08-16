@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type * as React from 'react';
 import { Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -15,9 +15,10 @@ interface Props {
   attachedFiles?: { id: string; name: string }[];
 }
 
-// 前端白名单 = 后端 ALLOWED_CONTENT_TYPES 的子集（前端只做即时反馈，后端为准）。
+// 前端回退白名单 = 后端 extract.registry 的静态快照（upload-config 不可达时用）。
+// 首选来自 GET /api/attachments/upload-config —— 加格式只需改后端注册表。
 // 不包含 svg：svg 是 active content 载体，OWASP 不建议放行。
-const ALLOWED_TYPES = [
+const FALLBACK_TYPES = [
   'image/png',
   'image/jpeg',
   'image/gif',
@@ -30,28 +31,9 @@ const ALLOWED_TYPES = [
   'application/json',
 ];
 
+// 文件扩展名兜底：部分系统 File.type 为空，靠后缀做即时校验。
 const ALLOWED_EXTENSIONS = ['.doc', '.docx', '.txt', '.md', '.csv'];
-const MAX_SIZE = 10 * 1024 * 1024;
-
-function isAllowed(file: File): boolean {
-  if (ALLOWED_TYPES.includes(file.type)) return true;
-  const name = file.name.toLowerCase();
-  return ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext));
-}
-
-function validateFiles(files: File[]): {
-  accepted: File[];
-  rejected: FileRejection[];
-} {
-  const accepted: File[] = [];
-  const rejected: FileRejection[] = [];
-  for (const f of files) {
-    if (f.size > MAX_SIZE) rejected.push({ file: f, reason: 'size_exceeded' });
-    else if (!isAllowed(f)) rejected.push({ file: f, reason: 'type_denied' });
-    else accepted.push(f);
-  }
-  return { accepted, rejected };
-}
+const FALLBACK_MAX_SIZE = 10 * 1024 * 1024;
 
 /**
  * File attach button.
@@ -63,17 +45,60 @@ function validateFiles(files: File[]): {
 export default function FileAttach({ onAdd, onReject, fileCount = 0 }: Props) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [allowedTypes, setAllowedTypes] = useState<string[]>(FALLBACK_TYPES);
+  const [maxSize, setMaxSize] = useState<number>(FALLBACK_MAX_SIZE);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/attachments/upload-config')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (
+          data: {
+            allowed_content_types?: string[];
+            max_file_size_mb?: number;
+          } | null,
+        ) => {
+          if (cancelled || !data) return;
+          if (data.allowed_content_types?.length)
+            setAllowedTypes(data.allowed_content_types);
+          if (typeof data.max_file_size_mb === 'number')
+            setMaxSize(data.max_file_size_mb * 1024 * 1024);
+        },
+      )
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isAllowed = useCallback(
+    (file: File): boolean => {
+      if (allowedTypes.includes(file.type)) return true;
+      const name = file.name.toLowerCase();
+      return ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext));
+    },
+    [allowedTypes],
+  );
 
   const handleClick = useCallback(() => inputRef.current?.click(), []);
 
   const handleFiles = useCallback(
     (files: File[]) => {
       if (files.length === 0) return;
-      const { accepted, rejected } = validateFiles(files);
+      const accepted: File[] = [];
+      const rejected: FileRejection[] = [];
+      for (const f of files) {
+        if (f.size > maxSize)
+          rejected.push({ file: f, reason: 'size_exceeded' });
+        else if (!isAllowed(f))
+          rejected.push({ file: f, reason: 'type_denied' });
+        else accepted.push(f);
+      }
       if (accepted.length > 0) onAdd(accepted);
       if (rejected.length > 0) onReject?.(rejected);
     },
-    [onAdd, onReject],
+    [onAdd, onReject, isAllowed, maxSize],
   );
 
   const handleChange = useCallback(
@@ -97,6 +122,8 @@ export default function FileAttach({ onAdd, onReject, fileCount = 0 }: Props) {
     return () => document.removeEventListener('paste', handler);
   }, [handleFiles]);
 
+  const accept = [...allowedTypes, ...ALLOWED_EXTENSIONS].join(',');
+
   return (
     <>
       <input
@@ -105,16 +132,14 @@ export default function FileAttach({ onAdd, onReject, fileCount = 0 }: Props) {
         className="hidden"
         multiple
         onChange={handleChange}
-        accept={[...ALLOWED_TYPES, ...ALLOWED_EXTENSIONS].join(',')}
+        accept={accept}
         aria-label={t('fileAttach.attach')}
       />
       <button
         className="p-2 bg-transparent border-none rounded-lg text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 flex items-center justify-center hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] relative"
         onClick={handleClick}
         title={
-          fileCount > 0
-            ? t('attachment.countSelected', { count: fileCount })
-            : t('fileAttach.attach')
+          fileCount > 0 ? `${fileCount} 个文件已选择` : t('fileAttach.attach')
         }
         type="button"
         aria-label={
