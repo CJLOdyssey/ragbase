@@ -1,6 +1,32 @@
-import { Paperclip } from 'lucide-react';
+import {
+  File,
+  FileCode2,
+  FileJson,
+  FileSpreadsheet,
+  FileText,
+  FileType,
+  Image,
+  type LucideIcon,
+} from 'lucide-react';
 import type { AttachmentInfo } from '../../types';
-import { fmtSize, isImage, typeLabel } from '../../utils/attachmentMeta';
+import {
+  fileIconKey,
+  fmtSize,
+  isImage,
+  typeLabel,
+  type IconKey,
+} from '../../utils/attachmentMeta';
+
+const ICONS: Record<IconKey, LucideIcon> = {
+  image: Image,
+  pdf: FileText,
+  word: FileText,
+  json: FileJson,
+  csv: FileSpreadsheet,
+  markdown: FileCode2,
+  text: FileType,
+  generic: File,
+};
 
 interface Props {
   attachments: AttachmentInfo[];
@@ -32,21 +58,20 @@ export default function MessageAttachments({ attachments }: Props) {
             href={`/api/attachments/${a.id}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] text-xs cursor-pointer no-underline transition-colors duration-150 hover:text-[var(--color-text-primary)]"
+            className="flex flex-col gap-0.5 px-3 py-2 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] text-xs cursor-pointer no-underline transition-colors duration-150 hover:text-[var(--color-text-primary)] min-w-[140px]"
             title={a.filename}
           >
-            <Paperclip size={12} />
-            <span className="max-w-[160px] truncate">{a.filename}</span>
-            {typeLabel(a) && (
-              <span className="shrink-0 px-1 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] text-[var(--color-accent)] font-medium">
-                {typeLabel(a)}
-              </span>
-            )}
-            {a.size_bytes ? (
-              <span className="shrink-0 text-[var(--color-text-muted)]">
-                {fmtSize(a.size_bytes)}
-              </span>
-            ) : null}
+            <span className="flex items-center gap-1.5 max-w-[200px]">
+              {(() => {
+                const Icon = ICONS[fileIconKey(a)];
+                return <Icon size={14} />;
+              })()}
+              <span className="truncate">{a.filename}</span>
+            </span>
+            <span className="text-[var(--color-text-muted)]">
+              {typeLabel(a)}
+              {a.size_bytes ? ` · ${fmtSize(a.size_bytes)}` : ''}
+            </span>
           </a>
         ),
       )}
