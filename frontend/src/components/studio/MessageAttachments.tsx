@@ -58,19 +58,21 @@ export default function MessageAttachments({ attachments }: Props) {
             href={`/api/attachments/${a.id}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-col gap-0.5 px-3 py-2 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] text-xs cursor-pointer no-underline transition-colors duration-150 hover:text-[var(--color-text-primary)] min-w-[140px]"
+            className="flex items-center gap-3 px-3 py-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] cursor-pointer no-underline transition-colors duration-150 hover:text-[var(--color-text-primary)]"
             title={a.filename}
           >
-            <span className="flex items-center gap-1.5 max-w-[200px]">
-              {(() => {
-                const Icon = ICONS[fileIconKey(a)];
-                return <Icon size={14} />;
-              })()}
-              <span className="truncate">{a.filename}</span>
-            </span>
-            <span className="text-[var(--color-text-muted)]">
-              {typeLabel(a)}
-              {a.size_bytes ? ` · ${fmtSize(a.size_bytes)}` : ''}
+            {(() => {
+              const Icon = ICONS[fileIconKey(a)];
+              return <Icon size={28} />;
+            })()}
+            <span className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-sm font-medium text-[var(--color-text-primary)] truncate max-w-[200px]">
+                {a.filename}
+              </span>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                {typeLabel(a)}
+                {a.size_bytes ? ` · ${fmtSize(a.size_bytes)}` : ''}
+              </span>
             </span>
           </a>
         ),
