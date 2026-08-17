@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { File, FileText, Image, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AttachedFile } from '../../types/input';
+import { fmtSize, IMAGE_EXT, isImage } from '../../utils/attachmentMeta';
 
 interface Props {
   files: AttachedFile[];
@@ -9,23 +10,11 @@ interface Props {
   onPreview?: (file: AttachedFile) => void;
 }
 
-const IMAGE_EXT = /^(png|jpg|jpeg|gif|webp)$/;
-
 function getIcon(name: string) {
   const ext = name.split('.').pop()?.toLowerCase();
   if (IMAGE_EXT.test(ext || '')) return Image;
   if (/^(txt|md|doc|docx|pdf)$/.test(ext || '')) return FileText;
   return File;
-}
-
-function fmtSize(bytes: number) {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-}
-
-function isImage(name: string) {
-  return IMAGE_EXT.test(name.split('.').pop()?.toLowerCase() || '');
 }
 
 function renderIcon(name: string) {
