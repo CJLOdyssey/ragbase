@@ -322,6 +322,7 @@
     "viewDetails": "查看详情"
   },
   "retrievalLogs": {
+    "navTitle": "检索日志",
     "title": "检索日志",
     "emptyOnly": "仅显示空召回",
     "maxLatency": "最大延迟(ms)",

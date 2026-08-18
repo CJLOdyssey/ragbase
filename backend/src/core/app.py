@@ -32,6 +32,8 @@ from routers import (
     monitoring,
     prompts,
     providers,
+    query,
+    retrieval_logs,
     run_continue,
     runs,
     sessions,
