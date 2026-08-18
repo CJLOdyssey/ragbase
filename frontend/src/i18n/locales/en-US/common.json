@@ -268,5 +268,53 @@
     "nameDuplicate": "Name already exists, please use another one",
     "teamLimit": "You can create at most {{max}} teams",
     "agentLimit": "Each team can have at most {{max}} agents"
+  },
+  "prompts": {
+    "title": "Prompt Library",
+    "tab": {
+      "list": "List",
+      "version": "Versions"
+    },
+    "list": {
+      "empty": "No prompts yet",
+      "secureNote": "System = security asset; admin only",
+      "edit": "Edit",
+      "delete": "Delete",
+      "history": "History"
+    },
+    "editor": {
+      "new": "New Prompt",
+      "edit": "Edit Prompt",
+      "name": "Name",
+      "category": "Category",
+      "status": "Status",
+      "content": "Content",
+      "saveHint": "Saving creates a new version",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveFailed": "Save failed",
+      "retry": "Retry"
+    },
+    "version": {
+      "title": "Version History",
+      "backToList": "Back to list",
+      "rollback": "Rollback",
+      "view": "View",
+      "rollbackTitle": "Roll back to {{version}}",
+      "rollbackMsg": "Overwrite current with this version; history is preserved",
+      "rollbackConfirm": "Confirm rollback",
+      "rollbackSuccess": "Rolled back (new version created)"
+    },
+    "deleteTitle": "Delete Prompt",
+    "deleteConfirm": "Delete \"{{name}}\"?"
+  },
+  "memory": {
+    "title": "Session Memory",
+    "empty": "No memories yet",
+    "emptyDesc": "Memories generated during conversations will appear here",
+    "exportJson": "Export JSON",
+    "exportMd": "Export Markdown",
+    "deleteTitle": "Delete Memory",
+    "deleteConfirm": "Delete this memory?"
   }
 }

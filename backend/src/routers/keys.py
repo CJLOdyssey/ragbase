@@ -113,6 +113,60 @@ class KeyResponse(BaseModel):
     created_at: str | None
 
 
+# Connectivity check runs in a short sync window so saving a key is never
+# blocked by a slow provider API; on timeout/failure a background task
+# keeps trying and backfills the model list (eventual consistency).
+_KEY_TEST_TIMEOUT = 3.0
+
+
+def _schedule_key_models_refresh(app: Any, key_id: str, user_id: str) -> None:
+    """Run a connectivity check + model fetch in the background after a
+    fast-path sync attempt failed or timed out. Task refs live on app.state
+    to prevent GC; shutdown() cancels them."""
+    async def _refresh() -> None:
+        try:
+            test_result = await test_api_key_connection(key_id, user_id)
+            if test_result.get("success"):
+                fetched_models = test_result.get("models", [])
+                if fetched_models:
+                    await update_api_key(key_id=key_id, user_id=user_id, models=fetched_models)
+        except Exception:
+            logger.exception("Background key model refresh failed | key=%s", key_id)
+
+    task = asyncio.create_task(_refresh())
+    pending = getattr(app.state, "pending_key_tasks", None)
+    if pending is None:
+        pending = set()
+        app.state.pending_key_tasks = pending
+    pending.add(task)
+    task.add_done_callback(pending.discard)
+
+
+async def _test_with_fast_path(app: Any, key_id: str, user_id: str) -> dict[str, Any]:
+    """Sync connectivity check bounded by _KEY_TEST_TIMEOUT.
+
+    Returns the test result when the provider answers in time; otherwise
+    schedules a background refresh and returns a degraded result so the
+    key is still saved successfully."""
+    try:
+        async with asyncio.timeout(_KEY_TEST_TIMEOUT):
+            return await test_api_key_connection(key_id, user_id)
+    except TimeoutError:
+        logger.warning(
+            "Key connectivity check timed out (non-blocking) — background refresh scheduled | key=%s",
+            key_id,
+        )
+        _schedule_key_models_refresh(app, key_id, user_id)
+        return {"success": False, "models": []}
+    except Exception:
+        logger.exception(
+            "Key connectivity check failed (non-blocking) — background refresh scheduled | key=%s",
+            key_id,
+        )
+        _schedule_key_models_refresh(app, key_id, user_id)
+        return {"success": False, "models": []}
+
+
 # ── CRUD routes ──────────────────────────────────────────────────────────────
 
 
@@ -190,7 +244,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
             created_at=obj.created_at.isoformat() if obj.created_at else None,
         )
 
-    test_result = await test_api_key_connection(obj.id, user_id)
+    test_result = await _test_with_fast_path(request.app, obj.id, user_id)
 
     if not test_result.get("success"):
         logger.warning(
@@ -244,7 +298,7 @@ async def edit_key(key_id: str, req: KeyUpdateRequest, request: Request) -> Any:
         raise error_response(ErrorCode.KEY_NOT_FOUND, detail="Key not found or access denied")
 
     if req.api_key or req.base_url:
-        test_result = await test_api_key_connection(key_id, user_id)
+        test_result = await _test_with_fast_path(request.app, key_id, user_id)
         if test_result.get("success"):
             fetched_models = test_result.get("models", [])
             if fetched_models:

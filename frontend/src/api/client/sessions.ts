@@ -38,6 +38,22 @@ export async function deleteSession(sessionId: string): Promise<void> {
   await api.delete(`/sessions/${sessionId}`);
 }
 
+export interface MemoryItem {
+  id: string;
+  agent_role: string;
+  content_type: string;
+  summary: string;
+  details: string | null;
+  created_at: string | null;
+}
+
+export async function listSessionMemories(
+  sessionId: string,
+): Promise<MemoryItem[]> {
+  const { data } = await api.get(`/sessions/${sessionId}/memories`);
+  return data;
+}
+
 export async function deleteMemory(memoryId: string): Promise<void> {
   await api.delete(`/memories/${memoryId}`);
 }

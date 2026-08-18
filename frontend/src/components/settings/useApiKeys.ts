@@ -136,6 +136,12 @@ export function useApiKeys() {
       });
       await loadKeys();
       void queryClient.invalidateQueries({ queryKey: ['keys'] });
+      // Background model fetch may still be in flight — refresh once shortly
+      // so the model list populates without a manual reload.
+      window.setTimeout(() => {
+        void loadKeys();
+        void queryClient.invalidateQueries({ queryKey: ['keys'] });
+      }, 2000);
       setEditingKey(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t('api.saveFailed');

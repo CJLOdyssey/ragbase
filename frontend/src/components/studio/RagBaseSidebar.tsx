@@ -1,19 +1,26 @@
-import { memo, useCallback } from 'react';
-import { Bot, PanelLeft, Sparkles } from 'lucide-react';
+import { memo, useCallback, useState } from 'react';
+import {
+  BarChart3,
+  BookText,
+  Bot,
+  FileText,
+  PanelLeft,
+  Sparkles,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Conversation } from '../../types/studio';
+import MemoryPanel from './MemoryPanel';
+import type { ManageView } from './RagBaseWorkstation';
 import ConversationsList from './sidebar/ConversationsList';
 import UserMenu from './sidebar/UserMenu';
 
 interface RagBaseSidebarProps {
   conversations: Conversation[];
   activeConvId: string | null;
-  selectedAgentId: string | null;
   isUserMenuOpen: boolean;
   setIsUserMenuOpen: (open: boolean) => void;
   setIsSettingsOpen: (open: boolean) => void;
   setIsApiOpen: (open: boolean) => void;
-  setSelectedAgentId: (id: string | null) => void;
   setActiveConvId: (id: string | null) => void;
   setInputValue: (value: string) => void;
   onDeleteConversation: (convId: string) => void;
@@ -22,17 +29,20 @@ interface RagBaseSidebarProps {
   onNewChat: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
+  activeView: ManageView;
+  onNavigate: (view: ManageView) => void;
 }
+
+const NAV_BTN_BASE =
+  'flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors duration-150 cursor-pointer border-none bg-transparent';
 
 const RagBaseSidebar = memo(function RagBaseSidebar({
   conversations,
   activeConvId,
-  selectedAgentId,
   isUserMenuOpen,
   setIsUserMenuOpen,
   setIsSettingsOpen,
   setIsApiOpen,
-  setSelectedAgentId,
   setActiveConvId,
   setInputValue,
   onDeleteConversation,
@@ -41,16 +51,18 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
   onNewChat,
   isSidebarOpen,
   onToggleSidebar,
+  activeView,
+  onNavigate,
 }: RagBaseSidebarProps) {
   const { t } = useTranslation();
+  const [memorySessionId, setMemorySessionId] = useState<string | null>(null);
 
   const handleConvSelect = useCallback(
     (conv: Conversation) => {
-      setSelectedAgentId(null);
       setActiveConvId(conv.id);
       setInputValue(conv.title);
     },
-    [setSelectedAgentId, setActiveConvId, setInputValue],
+    [setActiveConvId, setInputValue],
   );
 
   const handleConvDelete = useCallback(
@@ -62,7 +74,7 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
 
   return (
     <aside
-      className={`flex flex-col h-full bg-[var(--color-surface-sidebar)] border-r border-r-[var(--color-border-subtle)] shrink-0 overflow-hidden transition-[width,min-width,opacity,border-width] duration-200 ease-in-out ${isSidebarOpen ? 'w-[var(--da-sidebar-width)] min-w-[var(--da-sidebar-width)] opacity-100' : 'w-0 min-w-0 opacity-0 pointer-events-none border-r-0'}`}
+      className={`relative flex flex-col h-full bg-[var(--color-surface-sidebar)] border-r border-r-[var(--color-border-subtle)] shrink-0 overflow-hidden transition-[width,min-width,opacity,border-width] duration-200 ease-in-out ${isSidebarOpen ? 'w-[var(--da-sidebar-width)] min-w-[var(--da-sidebar-width)] opacity-100' : 'w-0 min-w-0 opacity-0 pointer-events-none border-r-0'}`}
     >
       {/* Header: logo + toggle */}
       <div className="flex items-center justify-between gap-3 px-4 py-3 shrink-0 mb-6">
@@ -94,6 +106,31 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
         </button>
       </div>
 
+      {/* Navigation links */}
+      <div className="px-4 shrink-0 flex gap-1.5 mt-2">
+        <button
+          onClick={() => onNavigate('prompts')}
+          className={`${NAV_BTN_BASE} ${activeView === 'prompts' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+        >
+          <BookText size={14} />
+          <span>{t('prompts.title')}</span>
+        </button>
+        <button
+          onClick={() => onNavigate('assets')}
+          className={`${NAV_BTN_BASE} ${activeView === 'assets' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+        >
+          <FileText size={14} />
+          <span>{t('assets.title')}</span>
+        </button>
+        <button
+          onClick={() => onNavigate('monitoring')}
+          className={`${NAV_BTN_BASE} ${activeView === 'monitoring' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+        >
+          <BarChart3 size={14} />
+          <span>{t('monitoring.title')}</span>
+        </button>
+      </div>
+
       {/* Scrollable content */}
       <div className="flex-1 pt-7 px-4 flex flex-col">
         <div className="flex flex-col min-h-0 flex-1 -mr-4">
@@ -103,14 +140,24 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
           <ConversationsList
             conversations={conversations}
             activeConvId={activeConvId}
-            selectedAgentId={selectedAgentId}
             onSelect={handleConvSelect}
             onDelete={handleConvDelete}
             onRename={onRenameConversation}
             onPin={onPinConversation}
+            onMemories={setMemorySessionId}
           />
         </div>
       </div>
+
+      {/* Memory panel overlay */}
+      {memorySessionId && (
+        <div className="absolute inset-0 z-10 bg-[var(--color-surface-sidebar)] flex flex-col">
+          <MemoryPanel
+            sessionId={memorySessionId}
+            onClose={() => setMemorySessionId(null)}
+          />
+        </div>
+      )}
 
       {/* User menu - bottom pinned */}
       <UserMenu

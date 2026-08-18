@@ -1,6 +1,6 @@
 {
   "assets": {
-    "title": "Assets",
+    "title": "Knowledge",
     "upload": {
       "button": "Upload Asset",
       "selectFile": "Select File",
@@ -16,8 +16,19 @@
       "deleteConfirm": "Delete asset \"{{name}}\"? This action cannot be undone.",
       "deleteSuccess": "Deleted successfully",
       "index": "Index",
+      "indexing": "Indexing…",
       "indexSuccess": "Index created",
       "documentsOnly": "Only document-type assets can be indexed"
+    },
+    "urlImport": {
+      "button": "Import URL",
+      "title": "Import from URL",
+      "urlLabel": "Document URL",
+      "nameLabel": "Name (optional)",
+      "namePlaceholder": "Inferred from URL",
+      "submit": "Import",
+      "importing": "Importing…",
+      "failed": "Import failed. Check if the URL is accessible."
     }
   }
 }

@@ -1,8 +1,8 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Agent, Conversation } from '../../../types/studio';
+import type { Conversation } from '../../../types/studio';
 import {
-  Cpu,
+  Brain,
   MessageSquare,
   MoreVertical,
   Pencil,
@@ -15,12 +15,11 @@ import { Virtuoso } from 'react-virtuoso';
 interface ConversationsListProps {
   conversations: Conversation[];
   activeConvId: string | null;
-  selectedAgentId: string | null;
-  agents?: Agent[];
   onSelect: (conv: Conversation) => void;
   onDelete: (convId: string) => void;
   onRename?: (convId: string, title: string) => void;
   onPin?: (convId: string) => void;
+  onMemories?: (sessionId: string) => void;
 }
 
 // Fallback: if the prop is empty but localStorage has conversations (e.g.
@@ -39,12 +38,11 @@ function readLocalConversations(): Conversation[] | null {
 const ConversationsList = memo(function ConversationsList({
   conversations: conversationsProp,
   activeConvId,
-  selectedAgentId,
-  agents = [],
   onSelect,
   onDelete,
   onRename,
   onPin,
+  onMemories,
 }: ConversationsListProps) {
   const { t, i18n } = useTranslation();
   const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
@@ -128,12 +126,6 @@ const ConversationsList = memo(function ConversationsList({
     return groups;
   }, [conversations]);
 
-  const agentMap = useMemo(() => {
-    const map = new Map<string, Agent>();
-    agents.forEach((a) => map.set(a.id, a));
-    return map;
-  }, [agents]);
-
   const nonEmptyGroups = useMemo(() => {
     const pinnedIds = new Set(
       conversations.filter((c) => c.isPinned).map((c) => c.id),
@@ -179,27 +171,17 @@ const ConversationsList = memo(function ConversationsList({
   };
 
   const renderTitle = (conv: Conversation) => {
-    const agent = conv.agentId ? agentMap.get(conv.agentId) : undefined;
-    const AgentIcon = agent?.icon;
     const isEditing = editingConvId === conv.id;
     return (
       <div className="text-base text-[var(--color-text-primary)] leading-[1.3] overflow-hidden text-ellipsis whitespace-nowrap flex items-center gap-1.5">
-        {!isEditing &&
-          (conv.kind === 'agent' ? (
-            <span
-              className="shrink-0 flex items-center"
-              style={{ color: agent?.color || 'var(--color-accent)' }}
-            >
-              {agent && AgentIcon ? <AgentIcon size={14} /> : <Cpu size={14} />}
-            </span>
-          ) : (
-            <span
-              className="shrink-0 flex items-center"
-              style={{ color: 'var(--color-text-tertiary)' }}
-            >
-              <MessageSquare size={14} />
-            </span>
-          ))}
+        {!isEditing && (
+          <span
+            className="shrink-0 flex items-center"
+            style={{ color: 'var(--color-text-tertiary)' }}
+          >
+            <MessageSquare size={14} />
+          </span>
+        )}
         {isEditing ? (
           <input
             ref={editInputRef}
@@ -224,8 +206,7 @@ const ConversationsList = memo(function ConversationsList({
   };
 
   const renderConversationItem = (conv: Conversation) => {
-    const agent = conv.agentId ? agentMap.get(conv.agentId) : undefined;
-    const isActive = activeConvId === conv.id && !selectedAgentId;
+    const isActive = activeConvId === conv.id;
     return (
       <div
         key={conv.id}
@@ -244,11 +225,6 @@ const ConversationsList = memo(function ConversationsList({
         <div className="flex-1 min-w-0">
           {renderTitle(conv)}
           <div className="text-sm text-[var(--color-text-tertiary)] mt-1 flex items-center gap-1">
-            {agent && (
-              <span className="text-[var(--color-text-secondary)] font-medium">
-                {agent.name}
-              </span>
-            )}
             {conv.messages.some((m) => m.role !== 'user') ||
             (conv.runCount ?? 0) > 0
               ? t('sidebar.replied')
@@ -320,6 +296,18 @@ const ConversationsList = memo(function ConversationsList({
                   <Pin size={13} />
                   {conv.isPinned ? t('sidebar.unpin') : t('sidebar.pin')}
                 </button>
+                {conv.sessionId && (
+                  <button
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-[var(--color-text-primary)] bg-transparent border-none rounded-md cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-surface-hover)]"
+                    onClick={() => {
+                      setOpenMenuConvId(null);
+                      onMemories?.(conv.sessionId!);
+                    }}
+                  >
+                    <Brain size={13} />
+                    {t('memory.title')}
+                  </button>
+                )}
                 <div className="h-px bg-[var(--color-border-subtle)] mx-2 my-1" />
                 <button
                   className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-[var(--color-danger)] bg-transparent border-none rounded-md cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-danger)]/10"

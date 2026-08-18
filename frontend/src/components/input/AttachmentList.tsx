@@ -1,7 +1,34 @@
 import { useState } from 'react';
-import { File, FileText, Image, X } from 'lucide-react';
+import {
+  File,
+  FileCode2,
+  FileJson,
+  FileSpreadsheet,
+  FileText,
+  FileType,
+  Image,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AttachedFile } from '../../types/input';
+import {
+  fileIconKey,
+  fmtSize,
+  isImage,
+  type IconKey,
+} from '../../utils/attachmentMeta';
+
+const ICONS: Record<IconKey, LucideIcon> = {
+  image: Image,
+  pdf: FileText,
+  word: FileText,
+  json: FileJson,
+  csv: FileSpreadsheet,
+  markdown: FileCode2,
+  text: FileType,
+  generic: File,
+};
 
 interface Props {
   files: AttachedFile[];
@@ -9,27 +36,8 @@ interface Props {
   onPreview?: (file: AttachedFile) => void;
 }
 
-const IMAGE_EXT = /^(png|jpg|jpeg|gif|webp)$/;
-
-function getIcon(name: string) {
-  const ext = name.split('.').pop()?.toLowerCase();
-  if (IMAGE_EXT.test(ext || '')) return Image;
-  if (/^(txt|md|doc|docx|pdf)$/.test(ext || '')) return FileText;
-  return File;
-}
-
-function fmtSize(bytes: number) {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-}
-
-function isImage(name: string) {
-  return IMAGE_EXT.test(name.split('.').pop()?.toLowerCase() || '');
-}
-
-function renderIcon(name: string) {
-  const Icon = getIcon(name);
+function renderIcon(f: AttachedFile) {
+  const Icon = ICONS[fileIconKey({ content_type: f.type, filename: f.name })];
   return <Icon size={14} />;
 }
 
@@ -83,7 +91,7 @@ function AttachmentChip({
           onError={() => setThumbFailed(true)}
         />
       ) : (
-        renderIcon(file.name)
+        renderIcon(file)
       )}
 
       {previewEnabled ? (

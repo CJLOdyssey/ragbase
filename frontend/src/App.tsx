@@ -14,6 +14,9 @@ import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
 
 const AssetsPage = lazy(() => import('./components/assets/AssetsPage'));
+const PromptLibraryPage = lazy(
+  () => import('./components/prompts/PromptLibraryPage'),
+);
 const QualityMonitor = lazy(
   () => import('./components/monitoring/QualityMonitor'),
 );
@@ -177,6 +180,14 @@ function ThemedApp() {
                   <Route
                     path="/chat/:sessionId"
                     element={<RagBaseWorkstation />}
+                  />
+                  <Route
+                    path="/prompts"
+                    element={
+                      <Suspense fallback={<PageLoading />}>
+                        <PromptLibraryPage />
+                      </Suspense>
+                    }
                   />
                   <Route
                     path="/assets"

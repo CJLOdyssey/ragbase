@@ -194,6 +194,14 @@ async def shutdown(app: FastAPI) -> None:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError, asyncio.TimeoutError):
                 await asyncio.wait_for(task, timeout=5)
+    # Cancel in-flight background key connectivity refreshes
+    pending = getattr(app.state, "pending_key_tasks", None)
+    if pending:
+        for task in list(pending):
+            task.cancel()
+        for task in list(pending):
+            with contextlib.suppress(asyncio.CancelledError, asyncio.TimeoutError):
+                await asyncio.wait_for(task, timeout=3)
     from observability.store import get_store
 
     get_store().close()

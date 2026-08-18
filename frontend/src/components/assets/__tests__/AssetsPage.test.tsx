@@ -90,6 +90,24 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
     expect(await screen.findByText('上传成功')).toBeTruthy();
   });
 
+  it('accepts docx and xlsx like the backend does', async () => {
+    renderPage();
+    await screen.findByText('暂无素材，点击上方按钮上传');
+    const input = screen.getByTestId('asset-file-input');
+    const docx = makeFile(
+      'a.docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    fireEvent.change(input, { target: { files: [docx] } });
+    await waitFor(() => expect(mocks.uploadAsset).toHaveBeenCalledWith(docx));
+    const xlsx = makeFile(
+      'b.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    fireEvent.change(input, { target: { files: [xlsx] } });
+    await waitFor(() => expect(mocks.uploadAsset).toHaveBeenCalledWith(xlsx));
+  });
+
   it('rejects oversized file', async () => {
     renderPage();
     await screen.findByText('暂无素材，点击上方按钮上传');
@@ -136,6 +154,28 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
     fireEvent.click(screen.getByTestId('index-a1'));
     await waitFor(() => expect(mocks.indexAsset).toHaveBeenCalledWith('a1'));
     expect(await screen.findByText('索引已建立')).toBeTruthy();
+  });
+
+  it('polls list until the indexed flag flips, then stops', async () => {
+    mocks.listAssets.mockResolvedValue([DOC]);
+    renderPage();
+    await screen.findByTestId('asset-item-a1');
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByTestId('index-a1'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(screen.getByText('索引中…')).toBeTruthy();
+
+      mocks.listAssets.mockResolvedValue([{ ...DOC, indexed: true }]);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(mocks.listAssets.mock.calls.length).toBeGreaterThan(1);
+
+      const callsAfterIndexed = mocks.listAssets.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(mocks.listAssets.mock.calls.length).toBe(callsAfterIndexed);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('hides index button for image assets', async () => {

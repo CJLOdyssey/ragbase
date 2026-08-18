@@ -25,6 +25,7 @@
       "p95_latency_high": "延迟 P95 {{current}} 超过阈值 {{threshold}}",
       "good_ratio_low": "好评率 {{current}} 低于阈值 {{threshold}}"
     },
-    "loading": "加载中…"
+    "loading": "加载中…",
+    "loadFailed": "监控数据加载失败"
   }
 }
