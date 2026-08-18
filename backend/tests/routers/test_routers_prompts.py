@@ -167,6 +167,12 @@ class TestPrompts:
         resp = client.delete("/api/prompts/nonexistent")
         assert resp.status_code == 404
 
+    def test_delete_prompt_does_not_load_all(self, client):
+        """Delete must look up a single prompt, not load the whole table."""
+        with patch("repository.get_prompts", new_callable=AsyncMock, side_effect=RuntimeError("boom")):
+            resp = client.delete("/api/prompts/nonexistent")
+            assert resp.status_code == 404
+
     # ── Exception handler paths ──────────────────────────────────────────
 
     def test_list_prompts_exception(self, client):
@@ -185,7 +191,7 @@ class TestPrompts:
             assert resp.status_code == 500
 
     def test_delete_prompt_exception(self, client):
-        with patch("repository.get_prompts", new_callable=AsyncMock, side_effect=RuntimeError("err")):
+        with patch("repository.get_prompt", new_callable=AsyncMock, side_effect=RuntimeError("err")):
             resp = client.delete("/api/prompts/t")
             assert resp.status_code == 500
 
@@ -214,6 +220,6 @@ class TestPrompts:
             "name": "del-exc-prompt", "category": "general", "content": "x"
         })
         prompt_id = resp.json()["id"]
-        with patch("repository.get_prompts", new_callable=AsyncMock, side_effect=Exception("err")):
+        with patch("repository.get_prompt", new_callable=AsyncMock, side_effect=Exception("err")):
             resp = client.delete(f"/api/prompts/{prompt_id}")
             assert resp.status_code == 500

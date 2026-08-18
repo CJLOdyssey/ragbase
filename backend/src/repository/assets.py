@@ -47,6 +47,18 @@ async def get_asset_for_user(asset_id: str, user_id: str) -> AssetDB | None:
         return asset
 
 
+async def update_asset_name(asset_id: str, user_id: str, name: str) -> AssetDB | None:
+    """Rename an asset only if it belongs to user_id. None otherwise."""
+    factory = get_session_factory()
+    async with factory() as session:
+        asset = await session.get(AssetDB, asset_id)
+        if asset is None or asset.user_id != user_id:
+            return None
+        asset.name = name
+        await session.commit()
+        return asset
+
+
 async def list_assets_by_user(user_id: str) -> list[AssetDB]:
     """List a user's assets, newest first."""
     factory = get_session_factory()
