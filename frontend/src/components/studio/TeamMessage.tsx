@@ -308,7 +308,7 @@ const TeamMessage = memo(function TeamMessage({
             <span>{t('agent.thinking', { name: agentInfo.name })}</span>
           </div>
         ) : (
-          <>
+          <div style={{ animation: 'fadeInUp 0.15s ease-out' }}>
             {msg.plan ? (
               <PlanCard msg={msg} color={agentInfo.color} t={t} />
             ) : msg.action ? (
@@ -358,7 +358,7 @@ const TeamMessage = memo(function TeamMessage({
               onSwitchVersion={onSwitchAnswer}
               t={t}
             />
-          </>
+          </div>
         )}
       </div>
     </div>

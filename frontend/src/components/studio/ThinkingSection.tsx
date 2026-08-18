@@ -15,23 +15,30 @@ type ThinkingState = keyof typeof THINKING_STATE_META;
 function ThinkingBody({
   thinking,
   bodyRef,
+  animate,
   t,
 }: {
   thinking: string;
   bodyRef: React.RefObject<HTMLDivElement>;
+  animate?: boolean;
   t: (key: string) => string;
 }) {
   const items = groupThinkingNodes(thinking);
   return (
     <div
-      className="relative mt-2 max-h-[420px] overflow-y-auto text-base text-[var(--color-text-muted)] leading-[1.65]"
-      ref={bodyRef}
+      className={`mt-2 grid ${animate ? 'animate-slide-down' : ''}`}
+      style={{ gridTemplateRows: animate ? undefined : '1fr' }}
     >
-      <div className="relative pl-4">
-        <div className="absolute left-2 top-0 bottom-0 w-px bg-[var(--color-border)] pointer-events-none" />
-        {items.map((item, i) => (
-          <ThinkingNodeItem key={i} item={item} t={t} />
-        ))}
+      <div
+        className="relative max-h-[420px] overflow-y-auto overflow-hidden text-base text-[var(--color-text-muted)] leading-[1.65]"
+        ref={bodyRef}
+      >
+        <div className="relative pl-4">
+          <div className="absolute left-2 top-0 bottom-0 w-px bg-[var(--color-border)] pointer-events-none" />
+          {items.map((item, i) => (
+            <ThinkingNodeItem key={i} item={item} t={t} />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -117,7 +124,7 @@ export function ThinkingSection({
         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
       {isExpanded && (
-        <ThinkingBody thinking={thinking} bodyRef={bodyRef} t={t} />
+        <ThinkingBody thinking={thinking} bodyRef={bodyRef} animate t={t} />
       )}
     </div>
   );
