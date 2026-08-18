@@ -3,11 +3,18 @@ import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
 import Modal from '../shared/Modal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, FileUp, Image as ImageIcon, Search } from 'lucide-react';
+import {
+  FileText,
+  FileUp,
+  Image as ImageIcon,
+  Link,
+  Search,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import {
   deleteAsset,
+  importUrl,
   indexAsset,
   listAssets,
   renameAsset,
@@ -34,6 +41,9 @@ export default function AssetsPage() {
   const [renameTarget, setRenameTarget] = useState<AssetItem | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AssetItem | null>(null);
+  const [urlImportOpen, setUrlImportOpen] = useState(false);
+  const [urlValue, setUrlValue] = useState('');
+  const [urlName, setUrlName] = useState('');
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['assets'],
@@ -76,6 +86,18 @@ export default function AssetsPage() {
     onError: () => toast(t('assets.list.documentsOnly'), 'error'),
   });
 
+  const urlImportMutation = useMutation({
+    mutationFn: () => importUrl(urlValue, urlName || undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      setUrlImportOpen(false);
+      setUrlValue('');
+      setUrlName('');
+      toast(t('assets.upload.success'), 'success');
+    },
+    onError: () => toast(t('assets.urlImport.failed'), 'error'),
+  });
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -105,16 +127,25 @@ export default function AssetsPage() {
         <h1 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
           {t('assets.title')}
         </h1>
-        <button
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploadMutation.isPending}
-        >
-          <FileUp size={16} />
-          {uploadMutation.isPending
-            ? t('assets.upload.uploading')
-            : t('assets.upload.button')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+            onClick={() => setUrlImportOpen(true)}
+          >
+            <Link size={16} />
+            {t('assets.urlImport.button')}
+          </button>
+          <button
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadMutation.isPending}
+          >
+            <FileUp size={16} />
+            {uploadMutation.isPending
+              ? t('assets.upload.uploading')
+              : t('assets.upload.button')}
+          </button>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -242,6 +273,61 @@ export default function AssetsPage() {
           onConfirm={() => deleteMutation.mutate(deleteTarget.id)}
           onCancel={() => setDeleteTarget(null)}
         />
+      )}
+
+      {urlImportOpen && (
+        <Modal
+          title={t('assets.urlImport.title')}
+          onClose={() => setUrlImportOpen(false)}
+          ariaLabel={t('assets.urlImport.title')}
+          width={480}
+          footer={
+            <>
+              <button
+                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                onClick={() => setUrlImportOpen(false)}
+              >
+                {t('confirm.cancel')}
+              </button>
+              <button
+                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={() => urlImportMutation.mutate()}
+                disabled={!urlValue.trim() || urlImportMutation.isPending}
+              >
+                {urlImportMutation.isPending
+                  ? t('assets.urlImport.importing')
+                  : t('assets.urlImport.submit')}
+              </button>
+            </>
+          }
+        >
+          <div className="flex flex-col gap-4 p-6">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-[var(--color-text-primary)]">
+                {t('assets.urlImport.urlLabel')}
+              </label>
+              <input
+                type="url"
+                className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                placeholder="https://example.com/document.pdf"
+                value={urlValue}
+                onChange={(e) => setUrlValue(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-[var(--color-text-primary)]">
+                {t('assets.urlImport.nameLabel')}
+              </label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                placeholder={t('assets.urlImport.namePlaceholder')}
+                value={urlName}
+                onChange={(e) => setUrlName(e.target.value)}
+              />
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

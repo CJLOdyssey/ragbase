@@ -18,6 +18,16 @@
       "index": "建立索引",
       "indexSuccess": "索引已建立",
       "documentsOnly": "仅支持为文档类型素材建立索引"
+    },
+    "urlImport": {
+      "button": "URL 导入",
+      "title": "从 URL 导入",
+      "urlLabel": "文档 URL",
+      "nameLabel": "名称（可选）",
+      "namePlaceholder": "自动从 URL 推断",
+      "submit": "导入",
+      "importing": "导入中…",
+      "failed": "导入失败，请检查链接是否可访问"
     }
   }
 }

@@ -18,6 +18,16 @@
       "index": "Index",
       "indexSuccess": "Index created",
       "documentsOnly": "Only document-type assets can be indexed"
+    },
+    "urlImport": {
+      "button": "Import URL",
+      "title": "Import from URL",
+      "urlLabel": "Document URL",
+      "nameLabel": "Name (optional)",
+      "namePlaceholder": "Inferred from URL",
+      "submit": "Import",
+      "importing": "Importing…",
+      "failed": "Import failed. Check if the URL is accessible."
     }
   }
 }
