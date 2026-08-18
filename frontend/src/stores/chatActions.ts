@@ -1,11 +1,13 @@
 import {
   listKeys,
   submitRequirement as submitRequirementExternal,
+  rewriteQuery,
 } from '../api/client';
 import { connectRun, disconnectRun } from '../api/websocket';
 import i18n from '../i18n';
 import type { AttachmentInfo, ChatMessage } from '../types';
 import Logger from '../utils/logger';
+import { getCachedRetrieval } from '../utils/ragCache';
 import { buildEditVersions, resolveKey } from './chatActionsUtils';
 import { useChatStore } from './chatStore';
 import { createStreamHandler } from './chatStreaming';
@@ -82,10 +84,38 @@ export async function submitRequirement(
     currentRole: null,
   });
 
+  // Query rewrite: build history from last 4 messages
+  let effectiveRequirement = requirement;
+  try {
+    const messages = useChatStore.getState().messages;
+    const historyMessages = messages.slice(-4).map((m) => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.content,
+    }));
+    const rewriteResp = await rewriteQuery({
+      query: requirement,
+      history: historyMessages,
+      session_id: effectiveSessionId,
+    });
+    effectiveRequirement = rewriteResp.rewritten_query || requirement;
+    Logger.info('[chat] query rewritten: "%s" -> "%s"', requirement, effectiveRequirement);
+  } catch (err) {
+    Logger.warn('[chat] query rewrite failed, using original query:', err);
+    // Fall back to original query silently
+  }
+
+  // Check cache for this query
+  const cached = await getCachedRetrieval(effectiveRequirement);
+  if (cached) {
+    Logger.info('[chat] cache hit for query: %s', effectiveRequirement);
+    // Cache hit - in future, could use cached results directly
+    // For now, just log and continue with normal flow
+  }
+
   try {
     Logger.info('[chat] submitRequirement — session_id=%s', effectiveSessionId);
     const resp = await submitRequirementExternal(
-      requirement,
+      effectiveRequirement,
       effectiveSessionId,
       keyId,
       model,

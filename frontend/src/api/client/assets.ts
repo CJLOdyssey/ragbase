@@ -46,3 +46,19 @@ export async function importUrl(
   const { data } = await api.post('/assets/import-url', { url, name });
   return data;
 }
+
+export interface IndexProgress {
+  stage: string | null;
+  percentage: number;
+  message: string;
+}
+
+export async function getIndexProgress(assetId: string): Promise<IndexProgress> {
+  const { data } = await api.get(`/assets/${assetId}/progress`);
+  return data;
+}
+
+export async function retryIndexAsset(assetId: string): Promise<{ retrying: boolean }> {
+  const { data } = await api.post(`/assets/${assetId}/retry-index`);
+  return data;
+}

@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Eye,
   Loader2,
   Play,
   RotateCcw,
@@ -16,6 +17,7 @@ import ReactMarkdown from 'react-markdown';
 import type { RagSource } from '../../types';
 import type { Message } from '../../types/studio';
 import { CopyBtn } from './messages/CopyBtn';
+import RetrievalPanel from './RetrievalPanel';
 import { markdownComponents, rehypeLinkify } from './thinking';
 import { ThinkingSection } from './ThinkingSection';
 import UserMessage from './UserMessage';
@@ -24,22 +26,36 @@ import VersionPager from './VersionPager';
 function SourcesBlock({
   sources,
   t,
+  onViewDetails,
 }: {
   sources: RagSource[];
   t: (key: string, options?: Record<string, unknown>) => string;
+  onViewDetails?: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   if (sources.length === 0) return null;
   return (
     <div className="mt-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-hidden">
-      <button
-        className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium text-[var(--color-text-secondary)] cursor-pointer bg-transparent border-none hover:bg-[var(--color-surface-hover)] transition-colors duration-150"
-        onClick={() => setIsExpanded((v) => !v)}
-        aria-expanded={isExpanded}
-      >
-        <span>{t('teamMessage.sources', { count: sources.length })}</span>
-        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-      </button>
+      <div className="flex items-center justify-between px-3 py-2">
+        <button
+          className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)] cursor-pointer bg-transparent border-none hover:text-[var(--color-text-primary)] transition-colors duration-150"
+          onClick={() => setIsExpanded((v) => !v)}
+          aria-expanded={isExpanded}
+        >
+          <span>{t('teamMessage.sources', { count: sources.length })}</span>
+          {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        </button>
+        {onViewDetails && (
+          <button
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-[var(--color-accent)] cursor-pointer bg-transparent border-none hover:underline transition-colors duration-150"
+            onClick={onViewDetails}
+            data-testid="view-details-btn"
+          >
+            <Eye size={12} />
+            <span>{t('retrievalPanel.viewDetails')}</span>
+          </button>
+        )}
+      </div>
       {isExpanded && (
         <ul className="p-2 flex flex-col gap-1.5">
           {sources.map((s, i) => (
@@ -267,6 +283,7 @@ const TeamMessage = memo(function TeamMessage({
   onThumbsFeedback?: (msgId: string, value: 'up' | 'down' | null) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const [retrievalPanelOpen, setRetrievalPanelOpen] = useState(false);
   const isUser = msg.role === 'user';
 
   if (isUser) {
@@ -298,68 +315,79 @@ const TeamMessage = memo(function TeamMessage({
     : '';
 
   return (
-    <div className="flex gap-3">
-      <div className="flex flex-col gap-1 items-start max-w-full bg-[var(--color-surface)]/30 px-4 py-3 rounded-xl">
-        {msg.isTyping ? (
-          <div className="flex items-center gap-3 px-4 py-3 bg-[var(--color-surface-raised)] rounded-[12px_12px_12px_4px] w-fit">
-            <Loader2 size={14} className={`${agentInfo.color} animate-spin`} />
-            <span>{t('agent.thinking', { name: agentInfo.name })}</span>
-          </div>
-        ) : (
-          <div style={{ animation: 'fadeInUp 0.15s ease-out' }}>
-            {msg.plan ? (
-              <PlanCard msg={msg} color={agentInfo.color} t={t} />
-            ) : msg.action ? (
-              <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                <CheckCircle2 size={12} className={agentInfo.color} />
-                {msg.action.label}
-              </div>
-            ) : null}
-
-            <div className="flex flex-row items-start gap-2 w-full">
-              <div className="flex-1 min-w-0 bg-transparent text-[var(--color-text-primary)] rounded-none p-0 text-base leading-[1.7]">
-                <ThinkingSection
-                  msg={msg}
-                  color={agentInfo.color}
-                  showContinue={showContinue}
-                  t={t}
-                />
-                <ReactMarkdown
-                  rehypePlugins={[rehypeLinkify]}
-                  components={markdownComponents(t)}
-                >
-                  {msg.content}
-                </ReactMarkdown>
-                {msg.sources && msg.sources.length > 0 && (
-                  <SourcesBlock sources={msg.sources} t={t} />
-                )}
-              </div>
+    <>
+      <div className="flex gap-3">
+        <div className="flex flex-col gap-1 items-start max-w-full bg-[var(--color-surface)]/30 px-4 py-3 rounded-xl">
+          {msg.isTyping ? (
+            <div className="flex items-center gap-3 px-4 py-3 bg-[var(--color-surface-raised)] rounded-[12px_12px_12px_4px] w-fit">
+              <Loader2 size={14} className={`${agentInfo.color} animate-spin`} />
+              <span>{t('agent.thinking', { name: agentInfo.name })}</span>
             </div>
+          ) : (
+            <div style={{ animation: 'fadeInUp 0.15s ease-out' }}>
+              {msg.plan ? (
+                <PlanCard msg={msg} color={agentInfo.color} t={t} />
+              ) : msg.action ? (
+                <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                  <CheckCircle2 size={12} className={agentInfo.color} />
+                  {msg.action.label}
+                </div>
+              ) : null}
 
-            {showContinue && !isContinuing && (
-              <div className="flex items-center gap-2 pt-1 pb-0 w-full">
-                <span className="flex-1 h-px border-t border-dashed border-[var(--color-text-muted)] opacity-50" />
-                <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap select-none">
-                  {t('teamMessage.interrupted')}
-                </span>
+              <div className="flex flex-row items-start gap-2 w-full">
+                <div className="flex-1 min-w-0 bg-transparent text-[var(--color-text-primary)] rounded-none p-0 text-base leading-[1.7]">
+                  <ThinkingSection
+                    msg={msg}
+                    color={agentInfo.color}
+                    showContinue={showContinue}
+                    t={t}
+                  />
+                  <ReactMarkdown
+                    rehypePlugins={[rehypeLinkify]}
+                    components={markdownComponents(t)}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                  {msg.sources && msg.sources.length > 0 && (
+                    <SourcesBlock
+                      sources={msg.sources}
+                      t={t}
+                      onViewDetails={() => setRetrievalPanelOpen(true)}
+                    />
+                  )}
+                </div>
               </div>
-            )}
 
-            <MessageActionBar
-              msg={msg}
-              time={time}
-              onRegenerate={onRegenerate}
-              onThumbsFeedback={onThumbsFeedback}
-              showContinue={showContinue}
-              isContinuing={isContinuing}
-              onContinue={onContinue}
-              onSwitchVersion={onSwitchAnswer}
-              t={t}
-            />
-          </div>
-        )}
+              {showContinue && !isContinuing && (
+                <div className="flex items-center gap-2 pt-1 pb-0 w-full">
+                  <span className="flex-1 h-px border-t border-dashed border-[var(--color-text-muted)] opacity-50" />
+                  <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap select-none">
+                    {t('teamMessage.interrupted')}
+                  </span>
+                </div>
+              )}
+
+              <MessageActionBar
+                msg={msg}
+                time={time}
+                onRegenerate={onRegenerate}
+                onThumbsFeedback={onThumbsFeedback}
+                showContinue={showContinue}
+                isContinuing={isContinuing}
+                onContinue={onContinue}
+                onSwitchVersion={onSwitchAnswer}
+                t={t}
+              />
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+      <RetrievalPanel
+        sources={msg.sources ?? []}
+        isOpen={retrievalPanelOpen}
+        onClose={() => setRetrievalPanelOpen(false)}
+      />
+    </>
   );
 });
 

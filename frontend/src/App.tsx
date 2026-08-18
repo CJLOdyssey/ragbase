@@ -20,6 +20,15 @@ const PromptLibraryPage = lazy(
 const QualityMonitor = lazy(
   () => import('./components/monitoring/QualityMonitor'),
 );
+const RetrievalLogPage = lazy(
+  () => import('./components/retrieval-logs/RetrievalLogPage'),
+);
+const AdminUsersPage = lazy(
+  () => import('./components/admin/AdminUsersPage'),
+);
+const KnowledgeBasePage = lazy(
+  () => import('./components/knowledge-base/KnowledgeBasePage'),
+);
 
 function PageLoading() {
   const { t } = useTranslation();
@@ -202,6 +211,30 @@ function ThemedApp() {
                     element={
                       <Suspense fallback={<PageLoading />}>
                         <QualityMonitor />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/retrieval-logs"
+                    element={
+                      <Suspense fallback={<PageLoading />}>
+                        <RetrievalLogPage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/admin-users"
+                    element={
+                      <Suspense fallback={<PageLoading />}>
+                        <AdminUsersPage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/knowledge-bases"
+                    element={
+                      <Suspense fallback={<PageLoading />}>
+                        <KnowledgeBasePage />
                       </Suspense>
                     }
                   />

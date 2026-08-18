@@ -316,5 +316,57 @@
     "exportMd": "导出 Markdown",
     "deleteTitle": "删除记忆",
     "deleteConfirm": "确认删除该记忆？"
+  },
+  "retrievalPanel": {
+    "title": "检索来源 ({{count}} 条)",
+    "viewDetails": "查看详情"
+  },
+  "retrievalLogs": {
+    "title": "检索日志",
+    "emptyOnly": "仅显示空召回",
+    "maxLatency": "最大延迟(ms)",
+    "query": "查询内容",
+    "hitCount": "命中数",
+    "latency": "延迟",
+    "sources": "来源",
+    "time": "时间",
+    "noLogs": "暂无检索日志",
+    "sourceDetail": "来源详情"
+  },
+  "admin": {
+    "navTitle": "用户管理",
+    "users": {
+      "title": "用户管理",
+      "search": "搜索用户...",
+      "name": "姓名",
+      "email": "邮箱",
+      "role": "角色",
+      "status": "状态",
+      "active": "活跃",
+      "inactive": "停用",
+      "createdAt": "创建时间",
+      "noUsers": "暂无用户",
+      "confirmRoleChange": "确认修改该用户的角色？",
+      "confirmStatusChange": "确认修改该用户的状态？"
+    }
+  },
+  "kb": {
+    "navTitle": "知识库",
+    "title": "知识库管理",
+    "create": "新建知识库",
+    "name": "名称",
+    "description": "描述",
+    "assetCount": "资产数量",
+    "noKbs": "暂无知识库",
+    "createDesc": "创建知识库来组织你的文档资产",
+    "uncategorized": "未分类资产",
+    "assignTo": "分配到...",
+    "noUncategorized": "所有资产已分类",
+    "deleteConfirm": "确认删除该知识库？其中的资产将变为未分类。",
+    "editTitle": "编辑知识库",
+    "createTitle": "新建知识库"
+  },
+  "feedback": {
+    "feedbackNotice": "感谢反馈，这将帮助优化后续检索"
   }
 }

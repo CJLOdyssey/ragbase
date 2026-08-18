@@ -316,5 +316,58 @@
     "exportMd": "Export Markdown",
     "deleteTitle": "Delete Memory",
     "deleteConfirm": "Delete this memory?"
+  },
+  "retrievalPanel": {
+    "title": "Retrieval Sources ({{count}})",
+    "viewDetails": "View Details"
+  },
+  "retrievalLogs": {
+    "navTitle": "Retrieval Logs",
+    "title": "Retrieval Logs",
+    "emptyOnly": "Empty recall only",
+    "maxLatency": "Max latency (ms)",
+    "query": "Query",
+    "hitCount": "Hit count",
+    "latency": "Latency",
+    "sources": "Sources",
+    "time": "Time",
+    "noLogs": "No retrieval logs yet",
+    "sourceDetail": "Source details"
+  },
+  "admin": {
+    "navTitle": "User Management",
+    "users": {
+      "title": "User Management",
+      "search": "Search users...",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "createdAt": "Created",
+      "noUsers": "No users yet",
+      "confirmRoleChange": "Confirm changing this user's role?",
+      "confirmStatusChange": "Confirm changing this user's status?"
+    }
+  },
+  "kb": {
+    "navTitle": "Knowledge Base",
+    "title": "Knowledge Base Management",
+    "create": "New Knowledge Base",
+    "name": "Name",
+    "description": "Description",
+    "assetCount": "Asset count",
+    "noKbs": "No knowledge bases yet",
+    "createDesc": "Create a knowledge base to organize your document assets",
+    "uncategorized": "Uncategorized Assets",
+    "assignTo": "Assign to...",
+    "noUncategorized": "All assets are categorized",
+    "deleteConfirm": "Delete this knowledge base? Assets in it will become uncategorized.",
+    "editTitle": "Edit Knowledge Base",
+    "createTitle": "New Knowledge Base"
+  },
+  "feedback": {
+    "feedbackNotice": "Thanks for your feedback — it will help optimize future retrievals"
   }
 }

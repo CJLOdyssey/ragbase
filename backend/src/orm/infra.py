@@ -71,6 +71,25 @@ class AttachmentDB(Base):
     )
 
 
+class KnowledgeBaseDB(Base):
+    """Knowledge base — logical grouping for assets (multi-KB isolation)."""
+
+    __tablename__ = "knowledge_bases"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class AssetDB(Base):
     """User-level asset library (distinct from session-scoped attachments)."""
 
@@ -87,6 +106,9 @@ class AssetDB(Base):
     )
     source_ref: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="URL for source=url; connector-native ref for B/C sources"
+    )
+    knowledge_base_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True, index=True, comment="Optional KB grouping"
     )
     usage_count: Mapped[int] = mapped_column(Integer, default=0)
     indexed: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -3,9 +3,12 @@ import {
   BarChart3,
   BookText,
   Bot,
+  Database,
+  FileSearch,
   FileText,
   PanelLeft,
   Sparkles,
+  Users,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Conversation } from '../../types/studio';
@@ -107,28 +110,53 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
       </div>
 
       {/* Navigation links */}
-      <div className="px-4 shrink-0 flex gap-1.5 mt-2">
-        <button
-          onClick={() => onNavigate('prompts')}
-          className={`${NAV_BTN_BASE} ${activeView === 'prompts' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-        >
-          <BookText size={14} />
-          <span>{t('prompts.title')}</span>
-        </button>
-        <button
-          onClick={() => onNavigate('assets')}
-          className={`${NAV_BTN_BASE} ${activeView === 'assets' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-        >
-          <FileText size={14} />
-          <span>{t('assets.title')}</span>
-        </button>
-        <button
-          onClick={() => onNavigate('monitoring')}
-          className={`${NAV_BTN_BASE} ${activeView === 'monitoring' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-        >
-          <BarChart3 size={14} />
-          <span>{t('monitoring.title')}</span>
-        </button>
+      <div className="px-4 shrink-0 flex flex-col gap-1.5 mt-2">
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => onNavigate('prompts')}
+            className={`${NAV_BTN_BASE} ${activeView === 'prompts' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+          >
+            <BookText size={14} />
+            <span>{t('prompts.title')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate('assets')}
+            className={`${NAV_BTN_BASE} ${activeView === 'assets' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+          >
+            <FileText size={14} />
+            <span>{t('assets.title')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate('monitoring')}
+            className={`${NAV_BTN_BASE} ${activeView === 'monitoring' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+          >
+            <BarChart3 size={14} />
+            <span>{t('monitoring.title')}</span>
+          </button>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => onNavigate('retrieval-logs')}
+            className={`${NAV_BTN_BASE} ${activeView === 'retrieval-logs' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+          >
+            <FileSearch size={14} />
+            <span>{t('retrievalLogs.navTitle')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate('knowledge-bases')}
+            className={`${NAV_BTN_BASE} ${activeView === 'knowledge-bases' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+          >
+            <Database size={14} />
+            <span>{t('kb.navTitle')}</span>
+          </button>
+          <button
+            onClick={() => onNavigate('admin-users')}
+            className={`${NAV_BTN_BASE} ${activeView === 'admin-users' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+          >
+            <Users size={14} />
+            <span>{t('admin.navTitle')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Scrollable content */}

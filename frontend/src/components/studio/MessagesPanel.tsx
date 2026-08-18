@@ -10,6 +10,8 @@ import { useChatStore } from '../../stores/chatStore';
 import BrowserFrame from './BrowserFrame';
 import TeamMessage from './TeamMessage';
 import Logger from '../../utils/logger';
+import { useToast } from '../../utils/useToast';
+import i18n from '../../i18n';
 
 interface Props {
   hasMessages: boolean;
@@ -27,6 +29,7 @@ export default function MessagesPanel({
   const interruptedMessageId = useChatStore((s) => s.interruptedMessageId);
   const continuingId = useChatStore((s) => s.continuingId);
   const setThumbsFeedback = useChatStore((s) => s.setThumbsFeedback);
+  const { toast } = useToast();
   const handleEditMessage = useCallback((msgId: string, newContent: string) => {
     // Edit → save content + regenerate the following answer (merged into its versions).
     void editAndRegenerate(msgId, newContent);
@@ -78,13 +81,17 @@ export default function MessagesPanel({
         const runId = msg?.runId;
         if (runId) {
           const rating = value === 'up' ? 'good' : 'bad';
-          createFeedback(runId, rating).catch((err) =>
-            Logger.warn('[feedback] failed to submit: %s', err),
-          );
+          createFeedback(runId, rating)
+            .then(() => {
+              toast(i18n.t('feedback.feedbackNotice'), 'success');
+            })
+            .catch((err) =>
+              Logger.warn('[feedback] failed to submit: %s', err),
+            );
         }
       }
     },
-    [setThumbsFeedback],
+    [setThumbsFeedback, toast],
   );
 
   if (hasMessages) {

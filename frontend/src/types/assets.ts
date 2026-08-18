@@ -5,6 +5,7 @@ export interface AssetItem {
   size_bytes: number;
   usage_count: number;
   indexed: boolean;
+  knowledge_base_id?: string | null;
 }
 
 export interface AssetIndexResult {

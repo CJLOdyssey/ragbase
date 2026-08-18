@@ -18,7 +18,10 @@
       "index": "Index",
       "indexing": "Indexing…",
       "indexSuccess": "Index created",
-      "documentsOnly": "Only document-type assets can be indexed"
+      "documentsOnly": "Only document-type assets can be indexed",
+      "retry": "Retry",
+      "retrySuccess": "Re-indexed successfully",
+      "retryFailed": "Re-index failed"
     },
     "urlImport": {
       "button": "Import URL",

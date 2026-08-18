@@ -20,12 +20,14 @@ from observability.startup_guard import mark_starting
 mark_starting()
 
 from routers import (
+    admin_users,
     assets,
     attachments,
     auth,
     events,
     feedback,
     keys,
+    knowledge_bases,
     models,
     monitoring,
     prompts,
@@ -163,7 +165,8 @@ app.add_middleware(RequestSizeLimitMiddleware)
 
 # ── Routers ─────────────────────────────────────────────────────────────────
 routers = [auth, events, runs, run_continue, sessions, attachments, models, keys,
-           prompts, providers, versions, assets, feedback, monitoring]
+           prompts, providers, versions, assets, feedback, monitoring, query, retrieval_logs,
+           admin_users, knowledge_bases]
 for r in routers:
     app.include_router(r.router)
 

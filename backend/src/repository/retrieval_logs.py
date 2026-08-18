@@ -8,6 +8,7 @@ from typing import Any
 
 from core.infra.database import get_session_factory
 from orm import RetrievalLogDB
+from sqlalchemy import func, select
 
 
 async def create_retrieval_log(
@@ -56,3 +57,35 @@ def _sources_json(sources: list[dict[str, Any]] | None) -> str | None:
         ],
         ensure_ascii=False,
     )
+
+
+async def list_retrieval_logs(
+    user_id: str,
+    page: int = 1,
+    page_size: int = 20,
+    min_hit_count: int | None = None,
+    max_latency_ms: int | None = None,
+    empty_only: bool = False,
+) -> tuple[list[RetrievalLogDB], int]:
+    """List retrieval logs for a user with pagination and filters."""
+    factory = get_session_factory()
+    async with factory() as session:
+        query = select(RetrievalLogDB).where(RetrievalLogDB.user_id == user_id)
+
+        if min_hit_count is not None:
+            query = query.where(RetrievalLogDB.hit_count >= min_hit_count)
+        if max_latency_ms is not None:
+            query = query.where(RetrievalLogDB.latency_ms <= max_latency_ms)
+        if empty_only:
+            query = query.where(RetrievalLogDB.hit_count == 0)
+
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await session.execute(count_query)
+        total = total_result.scalar() or 0
+
+        query = query.order_by(RetrievalLogDB.created_at.desc())
+        query = query.offset((page - 1) * page_size).limit(page_size)
+        result = await session.execute(query)
+        items = list(result.scalars().all())
+
+        return items, total

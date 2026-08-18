@@ -260,3 +260,39 @@ async def index_asset(asset_id: str, request: Request) -> Any:
 
     index_asset_task.delay(asset_id, user_id)
     return {"indexing": True}
+
+
+@router.get("/api/assets/{asset_id}/progress")
+async def get_asset_progress(asset_id: str, request: Request) -> Any:
+    """Get indexing progress for an asset."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+
+    from repository.index_progress import get_index_progress
+
+    progress = await get_index_progress(asset_id)
+    if progress is None:
+        return {"stage": None}
+    return progress
+
+
+@router.post("/api/assets/{asset_id}/retry-index")
+async def retry_index_asset(asset_id: str, request: Request) -> Any:
+    """Retry indexing a failed asset by resetting indexed flag and re-queuing."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    if asset.asset_type != "document":
+        raise error_response(ErrorCode.INVALID_REQUEST, detail="仅文档类素材可索引")
+
+    from repository.assets import set_asset_indexed
+    from tasks.registry import index_asset as index_asset_task
+
+    await set_asset_indexed(asset_id, False)
+    index_asset_task.delay(asset_id, user_id)
+
+    logger.info("Asset re-index retry queued | user=%s | asset=%s", user_id, asset_id)
+    return {"retrying": True}

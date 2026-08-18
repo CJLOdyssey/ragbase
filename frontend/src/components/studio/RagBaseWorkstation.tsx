@@ -11,8 +11,18 @@ import { useHomeState } from './useHomeState';
 const PromptLibraryPage = lazy(() => import('../prompts/PromptLibraryPage'));
 const AssetsPage = lazy(() => import('../assets/AssetsPage'));
 const QualityMonitor = lazy(() => import('../monitoring/QualityMonitor'));
+const RetrievalLogPage = lazy(() => import('../retrieval-logs/RetrievalLogPage'));
+const AdminUsersPage = lazy(() => import('../admin/AdminUsersPage'));
+const KnowledgeBasePage = lazy(() => import('../knowledge-base/KnowledgeBasePage'));
 
-export type ManageView = 'chat' | 'prompts' | 'assets' | 'monitoring';
+export type ManageView =
+  | 'chat'
+  | 'prompts'
+  | 'assets'
+  | 'monitoring'
+  | 'retrieval-logs'
+  | 'admin-users'
+  | 'knowledge-bases';
 
 export default function RagBaseWorkstation() {
   const s = useHomeState();
@@ -213,6 +223,9 @@ export default function RagBaseWorkstation() {
                   {activeView === 'prompts' && <PromptLibraryPage />}
                   {activeView === 'assets' && <AssetsPage />}
                   {activeView === 'monitoring' && <QualityMonitor />}
+                  {activeView === 'retrieval-logs' && <RetrievalLogPage />}
+                  {activeView === 'admin-users' && <AdminUsersPage />}
+                  {activeView === 'knowledge-bases' && <KnowledgeBasePage />}
                 </Suspense>
               </div>
             )}

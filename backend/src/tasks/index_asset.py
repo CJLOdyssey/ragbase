@@ -14,6 +14,7 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     from rag.rag_embedding import EmbeddingProvider
     from rag.rag_store import PgVectorStore
     from repository.assets import get_asset, set_asset_indexed
+    from repository.index_progress import set_index_progress
     from repository.keys import get_embedding_config
 
     asset = await get_asset(asset_id)
@@ -29,37 +30,49 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
             f"asset source {asset.source!r} not allowed for indexing"
         )
 
-    text = extract_text(asset.storage_path)
-    if not text.strip():
-        raise ValueError("asset has no text content — cannot index")
+    try:
+        text = extract_text(asset.storage_path)
+        if not text.strip():
+            raise ValueError("asset has no text content — cannot index")
 
-    # OWASP LLM08: reject poisoned/hidden-instruction text before it reaches
-    # the vector store — a flagged asset stays unindexed, fail-loud.
-    reasons = scan_document(text)
-    if reasons:
-        raise ValueError(
-            f"asset rejected by document guard: {'; '.join(reasons)}"
+        # OWASP LLM08: reject poisoned/hidden-instruction text before it reaches
+        # the vector store — a flagged asset stays unindexed, fail-loud.
+        reasons = scan_document(text)
+        if reasons:
+            raise ValueError(
+                f"asset rejected by document guard: {'; '.join(reasons)}"
+            )
+
+        await set_index_progress(asset_id, "chunking", 30, "Chunking document...")
+
+        cfg = await get_embedding_config()
+        if cfg is None or cfg["api_key"] is None:
+            raise RuntimeError("no embedding API key configured")
+
+        chunks = semantic_chunk(text, session_id=f"asset:{asset.id}", run_id=None)
+        for chunk in chunks:
+            chunk.metadata = {"asset_id": asset.id, "asset_name": asset.name}
+
+        await set_index_progress(asset_id, "embedding", 50, "Generating embeddings...")
+
+        provider = EmbeddingProvider(
+            api_key=cfg["api_key"],
+            model=cfg["model"] or "text-embedding-v3",
+            base_url=cfg["base_url"],
         )
+        embeddings = await provider.embed([c.text for c in chunks])
+        for chunk, emb in zip(chunks, embeddings, strict=False):
+            chunk.embedding = emb
 
-    cfg = await get_embedding_config()
-    if cfg is None or cfg["api_key"] is None:
-        raise RuntimeError("no embedding API key configured")
+        await set_index_progress(asset_id, "storing", 80, "Storing vectors...")
 
-    chunks = semantic_chunk(text, session_id=f"asset:{asset.id}", run_id=None)
-    for chunk in chunks:
-        chunk.metadata = {"asset_id": asset.id, "asset_name": asset.name}
+        store = PgVectorStore()
+        await store.clear_asset(asset.id)  # idempotent reindex: no stale chunks
+        await store.add(chunks, user_id=user_id)
+        await set_asset_indexed(asset.id, True)
 
-    provider = EmbeddingProvider(
-        api_key=cfg["api_key"],
-        model=cfg["model"] or "text-embedding-v3",
-        base_url=cfg["base_url"],
-    )
-    embeddings = await provider.embed([c.text for c in chunks])
-    for chunk, emb in zip(chunks, embeddings, strict=False):
-        chunk.embedding = emb
-
-    store = PgVectorStore()
-    await store.clear_asset(asset.id)  # idempotent reindex: no stale chunks
-    await store.add(chunks, user_id=user_id)
-    await set_asset_indexed(asset.id, True)
-    return {"indexed": True, "chunks": len(chunks)}
+        await set_index_progress(asset_id, "done", 100, "Indexing complete")
+        return {"indexed": True, "chunks": len(chunks)}
+    except Exception as exc:
+        await set_index_progress(asset_id, "failed", 0, str(exc))
+        raise
