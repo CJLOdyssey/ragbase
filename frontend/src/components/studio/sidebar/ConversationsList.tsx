@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Agent, Conversation } from '../../../types/studio';
 import {
+  Brain,
   Cpu,
   MessageSquare,
   MoreVertical,
@@ -21,6 +22,7 @@ interface ConversationsListProps {
   onDelete: (convId: string) => void;
   onRename?: (convId: string, title: string) => void;
   onPin?: (convId: string) => void;
+  onMemories?: (sessionId: string) => void;
 }
 
 // Fallback: if the prop is empty but localStorage has conversations (e.g.
@@ -45,6 +47,7 @@ const ConversationsList = memo(function ConversationsList({
   onDelete,
   onRename,
   onPin,
+  onMemories,
 }: ConversationsListProps) {
   const { t, i18n } = useTranslation();
   const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
@@ -320,6 +323,18 @@ const ConversationsList = memo(function ConversationsList({
                   <Pin size={13} />
                   {conv.isPinned ? t('sidebar.unpin') : t('sidebar.pin')}
                 </button>
+                {conv.sessionId && (
+                  <button
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-[var(--color-text-primary)] bg-transparent border-none rounded-md cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-surface-hover)]"
+                    onClick={() => {
+                      setOpenMenuConvId(null);
+                      onMemories?.(conv.sessionId!);
+                    }}
+                  >
+                    <Brain size={13} />
+                    {t('memory.title')}
+                  </button>
+                )}
                 <div className="h-px bg-[var(--color-border-subtle)] mx-2 my-1" />
                 <button
                   className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-[var(--color-danger)] bg-transparent border-none rounded-md cursor-pointer transition-colors duration-100 text-left hover:bg-[var(--color-danger)]/10"

@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 import {
   BarChart3,
   BookText,
@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import type { Conversation } from '../../types/studio';
+import MemoryPanel from './MemoryPanel';
 import ConversationsList from './sidebar/ConversationsList';
 import UserMenu from './sidebar/UserMenu';
 
@@ -55,6 +56,7 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
 }: RagBaseSidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [memorySessionId, setMemorySessionId] = useState<string | null>(null);
 
   const handleConvSelect = useCallback(
     (conv: Conversation) => {
@@ -74,7 +76,7 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
 
   return (
     <aside
-      className={`flex flex-col h-full bg-[var(--color-surface-sidebar)] border-r border-r-[var(--color-border-subtle)] shrink-0 overflow-hidden transition-[width,min-width,opacity,border-width] duration-200 ease-in-out ${isSidebarOpen ? 'w-[var(--da-sidebar-width)] min-w-[var(--da-sidebar-width)] opacity-100' : 'w-0 min-w-0 opacity-0 pointer-events-none border-r-0'}`}
+      className={`relative flex flex-col h-full bg-[var(--color-surface-sidebar)] border-r border-r-[var(--color-border-subtle)] shrink-0 overflow-hidden transition-[width,min-width,opacity,border-width] duration-200 ease-in-out ${isSidebarOpen ? 'w-[var(--da-sidebar-width)] min-w-[var(--da-sidebar-width)] opacity-100' : 'w-0 min-w-0 opacity-0 pointer-events-none border-r-0'}`}
     >
       {/* Header: logo + toggle */}
       <div className="flex items-center justify-between gap-3 px-4 py-3 shrink-0 mb-6">
@@ -139,9 +141,20 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
             onDelete={handleConvDelete}
             onRename={onRenameConversation}
             onPin={onPinConversation}
+            onMemories={setMemorySessionId}
           />
         </div>
       </div>
+
+      {/* Memory panel overlay */}
+      {memorySessionId && (
+        <div className="absolute inset-0 z-10 bg-[var(--color-surface-sidebar)] flex flex-col">
+          <MemoryPanel
+            sessionId={memorySessionId}
+            onClose={() => setMemorySessionId(null)}
+          />
+        </div>
+      )}
 
       {/* User menu - bottom pinned */}
       <UserMenu

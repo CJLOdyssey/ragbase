@@ -307,5 +307,14 @@
     },
     "deleteTitle": "Delete Prompt",
     "deleteConfirm": "Delete \"{{name}}\"?"
+  },
+  "memory": {
+    "title": "Session Memory",
+    "empty": "No memories yet",
+    "emptyDesc": "Memories generated during conversations will appear here",
+    "exportJson": "Export JSON",
+    "exportMd": "Export Markdown",
+    "deleteTitle": "Delete Memory",
+    "deleteConfirm": "Delete this memory?"
   }
 }
