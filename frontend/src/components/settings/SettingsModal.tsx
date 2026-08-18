@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { changeLanguage } from '../../i18n/index';
 import Modal from '@/components/shared/Modal';
 import ToggleSwitch from '@/components/shared/ToggleSwitch';
-import { Globe, Info } from 'lucide-react';
+import { Globe, Info, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import ChangePasswordForm from './ChangePasswordForm';
 import { useSettings } from '../../contexts/SettingsContext';
 
 interface Props {
   onClose: () => void;
 }
 
-type SettingsTab = 'general' | 'about';
+type SettingsTab = 'general' | 'security' | 'about';
 
 const VERSION = '1.0.0';
 const BUILD_TIME = '2026-05-08';
@@ -50,6 +51,7 @@ export default function SettingsModal({ onClose }: Props) {
           {(
             [
               ['general', Globe],
+              ['security', Shield],
               ['about', Info],
             ] as const
           ).map(([tab, Icon]) => (
@@ -203,6 +205,17 @@ export default function SettingsModal({ onClose }: Props) {
                     onChange={(v) => updateSettings({ streamOutput: v })}
                   />
                 </div>
+              </section>
+            </div>
+          )}
+
+          {activeTab === 'security' && (
+            <div className="flex flex-col gap-6">
+              <section>
+                <h4 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 tracking-tight">
+                  {t('settings.changePassword.title')}
+                </h4>
+                <ChangePasswordForm />
               </section>
             </div>
           )}

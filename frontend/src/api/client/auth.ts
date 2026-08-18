@@ -129,3 +129,14 @@ export async function resendVerification(
 export async function mergeGuestData(guestId: string): Promise<void> {
   await api.post('/auth/merge', { guest_id: guestId });
 }
+
+export async function changePassword(
+  oldPassword: string,
+  newPassword: string,
+): Promise<MessageResponse> {
+  const { data } = await api.post<MessageResponse>('/auth/change-password', {
+    old_password: oldPassword,
+    new_password: newPassword,
+  });
+  return data;
+}

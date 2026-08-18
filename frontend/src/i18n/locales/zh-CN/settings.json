@@ -22,6 +22,18 @@
     "streamOutputDesc": "生成时实时显示输出",
     "system": "跟随系统",
     "theme": "主题",
-    "themeDesc": "界面主题"
+    "themeDesc": "界面主题",
+    "security": "安全",
+    "changePassword": {
+      "title": "修改密码",
+      "oldPassword": "当前密码",
+      "newPassword": "新密码",
+      "confirmPassword": "确认新密码",
+      "submit": "修改密码",
+      "submitting": "修改中…",
+      "success": "密码已修改，请重新登录",
+      "failed": "修改失败",
+      "mismatch": "两次输入的密码不一致"
+    }
   }
 }
