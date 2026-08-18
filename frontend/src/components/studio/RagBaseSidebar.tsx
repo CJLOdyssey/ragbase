@@ -1,6 +1,14 @@
 import { memo, useCallback } from 'react';
-import { Bot, PanelLeft, Sparkles } from 'lucide-react';
+import {
+  BarChart3,
+  BookText,
+  Bot,
+  FileText,
+  PanelLeft,
+  Sparkles,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import type { Conversation } from '../../types/studio';
 import ConversationsList from './sidebar/ConversationsList';
 import UserMenu from './sidebar/UserMenu';
@@ -24,6 +32,9 @@ interface RagBaseSidebarProps {
   onToggleSidebar: () => void;
 }
 
+const NAV_BTN_BASE =
+  'flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors duration-150 cursor-pointer border-none bg-transparent';
+
 const RagBaseSidebar = memo(function RagBaseSidebar({
   conversations,
   activeConvId,
@@ -43,6 +54,7 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
   onToggleSidebar,
 }: RagBaseSidebarProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const handleConvSelect = useCallback(
     (conv: Conversation) => {
@@ -91,6 +103,25 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
         >
           <Sparkles size={16} className="text-[var(--color-text-muted)]" />
           <span>{t('sidebar.newChat')}</span>
+        </button>
+      </div>
+
+      {/* Navigation links */}
+      <div className="px-4 shrink-0 flex gap-1.5 mt-2">
+        <button onClick={() => navigate('/prompts')} className={NAV_BTN_BASE}>
+          <BookText size={14} />
+          <span>{t('prompts.title')}</span>
+        </button>
+        <button onClick={() => navigate('/assets')} className={NAV_BTN_BASE}>
+          <FileText size={14} />
+          <span>{t('assets.title')}</span>
+        </button>
+        <button
+          onClick={() => navigate('/monitoring')}
+          className={NAV_BTN_BASE}
+        >
+          <BarChart3 size={14} />
+          <span>{t('monitoring.title')}</span>
         </button>
       </div>
 

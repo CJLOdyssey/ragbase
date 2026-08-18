@@ -11,6 +11,10 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+}));
+
 vi.mock('../sidebar/UserMenu', () => ({
   default: () => <div data-testid="mock-user-menu" />,
 }));
