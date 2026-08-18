@@ -45,7 +45,7 @@ export function useSessionOps({
 
   // 乐观更新失败时以 server 为准纠正本地列表（回滚 tweak/deletedIds 的残留）。
   const refetchSessions = useCallback(() => {
-    listSessions()
+    listSessions(100)
       .then((data) => {
         // 唯一化归并：保留发送中的乐观占位（temp）
         setCachedSessions((prev) => {

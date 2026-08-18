@@ -14,7 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import type { RagSource } from '../../types';
-import type { Agent, Message } from '../../types/studio';
+import type { Message } from '../../types/studio';
 import { CopyBtn } from './messages/CopyBtn';
 import { markdownComponents, rehypeLinkify } from './thinking';
 import { ThinkingSection } from './ThinkingSection';
@@ -247,7 +247,6 @@ function MessageActionBar({
 
 const TeamMessage = memo(function TeamMessage({
   msg,
-  allAgents,
   onEditMessage,
   onRegenerate,
   showContinue,
@@ -258,7 +257,6 @@ const TeamMessage = memo(function TeamMessage({
   onThumbsFeedback,
 }: {
   msg: Message;
-  allAgents: Agent[];
   onEditMessage?: (msgId: string, newContent: string) => void;
   onRegenerate?: (msgId: string) => void;
   showContinue?: boolean;
@@ -281,7 +279,7 @@ const TeamMessage = memo(function TeamMessage({
     );
   }
 
-  const agentInfo = allAgents.find((a) => a.id === msg.agentId) || {
+  const agentInfo = {
     name: t('teamMessage.unknownAgent'),
     role: t('teamMessage.system'),
     icon: Bot,

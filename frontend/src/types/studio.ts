@@ -2,23 +2,6 @@
 
 // 消息类型
 import type { RagSource } from '../types';
-import type { LucideIcon } from 'lucide-react';
-
-// Agent 配置
-export interface Agent {
-  id: string;
-  name: string;
-  role: string;
-  agentConfigId?: string;
-  icon: LucideIcon;
-  color: string;
-  bg: string;
-  border: string;
-  systemPrompt?: string;
-  outputConstraints?: string;
-  responseFormat?: Record<string, unknown>;
-  isConfigured?: boolean;
-}
 
 // 对话历史记录
 export interface Conversation {
@@ -27,8 +10,6 @@ export interface Conversation {
   messages: Message[];
   createdAt: string;
   updatedAt: string;
-  kind?: 'normal' | 'agent';
-  agentId?: string;
   sessionId?: string;
   isPinned?: boolean;
   /** 会话已产生的 run 数（后端 sessions 列表返回；列表消息恒空时用于判定是否已回复） */
@@ -38,7 +19,6 @@ export interface Conversation {
 export interface Message {
   id: string;
   role: 'user' | 'agent';
-  agentId?: string;
   content: string;
   thinking?: string;
   answer?: string;

@@ -31,12 +31,10 @@ const CONV: Conversation = {
 const baseProps = {
   conversations: [CONV],
   activeConvId: null,
-  selectedAgentId: null,
   isUserMenuOpen: false,
   setIsUserMenuOpen: vi.fn(),
   setIsSettingsOpen: vi.fn(),
   setIsApiOpen: vi.fn(),
-  setSelectedAgentId: vi.fn(),
   setActiveConvId: vi.fn(),
   setInputValue: vi.fn(),
   onDeleteConversation: vi.fn(),
@@ -78,13 +76,11 @@ describe('RagBaseSidebar', () => {
     expect(onToggleSidebar).toHaveBeenCalled();
   });
 
-  it('selecting a conversation resets agent and activates it', () => {
-    const setSelectedAgentId = vi.fn();
+  it('selecting a conversation activates it', () => {
     const setActiveConvId = vi.fn();
     const setInputValue = vi.fn();
-    renderSidebar({ setSelectedAgentId, setActiveConvId, setInputValue });
+    renderSidebar({ setActiveConvId, setInputValue });
     fireEvent.click(screen.getByText('会话一'));
-    expect(setSelectedAgentId).toHaveBeenCalledWith(null);
     expect(setActiveConvId).toHaveBeenCalledWith('c1');
     expect(setInputValue).toHaveBeenCalledWith('会话一');
   });

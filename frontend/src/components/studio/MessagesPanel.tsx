@@ -1,5 +1,5 @@
 import { RefObject, useCallback } from 'react';
-import type { Agent, Message } from '../../types/studio';
+import type { Message } from '../../types/studio';
 import { createFeedback } from '../../api/client/feedback';
 import {
   continueGeneration,
@@ -12,18 +12,14 @@ import TeamMessage from './TeamMessage';
 import Logger from '../../utils/logger';
 
 interface Props {
-  showAgentChat: boolean;
   hasMessages: boolean;
-  allAgents: Agent[];
   displayMessages: Message[];
   messagesEndRef: RefObject<HTMLDivElement>;
   onSwitchBranch: (runId: string) => void;
 }
 
 export default function MessagesPanel({
-  showAgentChat,
   hasMessages,
-  allAgents,
   displayMessages,
   messagesEndRef,
   onSwitchBranch,
@@ -91,34 +87,6 @@ export default function MessagesPanel({
     [setThumbsFeedback],
   );
 
-  if (showAgentChat) {
-    return (
-      <div
-        className="max-w-[min(900px,85vw)] mx-auto w-full flex flex-col gap-6 px-6 py-6 pb-12"
-        aria-live="polite"
-      >
-        {displayMessages.map((msg) => (
-          <div key={msg.id}>
-            <TeamMessage
-              msg={msg}
-              allAgents={allAgents}
-              onEditMessage={handleEditMessage}
-              onRegenerate={handleRegenerate}
-              showContinue={msg.id === interruptedMessageId}
-              onContinue={continueGeneration}
-              onSwitchUserVersion={handleSwitchUserVersion}
-              onSwitchAnswer={handleSwitchAnswerVersion}
-              isContinuing={msg.id === continuingId}
-              onThumbsFeedback={handleThumbsFeedback}
-            />
-          </div>
-        ))}
-        <BrowserFrame />
-        <div ref={messagesEndRef} />
-      </div>
-    );
-  }
-
   if (hasMessages) {
     return (
       <div
@@ -129,7 +97,6 @@ export default function MessagesPanel({
           <div key={msg.id}>
             <TeamMessage
               msg={msg}
-              allAgents={allAgents}
               onEditMessage={handleEditMessage}
               onRegenerate={handleRegenerate}
               showContinue={msg.id === interruptedMessageId}

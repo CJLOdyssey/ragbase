@@ -144,7 +144,7 @@ export function useHomeState() {
     queryKey: ['sessions'],
     // 首帧渲染缓存，拉到最新列表后刷新缓存（queryFn 内落缓存，非 effect）。
     queryFn: async () => {
-      const data = await listSessions();
+      const data = await listSessions(100);
       // 唯一化归并：保留发送中的乐观占位（temp），server 权威会话照常进入。
       setCachedSessions((prev) => {
         const merged = mergeSessions(prev, data);

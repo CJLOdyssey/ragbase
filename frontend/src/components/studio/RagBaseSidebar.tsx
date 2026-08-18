@@ -8,21 +8,19 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import type { Conversation } from '../../types/studio';
 import MemoryPanel from './MemoryPanel';
+import type { ManageView } from './RagBaseWorkstation';
 import ConversationsList from './sidebar/ConversationsList';
 import UserMenu from './sidebar/UserMenu';
 
 interface RagBaseSidebarProps {
   conversations: Conversation[];
   activeConvId: string | null;
-  selectedAgentId: string | null;
   isUserMenuOpen: boolean;
   setIsUserMenuOpen: (open: boolean) => void;
   setIsSettingsOpen: (open: boolean) => void;
   setIsApiOpen: (open: boolean) => void;
-  setSelectedAgentId: (id: string | null) => void;
   setActiveConvId: (id: string | null) => void;
   setInputValue: (value: string) => void;
   onDeleteConversation: (convId: string) => void;
@@ -31,6 +29,8 @@ interface RagBaseSidebarProps {
   onNewChat: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
+  activeView: ManageView;
+  onNavigate: (view: ManageView) => void;
 }
 
 const NAV_BTN_BASE =
@@ -39,12 +39,10 @@ const NAV_BTN_BASE =
 const RagBaseSidebar = memo(function RagBaseSidebar({
   conversations,
   activeConvId,
-  selectedAgentId,
   isUserMenuOpen,
   setIsUserMenuOpen,
   setIsSettingsOpen,
   setIsApiOpen,
-  setSelectedAgentId,
   setActiveConvId,
   setInputValue,
   onDeleteConversation,
@@ -53,18 +51,18 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
   onNewChat,
   isSidebarOpen,
   onToggleSidebar,
+  activeView,
+  onNavigate,
 }: RagBaseSidebarProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [memorySessionId, setMemorySessionId] = useState<string | null>(null);
 
   const handleConvSelect = useCallback(
     (conv: Conversation) => {
-      setSelectedAgentId(null);
       setActiveConvId(conv.id);
       setInputValue(conv.title);
     },
-    [setSelectedAgentId, setActiveConvId, setInputValue],
+    [setActiveConvId, setInputValue],
   );
 
   const handleConvDelete = useCallback(
@@ -110,17 +108,23 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
 
       {/* Navigation links */}
       <div className="px-4 shrink-0 flex gap-1.5 mt-2">
-        <button onClick={() => navigate('/prompts')} className={NAV_BTN_BASE}>
+        <button
+          onClick={() => onNavigate('prompts')}
+          className={`${NAV_BTN_BASE} ${activeView === 'prompts' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+        >
           <BookText size={14} />
           <span>{t('prompts.title')}</span>
         </button>
-        <button onClick={() => navigate('/assets')} className={NAV_BTN_BASE}>
+        <button
+          onClick={() => onNavigate('assets')}
+          className={`${NAV_BTN_BASE} ${activeView === 'assets' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+        >
           <FileText size={14} />
           <span>{t('assets.title')}</span>
         </button>
         <button
-          onClick={() => navigate('/monitoring')}
-          className={NAV_BTN_BASE}
+          onClick={() => onNavigate('monitoring')}
+          className={`${NAV_BTN_BASE} ${activeView === 'monitoring' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
         >
           <BarChart3 size={14} />
           <span>{t('monitoring.title')}</span>
@@ -136,7 +140,6 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
           <ConversationsList
             conversations={conversations}
             activeConvId={activeConvId}
-            selectedAgentId={selectedAgentId}
             onSelect={handleConvSelect}
             onDelete={handleConvDelete}
             onRename={onRenameConversation}
