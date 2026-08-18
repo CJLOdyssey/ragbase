@@ -16,6 +16,7 @@
       "deleteConfirm": "确定要删除素材 \"{{name}}\" 吗？此操作不可撤销。",
       "deleteSuccess": "删除成功",
       "index": "建立索引",
+      "indexing": "索引中…",
       "indexSuccess": "索引已建立",
       "documentsOnly": "仅支持为文档类型素材建立索引"
     },

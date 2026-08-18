@@ -110,4 +110,14 @@ describe('QualityMonitor', { tags: ['unit'] }, () => {
     await screen.findByText('当前无告警');
     expect(screen.queryByTestId('alert-empty_recall_high')).toBeNull();
   });
+
+  it('shows error state with retry when the request fails', async () => {
+    mocks.fetchMonitoringSummary.mockRejectedValue(new Error('boom'));
+    renderPage();
+    expect(await screen.findByText('监控数据加载失败')).toBeTruthy();
+    mocks.fetchMonitoringSummary.mockResolvedValue(EMPTY);
+    fireEvent.click(screen.getByTestId('monitoring-retry'));
+    expect(await screen.findByText('当前无告警')).toBeTruthy();
+    expect(mocks.fetchMonitoringSummary).toHaveBeenCalledTimes(2);
+  });
 });

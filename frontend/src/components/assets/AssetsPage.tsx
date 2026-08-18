@@ -23,9 +23,17 @@ import {
 import { useToast } from '../../utils/useToast';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const DOC_TYPES = new Set(['application/pdf', 'text/plain', 'text/markdown']);
+const DOC_TYPES = new Set([
+  'application/pdf',
+  'text/plain',
+  'text/markdown',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_DOC_BYTES = 20 * 1024 * 1024;
+const INDEX_POLL_MS = 3000;
+const INDEX_POLL_TIMEOUT_MS = 120_000;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -44,10 +52,23 @@ export default function AssetsPage() {
   const [urlImportOpen, setUrlImportOpen] = useState(false);
   const [urlValue, setUrlValue] = useState('');
   const [urlName, setUrlName] = useState('');
+  const [indexing, setIndexing] = useState<
+    Array<{ id: string; deadline: number }>
+  >([]);
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['assets'],
     queryFn: listAssets,
+    refetchInterval: (query) => {
+      const now = Date.now();
+      const live = indexing.filter((i) => i.deadline > now);
+      if (live.length === 0) return false;
+      const list = query.state.data as AssetItem[] | undefined;
+      const pending = list?.some((a) =>
+        live.some((i) => i.id === a.id && !a.indexed),
+      );
+      return pending ? INDEX_POLL_MS : false;
+    },
   });
 
   const uploadMutation = useMutation({
@@ -79,8 +100,11 @@ export default function AssetsPage() {
 
   const indexMutation = useMutation({
     mutationFn: (id: string) => indexAsset(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+    onSuccess: (_, id) => {
+      setIndexing((prev) => [
+        ...prev,
+        { id, deadline: Date.now() + INDEX_POLL_TIMEOUT_MS },
+      ]);
       toast(t('assets.list.indexSuccess'), 'success');
     },
     onError: () => toast(t('assets.list.documentsOnly'), 'error'),
@@ -149,7 +173,7 @@ export default function AssetsPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown"
+          accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
           data-testid="asset-file-input"
           onChange={handleFileChange}
@@ -201,10 +225,17 @@ export default function AssetsPage() {
                     <button
                       className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                       onClick={() => indexMutation.mutate(asset.id)}
+                      disabled={indexing.some(
+                        (i) => i.id === asset.id && i.deadline > Date.now(),
+                      )}
                       data-testid={`index-${asset.id}`}
                     >
                       <Search size={12} className="inline mr-1" />
-                      {t('assets.list.index')}
+                      {indexing.some(
+                        (i) => i.id === asset.id && i.deadline > Date.now(),
+                      )
+                        ? t('assets.list.indexing')
+                        : t('assets.list.index')}
                     </button>
                   )}
                   <button
