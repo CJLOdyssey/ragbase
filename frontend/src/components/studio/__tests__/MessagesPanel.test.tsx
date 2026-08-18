@@ -20,6 +20,10 @@ const chatActionsMock = vi.hoisted(() => ({
 
 vi.mock('../../../stores/chatActions', () => chatActionsMock);
 
+vi.mock('../../../api/client/feedback', () => ({
+  createFeedback: vi.fn().mockResolvedValue({ id: 'fb-1' }),
+}));
+
 const USER_MSG: Message = {
   id: 'u1',
   role: 'user',
@@ -99,7 +103,7 @@ describe('MessagesPanel', () => {
   it('records thumbs feedback through the store', () => {
     useChatStore.setState({
       messages: [
-        { id: 'a1', role: 'agent', content: '我的回答', thumbs: null },
+        { id: 'a1', role: 'agent', content: '我的回答', thumbsFeedback: null },
       ],
     });
     renderPanel();
@@ -108,7 +112,7 @@ describe('MessagesPanel', () => {
     );
     const { messages } = useChatStore.getState();
     const agent = messages.find((m) => m.id === 'a1');
-    expect(agent?.thumbs).toBe('up');
+    expect(agent?.thumbsFeedback).toBe('up');
   });
 
   it('switches answer version branch via version pager', () => {

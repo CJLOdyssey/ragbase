@@ -25,6 +25,7 @@
       "p95_latency_high": "Latency P95 {{current}} exceeds threshold {{threshold}}",
       "good_ratio_low": "Good rate {{current}} below threshold {{threshold}}"
     },
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "loadFailed": "Failed to load monitoring data"
   }
 }

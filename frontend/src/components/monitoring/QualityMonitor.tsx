@@ -62,7 +62,7 @@ export default function QualityMonitor() {
   const { t } = useTranslation();
   const [windowHours, setWindowHours] = useState(24);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['monitoring', windowHours],
     queryFn: () => fetchMonitoringSummary(windowHours),
   });
@@ -92,7 +92,25 @@ export default function QualityMonitor() {
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 p-6">
-        {isLoading || !data ? (
+        {isError ? (
+          <div className="flex flex-col items-center gap-3 py-10">
+            <AlertTriangle
+              size={24}
+              className="text-[var(--color-warning, #d97706)]"
+            />
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              {t('monitoring.loadFailed')}
+            </span>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-md text-sm cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+              onClick={() => void refetch()}
+              data-testid="monitoring-retry"
+            >
+              {t('common.retry')}
+            </button>
+          </div>
+        ) : isLoading || !data ? (
           <p className="text-sm text-[var(--color-text-muted)]">
             {t('monitoring.loading')}
           </p>

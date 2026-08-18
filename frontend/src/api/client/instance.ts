@@ -9,7 +9,9 @@ import Logger from '../../utils/logger';
 
 const api = axios.create({
   baseURL: '/api',
-  timeout: 10000,
+  // 30s: backend sync key connectivity checks are capped at 8s (_FETCH_TIMEOUT),
+  // so slow providers must never surface a client-side timeout.
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
   xsrfCookieName: 'csrftoken',
   xsrfHeaderName: 'X-CSRFToken',

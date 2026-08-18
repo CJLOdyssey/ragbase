@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import InputToolbar, { type InputToolbarHandle } from '../input/InputToolbar';
 import { Moon, PanelLeft, Sun } from 'lucide-react';
 import HomeScreen from './HomeScreen';
@@ -8,11 +8,18 @@ import RagBaseSidebar from './RagBaseSidebar';
 import { useDragAndDrop } from './useDragAndDrop';
 import { useHomeState } from './useHomeState';
 
+const PromptLibraryPage = lazy(() => import('../prompts/PromptLibraryPage'));
+const AssetsPage = lazy(() => import('../assets/AssetsPage'));
+const QualityMonitor = lazy(() => import('../monitoring/QualityMonitor'));
+
+export type ManageView = 'chat' | 'prompts' | 'assets' | 'monitoring';
+
 export default function RagBaseWorkstation() {
   const s = useHomeState();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputToolbarRef = useRef<InputToolbarHandle>(null);
+  const [activeView, setActiveView] = useState<ManageView>('chat');
   const {
     isPageDragOver,
     handlePageDragOver,
@@ -71,20 +78,26 @@ export default function RagBaseWorkstation() {
         <RagBaseSidebar
           conversations={s.conversations}
           activeConvId={s.activeConvId}
-          selectedAgentId={null}
           isUserMenuOpen={s.isUserMenuOpen}
           setIsUserMenuOpen={s.setIsUserMenuOpen}
           setIsSettingsOpen={s.setIsSettingsOpen}
           setIsApiOpen={s.setIsApiOpen}
-          setSelectedAgentId={() => {}}
-          setActiveConvId={s.setActiveConvId}
+          setActiveConvId={(id) => {
+            setActiveView('chat');
+            s.setActiveConvId(id);
+          }}
           setInputValue={() => {}}
           onDeleteConversation={s.handleDeleteConversation}
           onRenameConversation={s.handleRenameConversation}
           onPinConversation={s.handlePinConversation}
-          onNewChat={s.handleNewChat}
+          onNewChat={() => {
+            setActiveView('chat');
+            s.handleNewChat();
+          }}
           isSidebarOpen={s.isSidebarOpen}
           onToggleSidebar={() => s.setIsSidebarOpen(false)}
+          activeView={activeView}
+          onNavigate={setActiveView}
         />
 
         <div className="flex flex-col flex-1 overflow-hidden">
@@ -144,51 +157,65 @@ export default function RagBaseWorkstation() {
                 </button>
               </div>
             )}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div
-                className="flex-1 overflow-y-auto flex flex-col bg-[var(--color-surface)]"
-                ref={messagesContainerRef}
-              >
-                {s.hasMessages ? (
-                  <MessagesPanel
-                    showAgentChat
-                    hasMessages={s.hasMessages}
-                    allAgents={[]}
-                    displayMessages={s.displayMessages}
-                    messagesEndRef={messagesEndRef}
-                    onSwitchBranch={s.handleSwitchBranch}
-                  />
-                ) : (
-                  <HomeScreen
-                    conversationKey={0}
+            {activeView === 'chat' ? (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div
+                  className="flex-1 overflow-y-auto flex flex-col bg-[var(--color-surface)]"
+                  ref={messagesContainerRef}
+                >
+                  {s.hasMessages ? (
+                    <MessagesPanel
+                      hasMessages={s.hasMessages}
+                      displayMessages={s.displayMessages}
+                      messagesEndRef={messagesEndRef}
+                      onSwitchBranch={s.handleSwitchBranch}
+                    />
+                  ) : (
+                    <HomeScreen
+                      conversationKey={0}
+                      models={s.models}
+                      selectedModel={s.selectedModel}
+                      onModelChange={s.setSelectedModel}
+                      commands={[]}
+                      onSend={(text, files) => s.handleSend(text, files)}
+                      onConfigureModels={() => s.setIsApiOpen(true)}
+                      inputToolbarRef={inputToolbarRef}
+                      isRunning={s.isRunning}
+                      onStop={s.handleStop}
+                    />
+                  )}
+                </div>
+
+                {s.hasMessages && (
+                  <InputToolbar
+                    ref={inputToolbarRef}
+                    onSend={(text, files) => s.handleSend(text, files)}
                     models={s.models}
                     selectedModel={s.selectedModel}
                     onModelChange={s.setSelectedModel}
+                    placeholder={s.t('home.placeholder')}
                     commands={[]}
-                    onSend={(text, files) => s.handleSend(text, files)}
                     onConfigureModels={() => s.setIsApiOpen(true)}
-                    inputToolbarRef={inputToolbarRef}
                     isRunning={s.isRunning}
                     onStop={s.handleStop}
                   />
                 )}
               </div>
-
-              {s.hasMessages && (
-                <InputToolbar
-                  ref={inputToolbarRef}
-                  onSend={(text, files) => s.handleSend(text, files)}
-                  models={s.models}
-                  selectedModel={s.selectedModel}
-                  onModelChange={s.setSelectedModel}
-                  placeholder={s.t('home.placeholder')}
-                  commands={[]}
-                  onConfigureModels={() => s.setIsApiOpen(true)}
-                  isRunning={s.isRunning}
-                  onStop={s.handleStop}
-                />
-              )}
-            </div>
+            ) : (
+              <div className="flex-1 overflow-hidden">
+                <Suspense
+                  fallback={
+                    <div className="h-full flex items-center justify-center text-sm text-[var(--color-text-muted)]">
+                      {s.t('common.loading')}
+                    </div>
+                  }
+                >
+                  {activeView === 'prompts' && <PromptLibraryPage />}
+                  {activeView === 'assets' && <AssetsPage />}
+                  {activeView === 'monitoring' && <QualityMonitor />}
+                </Suspense>
+              </div>
+            )}
           </main>
         </div>
       </div>

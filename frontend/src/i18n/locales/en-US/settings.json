@@ -22,6 +22,18 @@
     "streamOutputDesc": "Stream output as it generates",
     "system": "System",
     "theme": "Theme",
-    "themeDesc": "Interface theme"
+    "themeDesc": "Interface theme",
+    "security": "Security",
+    "changePassword": {
+      "title": "Change Password",
+      "oldPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Change password",
+      "submitting": "Changing…",
+      "success": "Password changed. Please log in again.",
+      "failed": "Failed to change password",
+      "mismatch": "Passwords do not match"
+    }
   }
 }

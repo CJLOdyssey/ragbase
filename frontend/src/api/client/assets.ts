@@ -38,3 +38,11 @@ export async function indexAsset(assetId: string): Promise<AssetIndexResult> {
   const { data } = await api.post(`/assets/${assetId}/index`);
   return data;
 }
+
+export async function importUrl(
+  url: string,
+  name?: string,
+): Promise<AssetItem> {
+  const { data } = await api.post('/assets/import-url', { url, name });
+  return data;
+}

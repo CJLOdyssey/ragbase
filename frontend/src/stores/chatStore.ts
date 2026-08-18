@@ -203,7 +203,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setThumbsFeedback: (msgId, value) => {
     set((s) => ({
       messages: s.messages.map((m) =>
-        m.id === msgId ? { ...m, thumbs: value } : m,
+        m.id === msgId ? { ...m, thumbsFeedback: value } : m,
       ),
     }));
   },

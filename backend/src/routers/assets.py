@@ -1,6 +1,7 @@
 """Asset library API routes — SPEC §3.3 assets CRUD + index."""
 
 import os
+import urllib.parse
 import uuid
 from pathlib import Path
 from typing import Any
@@ -8,14 +9,16 @@ from typing import Any
 from auth import get_user_id
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from httpx import Timeout
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 from repository.assets import (
     create_asset,
     delete_asset,
-    get_asset,
+    get_asset_for_user,
     list_assets_by_user,
+    update_asset_name,
 )
 
 logger = get_logger(__name__)
@@ -26,6 +29,7 @@ ASSET_DIR.mkdir(parents=True, exist_ok=True)
 
 _MAX_IMAGE_MB = 10
 _MAX_DOC_MB = 20
+_MAX_REDIRECTS = 3
 _IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp"}
 _DOC_TYPES = {
     "application/pdf",
@@ -127,35 +131,16 @@ async def import_asset_from_url(req: UrlImportIn, request: Request) -> Any:
     SSRF guard: only http/https, never RFC1918/loopback/link-local targets.
     B/C (SharePoint/S3/DB/dir connectors) extend this via source field.
     """
-    import ipaddress
-    import urllib.parse
-
-    from httpx import AsyncClient, Timeout
-
     user_id = get_user_id(request)
-    parsed = urllib.parse.urlparse(req.url)
-    if parsed.scheme not in ("http", "https"):
-        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="仅支持 http/https 链接")
-    try:
-        host_ip = ipaddress.ip_address(parsed.hostname or "")
-    except ValueError:
-        try:
-            host_ip = ipaddress.ip_address(await _resolve_host(parsed.hostname or ""))
-        except Exception:
-            raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="无法解析链接域名") from None
-    if host_ip.is_private or host_ip.is_loopback or host_ip.is_link_local or host_ip.is_reserved:
-        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="不允许导入内网地址")
 
     timeout = Timeout(30.0)
     try:
-        async with AsyncClient(follow_redirects=True, timeout=timeout) as client:
-            resp = await client.get(req.url)
-            resp.raise_for_status()
+        content, content_type = await _fetch_public(req.url, timeout)
+    except HTTPException:
+        raise
     except Exception:
         raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="下载链接失败") from None
 
-    content = resp.content
-    content_type = resp.headers.get("content-type", "").split(";")[0].strip()
     asset_type = _validate(content_type, len(content))
 
     safe_name = Path(urllib.parse.urlparse(req.url).path or "asset").name or "asset"
@@ -186,20 +171,58 @@ async def _resolve_host(hostname: str) -> str:
     return await asyncio.to_thread(__import__("socket").gethostbyname, hostname)
 
 
+async def _validate_public_host(hostname: str) -> None:
+    """Reject private/loopback/link-local/reserved hosts — every redirect hop."""
+    import ipaddress
+
+    try:
+        host_ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        try:
+            host_ip = ipaddress.ip_address(await _resolve_host(hostname))
+        except Exception:
+            raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="无法解析链接域名") from None
+    if host_ip.is_private or host_ip.is_loopback or host_ip.is_link_local or host_ip.is_reserved:
+        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="不允许导入内网地址")
+
+
+async def _fetch_public(url: str, timeout: Any) -> tuple[bytes, str]:
+    """Download a public URL; validate scheme + host on EVERY redirect hop.
+
+    Redirects are followed manually (OWASP SSRF cheat sheet: disable client
+    redirection, else the initial allowlist/denylist check is bypassed).
+    """
+    import urllib.parse
+
+    from httpx import AsyncClient
+
+    current = url
+    for _ in range(_MAX_REDIRECTS + 1):
+        parsed = urllib.parse.urlparse(current)
+        if parsed.scheme not in ("http", "https"):
+            raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="仅支持 http/https 链接")
+        await _validate_public_host(parsed.hostname or "")
+        async with AsyncClient(follow_redirects=False, timeout=timeout) as client:
+            resp = await client.get(current)
+        if resp.status_code in (301, 302, 303, 307, 308):
+            location = resp.headers.get("location")
+            if not location:
+                raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="重定向缺少目标地址")
+            current = urllib.parse.urljoin(current, location)
+            continue
+        resp.raise_for_status()
+        content_type = resp.headers.get("content-type", "").split(";")[0].strip()
+        return resp.content, content_type
+    raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="重定向次数过多")
+
+
 @router.put("/api/assets/{asset_id}", response_model=AssetItem)
 async def rename_asset(asset_id: str, request: Request, name: str) -> Any:
     """Rename an asset owned by the current user."""
     user_id = get_user_id(request)
-    asset = await get_asset(asset_id)
-    if asset is None or asset.user_id != user_id:
+    asset = await update_asset_name(asset_id, user_id, name.strip()[:256])
+    if asset is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
-    asset.name = name.strip()[:256]
-    from core.infra.database import get_session_factory
-
-    factory = get_session_factory()
-    async with factory() as session:
-        session.add(asset)
-        await session.commit()
     return _to_item(asset)
 
 
@@ -207,8 +230,8 @@ async def rename_asset(asset_id: str, request: Request, name: str) -> Any:
 async def remove_asset(asset_id: str, request: Request) -> Any:
     """Delete an asset and purge its vector chunks from the store."""
     user_id = get_user_id(request)
-    asset = await get_asset(asset_id)
-    if asset is None or asset.user_id != user_id:
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
     storage_path = await delete_asset(asset_id)
     if storage_path is None:
@@ -225,8 +248,8 @@ async def remove_asset(asset_id: str, request: Request) -> Any:
 async def index_asset(asset_id: str, request: Request) -> Any:
     """Queue asynchronous indexing of a document asset in Celery."""
     user_id = get_user_id(request)
-    asset = await get_asset(asset_id)
-    if asset is None or asset.user_id != user_id:
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
     if asset.asset_type != "document":
         raise error_response(ErrorCode.INVALID_REQUEST, detail="仅文档类素材可索引")

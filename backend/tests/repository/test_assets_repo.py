@@ -9,6 +9,7 @@ from repository.assets import (
     increment_asset_usage,
     list_assets_by_user,
     set_asset_indexed,
+    update_asset_name,
 )
 
 pytestmark = pytest.mark.unit
@@ -56,3 +57,17 @@ async def test_get_asset_for_user_scoped() -> None:
     assert await get_asset_for_user(asset.id, "u1") is not None
     assert await get_asset_for_user(asset.id, "u2") is None
     assert await get_asset_for_user("no-such-asset", "u1") is None
+
+
+@pytest.mark.asyncio
+async def test_update_asset_name_owner_only() -> None:
+    asset = await create_asset("u1", "old.md", "document", 42, "/tmp/assets/old.md")
+
+    renamed = await update_asset_name(asset.id, "u1", "new.md")
+    assert renamed is not None and renamed.name == "new.md"
+
+    assert await update_asset_name(asset.id, "u2", "hijack.md") is None
+    assert await update_asset_name("no-such-asset", "u1", "x.md") is None
+
+    fetched = await get_asset(asset.id)
+    assert fetched is not None and fetched.name == "new.md"

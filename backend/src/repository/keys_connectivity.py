@@ -26,7 +26,7 @@ _SUB_TYPE_TO_MODEL_TYPE: dict[str, str] = {
 _ASR_NAME_MARKERS = ("asr", "whisper", "paraformer", "sherpa", "sensevoice")
 _TTS_NAME_MARKERS = ("tts", "voice", "speech", "cosyvoice", "edge-tts", "moss")
 
-_FETCH_TIMEOUT = 15
+_FETCH_TIMEOUT = 8
 
 
 async def test_api_key_connection(key_id: str, user_id: str) -> dict[str, Any]:

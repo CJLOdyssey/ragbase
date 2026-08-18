@@ -2,8 +2,9 @@
 
 Read-only analytics over the append-only retrieval_logs and feedback_logs.
 Counts are aggregated in SQL; latency percentiles are computed in Python
-from a bounded sample of the window (SQLite has no native percentile
-aggregate, and percentiles over a capped sample stay stable for alerting).
+from the latest bounded sample of the window. PostgreSQL has native
+percentile_cont(), but the in-memory sqlite used by unit tests does not —
+the nearest-rank Python percentile keeps behavior identical across both.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -40,7 +41,9 @@ async def retrieval_summary(user_id: str, window_hours: int) -> dict[str, Any]:
                 RetrievalLogDB.user_id == user_id,
                 RetrievalLogDB.created_at >= since,
             )
-            .order_by(RetrievalLogDB.created_at)
+            # Newest-first sample: with more rows than the cap, the most
+            # recent traffic (not the window's tail) drives alerting.
+            .order_by(RetrievalLogDB.created_at.desc())
             .limit(_LATENCY_SAMPLE_LIMIT)
         )
         latencies = list((await session.execute(latency_stmt)).scalars())
@@ -59,15 +62,17 @@ async def feedback_summary(user_id: str, window_hours: int) -> dict[str, Any]:
     factory = get_session_factory()
     async with factory() as session:
         stmt = (
-            select(FeedbackLog.rating)
-            .where(
+            select(
+                func.count().label("total"),
+                func.count().filter(FeedbackLog.rating == "good").label("good"),
+            ).where(
                 FeedbackLog.user_id == user_id,
                 FeedbackLog.created_at >= since,
             )
         )
-        ratings = (await session.execute(stmt)).scalars().all()
-    good = sum(1 for r in ratings if r == "good")
-    total = len(ratings)
+        row = (await session.execute(stmt)).one()
+    total = int(row.total)
+    good = int(row.good)
     return {
         "total": total,
         "good_count": good,
