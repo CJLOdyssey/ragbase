@@ -50,7 +50,8 @@ async def get_index_progress(asset_id: str) -> dict[str, Any] | None:
         raw = await r.get(key)
         if raw is None:
             return None
-        return json.loads(raw)
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else None
     except Exception:
         logger.debug("get_index_progress failed for %s", asset_id, exc_info=True)
         return None

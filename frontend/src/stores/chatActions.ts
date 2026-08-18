@@ -1,14 +1,18 @@
 import {
   listKeys,
   submitRequirement as submitRequirementExternal,
-  rewriteQuery,
 } from '../api/client';
 import { connectRun, disconnectRun } from '../api/websocket';
 import i18n from '../i18n';
 import type { AttachmentInfo, ChatMessage } from '../types';
 import Logger from '../utils/logger';
 import { getCachedRetrieval } from '../utils/ragCache';
-import { buildEditVersions, resolveKey } from './chatActionsUtils';
+import {
+  resolveKeyAndModel,
+  rewriteQueryWithContext,
+  bindUserMessageToRun,
+  buildEditVersions,
+} from './chatActionsUtils';
 import { useChatStore } from './chatStore';
 import { createStreamHandler } from './chatStreaming';
 import { invalidateSessionCache } from './sessionCache';
@@ -38,18 +42,9 @@ export async function submitRequirement(
   }
   useChatStore.setState({ submissionConvId: submissionConvId ?? null });
 
-  let keyId: string | undefined;
-  let model: string | undefined;
-  try {
-    const keys = await listKeys();
-    const activeKeys = keys.filter((k) => k.is_active);
-    const persistedModel = localStorage.getItem('ragbase-selected-model');
-    const resolved = resolveKey(activeKeys, persistedModel ?? undefined);
-    keyId = resolved.keyId;
-    model = resolved.model;
-  } catch {
-    // Key vault unavailable
-  }
+  const resolved = await resolveKeyAndModel();
+  const keyId = resolved.keyId;
+  const model = resolved.model;
 
   if (!keyId) {
     useChatStore.setState({
@@ -85,24 +80,11 @@ export async function submitRequirement(
   });
 
   // Query rewrite: build history from last 4 messages
-  let effectiveRequirement = requirement;
-  try {
-    const messages = useChatStore.getState().messages;
-    const historyMessages = messages.slice(-4).map((m) => ({
-      role: m.role === 'user' ? 'user' : 'assistant',
-      content: m.content,
-    }));
-    const rewriteResp = await rewriteQuery({
-      query: requirement,
-      history: historyMessages,
-      session_id: effectiveSessionId,
-    });
-    effectiveRequirement = rewriteResp.rewritten_query || requirement;
-    Logger.info('[chat] query rewritten: "%s" -> "%s"', requirement, effectiveRequirement);
-  } catch (err) {
-    Logger.warn('[chat] query rewrite failed, using original query:', err);
-    // Fall back to original query silently
-  }
+  const effectiveRequirement = await rewriteQueryWithContext(
+    requirement,
+    useChatStore.getState().messages,
+    effectiveSessionId,
+  );
 
   // Check cache for this query
   const cached = await getCachedRetrieval(effectiveRequirement);
@@ -133,45 +115,9 @@ export async function submitRequirement(
     });
     // Bind the freshly-added user message to its run so edit-regenerate can
     // resolve the parent_run_id from "run-{run_id}-requirement" on a later edit.
-    if (!skipAddUserMessage) {
-      useChatStore.setState((prev) => {
-        const msgs = [...prev.messages];
-        const last = msgs[msgs.length - 1];
-        if (last && last.role === 'user' && !last.id.startsWith('run-')) {
-          msgs[msgs.length - 1] = { ...last, id: `run-${run_id}-requirement` };
-        }
-        return { messages: msgs };
-      });
-    } else {
-      // Edit-regenerate / regenerate: rebind the target user message to the new
-      // run, or the next edit resolves parent_run_id to a stale run and the
-      // backend requirement_versions chain silently drops intermediate versions.
-      useChatStore.setState((prev) => {
-        const msgs = [...prev.messages];
-        // edit 场景：editTargetId 前一条用户消息；regenerate 场景：截断后最后一条。
-        const targetIdx = prev.editTargetId
-          ? msgs.findIndex((m) => m.id === prev.editTargetId) - 1
-          : msgs.length - 1;
-        const u =
-          targetIdx >= 0 && msgs[targetIdx]?.role === 'user'
-            ? msgs[targetIdx]
-            : null;
-        if (!u) return { messages: msgs };
-        // 版本链最后一跳 = 新 run。userVersions/currentUserVersion 不在此写：
-        // 用户消息版本器由加载时 attachBranchVersions 全量挂载（branchGroup），
-        // 流式路径只维护 run 映射（versionRunIds）。
-        const versionRunIds = u.versionRunIds
-          ? [...u.versionRunIds, run_id]
-          : [run_id];
-        msgs[targetIdx] = {
-          ...u,
-          id: `run-${run_id}-requirement`,
-          runId: run_id,
-          versionRunIds,
-        };
-        return { messages: msgs };
-      });
-    }
+    useChatStore.setState(
+      bindUserMessageToRun(run_id, skipAddUserMessage, useChatStore.getState().editTargetId),
+    );
     connectRun(run_id, {
       onMessage: createStreamHandler(
         useChatStore.setState,

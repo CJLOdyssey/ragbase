@@ -2,15 +2,15 @@
 
 from typing import Any
 
-from auth import get_user_id
 from auth.auth_rbac import require_role
+from core.infra.database import RoleDB, UserDB, UserRoleDB, get_session_factory
 from core.infra.logging_config import get_logger
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
-from repository.auth import get_user_by_id, get_user_roles
-from sqlalchemy import delete as sa_delete, func, select
-from core.infra.database import RoleDB, UserDB, UserRoleDB, get_session_factory
+from repository.auth import get_user_roles
+from sqlalchemy import delete as sa_delete
+from sqlalchemy import func, select
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["admin-users"])

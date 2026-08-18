@@ -7,6 +7,7 @@ from core.infra.logging_config import get_logger
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
+
 from routers.query_strategies import QueryRewriteEngine, rewrite_query
 
 logger = get_logger(__name__)
@@ -34,11 +35,11 @@ class QueryRewriteOut(BaseModel):
 @router.post("/api/query/rewrite", response_model=QueryRewriteOut)
 async def rewrite_query_endpoint(req: QueryRewriteIn, request: Request) -> Any:
     """Rewrite a query using conversation history for context.
-    
+
     Uses the Strategy Pattern to apply multiple rewrite rules:
     - PronounResolutionStrategy: Resolves pronouns with context from history
     - ContextExpansionStrategy: Expands short queries with context keywords
-    
+
     New strategies can be added without modifying this endpoint (OCP).
     """
     user_id = get_user_id(request)

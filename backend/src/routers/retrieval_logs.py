@@ -41,7 +41,8 @@ def _parse_sources(sources_json: str | None) -> list[dict[str, Any]] | None:
     if not sources_json:
         return None
     try:
-        return json.loads(sources_json)
+        result = json.loads(sources_json)
+        return result if isinstance(result, list) else None
     except (json.JSONDecodeError, TypeError):
         return None
 

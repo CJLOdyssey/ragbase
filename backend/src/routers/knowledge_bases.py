@@ -11,7 +11,6 @@ from repository.knowledge_bases import (
     assign_asset_to_kb,
     create_kb,
     delete_kb,
-    get_kb,
     list_kbs,
     update_kb,
 )

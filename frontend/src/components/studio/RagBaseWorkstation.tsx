@@ -1,10 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import InputToolbar, { type InputToolbarHandle } from '../input/InputToolbar';
-import { Moon, PanelLeft, Sun } from 'lucide-react';
 import HomeScreen from './HomeScreen';
 import MessagesPanel from './MessagesPanel';
 import Modals from './Modals';
 import RagBaseSidebar from './RagBaseSidebar';
+import WorkstationHeader from './WorkstationHeader';
+import { useAutoScroll } from './useAutoScroll';
 import { useDragAndDrop } from './useDragAndDrop';
 import { useHomeState } from './useHomeState';
 
@@ -37,50 +38,7 @@ export default function RagBaseWorkstation() {
     handlePageDrop,
   } = useDragAndDrop(inputToolbarRef);
 
-  // 自动跟随滚动：模型输出时滚到底；用户手动滚动离开底部则暂停跟随
-  // （停留用户位置），滚回底部后恢复。程序滚动由 programmaticScrollRef 跳过。
-  const displayMessages = s.displayMessages;
-  const lastMsgLen = displayMessages.length;
-  const lastMsgStream = useMemo(() => {
-    const m = displayMessages[displayMessages.length - 1];
-    if (!m) return '';
-    return `${m.thinking ?? ''}|${m.content ?? ''}`;
-  }, [displayMessages]);
-  const followBottomRef = useRef(true);
-  const programmaticScrollRef = useRef(false);
-  useEffect(() => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      if (programmaticScrollRef.current) {
-        programmaticScrollRef.current = false;
-        return;
-      }
-      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-      if (atBottom !== followBottomRef.current)
-        followBottomRef.current = atBottom;
-    };
-    el.addEventListener('scroll', onScroll);
-    return () => el.removeEventListener('scroll', onScroll);
-  }, [messagesContainerRef]);
-
-  const prevLenRef = useRef(lastMsgLen);
-  useEffect(() => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    const lenChanged = lastMsgLen !== prevLenRef.current;
-    prevLenRef.current = lastMsgLen;
-    // 新增消息（发送/切换/加载）→ 无条件跟随；流式增量 → 仅在用户位于
-    // 底部时跟随（用户上滚看历史时暂停，不强制拉回）。
-    if (!lenChanged && !followBottomRef.current) return;
-    programmaticScrollRef.current = true;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
-  }, [lastMsgLen, lastMsgStream, messagesContainerRef]);
-
-  // 切换会话 → 恢复自动跟随滚动。
-  useEffect(() => {
-    followBottomRef.current = true;
-  }, [s.activeConvId]);
+  useAutoScroll(messagesContainerRef, s.displayMessages, s.activeConvId);
 
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
@@ -111,34 +69,16 @@ export default function RagBaseWorkstation() {
         />
 
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="h-14 flex items-center justify-between px-4 flex-shrink-0 z-40 bg-[var(--color-surface)]">
-            <div className="flex items-center gap-3">
-              {!s.isSidebarOpen && (
-                <button
-                  type="button"
-                  className="flex items-center justify-center w-8 h-8 bg-transparent border-none rounded-md text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
-                  onClick={() => s.setIsSidebarOpen(true)}
-                  aria-label="Expand sidebar"
-                >
-                  <PanelLeft size={18} />
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="flex items-center justify-center w-8 h-8 bg-transparent border-none rounded-md text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
-                onClick={() =>
-                  s.updateSettings({
-                    theme: s.isDarkMode ? 'light' : 'dark',
-                  })
-                }
-                aria-label="Toggle dark mode"
-              >
-                {s.isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-            </div>
-          </header>
+          <WorkstationHeader
+            isSidebarOpen={s.isSidebarOpen}
+            isDarkMode={s.isDarkMode}
+            onToggleSidebar={() => s.setIsSidebarOpen(true)}
+            onToggleTheme={() =>
+              s.updateSettings({
+                theme: s.isDarkMode ? 'light' : 'dark',
+              })
+            }
+          />
 
           <main
             className={`flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[var(--color-surface)] ${isPageDragOver ? 'ring-2 ring-inset ring-[var(--color-accent)]' : ''}`}

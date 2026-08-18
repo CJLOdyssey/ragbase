@@ -14,6 +14,7 @@ from orm.infra import (
     AuditLogDB,
     CommandLogDB,
     FeedbackLog,
+    KnowledgeBaseDB,
     RetrievalLogDB,
     ShadowRetrievalLogDB,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "CommandLogDB",
     "FeedbackLog",
     "KeyUsageLog",
+    "KnowledgeBaseDB",
     "MemoryEntry",
     "ProjectRun",
     "PromptDB",
