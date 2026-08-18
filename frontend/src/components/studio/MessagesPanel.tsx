@@ -1,5 +1,6 @@
 import { RefObject, useCallback } from 'react';
 import type { Agent, Message } from '../../types/studio';
+import { createFeedback } from '../../api/client/feedback';
 import {
   continueGeneration,
   editAndRegenerate,
@@ -8,6 +9,7 @@ import {
 import { useChatStore } from '../../stores/chatStore';
 import BrowserFrame from './BrowserFrame';
 import TeamMessage from './TeamMessage';
+import Logger from '../../utils/logger';
 
 interface Props {
   showAgentChat: boolean;
@@ -71,8 +73,21 @@ export default function MessagesPanel({
   );
 
   const handleThumbsFeedback = useCallback(
-    (msgId: string, value: 'up' | 'down' | null) =>
-      setThumbsFeedback(msgId, value),
+    (msgId: string, value: 'up' | 'down' | null) => {
+      setThumbsFeedback(msgId, value);
+      if (value) {
+        const msg = useChatStore
+          .getState()
+          .messages.find((m) => m.id === msgId);
+        const runId = msg?.runId;
+        if (runId) {
+          const rating = value === 'up' ? 'good' : 'bad';
+          createFeedback(runId, rating).catch((err) =>
+            Logger.warn('[feedback] failed to submit: %s', err),
+          );
+        }
+      }
+    },
     [setThumbsFeedback],
   );
 

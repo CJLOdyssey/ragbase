@@ -32,4 +32,5 @@ export {
 export type { AssetItem, AssetIndexResult } from '../../types/assets';
 export { listVersions, getVersionDetail } from './versions';
 export type { VersionItem } from './versions';
+export { createFeedback } from './feedback';
 export { default } from './instance';
