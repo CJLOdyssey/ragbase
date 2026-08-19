@@ -315,11 +315,20 @@
       "saveFailed": "保存失败",
       "retry": "重试"
     },
+    "history": {
+      "title": "版本历史",
+      "empty": "暂无历史记录",
+      "version": "版本 {{num}}",
+      "view": "查看"
+    },
     "version": {
       "title": "版本历史",
       "backToList": "返回列表",
       "rollback": "回滚到此",
       "view": "查看",
+      "current": "当前版本",
+      "createdAt": "创建于",
+      "createdBy": "创建者",
       "rollbackTitle": "回滚到 {{version}}",
       "rollbackMsg": "将用该版本内容覆盖当前并生成新版本，历史保留",
       "rollbackConfirm": "确认回滚",

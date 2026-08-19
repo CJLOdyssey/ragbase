@@ -351,6 +351,8 @@ export default function AssetsPage() {
           onClose={() => setRenameTarget(null)}
           ariaLabel={t('assets.list.rename')}
           width={420}
+          hideHeaderBorder
+          bodyClassName="p-6"
           footer={
             <>
               <button
@@ -395,6 +397,8 @@ export default function AssetsPage() {
           onClose={() => setUrlImportOpen(false)}
           ariaLabel={t('assets.urlImport.title')}
           width={480}
+          hideHeaderBorder
+          bodyClassName="p-6"
           footer={
             <>
               <button
@@ -415,7 +419,7 @@ export default function AssetsPage() {
             </>
           }
         >
-          <div className="flex flex-col gap-4 p-6">
+          <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-[var(--color-text-primary)]">
                 {t('assets.urlImport.urlLabel')}

@@ -30,24 +30,29 @@ export default function Modal({
   const { t } = useTranslation();
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     const prevFocus = document.activeElement as HTMLElement;
     const modal = contentRef.current;
     if (modal) {
       const firstInput = modal.querySelector<HTMLElement>(
-        'input, button, textarea, select, [tabindex]:not([tabindex="-1"])',
+        'input:not([disabled]), textarea:not([disabled]), select:not([disabled])',
       );
-      firstInput?.focus();
+      if (firstInput) {
+        firstInput.focus();
+      }
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !modal) return;
       const focusable = modal.querySelectorAll<HTMLElement>(
-        'input, button, textarea, select, [tabindex]:not([tabindex="-1"])',
+        'input:not([disabled]), button:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
       );
       if (focusable.length === 0) return;
       const first = focusable[0];
@@ -66,7 +71,7 @@ export default function Modal({
       document.removeEventListener('keydown', handleKeyDown);
       prevFocus?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div

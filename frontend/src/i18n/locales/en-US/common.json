@@ -315,11 +315,20 @@
       "saveFailed": "Save failed",
       "retry": "Retry"
     },
+    "history": {
+      "title": "Version History",
+      "empty": "No history available",
+      "version": "Version {{num}}",
+      "view": "View"
+    },
     "version": {
       "title": "Version History",
       "backToList": "Back to list",
       "rollback": "Rollback",
       "view": "View",
+      "current": "Current version",
+      "createdAt": "Created at",
+      "createdBy": "Created by",
       "rollbackTitle": "Roll back to {{version}}",
       "rollbackMsg": "Overwrite current with this version; history is preserved",
       "rollbackConfirm": "Confirm rollback",

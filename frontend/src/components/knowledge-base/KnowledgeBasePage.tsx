@@ -69,9 +69,9 @@ export default function KnowledgeBasePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] });
       setDeleteTarget(null);
-      toast(t('toast.saveSuccess'), 'success');
+      toast(t('toast.deleteSuccess'), 'success');
     },
-    onError: () => toast(t('toast.error'), 'error'),
+    onError: () => toast(t('toast.deleteFailed'), 'error'),
   });
 
   const assignMutation = useMutation({

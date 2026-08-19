@@ -12,7 +12,7 @@ import {
   updatePrompt,
   type PromptItem,
 } from '../../api/client/prompts';
-import { type VersionItem } from '../../api/client/versions';
+import { listVersions, type VersionItem } from '../../api/client/versions';
 import PromptEditorModal from './PromptEditorModal';
 import VersionViewModal from './VersionViewModal';
 import { useToast } from '../../utils/useToast';
@@ -93,10 +93,17 @@ export default function PromptLibraryPage() {
 
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [historyPromptId, setHistoryPromptId] = useState<string | null>(null);
 
   const { data: prompts = [], isLoading } = useQuery({
     queryKey: ['prompts'],
     queryFn: listPrompts,
+  });
+
+  const { data: versions = [] } = useQuery({
+    queryKey: ['versions', historyPromptId],
+    queryFn: () => listVersions('prompts', historyPromptId!),
+    enabled: !!historyPromptId,
   });
 
   const createMutation = useMutation({
@@ -142,7 +149,15 @@ export default function PromptLibraryPage() {
   const handleDelete = (row: PromptItem) => setDialog({ type: 'delete', row });
 
   const handleHistory = (row: PromptItem) => {
-    setSelectedPromptId(row.id);
+    setHistoryPromptId(row.id);
+  };
+
+  const handleViewVersion = (version: VersionItem) => {
+    setDialog({ type: 'version-view', version });
+  };
+
+  const handleCloseHistory = () => {
+    setHistoryPromptId(null);
   };
 
   const handleRollback = (v: VersionItem) => {
@@ -291,6 +306,56 @@ export default function PromptLibraryPage() {
         onRollback={handleRollback}
         onClose={() => setDialog(null)}
       />
+
+      {historyPromptId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="flex flex-col w-full max-w-2xl max-h-[80vh] rounded-lg bg-[var(--color-surface-raised)] shadow-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+              <h2 className="text-base font-semibold text-[var(--color-text-primary)] m-0">
+                {t('prompts.history.title')}
+              </h2>
+              <button
+                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] bg-transparent border-none cursor-pointer"
+                onClick={handleCloseHistory}
+              >
+                {t('common.close')}
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {versions.length === 0 ? (
+                <EmptyState
+                  icon={<History size={24} />}
+                  title={t('prompts.history.empty')}
+                />
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {versions.map((version) => (
+                    <li
+                      key={version.id}
+                      className="flex items-center justify-between gap-4 px-4 py-3 rounded-lg bg-[var(--color-surface)]"
+                    >
+                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                          {t('prompts.history.version', { num: version.version_num })}
+                        </span>
+                        <span className="text-xs text-[var(--color-text-muted)]">
+                          {new Date(version.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <button
+                        className="px-3 py-1.5 rounded-md text-sm bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] border-none cursor-pointer hover:text-[var(--color-text-primary)]"
+                        onClick={() => handleViewVersion(version)}
+                      >
+                        {t('prompts.history.view')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

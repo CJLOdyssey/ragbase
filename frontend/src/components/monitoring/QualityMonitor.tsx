@@ -15,6 +15,8 @@ import { fetchMonitoringSummary } from '../../api/client/monitoring';
 const WINDOWS = [
   { hours: 24, key: 'monitoring.windowDay' },
   { hours: 24 * 7, key: 'monitoring.windowWeek' },
+  { hours: 24 * 30, key: 'monitoring.windowMonth' },
+  { hours: 0, key: 'monitoring.windowAll' },
 ] as const;
 
 function formatPct(value: number | null | undefined): string {
