@@ -152,7 +152,7 @@ describe('RetrievalLogPage', () => {
     renderWithClient(<RetrievalLogPage />);
     
     await waitFor(() => {
-      const input = screen.getByPlaceholderText('ms');
+      const input = screen.getByPlaceholderText('0');
       fireEvent.change(input, { target: { value: '500' } });
     });
 
