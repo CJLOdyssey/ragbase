@@ -1,7 +1,7 @@
 {
   "common": {
     "close": "Close",
-    "error": "Error",
+    "error": "An error occurred",
     "retry": "Retry",
     "loading": "Loading...",
     "connecting": "Reconnecting",
@@ -11,8 +11,10 @@
     "cancel": "Cancel",
     "noData": "No data",
     "unknownError": "Unknown error",
-    "appError": "App error",
-    "skipToContent": "Skip to main content"
+    "appError": "Application error",
+    "skipToContent": "Skip to content",
+    "prev": "Previous",
+    "next": "Next"
   },
   "confirm": {
     "cancel": "Cancel",
@@ -353,16 +355,17 @@
   "retrievalLogs": {
     "navTitle": "Retrieval Logs",
     "title": "Retrieval Logs",
-    "emptyOnly": "Empty recall only",
-    "maxLatency": "Max latency (ms)",
+    "emptyOnly": "Empty Recall Only",
+    "maxLatency": "Max Latency",
     "query": "Query",
-    "hitCount": "Hit count",
+    "hitCount": "Hit Count",
     "latency": "Latency",
     "sources": "Sources",
     "time": "Time",
-    "noLogs": "No retrieval logs yet",
+    "noLogs": "No Retrieval Logs",
     "noLogsDesc": "Records will appear here after retrieval",
-    "sourceDetail": "Source details"
+    "sourceDetail": "Source details",
+    "detail": "Log Details"
   },
   "admin": {
     "navTitle": "User Management",

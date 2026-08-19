@@ -12,7 +12,9 @@
     "noData": "暂无数据",
     "unknownError": "未知错误",
     "appError": "应用出错了",
-    "skipToContent": "跳转到主内容"
+    "skipToContent": "跳转到主内容",
+    "prev": "上一页",
+    "next": "下一页"
   },
   "confirm": {
     "cancel": "取消",
@@ -354,7 +356,7 @@
     "navTitle": "检索记录",
     "title": "检索记录",
     "emptyOnly": "仅显示空召回",
-    "maxLatency": "最大延迟(ms)",
+    "maxLatency": "最大延迟",
     "query": "查询内容",
     "hitCount": "命中数",
     "latency": "延迟",
@@ -362,7 +364,8 @@
     "time": "时间",
     "noLogs": "暂无检索日志",
     "noLogsDesc": "发起检索后将在此显示记录",
-    "sourceDetail": "来源详情"
+    "sourceDetail": "来源详情",
+    "detail": "日志详情"
   },
   "admin": {
     "navTitle": "用户管理",
