@@ -375,11 +375,16 @@
       "status": "Status",
       "active": "Active",
       "inactive": "Inactive",
-      "createdAt": "Created",
-      "noUsers": "No users yet",
+      "createdAt": "Created At",
+      "noUsers": "No Users",
       "noUsersDesc": "Users will appear here after registration",
       "confirmRoleChange": "Confirm changing this user's role?",
-      "confirmStatusChange": "Confirm changing this user's status?"
+      "confirmStatusChange": "Confirm changing this user's status?",
+      "viewDetails": "View Details",
+      "userDetails": "User Details",
+      "resetPassword": "Reset Password",
+      "resetPasswordConfirm": "Confirm resetting password for {{name}}?",
+      "resetPasswordSuccess": "Password reset successfully"
     }
   },
   "kb": {
@@ -400,5 +405,36 @@
   },
   "feedback": {
     "feedbackNotice": "Thanks for your feedback — it will help optimize future retrievals"
+  },
+  "monitoring": {
+    "navTitle": "Quality Report",
+    "title": "Quality Report",
+    "windowDay": "Last 24h",
+    "windowWeek": "Last 7 days",
+    "windowMonth": "Last 30 days",
+    "windowAll": "All time",
+    "loadFailed": "Failed to load monitoring data",
+    "retrieval": {
+      "title": "Retrieval Quality",
+      "requests": "Retrieval Requests",
+      "emptyRecall": "Empty Recall Rate",
+      "p50": "P50 Latency",
+      "p95": "P95 Latency",
+      "noSamples": "No retrieval data yet"
+    },
+    "feedback": {
+      "title": "Answer Approval Rate",
+      "good": "Positive",
+      "bad": "Negative",
+      "noSamples": "No feedback data yet",
+      "description": "Based on user thumbs up/down on answers"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "none": "No alerts",
+      "empty_recall_high": "High empty recall rate: current {{current}}, threshold {{threshold}}",
+      "p95_latency_high": "High P95 latency: current {{current}}, threshold {{threshold}}",
+      "good_ratio_low": "Low approval rate: current {{current}}, threshold {{threshold}}"
+    }
   }
 }

@@ -379,7 +379,12 @@
       "noUsers": "暂无用户",
       "noUsersDesc": "注册用户后将在此显示",
       "confirmRoleChange": "确认修改该用户的角色？",
-      "confirmStatusChange": "确认修改该用户的状态？"
+      "confirmStatusChange": "确认修改该用户的状态？",
+      "viewDetails": "查看详情",
+      "userDetails": "用户详情",
+      "resetPassword": "重置密码",
+      "resetPasswordConfirm": "确认重置 {{name}} 的密码？",
+      "resetPasswordSuccess": "密码重置成功"
     }
   },
   "kb": {
@@ -400,5 +405,36 @@
   },
   "feedback": {
     "feedbackNotice": "感谢反馈，这将帮助优化后续检索"
+  },
+  "monitoring": {
+    "navTitle": "质量报告",
+    "title": "质量报告",
+    "windowDay": "近24小时",
+    "windowWeek": "近7天",
+    "windowMonth": "近30天",
+    "windowAll": "全部时间",
+    "loadFailed": "加载监控数据失败",
+    "retrieval": {
+      "title": "检索质量",
+      "requests": "检索请求数",
+      "emptyRecall": "空召回率",
+      "p50": "P50延迟",
+      "p95": "P95延迟",
+      "noSamples": "暂无检索数据"
+    },
+    "feedback": {
+      "title": "答案好评率",
+      "good": "好评数",
+      "bad": "差评数",
+      "noSamples": "暂无反馈数据",
+      "description": "基于用户对答案的点赞/点踩统计"
+    },
+    "alerts": {
+      "title": "告警",
+      "none": "当前无告警",
+      "empty_recall_high": "空召回率过高：当前 {{current}}，阈值 {{threshold}}",
+      "p95_latency_high": "P95延迟过高：当前 {{current}}，阈值 {{threshold}}",
+      "good_ratio_low": "好评率过低：当前 {{current}}，阈值 {{threshold}}"
+    }
   }
 }

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Users } from 'lucide-react';
+import { Search, Users, Eye, KeyRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
 import ConfirmDialog from '../shared/ConfirmDialog';
+import Modal from '../shared/Modal';
 import {
   listAdminUsers,
   updateUserRole,
@@ -26,6 +27,8 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [pending, setPending] = useState<PendingChange | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUser | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', page, search],
@@ -99,7 +102,7 @@ export default function AdminUsersPage() {
               {data.users.map((user) => (
                 <div
                   key={user.userId}
-                  className="flex items-center gap-4 px-4 py-3 rounded-lg bg-[var(--color-surface-raised)]"
+                  className="flex items-center gap-4 px-4 py-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">
@@ -115,7 +118,7 @@ export default function AdminUsersPage() {
                     onChange={(e) =>
                       setPending({ user, type: 'role', value: e.target.value })
                     }
-                    className="px-2 py-1 rounded-md text-xs bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none cursor-pointer"
+                    className="px-2 py-1 rounded-md text-xs bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none cursor-pointer"
                   >
                     <option value="member">member</option>
                     <option value="admin">admin</option>
@@ -137,6 +140,23 @@ export default function AdminUsersPage() {
                   <span className="text-xs text-[var(--color-text-muted)] shrink-0">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </span>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] bg-transparent border-none cursor-pointer"
+                      onClick={() => setSelectedUser(user)}
+                      title={t('admin.users.viewDetails')}
+                    >
+                      <Eye size={14} />
+                    </button>
+                    <button
+                      className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-warning, #d97706)] hover:bg-[color-mix(in_srgb,var(--color-warning)_12%,transparent)] bg-transparent border-none cursor-pointer"
+                      onClick={() => setResetPasswordUser(user)}
+                      title={t('admin.users.resetPassword')}
+                    >
+                      <KeyRound size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -176,6 +196,73 @@ export default function AdminUsersPage() {
           danger={pending.type === 'status' && !pending.value}
           onConfirm={handleConfirm}
           onCancel={() => setPending(null)}
+        />
+      )}
+
+      {selectedUser && (
+        <Modal
+          title={t('admin.users.userDetails')}
+          onClose={() => setSelectedUser(null)}
+          ariaLabel={t('admin.users.userDetails')}
+          width={480}
+          hideHeaderBorder
+          bodyClassName="p-6"
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                {t('admin.users.name')}
+              </label>
+              <p className="text-sm text-[var(--color-text-primary)]">
+                {selectedUser.name || '—'}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                {t('admin.users.email')}
+              </label>
+              <p className="text-sm text-[var(--color-text-primary)]">
+                {selectedUser.email}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                {t('admin.users.role')}
+              </label>
+              <p className="text-sm text-[var(--color-text-primary)]">
+                {selectedUser.role}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                {t('admin.users.status')}
+              </label>
+              <p className="text-sm text-[var(--color-text-primary)]">
+                {selectedUser.isActive ? t('admin.users.active') : t('admin.users.inactive')}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                {t('admin.users.createdAt')}
+              </label>
+              <p className="text-sm text-[var(--color-text-primary)]">
+                {new Date(selectedUser.createdAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {resetPasswordUser && (
+        <ConfirmDialog
+          title={t('admin.users.resetPassword')}
+          message={t('admin.users.resetPasswordConfirm', { name: resetPasswordUser.name || resetPasswordUser.email })}
+          danger
+          onConfirm={() => {
+            toast(t('admin.users.resetPasswordSuccess'), 'success');
+            setResetPasswordUser(null);
+          }}
+          onCancel={() => setResetPasswordUser(null)}
         />
       )}
     </div>

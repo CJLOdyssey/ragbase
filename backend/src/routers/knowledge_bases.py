@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 from repository.knowledge_bases import (
     assign_asset_to_kb,
+    count_assets_by_kb,
     create_kb,
     delete_kb,
     list_kbs,
@@ -24,6 +25,7 @@ class KBItem(BaseModel):
     id: str
     name: str
     description: str = ""
+    asset_count: int = 0
     created_at: str
     updated_at: str
 
@@ -45,11 +47,12 @@ class AssignKBIn(BaseModel):
     knowledge_base_id: str | None
 
 
-def _to_item(kb: Any) -> KBItem:
+def _to_item(kb: Any, asset_count: int = 0) -> KBItem:
     return KBItem(
         id=kb.id,
         name=kb.name,
         description=kb.description or "",
+        asset_count=asset_count,
         created_at=kb.created_at.isoformat() if kb.created_at else "",
         updated_at=kb.updated_at.isoformat() if kb.updated_at else "",
     )
@@ -60,7 +63,8 @@ async def list_knowledge_bases(request: Request) -> Any:
     """List the current user's knowledge bases."""
     user_id = get_user_id(request)
     kbs = await list_kbs(user_id)
-    return [_to_item(kb) for kb in kbs]
+    asset_counts = await count_assets_by_kb(user_id)
+    return [_to_item(kb, asset_counts.get(kb.id, 0)) for kb in kbs]
 
 
 @router.post("/api/knowledge-bases", response_model=KBItem, status_code=201)

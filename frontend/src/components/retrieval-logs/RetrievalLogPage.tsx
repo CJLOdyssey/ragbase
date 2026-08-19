@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, FileSearch } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileSearch, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
@@ -47,6 +47,7 @@ export default function RetrievalLogPage() {
   const [page, setPage] = useState(1);
   const [emptyOnly, setEmptyOnly] = useState(false);
   const [maxLatency, setMaxLatency] = useState<string>('');
+  const [selectedLog, setSelectedLog] = useState<RetrievalLogItem | null>(null);
   const pageSize = 20;
 
   const { data, isLoading } = useQuery({
@@ -88,8 +89,9 @@ export default function RetrievalLogPage() {
               value={maxLatency}
               onChange={(e) => { setMaxLatency(e.target.value); setPage(1); }}
               className="w-24 px-2 py-1 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-              placeholder="ms"
+              placeholder="0"
             />
+            <span className="text-xs text-[var(--color-text-muted)]">ms</span>
           </label>
         </div>
 
@@ -108,7 +110,8 @@ export default function RetrievalLogPage() {
               {data.items.map((item) => (
                 <li
                   key={item.id}
-                  className="flex flex-col gap-1 px-4 py-3 rounded-lg bg-[var(--color-surface-raised)]"
+                  className="flex flex-col gap-1 px-4 py-3 rounded-lg bg-[var(--color-surface-raised)] cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors"
+                  onClick={() => setSelectedLog(item)}
                 >
                   <div className="flex items-center gap-4 text-sm">
                     <span className="flex-1 min-w-0 truncate text-[var(--color-text-primary)]" title={item.query}>
@@ -164,6 +167,83 @@ export default function RetrievalLogPage() {
           </>
         )}
       </div>
+
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="flex flex-col w-full max-w-3xl max-h-[80vh] rounded-lg bg-[var(--color-surface-raised)] shadow-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+              <h2 className="text-base font-semibold text-[var(--color-text-primary)] m-0">
+                {t('retrievalLogs.detail')}
+              </h2>
+              <button
+                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] bg-transparent border-none cursor-pointer"
+                onClick={() => setSelectedLog(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                    {t('retrievalLogs.query')}
+                  </label>
+                  <p className="text-sm text-[var(--color-text-primary)] mt-1 break-words">
+                    {selectedLog.query}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                      {t('retrievalLogs.hitCount')}
+                    </label>
+                    <p className="text-sm text-[var(--color-text-primary)] mt-1">
+                      {selectedLog.hit_count}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                      {t('retrievalLogs.latency')}
+                    </label>
+                    <p className="text-sm text-[var(--color-text-primary)] mt-1">
+                      {selectedLog.latency_ms}ms
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                    {t('retrievalLogs.time')}
+                  </label>
+                  <p className="text-sm text-[var(--color-text-primary)] mt-1">
+                    {new Date(selectedLog.created_at).toLocaleString()}
+                  </p>
+                </div>
+                {selectedLog.sources && selectedLog.sources.length > 0 && (
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)]">
+                      {t('retrievalLogs.sourceDetail')}
+                    </label>
+                    <ul className="mt-2 flex flex-col gap-2">
+                      {selectedLog.sources.map((s, i) => (
+                        <li key={`${s.asset_id ?? i}`} className="flex items-center gap-2 px-3 py-2 rounded-md bg-[var(--color-surface)]">
+                          <span className="flex-1 text-sm text-[var(--color-text-primary)]">
+                            {s.asset_name}
+                          </span>
+                          {typeof s.similarity === 'number' && (
+                            <span className="text-xs text-[var(--color-text-muted)]">
+                              {Math.round(s.similarity * 100)}%
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

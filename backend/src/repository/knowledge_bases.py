@@ -1,7 +1,7 @@
 """Knowledge base repository — multi-KB isolation CRUD."""
 
 from core.infra.database import AssetDB, KnowledgeBaseDB, get_session_factory
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 
 async def create_kb(user_id: str, name: str, description: str = "") -> KnowledgeBaseDB:
@@ -24,6 +24,21 @@ async def list_kbs(user_id: str) -> list[KnowledgeBaseDB]:
             .order_by(KnowledgeBaseDB.created_at.desc())
         )
         return list(result.scalars().all())
+
+
+async def count_assets_by_kb(user_id: str) -> dict[str, int]:
+    """Count assets per knowledge base for a user."""
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(AssetDB.knowledge_base_id, func.count(AssetDB.id))
+            .where(
+                AssetDB.user_id == user_id,
+                AssetDB.knowledge_base_id.isnot(None),
+            )
+            .group_by(AssetDB.knowledge_base_id)
+        )
+        return {kb_id: count for kb_id, count in result.all() if kb_id}
 
 
 async def get_kb(kb_id: str, user_id: str) -> KnowledgeBaseDB | None:

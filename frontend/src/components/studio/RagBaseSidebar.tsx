@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   BookText,
   Bot,
@@ -17,6 +17,7 @@ import MemoryPanel from './MemoryPanel';
 import type { ManageView } from './RagBaseWorkstation';
 import ConversationsList from './sidebar/ConversationsList';
 import UserMenu from './sidebar/UserMenu';
+import { useAuth } from '../auth/AuthContext';
 
 interface RagBaseSidebarProps {
   conversations: Conversation[];
@@ -46,6 +47,7 @@ const NAV_BTN_ACTIVE =
 interface NavGroup {
   labelKey: string;
   items: Array<{ view: ManageView; icon: typeof BookText; labelKey: string }>;
+  adminOnly?: boolean;
 }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -74,6 +76,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { view: 'admin-users', icon: Users, labelKey: 'sidebar.nav.userManagement' },
     ],
+    adminOnly: true,
   },
 ];
 
@@ -96,8 +99,17 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
   onNavigate,
 }: RagBaseSidebarProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [memorySessionId, setMemorySessionId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const isAdmin = useMemo(() => {
+    return user?.roles?.includes('admin') ?? false;
+  }, [user]);
+
+  const visibleGroups = useMemo(() => {
+    return NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin);
+  }, [isAdmin]);
 
   const toggleGroup = useCallback((labelKey: string) => {
     setCollapsedGroups((prev) => {
@@ -162,7 +174,7 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
 
       {/* Grouped navigation */}
       <nav className="px-4 shrink-0 mt-4 flex flex-col gap-3">
-        {NAV_GROUPS.map((group) => {
+        {visibleGroups.map((group) => {
           const isCollapsed = collapsedGroups.has(group.labelKey);
           return (
             <div key={group.labelKey} className="flex flex-col gap-0.5">
