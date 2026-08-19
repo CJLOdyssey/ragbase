@@ -92,12 +92,12 @@ describe('AdminUsersPage', () => {
     const mockUsers = {
       users: [
         {
-          user_id: 'user-1',
+          userId: 'user-1',
           email: 'test@example.com',
           name: 'Test User',
-          role: 'user',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
+          role: 'member',
+          isActive: true,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -136,12 +136,12 @@ describe('AdminUsersPage', () => {
     const mockUsers = {
       users: [
         {
-          user_id: 'user-1',
+          userId: 'user-1',
           email: 'test@example.com',
           name: 'Test User',
-          role: 'user',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
+          role: 'member',
+          isActive: true,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -154,7 +154,7 @@ describe('AdminUsersPage', () => {
     renderWithClient(<AdminUsersPage />);
     
     await waitFor(() => {
-      const roleSelect = screen.getByDisplayValue('user');
+      const roleSelect = screen.getByDisplayValue('member');
       expect(roleSelect).toBeInTheDocument();
     });
   });
@@ -163,12 +163,12 @@ describe('AdminUsersPage', () => {
     const mockUsers = {
       users: [
         {
-          user_id: 'user-1',
+          userId: 'user-1',
           email: 'test@example.com',
           name: 'Test User',
-          role: 'user',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
+          role: 'member',
+          isActive: true,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -179,7 +179,7 @@ describe('AdminUsersPage', () => {
     vi.mocked(listAdminUsers).mockResolvedValue(mockUsers);
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('admin.users.active')).toBeInTheDocument();
     });
@@ -189,12 +189,12 @@ describe('AdminUsersPage', () => {
     const mockUsers = {
       users: [
         {
-          user_id: 'user-1',
+          userId: 'user-1',
           email: 'test@example.com',
           name: 'Test User',
-          role: 'user',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
+          role: 'member',
+          isActive: true,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -205,9 +205,9 @@ describe('AdminUsersPage', () => {
     vi.mocked(listAdminUsers).mockResolvedValue(mockUsers);
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
-      const roleSelect = screen.getByDisplayValue('user');
+      const roleSelect = screen.getByDisplayValue('member');
       fireEvent.change(roleSelect, { target: { value: 'admin' } });
     });
 
@@ -220,12 +220,12 @@ describe('AdminUsersPage', () => {
     const mockUsers = {
       users: [
         {
-          user_id: 'user-1',
+          userId: 'user-1',
           email: 'test@example.com',
           name: 'Test User',
-          role: 'user',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
+          role: 'member',
+          isActive: true,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -236,7 +236,7 @@ describe('AdminUsersPage', () => {
     vi.mocked(listAdminUsers).mockResolvedValue(mockUsers);
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       const statusButton = screen.getByText('admin.users.active');
       fireEvent.click(statusButton);
@@ -251,12 +251,12 @@ describe('AdminUsersPage', () => {
     const mockUsers = {
       users: [
         {
-          user_id: 'user-1',
+          userId: 'user-1',
           email: 'test@example.com',
           name: 'Test User',
-          role: 'user',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
+          role: 'member',
+          isActive: true,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -268,9 +268,9 @@ describe('AdminUsersPage', () => {
     vi.mocked(updateUserRole).mockResolvedValue(undefined);
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
-      const roleSelect = screen.getByDisplayValue('user');
+      const roleSelect = screen.getByDisplayValue('member');
       fireEvent.change(roleSelect, { target: { value: 'admin' } });
     });
 
@@ -288,12 +288,12 @@ describe('AdminUsersPage', () => {
     const mockUsers = {
       users: [
         {
-          user_id: 'user-1',
+          userId: 'user-1',
           email: 'test@example.com',
           name: 'Test User',
-          role: 'user',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
+          role: 'member',
+          isActive: true,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -305,7 +305,7 @@ describe('AdminUsersPage', () => {
     vi.mocked(updateUserStatus).mockResolvedValue(undefined);
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       const statusButton = screen.getByText('admin.users.active');
       fireEvent.click(statusButton);
@@ -324,12 +324,12 @@ describe('AdminUsersPage', () => {
   it('shows pagination when total > page_size', async () => {
     const mockUsers = {
       users: Array.from({ length: 20 }, (_, i) => ({
-        user_id: `user-${i}`,
+        userId: `user-${i}`,
         email: `user${i}@example.com`,
         name: `User ${i}`,
-        role: 'user',
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z',
+        role: 'member',
+        isActive: true,
+        createdAt: '2024-01-01T00:00:00Z',
       })),
       total: 50,
       page: 1,
@@ -339,7 +339,7 @@ describe('AdminUsersPage', () => {
     vi.mocked(listAdminUsers).mockResolvedValue(mockUsers);
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('common.prev')).toBeInTheDocument();
       expect(screen.getByText('common.next')).toBeInTheDocument();

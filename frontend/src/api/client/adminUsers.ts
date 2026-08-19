@@ -1,12 +1,12 @@
 import api from './instance';
 
 export interface AdminUser {
-  user_id: string;
+  userId: string;
   email: string;
   name: string;
   role: string;
-  is_active: boolean;
-  created_at: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface AdminUserListResponse {

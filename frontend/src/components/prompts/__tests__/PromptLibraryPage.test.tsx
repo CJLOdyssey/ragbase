@@ -68,14 +68,29 @@ describe('PromptLibraryPage', () => {
     });
   });
 
-  it('shows tab navigation', async () => {
-    vi.mocked(listPrompts).mockResolvedValue([]);
+  it('shows table headers', async () => {
+    vi.mocked(listPrompts).mockResolvedValue([
+      {
+        id: 'prompt-1',
+        name: '测试提示词',
+        description: '测试描述',
+        content: '内容',
+        category: 'user',
+        model: null,
+        status: 'active',
+        version: 'v1',
+        created_at: '2024-01-01T00:00:00Z',
+      },
+    ]);
 
     renderWithClient(<PromptLibraryPage />);
-    
+
     await waitFor(() => {
-      expect(screen.getByText('prompts.tab.list')).toBeInTheDocument();
+      expect(screen.getByText('prompts.editor.name')).toBeInTheDocument();
+      expect(screen.getByText('prompts.editor.description')).toBeInTheDocument();
       expect(screen.getByText('prompts.tab.version')).toBeInTheDocument();
+      expect(screen.getByText('prompts.editor.updatedAt')).toBeInTheDocument();
+      expect(screen.getByText('prompts.editor.actions')).toBeInTheDocument();
     });
   });
 
@@ -104,14 +119,15 @@ describe('PromptLibraryPage', () => {
     vi.mocked(listPrompts).mockResolvedValue([]);
 
     renderWithClient(<PromptLibraryPage />);
-    
+
     await waitFor(() => {
       const newButton = screen.getByRole('button', { name: 'prompts.editor.new' });
       fireEvent.click(newButton);
     });
 
     await waitFor(() => {
-      expect(screen.getByText('prompts.editor.name')).toBeInTheDocument();
+      // Modal title + button both have this text
+      expect(screen.getAllByText('prompts.editor.new').length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -120,38 +136,41 @@ describe('PromptLibraryPage', () => {
     vi.mocked(createPrompt).mockResolvedValue({
       id: 'new-prompt',
       name: '新提示词',
+      description: null,
       content: '内容',
       category: 'user',
+      model: null,
+      status: 'active',
+      version: 'v1',
       created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
     });
 
     renderWithClient(<PromptLibraryPage />);
-    
+
     // 点击新建按钮
     const newButton = await screen.findByRole('button', { name: 'prompts.editor.new' });
     fireEvent.click(newButton);
 
-    // 等待模态框打开
+    // 等待模态框打开 — 检查取消按钮出现
     await waitFor(() => {
-      expect(screen.getByText('prompts.editor.name')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'confirm.cancel' })).toBeInTheDocument();
     });
 
     // 获取所有文本输入框（第一个是name输入框）
     const textInputs = screen.getAllByRole('textbox');
     const nameInput = textInputs[0];
-    
+
     // 获取textarea（content输入框）
     const textareas = screen.getAllByRole('textbox', { hidden: false });
     const contentInput = textareas.find(el => el.tagName === 'TEXTAREA');
-    
+
     if (nameInput) {
       fireEvent.change(nameInput, { target: { value: '新提示词' } });
     }
     if (contentInput) {
       fireEvent.change(contentInput, { target: { value: '内容' } });
     }
-    
+
     // 点击保存按钮
     const saveButton = screen.getByRole('button', { name: 'prompts.editor.save' });
     fireEvent.click(saveButton);
@@ -161,27 +180,27 @@ describe('PromptLibraryPage', () => {
     });
   });
 
-  it('switches to version history tab', async () => {
+  it('renders prompt rows in table', async () => {
     vi.mocked(listPrompts).mockResolvedValue([
       {
         id: 'prompt-1',
         name: '测试提示词',
+        description: '测试描述',
         content: '内容',
         category: 'user',
+        model: null,
+        status: 'active',
+        version: 'v1',
         created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
       },
     ]);
 
     renderWithClient(<PromptLibraryPage />);
-    
-    await waitFor(() => {
-      const versionTab = screen.getByText('prompts.tab.version');
-      fireEvent.click(versionTab);
-    });
 
     await waitFor(() => {
-      expect(screen.getByText('prompts.tab.version')).toBeInTheDocument();
+      expect(screen.getByText('测试提示词')).toBeInTheDocument();
+      expect(screen.getByText('测试描述')).toBeInTheDocument();
+      expect(screen.getByText('v1')).toBeInTheDocument();
     });
   });
 });
