@@ -11,7 +11,8 @@
       "failed": "Upload failed"
     },
     "list": {
-      "empty": "No assets yet. Upload one to get started.",
+      "empty": "No assets yet",
+      "emptyDesc": "Click the button above to upload",
       "rename": "Rename",
       "deleteConfirm": "Delete asset \"{{name}}\"? This action cannot be undone.",
       "deleteSuccess": "Deleted successfully",

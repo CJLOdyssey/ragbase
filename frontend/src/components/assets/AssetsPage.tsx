@@ -233,11 +233,13 @@ export default function AssetsPage() {
 
       <div className="flex-1 overflow-y-auto min-h-0 p-6">
         {isLoading ? (
-          <LoadingState />
+          <LoadingState centered={true} />
         ) : assets.length === 0 ? (
           <EmptyState
             icon={<FileText size={24} />}
-            description={t('assets.list.empty')}
+            title={t('assets.list.empty')}
+            description={t('assets.list.emptyDesc')}
+            centered={true}
           />
         ) : (
           <ul className="flex flex-col gap-2" data-testid="asset-list">

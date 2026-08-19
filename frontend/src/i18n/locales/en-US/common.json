@@ -291,6 +291,7 @@
     },
     "list": {
       "empty": "No prompts yet",
+      "emptyDesc": "Click the button above to create a prompt",
       "secureNote": "System = security asset; admin only",
       "edit": "Edit",
       "delete": "Delete",
@@ -349,6 +350,7 @@
     "sources": "Sources",
     "time": "Time",
     "noLogs": "No retrieval logs yet",
+    "noLogsDesc": "Records will appear here after retrieval",
     "sourceDetail": "Source details"
   },
   "admin": {
@@ -364,6 +366,7 @@
       "inactive": "Inactive",
       "createdAt": "Created",
       "noUsers": "No users yet",
+      "noUsersDesc": "Users will appear here after registration",
       "confirmRoleChange": "Confirm changing this user's role?",
       "confirmStatusChange": "Confirm changing this user's status?"
     }

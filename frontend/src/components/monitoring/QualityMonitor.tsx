@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import EmptyState from '../shared/EmptyState';
+import LoadingState from '../shared/LoadingState';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -111,9 +112,7 @@ export default function QualityMonitor() {
             </button>
           </div>
         ) : isLoading || !data ? (
-          <p className="text-sm text-[var(--color-text-muted)]">
-            {t('monitoring.loading')}
-          </p>
+          <LoadingState centered={true} />
         ) : (
           <div className="flex flex-col gap-6">
             <section

@@ -94,11 +94,13 @@ export default function RetrievalLogPage() {
         </div>
 
         {isLoading ? (
-          <LoadingState />
+          <LoadingState centered={true} />
         ) : !data || data.items.length === 0 ? (
           <EmptyState
             icon={<FileSearch size={24} />}
-            description={t('retrievalLogs.noLogs')}
+            title={t('retrievalLogs.noLogs')}
+            description={t('retrievalLogs.noLogsDesc')}
+            centered={true}
           />
         ) : (
           <>

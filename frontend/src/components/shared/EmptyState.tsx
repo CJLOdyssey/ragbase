@@ -7,6 +7,7 @@ interface EmptyStateProps {
   title?: string;
   description?: string;
   action?: React.ReactNode;
+  centered?: boolean;
 }
 
 export default function EmptyState({
@@ -14,10 +15,11 @@ export default function EmptyState({
   title,
   description,
   action,
+  centered = false,
 }: EmptyStateProps) {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+    <div className={`flex flex-col items-center justify-center px-6 text-center ${centered ? 'h-full' : 'py-12'}`}>
       <div className="w-12 h-12 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-4 text-[var(--color-text-muted)]">
         {icon || <Inbox size={24} />}
       </div>

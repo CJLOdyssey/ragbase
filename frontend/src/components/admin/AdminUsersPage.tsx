@@ -85,9 +85,14 @@ export default function AdminUsersPage() {
         </div>
 
         {isLoading ? (
-          <LoadingState />
+          <LoadingState centered={true} />
         ) : !data || data.users.length === 0 ? (
-          <EmptyState icon={<Users size={24} />} description={t('admin.users.noUsers')} />
+          <EmptyState
+            icon={<Users size={24} />}
+            title={t('admin.users.noUsers')}
+            description={t('admin.users.noUsersDesc')}
+            centered={true}
+          />
         ) : (
           <>
             <div className="flex flex-col gap-2">

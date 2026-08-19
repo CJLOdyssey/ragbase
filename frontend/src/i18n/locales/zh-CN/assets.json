@@ -11,7 +11,8 @@
       "failed": "上传失败"
     },
     "list": {
-      "empty": "暂无素材，点击上方按钮上传",
+      "empty": "暂无素材",
+      "emptyDesc": "点击上方按钮上传",
       "rename": "重命名",
       "deleteConfirm": "确定要删除素材 \"{{name}}\" 吗？此操作不可撤销。",
       "deleteSuccess": "删除成功",

@@ -290,7 +290,8 @@
       "version": "版本"
     },
     "list": {
-      "empty": "还没有提示词",
+      "empty": "暂无提示词",
+      "emptyDesc": "点击上方按钮创建提示词",
       "secureNote": "system 类=安全资产，仅管理员可编辑",
       "edit": "编辑",
       "delete": "删除",
@@ -349,6 +350,7 @@
     "sources": "来源",
     "time": "时间",
     "noLogs": "暂无检索日志",
+    "noLogsDesc": "发起检索后将在此显示记录",
     "sourceDetail": "来源详情"
   },
   "admin": {
@@ -364,6 +366,7 @@
       "inactive": "停用",
       "createdAt": "创建时间",
       "noUsers": "暂无用户",
+      "noUsersDesc": "注册用户后将在此显示",
       "confirmRoleChange": "确认修改该用户的角色？",
       "confirmStatusChange": "确认修改该用户的状态？"
     }

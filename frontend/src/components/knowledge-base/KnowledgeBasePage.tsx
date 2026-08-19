@@ -114,12 +114,13 @@ export default function KnowledgeBasePage() {
 
       <div className="flex-1 overflow-y-auto min-h-0 p-6">
         {isLoading ? (
-          <LoadingState />
+          <LoadingState centered={true} />
         ) : kbs.length === 0 ? (
           <EmptyState
             icon={<Database size={24} />}
             title={t('kb.noKbs')}
             description={t('kb.createDesc')}
+            centered={true}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

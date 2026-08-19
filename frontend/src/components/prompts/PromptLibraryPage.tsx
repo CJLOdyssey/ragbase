@@ -198,15 +198,13 @@ export default function PromptLibraryPage() {
       {/* Content area */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-sm text-[var(--color-text-muted)]">
-              {t('common.loading')}
-            </p>
-          </div>
+          <LoadingState centered={true} />
         ) : prompts.length === 0 ? (
           <EmptyState
             icon={<FileText size={24} />}
             title={t('prompts.list.empty')}
+            description={t('prompts.list.emptyDesc')}
+            centered={true}
           />
         ) : (
           <div className="p-6">
