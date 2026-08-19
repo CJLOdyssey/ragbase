@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
+import LoadingState from '../shared/LoadingState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, History, Pencil, ShieldAlert, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +12,7 @@ import {
   updatePrompt,
   type PromptItem,
 } from '../../api/client/prompts';
-import { listVersions, type VersionItem } from '../../api/client/versions';
+import { type VersionItem } from '../../api/client/versions';
 import PromptEditorModal from './PromptEditorModal';
 import VersionViewModal from './VersionViewModal';
 import { useToast } from '../../utils/useToast';
@@ -98,12 +99,6 @@ export default function PromptLibraryPage() {
     queryFn: listPrompts,
   });
 
-  const { data: versions = [] } = useQuery({
-    queryKey: ['versions', selectedPromptId],
-    queryFn: () => listVersions('prompt', selectedPromptId!),
-    enabled: selectedPromptId !== null,
-  });
-
   const createMutation = useMutation({
     mutationFn: createPrompt,
     onSuccess: () => {
@@ -149,9 +144,6 @@ export default function PromptLibraryPage() {
   const handleHistory = (row: PromptItem) => {
     setSelectedPromptId(row.id);
   };
-
-  const handleViewVersion = (v: VersionItem) =>
-    setDialog({ type: 'version-view', version: v });
 
   const handleRollback = (v: VersionItem) => {
     if (!selectedPromptId) return;
@@ -211,11 +203,21 @@ export default function PromptLibraryPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
-                  <th className="pb-2 font-medium">{t('prompts.editor.name')}</th>
-                  <th className="pb-2 font-medium">{t('prompts.editor.description')}</th>
-                  <th className="pb-2 font-medium">{t('prompts.tab.version')}</th>
-                  <th className="pb-2 font-medium">{t('prompts.editor.updatedAt')}</th>
-                  <th className="pb-2 font-medium text-right">{t('prompts.editor.actions')}</th>
+                  <th className="pb-2 font-medium">
+                    {t('prompts.editor.name')}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t('prompts.editor.description')}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t('prompts.tab.version')}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t('prompts.editor.updatedAt')}
+                  </th>
+                  <th className="pb-2 font-medium text-right">
+                    {t('prompts.editor.actions')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
