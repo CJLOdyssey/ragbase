@@ -116,7 +116,7 @@ export async function submitRequirement(
     // Bind the freshly-added user message to its run so edit-regenerate can
     // resolve the parent_run_id from "run-{run_id}-requirement" on a later edit.
     useChatStore.setState(
-      bindUserMessageToRun(run_id, skipAddUserMessage, useChatStore.getState().editTargetId),
+      bindUserMessageToRun(run_id, skipAddUserMessage ?? false, useChatStore.getState().editTargetId),
     );
     connectRun(run_id, {
       onMessage: createStreamHandler(

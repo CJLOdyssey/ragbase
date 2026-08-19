@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   makeMsg,
   mockListKeys,
-  mockResumeRun,
+  mockResumeRun as _mockResumeRun,
   mockSubmitReq,
   resetMockDefaults,
 } from './helpers/chatActionsTestUtils';

@@ -125,7 +125,21 @@
     "more": "More",
     "rename": "Rename",
     "pin": "Pin",
-    "unpin": "Unpin"
+    "unpin": "Unpin",
+    "group": {
+      "resources": "Resources",
+      "knowledge": "Knowledge",
+      "analytics": "Analytics",
+      "admin": "Admin"
+    },
+    "nav": {
+      "prompts": "Prompts",
+      "assets": "Assets",
+      "knowledgeBases": "Knowledge Bases",
+      "qualityReport": "Quality Report",
+      "retrievalLogs": "Retrieval Logs",
+      "userManagement": "User Management"
+    }
   },
   "teamMessage": {
     "copy": "Copy",

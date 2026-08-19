@@ -164,16 +164,12 @@ describe('RagBaseWorkstation', () => {
     });
   });
 
-  it('collapses and re-expands the sidebar', () => {
+  it('collapses the sidebar', () => {
     renderWorkstation();
     fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
-    expect(
-      screen.getByRole('button', { name: 'Expand sidebar' }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
-    expect(
-      screen.getByRole('button', { name: 'Collapse sidebar' }),
-    ).toBeInTheDocument();
+    // After collapse, the sidebar is hidden (width=0)
+    const aside = document.querySelector('aside');
+    expect(aside?.classList.contains('w-0')).toBe(true);
   });
 
   it('renders conversations from the sessions query when authenticated', async () => {

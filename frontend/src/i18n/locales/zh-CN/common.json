@@ -125,7 +125,21 @@
     "more": "更多",
     "rename": "重命名",
     "pin": "顶置",
-    "unpin": "取消顶置"
+    "unpin": "取消顶置",
+    "group": {
+      "resources": "资源",
+      "knowledge": "知识",
+      "analytics": "分析",
+      "admin": "管理"
+    },
+    "nav": {
+      "prompts": "提示词",
+      "assets": "素材",
+      "knowledgeBases": "知识库",
+      "qualityReport": "质量报告",
+      "retrievalLogs": "检索记录",
+      "userManagement": "用户管理"
+    }
   },
   "teamMessage": {
     "copy": "复制",

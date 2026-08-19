@@ -1,6 +1,5 @@
 import { memo, useCallback, useState } from 'react';
 import {
-  BarChart3,
   BookText,
   Bot,
   Database,
@@ -36,8 +35,45 @@ interface RagBaseSidebarProps {
   onNavigate: (view: ManageView) => void;
 }
 
-const NAV_BTN_BASE =
-  'flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors duration-150 cursor-pointer border-none bg-transparent';
+const NAV_BTN =
+  'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors duration-150 cursor-pointer border-none bg-transparent text-left';
+
+const NAV_BTN_ACTIVE =
+  'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]';
+
+interface NavGroup {
+  labelKey: string;
+  items: Array<{ view: ManageView; icon: typeof BookText; labelKey: string }>;
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    labelKey: 'sidebar.group.resources',
+    items: [
+      { view: 'prompts', icon: BookText, labelKey: 'sidebar.nav.prompts' },
+      { view: 'assets', icon: FileText, labelKey: 'sidebar.nav.assets' },
+    ],
+  },
+  {
+    labelKey: 'sidebar.group.knowledge',
+    items: [
+      { view: 'knowledge-bases', icon: Database, labelKey: 'sidebar.nav.knowledgeBases' },
+    ],
+  },
+  {
+    labelKey: 'sidebar.group.analytics',
+    items: [
+      { view: 'monitoring', icon: FileSearch, labelKey: 'sidebar.nav.qualityReport' },
+      { view: 'retrieval-logs', icon: FileSearch, labelKey: 'sidebar.nav.retrievalLogs' },
+    ],
+  },
+  {
+    labelKey: 'sidebar.group.admin',
+    items: [
+      { view: 'admin-users', icon: Users, labelKey: 'sidebar.nav.userManagement' },
+    ],
+  },
+];
 
 const RagBaseSidebar = memo(function RagBaseSidebar({
   conversations,
@@ -80,7 +116,7 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
       className={`relative flex flex-col h-full bg-[var(--color-surface-sidebar)] border-r border-r-[var(--color-border-subtle)] shrink-0 overflow-hidden transition-[width,min-width,opacity,border-width] duration-200 ease-in-out ${isSidebarOpen ? 'w-[var(--da-sidebar-width)] min-w-[var(--da-sidebar-width)] opacity-100' : 'w-0 min-w-0 opacity-0 pointer-events-none border-r-0'}`}
     >
       {/* Header: logo + toggle */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3 shrink-0 mb-6">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 shrink-0 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-[var(--color-accent)]/10 flex items-center justify-center text-[var(--color-accent)] shrink-0">
             <Bot size={22} />
@@ -109,55 +145,26 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
         </button>
       </div>
 
-      {/* Navigation links */}
-      <div className="px-4 shrink-0 flex flex-col gap-1.5 mt-2">
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => onNavigate('prompts')}
-            className={`${NAV_BTN_BASE} ${activeView === 'prompts' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-          >
-            <BookText size={14} />
-            <span>{t('prompts.title')}</span>
-          </button>
-          <button
-            onClick={() => onNavigate('assets')}
-            className={`${NAV_BTN_BASE} ${activeView === 'assets' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-          >
-            <FileText size={14} />
-            <span>{t('assets.title')}</span>
-          </button>
-          <button
-            onClick={() => onNavigate('monitoring')}
-            className={`${NAV_BTN_BASE} ${activeView === 'monitoring' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-          >
-            <BarChart3 size={14} />
-            <span>{t('monitoring.title')}</span>
-          </button>
-        </div>
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => onNavigate('retrieval-logs')}
-            className={`${NAV_BTN_BASE} ${activeView === 'retrieval-logs' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-          >
-            <FileSearch size={14} />
-            <span>{t('retrievalLogs.navTitle')}</span>
-          </button>
-          <button
-            onClick={() => onNavigate('knowledge-bases')}
-            className={`${NAV_BTN_BASE} ${activeView === 'knowledge-bases' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-          >
-            <Database size={14} />
-            <span>{t('kb.navTitle')}</span>
-          </button>
-          <button
-            onClick={() => onNavigate('admin-users')}
-            className={`${NAV_BTN_BASE} ${activeView === 'admin-users' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-          >
-            <Users size={14} />
-            <span>{t('admin.navTitle')}</span>
-          </button>
-        </div>
-      </div>
+      {/* Grouped navigation */}
+      <nav className="px-4 shrink-0 mt-4 flex flex-col gap-3">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.labelKey} className="flex flex-col gap-0.5">
+            <div className="px-3 py-1 text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wider">
+              {t(group.labelKey)}
+            </div>
+            {group.items.map(({ view, icon: Icon, labelKey }) => (
+              <button
+                key={view}
+                onClick={() => onNavigate(view)}
+                className={`${NAV_BTN} ${activeView === view ? NAV_BTN_ACTIVE : ''}`}
+              >
+                <Icon size={16} className="shrink-0" />
+                <span>{t(labelKey)}</span>
+              </button>
+            ))}
+          </div>
+        ))}
+      </nav>
 
       {/* Scrollable content */}
       <div className="flex-1 pt-7 px-4 flex flex-col">

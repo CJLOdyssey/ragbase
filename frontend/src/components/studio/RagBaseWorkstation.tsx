@@ -70,9 +70,7 @@ export default function RagBaseWorkstation() {
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <WorkstationHeader
-            isSidebarOpen={s.isSidebarOpen}
             isDarkMode={s.isDarkMode}
-            onToggleSidebar={() => s.setIsSidebarOpen(true)}
             onToggleTheme={() =>
               s.updateSettings({
                 theme: s.isDarkMode ? 'light' : 'dark',
