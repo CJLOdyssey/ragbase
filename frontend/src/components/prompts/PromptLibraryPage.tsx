@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
+import EmptyState from '../shared/EmptyState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, History } from 'lucide-react';
+import { FileText, History, Pencil, ShieldAlert, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   createPrompt,
@@ -12,12 +13,8 @@ import {
 } from '../../api/client/prompts';
 import { listVersions, type VersionItem } from '../../api/client/versions';
 import PromptEditorModal from './PromptEditorModal';
-import PromptListTab from './PromptListTab';
-import VersionHistoryTab from './VersionHistoryTab';
 import VersionViewModal from './VersionViewModal';
 import { useToast } from '../../utils/useToast';
-
-type TabKey = 'list' | 'versions';
 
 interface DialogState {
   type: 'new' | 'edit' | 'delete' | 'version-view';
@@ -93,19 +90,18 @@ export default function PromptLibraryPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<TabKey>('list');
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
-  const { data: prompts = [], isLoading: promptsLoading } = useQuery({
+  const { data: prompts = [], isLoading } = useQuery({
     queryKey: ['prompts'],
     queryFn: listPrompts,
   });
 
-  const { data: versions = [], isLoading: versionsLoading } = useQuery({
+  const { data: versions = [] } = useQuery({
     queryKey: ['versions', selectedPromptId],
     queryFn: () => listVersions('prompt', selectedPromptId!),
-    enabled: activeTab === 'versions' && selectedPromptId !== null,
+    enabled: selectedPromptId !== null,
   });
 
   const createMutation = useMutation({
@@ -152,12 +148,6 @@ export default function PromptLibraryPage() {
 
   const handleHistory = (row: PromptItem) => {
     setSelectedPromptId(row.id);
-    setActiveTab('versions');
-  };
-
-  const handleBackToList = () => {
-    setActiveTab('list');
-    setSelectedPromptId(null);
   };
 
   const handleViewVersion = (v: VersionItem) =>
@@ -197,57 +187,99 @@ export default function PromptLibraryPage() {
         <h1 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
           {t('prompts.title')}
         </h1>
-        {activeTab === 'list' && (
-          <button
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-            onClick={handleNew}
-          >
-            {t('prompts.editor.new')}
-          </button>
-        )}
+        <button
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          onClick={handleNew}
+        >
+          {t('prompts.editor.new')}
+        </button>
       </div>
 
-      {/* Body: sidebar + content */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Sidebar tabs */}
-        <div className="w-[160px] px-4 py-5 flex flex-col gap-1 shrink-0 border-r border-[var(--color-border)]">
-          {(
-            [
-              ['list', FileText, t('prompts.tab.list')],
-              ['versions', History, t('prompts.tab.version')],
-            ] as const
-          ).map(([tab, Icon, label]) => (
-            <button
-              key={tab}
-              className={`flex items-center gap-3 p-2 px-3 bg-transparent border-none rounded-md text-[var(--color-text-secondary)] text-sm cursor-pointer transition-[background,color] duration-150 text-left hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] ${activeTab === tab ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              <Icon size={16} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content area */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          {activeTab === 'list' ? (
-            <PromptListTab
-              prompts={prompts}
-              loading={promptsLoading}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onHistory={handleHistory}
-            />
-          ) : (
-            <VersionHistoryTab
-              versions={versions}
-              loading={versionsLoading}
-              onView={handleViewVersion}
-              onRollback={handleRollback}
-              onBack={handleBackToList}
-            />
-          )}
-        </div>
+      {/* Content area */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-sm text-[var(--color-text-muted)]">
+              {t('common.loading')}
+            </p>
+          </div>
+        ) : prompts.length === 0 ? (
+          <EmptyState
+            icon={<FileText size={24} />}
+            title={t('prompts.list.empty')}
+          />
+        ) : (
+          <div className="p-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
+                  <th className="pb-2 font-medium">{t('prompts.editor.name')}</th>
+                  <th className="pb-2 font-medium">{t('prompts.editor.description')}</th>
+                  <th className="pb-2 font-medium">{t('prompts.tab.version')}</th>
+                  <th className="pb-2 font-medium">{t('prompts.editor.updatedAt')}</th>
+                  <th className="pb-2 font-medium text-right">{t('prompts.editor.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prompts.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                  >
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[var(--color-text-primary)] font-medium truncate max-w-[220px]">
+                          {row.name}
+                        </span>
+                        {row.category === 'system' && (
+                          <ShieldAlert
+                            size={14}
+                            className="text-[var(--color-text-muted)] shrink-0"
+                            aria-label={t('prompts.list.secureNote')}
+                          />
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4 text-[var(--color-text-secondary)] max-w-[280px] truncate">
+                      {row.description || '—'}
+                    </td>
+                    <td className="py-3 pr-4 text-[var(--color-text-secondary)]">
+                      {row.version}
+                    </td>
+                    <td className="py-3 pr-4 text-[var(--color-text-muted)]">
+                      {new Date(row.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                          onClick={() => handleEdit(row)}
+                          title={t('prompts.list.edit')}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                          onClick={() => handleDelete(row)}
+                          title={t('prompts.list.delete')}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                        <button
+                          className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                          onClick={() => handleHistory(row)}
+                          title={t('prompts.list.history')}
+                        >
+                          <History size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <DialogLayer

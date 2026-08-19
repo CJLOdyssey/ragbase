@@ -2,6 +2,8 @@ import { memo, useCallback, useState } from 'react';
 import {
   BookText,
   Bot,
+  ChevronDown,
+  ChevronRight,
   Database,
   FileSearch,
   FileText,
@@ -95,6 +97,19 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
 }: RagBaseSidebarProps) {
   const { t } = useTranslation();
   const [memorySessionId, setMemorySessionId] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = useCallback((labelKey: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(labelKey)) {
+        next.delete(labelKey);
+      } else {
+        next.add(labelKey);
+      }
+      return next;
+    });
+  }, []);
 
   const handleConvSelect = useCallback(
     (conv: Conversation) => {
@@ -147,23 +162,30 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
 
       {/* Grouped navigation */}
       <nav className="px-4 shrink-0 mt-4 flex flex-col gap-3">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.labelKey} className="flex flex-col gap-0.5">
-            <div className="px-3 py-1 text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wider">
-              {t(group.labelKey)}
-            </div>
-            {group.items.map(({ view, icon: Icon, labelKey }) => (
+        {NAV_GROUPS.map((group) => {
+          const isCollapsed = collapsedGroups.has(group.labelKey);
+          return (
+            <div key={group.labelKey} className="flex flex-col gap-0.5">
               <button
-                key={view}
-                onClick={() => onNavigate(view)}
-                className={`${NAV_BTN} ${activeView === view ? NAV_BTN_ACTIVE : ''}`}
+                onClick={() => toggleGroup(group.labelKey)}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wider bg-transparent border-none cursor-pointer hover:text-[var(--color-text-secondary)] transition-colors"
               >
-                <Icon size={16} className="shrink-0" />
-                <span>{t(labelKey)}</span>
+                {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                {t(group.labelKey)}
               </button>
-            ))}
-          </div>
-        ))}
+              {!isCollapsed && group.items.map(({ view, icon: Icon, labelKey }) => (
+                <button
+                  key={view}
+                  onClick={() => onNavigate(view)}
+                  className={`${NAV_BTN} ${activeView === view ? NAV_BTN_ACTIVE : ''}`}
+                >
+                  <Icon size={16} className="shrink-0" />
+                  <span>{t(labelKey)}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Scrollable content */}

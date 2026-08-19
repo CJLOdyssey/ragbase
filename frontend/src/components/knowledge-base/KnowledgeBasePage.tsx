@@ -113,7 +113,9 @@ export default function KnowledgeBasePage() {
 
       <div className="flex-1 overflow-y-auto min-h-0 p-6">
         {isLoading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">{t('common.loading')}</p>
+          <div className="flex items-center justify-center py-12">
+            <p className="text-sm text-[var(--color-text-muted)]">{t('common.loading')}</p>
+          </div>
         ) : kbs.length === 0 ? (
           <EmptyState
             icon={<Database size={24} />}

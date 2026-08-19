@@ -93,7 +93,9 @@ export default function RetrievalLogPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">{t('common.loading')}</p>
+          <div className="flex items-center justify-center py-12">
+            <p className="text-sm text-[var(--color-text-muted)]">{t('common.loading')}</p>
+          </div>
         ) : !data || data.items.length === 0 ? (
           <EmptyState
             icon={<FileSearch size={24} />}
