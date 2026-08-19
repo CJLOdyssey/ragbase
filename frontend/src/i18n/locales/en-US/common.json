@@ -29,6 +29,8 @@
     "requestAbandoned": "Switched conversation, current request abandoned",
     "saveSuccess": "Saved successfully",
     "saveFailed": "Failed to save",
+    "deleteSuccess": "Deleted successfully",
+    "deleteFailed": "Failed to delete",
     "error": "Operation failed, please retry"
   },
   "user": {
@@ -284,7 +286,7 @@
     "agentLimit": "Each team can have at most {{max}} agents"
   },
   "prompts": {
-    "title": "Prompt Library",
+    "title": "Prompts",
     "tab": {
       "list": "List",
       "version": "Versions"
@@ -373,7 +375,7 @@
   },
   "kb": {
     "navTitle": "Knowledge Base",
-    "title": "Knowledge Base Management",
+    "title": "Knowledge Base",
     "create": "New Knowledge Base",
     "name": "Name",
     "description": "Description",

@@ -209,6 +209,8 @@ export default function KnowledgeBasePage() {
           onClose={() => setForm(null)}
           ariaLabel={form.mode === 'create' ? t('kb.createTitle') : t('kb.editTitle')}
           width={480}
+          hideHeaderBorder
+          bodyClassName="p-6"
           footer={
             <>
               <button
@@ -227,7 +229,7 @@ export default function KnowledgeBasePage() {
             </>
           }
         >
-          <div className="flex flex-col gap-4 p-6">
+          <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-[var(--color-text-primary)]">
                 {t('kb.name')}

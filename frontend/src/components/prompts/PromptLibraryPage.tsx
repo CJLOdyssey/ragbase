@@ -130,9 +130,9 @@ export default function PromptLibraryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       setDialog(null);
-      toast(t('toast.saveSuccess'), 'success');
+      toast(t('toast.deleteSuccess'), 'success');
     },
-    onError: () => toast(t('toast.error'), 'error'),
+    onError: () => toast(t('toast.deleteFailed'), 'error'),
   });
 
   const handleNew = () => setDialog({ type: 'new' });

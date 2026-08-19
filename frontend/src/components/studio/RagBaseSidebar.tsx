@@ -168,9 +168,9 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
             <div key={group.labelKey} className="flex flex-col gap-0.5">
               <button
                 onClick={() => toggleGroup(group.labelKey)}
-                className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-[var(--color-text-tertiary)] bg-transparent border-none cursor-pointer hover:text-[var(--color-text-secondary)] transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1 text-sm font-medium text-[var(--color-text-tertiary)] bg-transparent border-none cursor-pointer hover:text-[var(--color-text-secondary)] transition-colors"
               >
-                {t(group.labelKey)}
+                <span>{t(group.labelKey)}</span>
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
               </button>
               {!isCollapsed && group.items.map(({ view, icon: Icon, labelKey }) => (

@@ -29,6 +29,8 @@
     "requestAbandoned": "已切换对话，当前请求已中断",
     "saveSuccess": "保存成功",
     "saveFailed": "保存失败",
+    "deleteSuccess": "删除成功",
+    "deleteFailed": "删除失败",
     "error": "操作失败，请重试"
   },
   "user": {
@@ -284,7 +286,7 @@
     "agentLimit": "每个团队最多 {{max}} 个 Agent"
   },
   "prompts": {
-    "title": "提示词库",
+    "title": "提示词",
     "tab": {
       "list": "列表",
       "version": "版本"
@@ -340,8 +342,8 @@
     "viewDetails": "查看详情"
   },
   "retrievalLogs": {
-    "navTitle": "检索日志",
-    "title": "检索日志",
+    "navTitle": "检索记录",
+    "title": "检索记录",
     "emptyOnly": "仅显示空召回",
     "maxLatency": "最大延迟(ms)",
     "query": "查询内容",
@@ -373,7 +375,7 @@
   },
   "kb": {
     "navTitle": "知识库",
-    "title": "知识库管理",
+    "title": "知识库",
     "create": "新建知识库",
     "name": "名称",
     "description": "描述",
