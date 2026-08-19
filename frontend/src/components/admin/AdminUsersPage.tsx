@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../shared/EmptyState';
+import LoadingState from '../shared/LoadingState';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import {
   listAdminUsers,
@@ -84,9 +85,7 @@ export default function AdminUsersPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-sm text-[var(--color-text-muted)]">{t('common.loading')}</p>
-          </div>
+          <LoadingState />
         ) : !data || data.users.length === 0 ? (
           <EmptyState icon={<Users size={24} />} description={t('admin.users.noUsers')} />
         ) : (

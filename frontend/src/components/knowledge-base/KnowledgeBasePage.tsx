@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Database, FileText, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../shared/EmptyState';
+import LoadingState from '../shared/LoadingState';
 import Modal from '../shared/Modal';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import {
@@ -113,9 +114,7 @@ export default function KnowledgeBasePage() {
 
       <div className="flex-1 overflow-y-auto min-h-0 p-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-sm text-[var(--color-text-muted)]">{t('common.loading')}</p>
-          </div>
+          <LoadingState />
         ) : kbs.length === 0 ? (
           <EmptyState
             icon={<Database size={24} />}
