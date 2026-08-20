@@ -1,6 +1,11 @@
 {
   "assets": {
     "title": "素材",
+    "subtitle": "管理知识库使用的原始文件与文档资源",
+    "viewTable": "表格视图",
+    "viewGrid": "卡片视图",
+    "dropHint": "拖拽文件到此处上传",
+    "dropFormats": "支持 .txt .md .pdf .docx，单文件不超过 20 MB",
     "upload": {
       "button": "上传素材",
       "selectFile": "选择文件",
@@ -42,6 +47,52 @@
       "loading": "加载分块中…",
       "count": "共 {{count}} 个分块",
       "truncated": "仅显示前 {{count}} 个分块"
-    }
+    },
+    "table": {
+      "fileName": "文件名",
+      "format": "格式",
+      "size": "大小",
+      "status": "状态",
+      "chunks": "分块数",
+      "updated": "更新时间",
+      "actions": "操作"
+    },
+    "action": {
+      "index": "索引",
+      "retry": "重试",
+      "chunks": "分块预览",
+      "rename": "重命名",
+      "delete": "删除"
+    },
+    "section": {
+      "fileInfo": "文件信息",
+      "chunks": "分块预览"
+    },
+    "info": {
+      "format": "格式",
+      "size": "大小",
+      "status": "状态",
+      "chunks": "分块数",
+      "updated": "更新时间"
+    },
+    "status": {
+      "indexed": "已索引",
+      "processing": "处理中",
+      "failed": "失败",
+      "pending": "未索引"
+    },
+    "stat": {
+      "total": "文件总数",
+      "indexed": "已索引",
+      "processing": "处理中",
+      "totalSize": "总大小",
+      "unit": "个"
+    },
+    "processing": "正在处理中，请稍候…",
+    "loading": "加载中…",
+    "noChunks": "暂无分块数据",
+    "viewAllChunks": "查看全部 {{count}} 个分块",
+    "notIndexed": "该文件尚未索引，无分块预览",
+    "chunkUnit": "块"
   }
 }

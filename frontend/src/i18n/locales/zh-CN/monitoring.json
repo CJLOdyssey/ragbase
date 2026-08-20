@@ -1,9 +1,12 @@
 {
   "monitoring": {
     "title": "质量监控",
+    "subtitle": "监控检索命中率、响应延迟与用户反馈趋势",
     "windowLabel": "统计窗口",
     "windowDay": "近 24 小时",
     "windowWeek": "近 7 天",
+    "windowMonth": "近 30 天",
+    "windowAll": "全部",
     "retrieval": {
       "title": "检索质量",
       "requests": "检索请求数",
@@ -16,6 +19,7 @@
       "title": "答案好评率",
       "good": "好评",
       "bad": "差评",
+      "unrated": "未评价",
       "noSamples": "暂无反馈"
     },
     "alerts": {
@@ -25,6 +29,19 @@
       "p95_latency_high": "延迟 P95 {{current}} 超过阈值 {{threshold}}",
       "good_ratio_low": "好评率 {{current}} 低于阈值 {{threshold}}"
     },
+    "kpiTotal": "总检索次数",
+    "kpiAvgHit": "平均命中数",
+    "kpiAvgLatency": "平均延迟",
+    "kpiGoodRate": "好评率",
+    "chartQualityTitle": "检索质量趋势",
+    "chartQualityLabel": "命中率",
+    "chartLatencyTitle": "响应延迟分布",
+    "chartLatencyLabel": "P50 延迟 (ms)",
+    "feedbackSectionTitle": "用户反馈",
+    "feedbackEmptyTitle": "暂无反馈数据",
+    "feedbackEmptyDesc": "用户对话评价后将在此显示",
+    "alertsSectionTitle": "告警规则",
+    "noData": "暂无数据",
     "loading": "加载中…",
     "loadFailed": "监控数据加载失败"
   }

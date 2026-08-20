@@ -1,0 +1,18 @@
+{
+  "retrievalLogs": {
+    "subtitle": "查看每次 RAG 检索的命中情况、响应延迟与来源追踪",
+    "totalCount": "共 {{total}} 条",
+    "knowledgeBase": "知识库",
+    "emptyRecall": "空召回",
+    "latencyFilterTag": "≤{{maxLatency}}ms",
+    "hitCountTag": "{{count}} 命中",
+    "latencyTrend": "延迟趋势",
+    "latencyNoData": "暂无数据",
+    "detailTitle": "检索详情",
+    "chunkSection": "命中片段",
+    "moreChunks": "还有 {{count}} 个片段…",
+    "hitBlocks": "命中块数",
+    "hitBlocksValue": "{{count}} 块",
+    "respLatency": "响应延迟"
+  }
+}

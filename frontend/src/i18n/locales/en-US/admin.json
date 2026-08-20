@@ -1,0 +1,55 @@
+{
+  "admin": {
+    "users": {
+      "title": "User Management",
+      "search": "Search users...",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "createdAt": "Created At",
+      "noUsers": "No Users",
+      "noUsersDesc": "Users will appear here after registration",
+      "confirmRoleChange": "Confirm changing this user's role?",
+      "confirmStatusChange": "Confirm changing this user's status?",
+      "viewDetails": "View Details",
+      "userDetails": "User Details",
+      "resetPassword": "Reset Password",
+      "resetPasswordConfirm": "Confirm resetting password for {{name}}?",
+      "resetPasswordSuccess": "Password reset successfully",
+      "subtitle": "Manage members, roles, permissions and access control",
+      "invite": "Invite User",
+      "deleteTitle": "Delete User",
+      "deleteConfirm": "Delete user {{name}}? This action cannot be undone.",
+      "delete": "Delete",
+      "disable": "Disable",
+      "enable": "Enable",
+      "moreActions": "More Actions",
+      "user": "User",
+      "lastActive": "Last Active",
+      "actions": "Actions",
+      "inviting": "Inviting"
+    },
+    "stats": {
+      "total": "Total Users",
+      "admins": "Admins",
+      "members": "Members"
+    },
+    "invite": {
+      "title": "Invite User",
+      "emailInvalid": "Please enter a valid email address",
+      "cancel": "Cancel",
+      "send": "Send Invite",
+      "emailLabel": "Email Address",
+      "role": "Role",
+      "memberDesc": "Member",
+      "adminDesc": "Admin"
+    },
+    "toast": {
+      "inviteSent": "Invitation sent",
+      "userDeleted": "User deleted"
+    }
+  }
+}

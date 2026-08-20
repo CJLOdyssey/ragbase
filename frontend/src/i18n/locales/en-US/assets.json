@@ -1,6 +1,11 @@
 {
   "assets": {
     "title": "Knowledge",
+    "subtitle": "Manage the raw files and documents used by the knowledge base",
+    "viewTable": "Table view",
+    "viewGrid": "Card view",
+    "dropHint": "Drag files here to upload",
+    "dropFormats": "Supports .txt .md .pdf .docx, up to 20 MB each",
     "upload": {
       "button": "Upload Asset",
       "selectFile": "Select File",
@@ -42,6 +47,52 @@
       "loading": "Loading chunks…",
       "count": "{{count}} chunks",
       "truncated": "Showing first {{count}} chunks"
-    }
+    },
+    "table": {
+      "fileName": "File name",
+      "format": "Format",
+      "size": "Size",
+      "status": "Status",
+      "chunks": "Chunks",
+      "updated": "Updated",
+      "actions": "Actions"
+    },
+    "action": {
+      "index": "Index",
+      "retry": "Retry",
+      "chunks": "Chunks",
+      "rename": "Rename",
+      "delete": "Delete"
+    },
+    "section": {
+      "fileInfo": "File Info",
+      "chunks": "Chunks Preview"
+    },
+    "info": {
+      "format": "Format",
+      "size": "Size",
+      "status": "Status",
+      "chunks": "Chunks",
+      "updated": "Updated"
+    },
+    "status": {
+      "indexed": "Indexed",
+      "processing": "Processing",
+      "failed": "Failed",
+      "pending": "Not indexed"
+    },
+    "stat": {
+      "total": "Total files",
+      "indexed": "Indexed",
+      "processing": "Processing",
+      "totalSize": "Total size",
+      "unit": ""
+    },
+    "processing": "Processing, please wait…",
+    "loading": "Loading…",
+    "noChunks": "No chunk data yet",
+    "viewAllChunks": "View all {{count}} chunks",
+    "notIndexed": "This file is not indexed, no chunk preview",
+    "chunkUnit": "chunks"
   }
 }

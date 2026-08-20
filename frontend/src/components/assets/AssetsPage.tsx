@@ -1,18 +1,9 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
-import Modal from '../shared/Modal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Braces,
-  FileText,
-  FileUp,
-  Image as ImageIcon,
-  Link,
-  RotateCcw,
-  Search,
-} from 'lucide-react';
+import { FileText, Link, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import {
@@ -27,6 +18,14 @@ import {
   type IndexProgress,
 } from '../../api/client/assets';
 import AssetChunksModal from './AssetChunksModal';
+import AssetPreviewDrawer from './AssetPreviewDrawer';
+import AssetsGrid from './AssetsGrid';
+import AssetsHeader, { type ViewMode } from './AssetsHeader';
+import AssetsRenameModal from './AssetsRenameModal';
+import AssetsStats from './AssetsStats';
+import AssetsTable from './AssetsTable';
+import AssetsUrlModal from './AssetsUrlModal';
+import { computeStats, type IndexingEntry } from './assetUtils';
 import { useToast } from '../../utils/useToast';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -42,27 +41,22 @@ const MAX_DOC_BYTES = 20 * 1024 * 1024;
 const INDEX_POLL_MS = 3000;
 const INDEX_POLL_TIMEOUT_MS = 120_000;
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
 export default function AssetsPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [view, setView] = useState<ViewMode>('table');
+  const [dragging, setDragging] = useState(false);
   const [renameTarget, setRenameTarget] = useState<AssetItem | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AssetItem | null>(null);
   const [chunksTarget, setChunksTarget] = useState<AssetItem | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<AssetItem | null>(null);
   const [urlImportOpen, setUrlImportOpen] = useState(false);
   const [urlValue, setUrlValue] = useState('');
   const [urlName, setUrlName] = useState('');
-  const [indexing, setIndexing] = useState<
-    Array<{ id: string; deadline: number }>
-  >([]);
+  const [indexing, setIndexing] = useState<IndexingEntry[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, IndexProgress>>(
     {},
   );
@@ -82,7 +76,6 @@ export default function AssetsPage() {
     },
   });
 
-  // Fetch progress for indexing assets
   useEffect(() => {
     const liveIndexing = indexing.filter((i) => i.deadline > Date.now());
     if (liveIndexing.length === 0) return;
@@ -178,10 +171,7 @@ export default function AssetsPage() {
     onError: () => toast(t('assets.urlImport.failed'), 'error'),
   });
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  const validateAndUpload = (file: File) => {
     const allowed = IMAGE_TYPES.has(file.type) || DOC_TYPES.has(file.type);
     if (!allowed) {
       toast(t('assets.upload.typeDenied', { name: file.name }), 'error');
@@ -195,211 +185,150 @@ export default function AssetsPage() {
     uploadMutation.mutate(file);
   };
 
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const files = e.dataTransfer.files;
+    for (let i = 0; i < files.length; i += 1) validateAndUpload(files[i]);
+  };
+
   const handleRenameConfirm = () => {
     if (renameTarget && renameValue.trim()) {
       renameMutation.mutate({ id: renameTarget.id, name: renameValue.trim() });
     }
   };
 
+  const stats = computeStats(assets, indexing);
+  const showEmpty = !isLoading && assets.length === 0;
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
-        <h1 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
-          {t('assets.title')}
-        </h1>
-        <div className="flex items-center gap-2">
-          <button
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-            onClick={() => setUrlImportOpen(true)}
-          >
-            <Link size={16} />
-            {t('assets.urlImport.button')}
-          </button>
-          <button
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadMutation.isPending}
-          >
-            <FileUp size={16} />
-            {uploadMutation.isPending
-              ? t('assets.upload.uploading')
-              : t('assets.upload.button')}
-          </button>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          className="hidden"
-          data-testid="asset-file-input"
-          onChange={handleFileChange}
-        />
-      </div>
+    <div className="flex flex-col h-full bg-[var(--color-surface)]">
+      <AssetsHeader
+        view={view}
+        onViewChange={setView}
+        onUrlImport={() => setUrlImportOpen(true)}
+        fileInputRef={fileInputRef}
+        uploadPending={uploadMutation.isPending}
+      />
 
-      <div className="flex-1 overflow-y-auto min-h-0 p-6">
+      <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0">
         {isLoading ? (
-          <LoadingState centered={true} />
-        ) : assets.length === 0 ? (
-          <EmptyState
-            icon={<FileText size={24} />}
-            title={t('assets.list.empty')}
-            description={t('assets.list.emptyDesc')}
-            centered={true}
-          />
+          <LoadingState centered />
+        ) : showEmpty ? (
+          <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-14 px-6 flex flex-col items-center justify-center text-center">
+            <EmptyState
+              icon={<FileText size={24} />}
+              title={t('assets.list.empty')}
+              description={t('assets.list.emptyDesc')}
+              centered
+            />
+          </div>
         ) : (
-          <ul className="flex flex-col gap-2" data-testid="asset-list">
-            {assets.map((asset) => {
-              const progress = progressMap[asset.id];
-              const isIndexingActive = indexing.some(
-                (i) => i.id === asset.id && i.deadline > Date.now(),
-              );
-              const hasFailed =
-                progress?.stage === 'failed' || (!asset.indexed && !!progress);
+          <div className="flex flex-col gap-5">
+            <AssetsStats
+              total={stats.total}
+              indexed={stats.indexed}
+              processing={stats.processing}
+              totalBytes={stats.totalBytes}
+            />
 
-              return (
-                <li
-                  key={asset.id}
-                  className="flex flex-col gap-1 px-4 py-3 rounded-lg bg-[var(--color-surface-raised)]"
-                  data-testid={`asset-item-${asset.id}`}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-3.5 rounded-[12px] border-2 border-dashed px-6 py-5 cursor-pointer transition-all"
+              style={{
+                borderColor: dragging
+                  ? 'color-mix(in_srgb, var(--color-accent) 60%, transparent)'
+                  : 'var(--color-border)',
+                background: dragging
+                  ? 'color-mix(in_srgb, var(--color-accent) 6%, transparent)'
+                  : 'transparent',
+              }}
+            >
+              <div
+                className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+                style={{
+                  color: 'var(--color-accent)',
+                  background:
+                    'color-mix(in_srgb, var(--color-accent) 10%, transparent)',
+                  border:
+                    '1px solid color-mix(in_srgb, var(--color-accent) 20%, transparent)',
+                }}
+              >
+                <Upload size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
+                  {t('assets.dropHint')}
+                </div>
+                <div className="text-[12px] text-[var(--color-text-tertiary)] mt-0.5">
+                  {t('assets.dropFormats')}
+                </div>
+              </div>
+              <div
+                className="ml-auto shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setUrlImportOpen(true);
+                }}
+              >
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-[9px] text-[13px] font-medium cursor-pointer border text-[var(--color-text-secondary)] border-[var(--color-border)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
                 >
-                  <div className="flex items-center gap-4">
-                    {asset.assetType === 'image' ? (
-                      <ImageIcon
-                        size={18}
-                        className="text-[var(--color-text-muted)] shrink-0"
-                      />
-                    ) : (
-                      <FileText
-                        size={18}
-                        className="text-[var(--color-text-muted)] shrink-0"
-                      />
-                    )}
-                    <span className="flex-1 min-w-0 text-sm text-[var(--color-text-primary)] truncate">
-                      {asset.name}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">
-                      {asset.assetType} · {formatBytes(asset.sizeBytes)}
-                    </span>
-                    {asset.indexed && (
-                      <span className="text-xs text-[var(--color-accent)] whitespace-nowrap">
-                        indexed
-                      </span>
-                    )}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {asset.assetType === 'document' && !asset.indexed && (
-                        <button
-                          className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                          onClick={() => indexMutation.mutate(asset.id)}
-                          disabled={isIndexingActive}
-                          data-testid={`index-${asset.id}`}
-                        >
-                          <Search size={12} className="inline mr-1" />
-                          {isIndexingActive
-                            ? t('assets.list.indexing')
-                            : t('assets.list.index')}
-                        </button>
-                      )}
-                      {hasFailed && (
-                        <button
-                          className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                          onClick={() => retryIndexMutation.mutate(asset.id)}
-                          disabled={retryIndexMutation.isPending}
-                          data-testid={`retry-${asset.id}`}
-                        >
-                          <RotateCcw size={12} className="inline mr-1" />
-                          {t('assets.list.retry')}
-                        </button>
-                      )}
-                      {asset.indexed && (
-                        <button
-                          className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                          onClick={() => setChunksTarget(asset)}
-                          data-testid={`chunks-${asset.id}`}
-                        >
-                          <Braces size={12} className="inline mr-1" />
-                          {t('assets.chunks.button')}
-                        </button>
-                      )}
-                      <button
-                        className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                        onClick={() => {
-                          setRenameTarget(asset);
-                          setRenameValue(asset.name);
-                        }}
-                        data-testid={`rename-${asset.id}`}
-                      >
-                        {t('assets.list.rename')}
-                      </button>
-                      <button
-                        className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--color-danger)]"
-                        onClick={() => setDeleteTarget(asset)}
-                        data-testid={`delete-${asset.id}`}
-                      >
-                        {t('confirm.delete')}
-                      </button>
-                    </div>
-                  </div>
-                  {isIndexingActive && progress && (
-                    <div
-                      className="flex items-center gap-2 pl-[26px]"
-                      data-testid={`progress-${asset.id}`}
-                    >
-                      <div className="flex-1 h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300"
-                          style={{
-                            width: `${Math.min(progress.percentage, 100)}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">
-                        {progress.stage ? `${progress.stage} · ` : ''}
-                        {progress.percentage}%
-                      </span>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                  <Link size={15} />
+                  {t('assets.urlImport.button')}
+                </button>
+              </div>
+            </div>
+
+            {view === 'table' ? (
+              <AssetsTable
+                assets={assets}
+                indexing={indexing}
+                progressMap={progressMap}
+                onPreview={setPreviewTarget}
+                onChunks={setChunksTarget}
+                onRename={(a) => {
+                  setRenameTarget(a);
+                  setRenameValue(a.name);
+                }}
+                onDelete={setDeleteTarget}
+                onIndex={(id) => indexMutation.mutate(id)}
+                onRetry={(id) => retryIndexMutation.mutate(id)}
+              />
+            ) : (
+              <AssetsGrid
+                assets={assets}
+                indexing={indexing}
+                progressMap={progressMap}
+                onPreview={setPreviewTarget}
+                onChunks={setChunksTarget}
+                onRename={(a) => {
+                  setRenameTarget(a);
+                  setRenameValue(a.name);
+                }}
+                onDelete={setDeleteTarget}
+                onIndex={(id) => indexMutation.mutate(id)}
+                onRetry={(id) => retryIndexMutation.mutate(id)}
+              />
+            )}
+          </div>
         )}
       </div>
 
-      {renameTarget && (
-        <Modal
-          title={t('assets.list.rename')}
-          onClose={() => setRenameTarget(null)}
-          ariaLabel={t('assets.list.rename')}
-          width={420}
-          hideHeaderBorder
-          bodyClassName="p-6"
-          footer={
-            <>
-              <button
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-                onClick={() => setRenameTarget(null)}
-              >
-                {t('confirm.cancel')}
-              </button>
-              <button
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90"
-                onClick={handleRenameConfirm}
-              >
-                {t('confirm.confirm')}
-              </button>
-            </>
-          }
-        >
-          <input
-            type="text"
-            className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            data-testid="rename-input"
-            aria-label={t('assets.list.rename')}
-          />
-        </Modal>
-      )}
+      <AssetsRenameModal
+        target={renameTarget}
+        value={renameValue}
+        onValueChange={setRenameValue}
+        onClose={() => setRenameTarget(null)}
+        onConfirm={handleRenameConfirm}
+      />
 
       {deleteTarget && (
         <ConfirmDialog
@@ -411,67 +340,34 @@ export default function AssetsPage() {
         />
       )}
 
-      {urlImportOpen && (
-        <Modal
-          title={t('assets.urlImport.title')}
-          onClose={() => setUrlImportOpen(false)}
-          ariaLabel={t('assets.urlImport.title')}
-          width={480}
-          hideHeaderBorder
-          bodyClassName="p-6"
-          footer={
-            <>
-              <button
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-                onClick={() => setUrlImportOpen(false)}
-              >
-                {t('confirm.cancel')}
-              </button>
-              <button
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-                onClick={() => urlImportMutation.mutate()}
-                disabled={!urlValue.trim() || urlImportMutation.isPending}
-              >
-                {urlImportMutation.isPending
-                  ? t('assets.urlImport.importing')
-                  : t('assets.urlImport.submit')}
-              </button>
-            </>
-          }
-        >
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[var(--color-text-primary)]">
-                {t('assets.urlImport.urlLabel')}
-              </label>
-              <input
-                type="url"
-                className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-                placeholder="https://example.com/document.pdf"
-                value={urlValue}
-                onChange={(e) => setUrlValue(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[var(--color-text-primary)]">
-                {t('assets.urlImport.nameLabel')}
-              </label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-                placeholder={t('assets.urlImport.namePlaceholder')}
-                value={urlName}
-                onChange={(e) => setUrlName(e.target.value)}
-              />
-            </div>
-          </div>
-        </Modal>
-      )}
+      <AssetsUrlModal
+        open={urlImportOpen}
+        urlValue={urlValue}
+        urlName={urlName}
+        onUrlChange={setUrlValue}
+        onNameChange={setUrlName}
+        onClose={() => setUrlImportOpen(false)}
+        onSubmit={() => urlImportMutation.mutate()}
+        submitting={urlImportMutation.isPending}
+      />
 
       {chunksTarget && (
         <AssetChunksModal
           asset={chunksTarget}
           onClose={() => setChunksTarget(null)}
+        />
+      )}
+
+      {previewTarget && (
+        <AssetPreviewDrawer
+          asset={previewTarget}
+          indexing={indexing}
+          progressMap={progressMap}
+          onClose={() => setPreviewTarget(null)}
+          onOpenChunks={(a) => {
+            setPreviewTarget(null);
+            setChunksTarget(a);
+          }}
         />
       )}
     </div>

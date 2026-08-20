@@ -1,0 +1,18 @@
+{
+  "retrievalLogs": {
+    "subtitle": "View hit status, response latency, and source tracing for each RAG retrieval",
+    "totalCount": "{{total}} records",
+    "knowledgeBase": "Knowledge Base",
+    "emptyRecall": "Empty Recall",
+    "latencyFilterTag": "≤{{maxLatency}}ms",
+    "hitCountTag": "{{count}} hits",
+    "latencyTrend": "Latency Trend",
+    "latencyNoData": "No data",
+    "detailTitle": "Retrieval Detail",
+    "chunkSection": "Hit Chunks",
+    "moreChunks": "{{count}} more chunks…",
+    "hitBlocks": "Hit Blocks",
+    "hitBlocksValue": "{{count}} blocks",
+    "respLatency": "Response Latency"
+  }
+}

@@ -1,9 +1,12 @@
 {
   "monitoring": {
     "title": "Quality Monitor",
+    "subtitle": "Monitor retrieval hit-rate, response latency and user feedback trends",
     "windowLabel": "Window",
     "windowDay": "Last 24h",
     "windowWeek": "Last 7 days",
+    "windowMonth": "Last 30 days",
+    "windowAll": "All time",
     "retrieval": {
       "title": "Retrieval Quality",
       "requests": "Retrieval requests",
@@ -16,6 +19,7 @@
       "title": "Answer Good-Rate",
       "good": "Good",
       "bad": "Bad",
+      "unrated": "Unrated",
       "noSamples": "No feedback yet"
     },
     "alerts": {
@@ -25,6 +29,19 @@
       "p95_latency_high": "Latency P95 {{current}} exceeds threshold {{threshold}}",
       "good_ratio_low": "Good rate {{current}} below threshold {{threshold}}"
     },
+    "kpiTotal": "Total retrievals",
+    "kpiAvgHit": "Avg. hits",
+    "kpiAvgLatency": "Avg. latency",
+    "kpiGoodRate": "Good rate",
+    "chartQualityTitle": "Retrieval quality trend",
+    "chartQualityLabel": "Hit rate",
+    "chartLatencyTitle": "Response latency distribution",
+    "chartLatencyLabel": "P50 latency (ms)",
+    "feedbackSectionTitle": "User feedback",
+    "feedbackEmptyTitle": "No feedback data yet",
+    "feedbackEmptyDesc": "Shows here after users rate conversations",
+    "alertsSectionTitle": "Alert rules",
+    "noData": "No data",
     "loading": "Loading…",
     "loadFailed": "Failed to load monitoring data"
   }
