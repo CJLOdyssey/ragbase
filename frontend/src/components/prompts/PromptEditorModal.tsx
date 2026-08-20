@@ -19,17 +19,38 @@ interface Props {
   error: string | null;
 }
 
+const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'draft', label: '草稿' },
+  { value: 'published', label: '已发布' },
+];
+
+function statusToUi(status: string): string {
+  if (status === 'published' || status === 'active') return 'published';
+  if (status === 'draft' || status === 'inactive') return 'draft';
+  return 'draft';
+}
+
+function uiToStatus(ui: string): string {
+  return ui === 'published' ? 'published' : 'draft';
+}
+
 function getInitialState(initial: PromptItem | null) {
   if (initial) {
     return {
       name: initial.name,
       description: initial.description || '',
-      category: initial.category,
-      status: initial.status,
+      status: statusToUi(initial.status),
       content: initial.content,
+      version: initial.version || 'v1.0.0',
     };
   }
-  return { name: '', description: '', category: 'user', status: 'active', content: '' };
+  return {
+    name: '',
+    description: '',
+    status: 'draft',
+    content: '',
+    version: 'v1.0.0',
+  };
 }
 
 export default function PromptEditorModal({
@@ -41,19 +62,22 @@ export default function PromptEditorModal({
   error,
 }: Props) {
   const { t } = useTranslation();
-  const [name, setName] = useState(() => getInitialState(initial).name);
-  const [description, setDescription] = useState(() => getInitialState(initial).description);
-  const [category, setCategory] = useState(
-    () => getInitialState(initial).category,
-  );
-  const [status, setStatus] = useState(() => getInitialState(initial).status);
-  const [content, setContent] = useState(
-    () => getInitialState(initial).content,
-  );
+  const init = getInitialState(initial);
+  const [name, setName] = useState(init.name);
+  const [description, setDescription] = useState(init.description);
+  const [statusUi, setStatusUi] = useState(init.status);
+  const [content, setContent] = useState(init.content);
+  const [version, setVersion] = useState(init.version);
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), description: description.trim() || undefined, category, content, status });
+    onSave({
+      name: name.trim(),
+      description: description.trim() || undefined,
+      category: 'user',
+      content,
+      status: uiToStatus(statusUi),
+    });
   };
 
   return (
@@ -94,73 +118,73 @@ export default function PromptEditorModal({
           </div>
         )}
 
-        {/* Name */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-[var(--color-text-primary)]">
-            {t('prompts.editor.name')}
+            名称
           </label>
           <input
             type="text"
+            placeholder="如：产品问答助手"
             className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
 
-        {/* Description */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-[var(--color-text-primary)]">
-            {t('prompts.editor.description')}
+            描述
           </label>
           <input
             type="text"
+            placeholder="简短描述此提示词的用途"
             className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
-        {/* Category + Status row */}
-        <div className="flex gap-4">
-          <div className="flex flex-col gap-1.5 flex-1">
-            <label className="text-sm font-medium text-[var(--color-text-primary)]">
-              {t('prompts.editor.category')}
-            </label>
-            <select
-              className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] cursor-pointer"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="system">system</option>
-              <option value="user">user</option>
-              <option value="meta">meta</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5 flex-1">
-            <label className="text-sm font-medium text-[var(--color-text-primary)]">
-              {t('prompts.editor.status')}
-            </label>
-            <select
-              className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] cursor-pointer"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="active">active</option>
-              <option value="inactive">inactive</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Content */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-[var(--color-text-primary)]">
-            {t('prompts.editor.content')}
+            提示词模板
           </label>
           <textarea
-            className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] resize-y min-h-[180px] font-mono"
+            placeholder="你是一位…{{context}}…{{question}}"
+            rows={6}
+            className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] resize-y min-h-[140px] font-mono leading-[1.6]"
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-primary)]">
+              初始状态
+            </label>
+            <select
+              className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] cursor-pointer"
+              value={statusUi}
+              onChange={(e) => setStatusUi(e.target.value)}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-primary)]">
+              版本号
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] font-mono"
+              value={version}
+              onChange={(e) => setVersion(e.target.value)}
+            />
+          </div>
         </div>
 
         <p className="text-xs text-[var(--color-text-muted)] m-0">

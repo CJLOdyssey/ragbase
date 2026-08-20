@@ -293,6 +293,14 @@
       "list": "List",
       "version": "Versions"
     },
+    "table": {
+      "name": "Name",
+      "desc": "Description",
+      "status": "Status",
+      "version": "Version",
+      "uses": "Uses",
+      "actions": "Actions"
+    },
     "list": {
       "empty": "No prompts yet",
       "emptyDesc": "Click the button above to create a prompt",

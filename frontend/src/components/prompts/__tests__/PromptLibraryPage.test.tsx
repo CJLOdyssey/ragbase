@@ -88,13 +88,12 @@ describe('PromptLibraryPage', () => {
     renderWithClient(<PromptLibraryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('prompts.editor.name')).toBeInTheDocument();
-      expect(
-        screen.getByText('prompts.editor.description'),
-      ).toBeInTheDocument();
-      expect(screen.getByText('prompts.tab.version')).toBeInTheDocument();
-      expect(screen.getByText('prompts.editor.updatedAt')).toBeInTheDocument();
-      expect(screen.getByText('prompts.editor.actions')).toBeInTheDocument();
+      expect(screen.getByText('prompts.table.name')).toBeInTheDocument();
+      expect(screen.getByText('prompts.table.desc')).toBeInTheDocument();
+      expect(screen.getByText('prompts.table.status')).toBeInTheDocument();
+      expect(screen.getByText('prompts.table.version')).toBeInTheDocument();
+      expect(screen.getByText('prompts.table.uses')).toBeInTheDocument();
+      expect(screen.getByText('prompts.table.actions')).toBeInTheDocument();
     });
   });
 

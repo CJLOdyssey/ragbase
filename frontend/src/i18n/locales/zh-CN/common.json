@@ -293,6 +293,14 @@
       "list": "列表",
       "version": "版本"
     },
+    "table": {
+      "name": "名称",
+      "desc": "描述",
+      "status": "状态",
+      "version": "版本",
+      "uses": "调用数",
+      "actions": "操作"
+    },
     "list": {
       "empty": "暂无提示词",
       "emptyDesc": "点击上方按钮创建提示词",
