@@ -1,15 +1,18 @@
 import { memo, useCallback, useMemo, useState } from 'react';
+import { useAuth } from '../auth/AuthContext';
 import {
-  BookText,
   Bot,
   ChevronDown,
   ChevronRight,
+  Clock,
   Database,
-  FileSearch,
   FileText,
+  LayoutGrid,
+  LineChart,
   PanelLeft,
   Sparkles,
   Users,
+  type LucideIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Conversation } from '../../types/studio';
@@ -17,7 +20,6 @@ import MemoryPanel from './MemoryPanel';
 import type { ManageView } from './RagBaseWorkstation';
 import ConversationsList from './sidebar/ConversationsList';
 import UserMenu from './sidebar/UserMenu';
-import { useAuth } from '../auth/AuthContext';
 
 interface RagBaseSidebarProps {
   conversations: Conversation[];
@@ -46,7 +48,7 @@ const NAV_BTN_ACTIVE =
 
 interface NavGroup {
   labelKey: string;
-  items: Array<{ view: ManageView; icon: typeof BookText; labelKey: string }>;
+  items: Array<{ view: ManageView; icon: LucideIcon; labelKey: string }>;
   adminOnly?: boolean;
 }
 
@@ -54,27 +56,43 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'sidebar.group.resources',
     items: [
-      { view: 'prompts', icon: BookText, labelKey: 'sidebar.nav.prompts' },
-      { view: 'assets', icon: FileText, labelKey: 'sidebar.nav.assets' },
+      { view: 'prompts', icon: FileText, labelKey: 'sidebar.nav.prompts' },
+      { view: 'assets', icon: LayoutGrid, labelKey: 'sidebar.nav.assets' },
     ],
   },
   {
     labelKey: 'sidebar.group.knowledge',
     items: [
-      { view: 'knowledge-bases', icon: Database, labelKey: 'sidebar.nav.knowledgeBases' },
+      {
+        view: 'knowledge-bases',
+        icon: Database,
+        labelKey: 'sidebar.nav.knowledgeBases',
+      },
     ],
   },
   {
     labelKey: 'sidebar.group.analytics',
     items: [
-      { view: 'monitoring', icon: FileSearch, labelKey: 'sidebar.nav.qualityReport' },
-      { view: 'retrieval-logs', icon: FileSearch, labelKey: 'sidebar.nav.retrievalLogs' },
+      {
+        view: 'monitoring',
+        icon: LineChart,
+        labelKey: 'sidebar.nav.qualityReport',
+      },
+      {
+        view: 'retrieval-logs',
+        icon: Clock,
+        labelKey: 'sidebar.nav.retrievalLogs',
+      },
     ],
   },
   {
     labelKey: 'sidebar.group.admin',
     items: [
-      { view: 'admin-users', icon: Users, labelKey: 'sidebar.nav.userManagement' },
+      {
+        view: 'admin-users',
+        icon: Users,
+        labelKey: 'sidebar.nav.userManagement',
+      },
     ],
     adminOnly: true,
   },
@@ -101,7 +119,9 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
   const { t } = useTranslation();
   const { user } = useAuth();
   const [memorySessionId, setMemorySessionId] = useState<string | null>(null);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set(),
+  );
 
   const isAdmin = useMemo(() => {
     return user?.roles?.includes('admin') ?? false;
@@ -183,18 +203,23 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
                 className="flex items-center justify-between w-full px-3 py-1 text-sm font-medium text-[var(--color-text-tertiary)] bg-transparent border-none cursor-pointer hover:text-[var(--color-text-secondary)] transition-colors"
               >
                 <span>{t(group.labelKey)}</span>
-                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                {isCollapsed ? (
+                  <ChevronRight size={14} />
+                ) : (
+                  <ChevronDown size={14} />
+                )}
               </button>
-              {!isCollapsed && group.items.map(({ view, icon: Icon, labelKey }) => (
-                <button
-                  key={view}
-                  onClick={() => onNavigate(view)}
-                  className={`${NAV_BTN} ${activeView === view ? NAV_BTN_ACTIVE : ''}`}
-                >
-                  <Icon size={16} className="shrink-0" />
-                  <span>{t(labelKey)}</span>
-                </button>
-              ))}
+              {!isCollapsed &&
+                group.items.map(({ view, icon: Icon, labelKey }) => (
+                  <button
+                    key={view}
+                    onClick={() => onNavigate(view)}
+                    className={`${NAV_BTN} ${activeView === view ? NAV_BTN_ACTIVE : ''}`}
+                  >
+                    <Icon size={16} className="shrink-0" />
+                    <span>{t(labelKey)}</span>
+                  </button>
+                ))}
             </div>
           );
         })}
