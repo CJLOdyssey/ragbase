@@ -1,9 +1,13 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  createPrompt,
+  listPrompts,
+  updatePrompt,
+} from '../../../api/client/prompts';
+import { listVersions } from '../../../api/client/versions';
 import PromptLibraryPage from '../PromptLibraryPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { listPrompts, createPrompt, updatePrompt, deletePrompt } from '../../../api/client/prompts';
-import { listVersions } from '../../../api/client/versions';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../api/client/prompts', () => ({
   listPrompts: vi.fn(),
@@ -42,9 +46,7 @@ describe('PromptLibraryPage', () => {
 
   const renderWithClient = (ui: React.ReactElement) => {
     return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
     );
   };
 
@@ -52,7 +54,7 @@ describe('PromptLibraryPage', () => {
     vi.mocked(listPrompts).mockResolvedValue([]);
 
     renderWithClient(<PromptLibraryPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('prompts.title')).toBeInTheDocument();
     });
@@ -62,7 +64,7 @@ describe('PromptLibraryPage', () => {
     vi.mocked(listPrompts).mockResolvedValue([]);
 
     renderWithClient(<PromptLibraryPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('prompts.editor.new')).toBeInTheDocument();
     });
@@ -87,7 +89,9 @@ describe('PromptLibraryPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('prompts.editor.name')).toBeInTheDocument();
-      expect(screen.getByText('prompts.editor.description')).toBeInTheDocument();
+      expect(
+        screen.getByText('prompts.editor.description'),
+      ).toBeInTheDocument();
       expect(screen.getByText('prompts.tab.version')).toBeInTheDocument();
       expect(screen.getByText('prompts.editor.updatedAt')).toBeInTheDocument();
       expect(screen.getByText('prompts.editor.actions')).toBeInTheDocument();
@@ -109,7 +113,7 @@ describe('PromptLibraryPage', () => {
     vi.mocked(listPrompts).mockResolvedValue(mockPrompts);
 
     renderWithClient(<PromptLibraryPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('测试提示词')).toBeInTheDocument();
     });
@@ -121,13 +125,17 @@ describe('PromptLibraryPage', () => {
     renderWithClient(<PromptLibraryPage />);
 
     await waitFor(() => {
-      const newButton = screen.getByRole('button', { name: 'prompts.editor.new' });
+      const newButton = screen.getByRole('button', {
+        name: 'prompts.editor.new',
+      });
       fireEvent.click(newButton);
     });
 
     await waitFor(() => {
       // Modal title + button both have this text
-      expect(screen.getAllByText('prompts.editor.new').length).toBeGreaterThanOrEqual(2);
+      expect(
+        screen.getAllByText('prompts.editor.new').length,
+      ).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -148,12 +156,16 @@ describe('PromptLibraryPage', () => {
     renderWithClient(<PromptLibraryPage />);
 
     // 点击新建按钮
-    const newButton = await screen.findByRole('button', { name: 'prompts.editor.new' });
+    const newButton = await screen.findByRole('button', {
+      name: 'prompts.editor.new',
+    });
     fireEvent.click(newButton);
 
     // 等待模态框打开 — 检查取消按钮出现
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'confirm.cancel' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'confirm.cancel' }),
+      ).toBeInTheDocument();
     });
 
     // 获取所有文本输入框（第一个是name输入框）
@@ -162,7 +174,7 @@ describe('PromptLibraryPage', () => {
 
     // 获取textarea（content输入框）
     const textareas = screen.getAllByRole('textbox', { hidden: false });
-    const contentInput = textareas.find(el => el.tagName === 'TEXTAREA');
+    const contentInput = textareas.find((el) => el.tagName === 'TEXTAREA');
 
     if (nameInput) {
       fireEvent.change(nameInput, { target: { value: '新提示词' } });
@@ -172,7 +184,9 @@ describe('PromptLibraryPage', () => {
     }
 
     // 点击保存按钮
-    const saveButton = screen.getByRole('button', { name: 'prompts.editor.save' });
+    const saveButton = screen.getByRole('button', {
+      name: 'prompts.editor.save',
+    });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -201,6 +215,72 @@ describe('PromptLibraryPage', () => {
       expect(screen.getByText('测试提示词')).toBeInTheDocument();
       expect(screen.getByText('测试描述')).toBeInTheDocument();
       expect(screen.getByText('v1')).toBeInTheDocument();
+    });
+  });
+
+  it('rolls back to a historical version from the history modal', async () => {
+    vi.mocked(listPrompts).mockResolvedValue([
+      {
+        id: 'prompt-1',
+        name: '测试提示词',
+        description: '测试描述',
+        content: '当前内容',
+        category: 'user',
+        model: null,
+        status: 'active',
+        version: 'v2',
+        created_at: '2024-01-01T00:00:00Z',
+      },
+    ]);
+    vi.mocked(listVersions).mockResolvedValue([
+      {
+        id: 'version-1',
+        version_num: 1,
+        resource_type: 'prompt',
+        resource_id: 'prompt-1',
+        snapshot: {
+          name: '历史名称',
+          category: 'system',
+          content: '历史内容',
+        },
+        created_at: '2024-01-01T00:00:00Z',
+        created_by: 'user1',
+      },
+    ]);
+    vi.mocked(updatePrompt).mockResolvedValue({
+      id: 'prompt-1',
+      name: '历史名称',
+      description: null,
+      content: '历史内容',
+      category: 'system',
+      model: null,
+      status: 'active',
+      version: 'v3',
+      created_at: '2024-01-01T00:00:00Z',
+    });
+
+    renderWithClient(<PromptLibraryPage />);
+
+    const historyButton = await screen.findByRole('button', {
+      name: 'prompts.list.history',
+    });
+    fireEvent.click(historyButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('prompts.history.title')).toBeInTheDocument();
+    });
+
+    const rollbackButton = await screen.findByRole('button', {
+      name: 'prompts.version.rollback',
+    });
+    fireEvent.click(rollbackButton);
+
+    await waitFor(() => {
+      expect(updatePrompt).toHaveBeenCalledWith('prompt-1', {
+        name: '历史名称',
+        category: 'system',
+        content: '历史内容',
+      });
     });
   });
 });

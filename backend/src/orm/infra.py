@@ -160,7 +160,7 @@ class RetrievalLogDB(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     hit_count: Mapped[int] = mapped_column(Integer, default=0)
     sources: Mapped[str | None] = mapped_column(
-        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity}"
+        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity, text}"
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
@@ -187,7 +187,7 @@ class ShadowRetrievalLogDB(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     hit_count: Mapped[int] = mapped_column(Integer, default=0)
     sources: Mapped[str | None] = mapped_column(
-        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity}"
+        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity, text}"
     )
     variant: Mapped[str] = mapped_column(String(256), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

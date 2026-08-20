@@ -5,6 +5,7 @@ import LoadingState from '../shared/LoadingState';
 import Modal from '../shared/Modal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Braces,
   FileText,
   FileUp,
   Image as ImageIcon,
@@ -25,6 +26,7 @@ import {
   uploadAsset,
   type IndexProgress,
 } from '../../api/client/assets';
+import AssetChunksModal from './AssetChunksModal';
 import { useToast } from '../../utils/useToast';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -54,13 +56,16 @@ export default function AssetsPage() {
   const [renameTarget, setRenameTarget] = useState<AssetItem | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AssetItem | null>(null);
+  const [chunksTarget, setChunksTarget] = useState<AssetItem | null>(null);
   const [urlImportOpen, setUrlImportOpen] = useState(false);
   const [urlValue, setUrlValue] = useState('');
   const [urlName, setUrlName] = useState('');
   const [indexing, setIndexing] = useState<
     Array<{ id: string; deadline: number }>
   >([]);
-  const [progressMap, setProgressMap] = useState<Record<string, IndexProgress>>({});
+  const [progressMap, setProgressMap] = useState<Record<string, IndexProgress>>(
+    {},
+  );
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['assets'],
@@ -249,8 +254,7 @@ export default function AssetsPage() {
                 (i) => i.id === asset.id && i.deadline > Date.now(),
               );
               const hasFailed =
-                progress?.stage === 'failed' ||
-                (!asset.indexed && !!progress);
+                progress?.stage === 'failed' || (!asset.indexed && !!progress);
 
               return (
                 <li
@@ -259,7 +263,7 @@ export default function AssetsPage() {
                   data-testid={`asset-item-${asset.id}`}
                 >
                   <div className="flex items-center gap-4">
-                    {asset.asset_type === 'image' ? (
+                    {asset.assetType === 'image' ? (
                       <ImageIcon
                         size={18}
                         className="text-[var(--color-text-muted)] shrink-0"
@@ -274,7 +278,7 @@ export default function AssetsPage() {
                       {asset.name}
                     </span>
                     <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">
-                      {asset.asset_type} · {formatBytes(asset.size_bytes)}
+                      {asset.assetType} · {formatBytes(asset.sizeBytes)}
                     </span>
                     {asset.indexed && (
                       <span className="text-xs text-[var(--color-accent)] whitespace-nowrap">
@@ -282,7 +286,7 @@ export default function AssetsPage() {
                       </span>
                     )}
                     <div className="flex items-center gap-2 shrink-0">
-                      {asset.asset_type === 'document' && !asset.indexed && (
+                      {asset.assetType === 'document' && !asset.indexed && (
                         <button
                           className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                           onClick={() => indexMutation.mutate(asset.id)}
@@ -306,6 +310,16 @@ export default function AssetsPage() {
                           {t('assets.list.retry')}
                         </button>
                       )}
+                      {asset.indexed && (
+                        <button
+                          className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                          onClick={() => setChunksTarget(asset)}
+                          data-testid={`chunks-${asset.id}`}
+                        >
+                          <Braces size={12} className="inline mr-1" />
+                          {t('assets.chunks.button')}
+                        </button>
+                      )}
                       <button
                         className="text-xs px-2 py-1 rounded-md cursor-pointer border-none bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                         onClick={() => {
@@ -326,15 +340,21 @@ export default function AssetsPage() {
                     </div>
                   </div>
                   {isIndexingActive && progress && (
-                    <div className="flex items-center gap-2 pl-[26px]" data-testid={`progress-${asset.id}`}>
+                    <div
+                      className="flex items-center gap-2 pl-[26px]"
+                      data-testid={`progress-${asset.id}`}
+                    >
                       <div className="flex-1 h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden">
                         <div
                           className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300"
-                          style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+                          style={{
+                            width: `${Math.min(progress.percentage, 100)}%`,
+                          }}
                         />
                       </div>
                       <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">
-                        {progress.stage ? `${progress.stage} · ` : ''}{progress.percentage}%
+                        {progress.stage ? `${progress.stage} · ` : ''}
+                        {progress.percentage}%
                       </span>
                     </div>
                   )}
@@ -446,6 +466,13 @@ export default function AssetsPage() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {chunksTarget && (
+        <AssetChunksModal
+          asset={chunksTarget}
+          onClose={() => setChunksTarget(null)}
+        />
       )}
     </div>
   );

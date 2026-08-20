@@ -69,6 +69,19 @@ async def list_assets_by_user(user_id: str) -> list[AssetDB]:
         return list(result.scalars().all())
 
 
+async def list_asset_ids_by_kb(kb_id: str, user_id: str) -> list[str]:
+    """List asset IDs belonging to a knowledge base, scoped to the owner."""
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(AssetDB.id).where(
+                AssetDB.knowledge_base_id == kb_id,
+                AssetDB.user_id == user_id,
+            )
+        )
+        return list(result.scalars().all())
+
+
 async def delete_asset(asset_id: str) -> str | None:
     """Delete an asset row. Returns storage_path if found, None otherwise."""
     factory = get_session_factory()

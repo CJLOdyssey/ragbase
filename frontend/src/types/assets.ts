@@ -1,11 +1,13 @@
 export interface AssetItem {
   id: string;
   name: string;
-  asset_type: string;
-  size_bytes: number;
-  usage_count: number;
+  assetType: string;
+  sizeBytes: number;
+  usageCount: number;
   indexed: boolean;
-  knowledge_base_id?: string | null;
+  knowledgeBaseId?: string | null;
+  source?: string;
+  sourceRef?: string | null;
 }
 
 export interface AssetIndexResult {

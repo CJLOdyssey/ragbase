@@ -65,11 +65,16 @@ async def test_update_prompt_content(db_engine):
     updated = await update_prompt(prompt.id, {"content": "Modified content."})
     assert updated is not None
     assert updated.content == "Modified content."
+    assert updated.version == "v1.0.1"
+    updated2 = await update_prompt(prompt.id, {"content": "Another change."})
+    assert updated2 is not None
+    assert updated2.version == "v1.0.2"
     # Cross-check with list
     prompts = await get_prompts()
     found = [p for p in prompts if p.id == prompt.id]
     assert len(found) == 1
-    assert found[0].content == "Modified content."
+    assert found[0].content == "Another change."
+    assert found[0].version == "v1.0.2"
 
 
 @pytest.mark.requirement("REQ-PROMPT-001")

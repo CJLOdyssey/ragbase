@@ -48,8 +48,16 @@ class AssetItem(BaseModel):
     size_bytes: int
     usage_count: int
     indexed: bool
+    knowledge_base_id: str | None = None
     source: str = "upload"
     source_ref: str | None = None
+
+
+class AssetChunkOut(BaseModel):
+    model_config = {"alias_generator": to_camel, "populate_by_name": True}
+    text: str
+    tags: list[str] = []
+    metadata: dict[str, Any] = {}
 
 
 def _validate(content_type: str, size: int) -> str:
@@ -67,6 +75,7 @@ def _validate(content_type: str, size: int) -> str:
 
 
 def _to_item(asset: Any) -> AssetItem:
+    kb_id = getattr(asset, "knowledge_base_id", None)
     return AssetItem(
         id=asset.id,
         name=asset.name,
@@ -74,6 +83,7 @@ def _to_item(asset: Any) -> AssetItem:
         size_bytes=asset.size_bytes,
         usage_count=asset.usage_count,
         indexed=asset.indexed,
+        knowledge_base_id=kb_id if isinstance(kb_id, str) else None,
         source=asset.source,
         source_ref=asset.source_ref,
     )
@@ -276,6 +286,21 @@ async def get_asset_progress(asset_id: str, request: Request) -> Any:
     if progress is None:
         return {"stage": None}
     return progress
+
+
+@router.get("/api/assets/{asset_id}/chunks", response_model=list[AssetChunkOut])
+async def get_asset_chunks(asset_id: str, request: Request) -> Any:
+    """List an asset's vector chunks for preview (owner-scoped)."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    if not asset.indexed:
+        return []
+
+    from rag.rag_store import PgVectorStore
+
+    return await PgVectorStore().list_asset_chunks(asset_id, user_id)
 
 
 @router.post("/api/assets/{asset_id}/retry-index")

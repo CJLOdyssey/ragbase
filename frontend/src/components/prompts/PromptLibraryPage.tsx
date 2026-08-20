@@ -91,9 +91,8 @@ export default function PromptLibraryPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
+  const [historyPrompt, setHistoryPrompt] = useState<PromptItem | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
-  const [historyPromptId, setHistoryPromptId] = useState<string | null>(null);
 
   const { data: prompts = [], isLoading } = useQuery({
     queryKey: ['prompts'],
@@ -101,9 +100,9 @@ export default function PromptLibraryPage() {
   });
 
   const { data: versions = [] } = useQuery({
-    queryKey: ['versions', historyPromptId],
-    queryFn: () => listVersions('prompts', historyPromptId!),
-    enabled: !!historyPromptId,
+    queryKey: ['versions', historyPrompt?.id],
+    queryFn: () => listVersions('prompt', historyPrompt!.id),
+    enabled: !!historyPrompt,
   });
 
   const createMutation = useMutation({
@@ -149,7 +148,7 @@ export default function PromptLibraryPage() {
   const handleDelete = (row: PromptItem) => setDialog({ type: 'delete', row });
 
   const handleHistory = (row: PromptItem) => {
-    setHistoryPromptId(row.id);
+    setHistoryPrompt(row);
   };
 
   const handleViewVersion = (version: VersionItem) => {
@@ -157,14 +156,15 @@ export default function PromptLibraryPage() {
   };
 
   const handleCloseHistory = () => {
-    setHistoryPromptId(null);
+    setHistoryPrompt(null);
   };
 
   const handleRollback = (v: VersionItem) => {
-    if (!selectedPromptId) return;
+    const targetId = historyPrompt?.id;
+    if (!targetId) return;
     const snap = v.snapshot as Record<string, string>;
     updateMutation.mutate({
-      id: selectedPromptId,
+      id: targetId,
       payload: {
         name: snap.name ?? '',
         category: snap.category ?? 'user',
@@ -307,7 +307,7 @@ export default function PromptLibraryPage() {
         onClose={() => setDialog(null)}
       />
 
-      {historyPromptId && (
+      {historyPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="flex flex-col w-full max-w-2xl max-h-[80vh] rounded-lg bg-[var(--color-surface-raised)] shadow-xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
@@ -336,7 +336,9 @@ export default function PromptLibraryPage() {
                     >
                       <div className="flex flex-col gap-1 flex-1 min-w-0">
                         <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                          {t('prompts.history.version', { num: version.version_num })}
+                          {t('prompts.history.version', {
+                            num: version.version_num,
+                          })}
                         </span>
                         <span className="text-xs text-[var(--color-text-muted)]">
                           {new Date(version.created_at).toLocaleString()}
@@ -347,6 +349,15 @@ export default function PromptLibraryPage() {
                         onClick={() => handleViewVersion(version)}
                       >
                         {t('prompts.history.view')}
+                      </button>
+                      <button
+                        className="px-3 py-1.5 rounded-md text-sm bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] border-none cursor-pointer hover:text-[var(--color-text-primary)]"
+                        onClick={() => {
+                          handleRollback(version);
+                          handleCloseHistory();
+                        }}
+                      >
+                        {t('prompts.version.rollback')}
                       </button>
                     </li>
                   ))}

@@ -68,8 +68,23 @@ async def create_prompt(data: dict[str, Any]) -> PromptDB:
     return result
 
 
+def _bump_version(current: str) -> str:
+    """Bump a semver-style version string (vX.Y.Z → vX.Y.Z+1)."""
+    import re
+
+    match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", current.strip())
+    if not match:
+        return "v1.0.1"
+    major, minor, patch = (int(g) for g in match.groups())
+    return f"v{major}.{minor}.{patch + 1}"
+
+
 async def update_prompt(entity_id: str, data: dict[str, Any]) -> PromptDB | None:
-    """Update a prompt and invalidate cache."""
+    """Update a prompt, bumping its version column, and invalidate cache."""
+    existing = await PromptRepository.get_one(entity_id)
+    if existing is None:
+        return None
+    data = {**data, "version": _bump_version(existing.version or "v1.0.0")}
     result = await PromptRepository.update_one(entity_id, data)
     await _invalidate_prompts_cache()
     return result

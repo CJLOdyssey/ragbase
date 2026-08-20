@@ -33,6 +33,7 @@ from routers import (
     prompts,
     providers,
     query,
+    rag_test,
     retrieval_logs,
     run_continue,
     runs,
@@ -168,7 +169,7 @@ app.add_middleware(RequestSizeLimitMiddleware)
 # ── Routers ─────────────────────────────────────────────────────────────────
 routers = [auth, events, runs, run_continue, sessions, attachments, models, keys,
            prompts, providers, versions, assets, feedback, monitoring, query, retrieval_logs,
-           admin_users, knowledge_bases]
+           admin_users, knowledge_bases, rag_test]
 for r in routers:
     app.include_router(r.router)
 

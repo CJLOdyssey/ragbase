@@ -19,18 +19,18 @@ vi.mock('../../../api/client/assets', () => mocks);
 const DOC: AssetItem = {
   id: 'a1',
   name: 'brand.md',
-  asset_type: 'document',
-  size_bytes: 2048,
-  usage_count: 1,
+  assetType: 'document',
+  sizeBytes: 2048,
+  usageCount: 1,
   indexed: false,
 };
 
 const IMG: AssetItem = {
   id: 'a2',
   name: 'cover.png',
-  asset_type: 'image',
-  size_bytes: 524288,
-  usage_count: 0,
+  assetType: 'image',
+  sizeBytes: 524288,
+  usageCount: 0,
   indexed: false,
 };
 
@@ -58,7 +58,7 @@ beforeEach(() => {
 describe('AssetsPage', { tags: ['unit'] }, () => {
   it('renders empty state when no assets', async () => {
     renderPage();
-    expect(await screen.findByText('暂无素材，点击上方按钮上传')).toBeTruthy();
+    expect(await screen.findByText('暂无素材')).toBeTruthy();
   });
 
   it('renders asset list', async () => {
@@ -71,7 +71,7 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
 
   it('rejects unsupported file type before upload', async () => {
     renderPage();
-    await screen.findByText('暂无素材，点击上方按钮上传');
+    await screen.findByText('暂无素材');
     const input = screen.getByTestId('asset-file-input');
     fireEvent.change(input, {
       target: { files: [makeFile('x.exe', 'application/x-msdownload')] },
@@ -82,7 +82,7 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
 
   it('uploads a valid file and shows success toast', async () => {
     renderPage();
-    await screen.findByText('暂无素材，点击上方按钮上传');
+    await screen.findByText('暂无素材');
     const input = screen.getByTestId('asset-file-input');
     const file = makeFile('note.md', 'text/markdown');
     fireEvent.change(input, { target: { files: [file] } });
@@ -92,7 +92,7 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
 
   it('accepts docx and xlsx like the backend does', async () => {
     renderPage();
-    await screen.findByText('暂无素材，点击上方按钮上传');
+    await screen.findByText('暂无素材');
     const input = screen.getByTestId('asset-file-input');
     const docx = makeFile(
       'a.docx',
@@ -110,7 +110,7 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
 
   it('rejects oversized file', async () => {
     renderPage();
-    await screen.findByText('暂无素材，点击上方按钮上传');
+    await screen.findByText('暂无素材');
     const input = screen.getByTestId('asset-file-input');
     fireEvent.change(input, {
       target: {
@@ -188,7 +188,7 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
   it('shows uploading state while upload is in flight', async () => {
     mocks.uploadAsset.mockReturnValue(new Promise(() => {}));
     renderPage();
-    await screen.findByText('暂无素材，点击上方按钮上传');
+    await screen.findByText('暂无素材');
     fireEvent.change(screen.getByTestId('asset-file-input'), {
       target: { files: [makeFile('note.md', 'text/markdown')] },
     });
@@ -198,7 +198,7 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
   it('shows error toast when upload fails', async () => {
     mocks.uploadAsset.mockRejectedValue(new Error('boom'));
     renderPage();
-    await screen.findByText('暂无素材，点击上方按钮上传');
+    await screen.findByText('暂无素材');
     fireEvent.change(screen.getByTestId('asset-file-input'), {
       target: { files: [makeFile('note.md', 'text/markdown')] },
     });
@@ -239,8 +239,8 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
 
   it('formats sizes in MB and B units', async () => {
     mocks.listAssets.mockResolvedValue([
-      { ...IMG, size_bytes: 5 * 1024 * 1024 },
-      { ...DOC, id: 'a3', name: 'tiny.txt', size_bytes: 500 },
+      { ...IMG, sizeBytes: 5 * 1024 * 1024 },
+      { ...DOC, id: 'a3', name: 'tiny.txt', sizeBytes: 500 },
     ]);
     renderPage();
     expect(await screen.findByText(/5\.0 MB/)).toBeTruthy();

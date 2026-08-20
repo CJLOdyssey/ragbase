@@ -51,10 +51,13 @@ describe('uploadAsset', { tags: ['unit'] }, () => {
 
     const result = await uploadAsset(file);
 
-    const [url, form] = mockApi.post.mock.calls[0];
+    const [url, form, config] = mockApi.post.mock.calls[0];
     expect(url).toBe('/assets');
     expect(form).toBeInstanceOf(FormData);
     expect((form as FormData).get('file')).toBe(file);
+    // Override the instance default application/json so axios picks the
+    // FormData branch and sets the multipart boundary itself.
+    expect(config.headers['Content-Type']).toBeUndefined();
     expect(result).toEqual(mockData);
   });
 

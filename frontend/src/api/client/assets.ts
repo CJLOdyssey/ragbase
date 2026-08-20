@@ -13,7 +13,9 @@ export async function uploadAsset(
   const form = new FormData();
   form.append('file', file);
   if (name) form.append('name', name);
-  const { data } = await api.post('/assets', form);
+  const { data } = await api.post('/assets', form, {
+    headers: { 'Content-Type': undefined },
+  });
   return data;
 }
 
@@ -53,12 +55,27 @@ export interface IndexProgress {
   message: string;
 }
 
-export async function getIndexProgress(assetId: string): Promise<IndexProgress> {
+export async function getIndexProgress(
+  assetId: string,
+): Promise<IndexProgress> {
   const { data } = await api.get(`/assets/${assetId}/progress`);
   return data;
 }
 
-export async function retryIndexAsset(assetId: string): Promise<{ retrying: boolean }> {
+export async function retryIndexAsset(
+  assetId: string,
+): Promise<{ retrying: boolean }> {
   const { data } = await api.post(`/assets/${assetId}/retry-index`);
+  return data;
+}
+
+export interface AssetChunk {
+  text: string;
+  tags: string[];
+  metadata: Record<string, unknown>;
+}
+
+export async function listAssetChunks(assetId: string): Promise<AssetChunk[]> {
+  const { data } = await api.get(`/assets/${assetId}/chunks`);
   return data;
 }

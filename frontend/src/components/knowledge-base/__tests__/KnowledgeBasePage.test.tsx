@@ -1,9 +1,12 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { listAssets } from '../../../api/client/assets';
+import {
+  createKnowledgeBase,
+  listKnowledgeBases,
+} from '../../../api/client/knowledgeBases';
 import KnowledgeBasePage from '../KnowledgeBasePage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { listKnowledgeBases, createKnowledgeBase, updateKnowledgeBase, deleteKnowledgeBase } from '../../../api/client/knowledgeBases';
-import { listAssets } from '../../../api/client/assets';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../api/client/knowledgeBases', () => ({
   listKnowledgeBases: vi.fn(),
@@ -43,9 +46,7 @@ describe('KnowledgeBasePage', () => {
 
   const renderWithClient = (ui: React.ReactElement) => {
     return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
     );
   };
 
@@ -54,7 +55,7 @@ describe('KnowledgeBasePage', () => {
     vi.mocked(listAssets).mockResolvedValue([]);
 
     renderWithClient(<KnowledgeBasePage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('kb.title')).toBeInTheDocument();
     });
@@ -65,7 +66,7 @@ describe('KnowledgeBasePage', () => {
     vi.mocked(listAssets).mockResolvedValue([]);
 
     renderWithClient(<KnowledgeBasePage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('kb.create')).toBeInTheDocument();
     });
@@ -76,7 +77,7 @@ describe('KnowledgeBasePage', () => {
     vi.mocked(listAssets).mockResolvedValue([]);
 
     renderWithClient(<KnowledgeBasePage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('kb.noKbs')).toBeInTheDocument();
     });
@@ -88,8 +89,8 @@ describe('KnowledgeBasePage', () => {
         id: 'kb-1',
         name: '测试知识库',
         description: '这是一个测试知识库',
-        asset_count: 5,
-        created_at: '2024-01-01T00:00:00Z',
+        assetCount: 5,
+        createdAt: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       },
     ];
@@ -98,7 +99,7 @@ describe('KnowledgeBasePage', () => {
     vi.mocked(listAssets).mockResolvedValue([]);
 
     renderWithClient(<KnowledgeBasePage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('测试知识库')).toBeInTheDocument();
       expect(screen.getByText('这是一个测试知识库')).toBeInTheDocument();
@@ -110,7 +111,7 @@ describe('KnowledgeBasePage', () => {
     vi.mocked(listAssets).mockResolvedValue([]);
 
     renderWithClient(<KnowledgeBasePage />);
-    
+
     await waitFor(() => {
       const createButton = screen.getByText('kb.create');
       fireEvent.click(createButton);
@@ -128,12 +129,12 @@ describe('KnowledgeBasePage', () => {
       id: 'new-kb',
       name: '新知识库',
       description: '描述',
-      created_at: '2024-01-01T00:00:00Z',
+      createdAt: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
     });
 
     renderWithClient(<KnowledgeBasePage />);
-    
+
     await waitFor(() => {
       const createButton = screen.getByText('kb.create');
       fireEvent.click(createButton);
@@ -147,11 +148,13 @@ describe('KnowledgeBasePage', () => {
     const textInputs = screen.getAllByRole('textbox');
     const nameInput = textInputs[0];
     const descInput = textInputs[1];
-    
+
     fireEvent.change(nameInput, { target: { value: '新知识库' } });
     fireEvent.change(descInput, { target: { value: '描述' } });
-    
-    const confirmButton = screen.getByRole('button', { name: 'confirm.confirm' });
+
+    const confirmButton = screen.getByRole('button', {
+      name: 'confirm.confirm',
+    });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
@@ -167,13 +170,13 @@ describe('KnowledgeBasePage', () => {
         name: '未分类文档.pdf',
         type: 'pdf',
         size: 1024,
-        created_at: '2024-01-01T00:00:00Z',
-        knowledge_base_id: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        knowledgeBaseId: null,
       },
     ]);
 
     renderWithClient(<KnowledgeBasePage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('未分类文档.pdf')).toBeInTheDocument();
     });

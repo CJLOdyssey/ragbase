@@ -52,6 +52,7 @@ def _sources_json(sources: list[dict[str, Any]] | None) -> str | None:
                 "asset_id": s.get("asset_id"),
                 "asset_name": s.get("asset_name"),
                 "similarity": s.get("similarity"),
+                "text": s.get("text"),
             }
             for s in sources
         ],

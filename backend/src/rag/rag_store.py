@@ -140,6 +140,7 @@ class PgVectorStore:
         user_id: str,
         session_id: str | None = None,
         tag_filter: list[str] | None = None,
+        asset_ids: list[str] | None = None,
         top_k: int = 5,
         min_score: float | None = None,
     ) -> list[dict[str, Any]]:
@@ -172,6 +173,12 @@ class PgVectorStore:
                     tag_conditions.append(f":{param_name} = ANY(tags)")
                     params[param_name] = tag.lower()
                 where_clauses.append("(" + " OR ".join(tag_conditions) + ")")
+
+            if asset_ids is not None:
+                if not asset_ids:
+                    return []
+                where_clauses.append("asset_id = ANY(:aids)")
+                params["aids"] = asset_ids
 
             if min_score is not None:
                 where_clauses.append(
@@ -231,6 +238,39 @@ class PgVectorStore:
                 {"aid": asset_id},
             )
             await session.commit()
+
+    async def list_asset_chunks(
+        self,
+        asset_id: str,
+        user_id: str,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        """List an asset's chunks for preview — owner-scoped, capped by limit."""
+        await self._ensure_table()
+        from core.infra.database import get_session_factory
+
+        factory = get_session_factory()
+        async with factory() as session:
+            rows = await session.execute(
+                text(
+                    """
+                    SELECT text, tags, metadata
+                    FROM vector_chunks
+                    WHERE asset_id = :aid AND user_id = :uid
+                    ORDER BY id
+                    LIMIT :lim
+                    """
+                ),
+                {"aid": asset_id, "uid": user_id, "lim": limit},
+            )
+            return [
+                {
+                    "text": r[0],
+                    "tags": r[1] if r[1] else [],
+                    "metadata": r[2] if r[2] else {},
+                }
+                for r in rows.fetchall()
+            ]
 
     async def clear_session(self, session_id: str) -> None:
         await self._ensure_table()

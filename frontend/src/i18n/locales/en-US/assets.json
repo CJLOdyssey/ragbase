@@ -33,6 +33,15 @@
       "submit": "Import",
       "importing": "Importing…",
       "failed": "Import failed. Check if the URL is accessible."
+    },
+    "chunks": {
+      "button": "Chunks",
+      "title": "Chunk Preview",
+      "empty": "No chunks",
+      "emptyDesc": "This asset has no chunks yet",
+      "loading": "Loading chunks…",
+      "count": "{{count}} chunks",
+      "truncated": "Showing first {{count}} chunks"
     }
   }
 }

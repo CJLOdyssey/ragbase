@@ -406,6 +406,22 @@
     "editTitle": "编辑知识库",
     "createTitle": "新建知识库"
   },
+  "ragTest": {
+    "button": "召回测试",
+    "title": "召回测试",
+    "queryLabel": "测试问题",
+    "queryPlaceholder": "输入一个检索测试问题…",
+    "topK": "返回条数",
+    "rewrite": "先改写查询",
+    "run": "测试",
+    "running": "测试中…",
+    "hits": "命中 {{count}} 条",
+    "noHits": "无命中",
+    "embeddingNotConfigured": "未配置 Embedding，无法检索",
+    "emptyHint": "无命中：可尝试开启「改写查询」，或在素材库补充文档",
+    "similarity": "相似度",
+    "source": "来源"
+  },
   "feedback": {
     "feedbackNotice": "感谢反馈，这将帮助优化后续检索"
   },

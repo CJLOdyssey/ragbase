@@ -406,6 +406,22 @@
     "editTitle": "Edit Knowledge Base",
     "createTitle": "New Knowledge Base"
   },
+  "ragTest": {
+    "button": "Test Retrieval",
+    "title": "Retrieval Test",
+    "queryLabel": "Test query",
+    "queryPlaceholder": "Enter a query to test retrieval…",
+    "topK": "Top K",
+    "rewrite": "Rewrite query first",
+    "run": "Run",
+    "running": "Running…",
+    "hits": "{{count}} hits",
+    "noHits": "No hits",
+    "embeddingNotConfigured": "Embedding not configured",
+    "emptyHint": "No hits: try enabling \"rewrite\", or add documents in Assets",
+    "similarity": "Similarity",
+    "source": "Source"
+  },
   "feedback": {
     "feedbackNotice": "Thanks for your feedback — it will help optimize future retrievals"
   },
