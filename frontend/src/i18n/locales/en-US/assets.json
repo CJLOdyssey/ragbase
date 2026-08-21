@@ -88,6 +88,12 @@
       "totalSize": "Total size",
       "unit": ""
     },
+    "toolbar": {
+      "searchPlaceholder": "Search by name…",
+      "timeFrom": "From",
+      "timeTo": "To",
+      "clear": "Clear"
+    },
     "processing": "Processing, please wait…",
     "loading": "Loading…",
     "noChunks": "No chunk data yet",

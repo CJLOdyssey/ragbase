@@ -88,6 +88,12 @@
       "totalSize": "总大小",
       "unit": "个"
     },
+    "toolbar": {
+      "searchPlaceholder": "搜索文件名…",
+      "timeFrom": "开始时间",
+      "timeTo": "结束时间",
+      "clear": "清除"
+    },
     "processing": "正在处理中，请稍候…",
     "loading": "加载中…",
     "noChunks": "暂无分块数据",

@@ -67,23 +67,45 @@ export interface AssetStats {
   total: number;
   indexed: number;
   processing: number;
+  failed: number;
+  pending: number;
   totalBytes: number;
 }
 
 export function computeStats(
   assets: AssetItem[],
   indexing: IndexingEntry[],
+  progressMap: Record<string, IndexProgress> = {},
 ): AssetStats {
   let indexed = 0;
   let processing = 0;
+  let failed = 0;
+  let pending = 0;
   let totalBytes = 0;
   for (const a of assets) {
     totalBytes += a.sizeBytes;
     if (a.indexed) {
       indexed += 1;
-    } else if (isLiveIndexing(a, indexing)) {
-      processing += 1;
+      continue;
     }
+    if (isLiveIndexing(a, indexing)) {
+      const p = progressMap[a.id];
+      if (p?.stage === 'failed') failed += 1;
+      else processing += 1;
+      continue;
+    }
+    if (progressMap[a.id]) {
+      failed += 1;
+      continue;
+    }
+    pending += 1;
   }
-  return { total: assets.length, indexed, processing, totalBytes };
+  return {
+    total: assets.length,
+    indexed,
+    processing,
+    failed,
+    pending,
+    totalBytes,
+  };
 }
