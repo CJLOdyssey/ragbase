@@ -99,11 +99,18 @@ export function useAssetSelection(
   }, [filteredAssets, sortField, sortDir]);
 
   const handleSort = (field: string) => {
-    if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    else {
+    if (sortField !== field) {
       setSortField(field);
       setSortDir('asc');
+      return;
     }
+    if (sortDir === 'asc') {
+      setSortDir('desc');
+      return;
+    }
+    // desc -> default
+    setSortField(null);
+    setSortDir('asc');
   };
 
   const selectAllChecked =
