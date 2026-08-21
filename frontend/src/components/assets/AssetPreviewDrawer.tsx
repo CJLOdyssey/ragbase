@@ -146,12 +146,24 @@ export default function AssetPreviewDrawer({
                 {chunks.slice(0, 3).map((chunk, i) => (
                   <div
                     key={i}
-                    className="p-3 rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface)]"
+                    className="p-3 rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col gap-1.5"
                   >
-                    <div className="text-[10px] font-mono text-[var(--color-text-tertiary)] mb-1.5">
+                    <div className="text-[10px] font-mono text-[var(--color-text-tertiary)]">
                       CHUNK #{i + 1}
                     </div>
-                    <div className="text-[12.5px] text-[var(--color-text-secondary)] leading-[1.6] line-clamp-3">
+                    {chunk.tags.length > 0 && (
+                      <div className="flex gap-1 flex-wrap">
+                        {chunk.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-[10px] px-1 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="text-[12.5px] text-[var(--color-text-secondary)] leading-[1.6] whitespace-pre-wrap break-words">
                       {chunk.text}
                     </div>
                   </div>

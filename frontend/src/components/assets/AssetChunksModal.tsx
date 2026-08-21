@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import Modal from '../shared/Modal';
 import { useQuery } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
@@ -15,6 +16,8 @@ export default function AssetChunksModal({
   onClose,
 }: AssetChunksModalProps) {
   const { t } = useTranslation();
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const {
     data: chunks,
     isLoading,
@@ -23,6 +26,16 @@ export default function AssetChunksModal({
     queryKey: ['asset-chunks', asset.id],
     queryFn: () => listAssetChunks(asset.id),
   });
+
+  const pageChunks = useMemo(() => {
+    if (!chunks) return [];
+    const start = (page - 1) * pageSize;
+    return chunks.slice(start, start + pageSize);
+  }, [chunks, page]);
+
+  const totalPages = chunks
+    ? Math.max(1, Math.ceil(chunks.length / pageSize))
+    : 1;
 
   return (
     <Modal
@@ -68,35 +81,68 @@ export default function AssetChunksModal({
             {chunks.length >= 200
               ? t('assets.chunks.truncated', { count: 200 })
               : t('assets.chunks.count', { count: chunks.length })}
+            {chunks.length > pageSize ? ` · 第 ${page} / ${totalPages} 页` : ''}
           </p>
           <ul
             className="flex flex-col gap-2 max-h-[420px] overflow-y-auto"
             data-testid="chunk-list"
           >
-            {chunks.map((chunk, index) => (
-              <li
-                key={`${asset.id}-${index}`}
-                className="flex flex-col gap-1 p-3 rounded-lg bg-[var(--color-surface-raised)]"
-                data-testid={`chunk-${index}`}
-              >
-                {chunk.tags.length > 0 && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {chunk.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+            {pageChunks.map((chunk, index) => {
+              const globalIdx = (page - 1) * pageSize + index;
+              return (
+                <li
+                  key={`${asset.id}-${globalIdx}`}
+                  className="flex flex-col gap-1 p-3 rounded-lg bg-[var(--color-surface-raised)] border border-[var(--color-border)]"
+                  data-testid={`chunk-${globalIdx}`}
+                >
+                  <div className="text-[10px] font-mono text-[var(--color-text-tertiary)]">
+                    CHUNK #{globalIdx + 1}
                   </div>
-                )}
-                <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap break-words m-0">
-                  {chunk.text}
-                </p>
-              </li>
-            ))}
+                  {chunk.tags.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {chunk.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap break-words leading-[1.6] m-0">
+                    {chunk.text}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
+          {chunks.length > pageSize && (
+            <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border-subtle)]">
+              <span className="text-[11px] font-mono text-[var(--color-text-tertiary)]">
+                {page * pageSize - pageSize + 1}-
+                {Math.min(page * pageSize, chunks.length)} / {chunks.length}
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] disabled:opacity-50"
+                >
+                  上一页
+                </button>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] disabled:opacity-50"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </Modal>
