@@ -17,7 +17,7 @@ export function StatusPill({ status }: { status: AssetStatus }) {
   return (
     <span
       data-testid={`status-${status}`}
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium leading-none whitespace-nowrap"
+      className="inline-flex items-center justify-center h-7 px-2.5 rounded-full text-[11px] font-medium leading-none whitespace-nowrap"
       style={{
         color,
         background: `color-mix(in_srgb, ${color} 14%, transparent)`,
