@@ -20,9 +20,11 @@ interface AssetPreviewDrawerProps {
 
 function KVRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="grid grid-cols-[88px_1fr] items-center min-h-7 mb-2.5">
-      <span className="text-xs text-[var(--color-text-tertiary)]">{label}</span>
-      <span className="text-[13px] text-[var(--color-text-primary)]">
+    <div className="grid grid-cols-[88px_1fr] items-center h-7 mb-2.5">
+      <span className="text-xs leading-none text-[var(--color-text-tertiary)]">
+        {label}
+      </span>
+      <span className="text-[13px] leading-none text-[var(--color-text-primary)] inline-flex items-center h-7">
         {value}
       </span>
     </div>
