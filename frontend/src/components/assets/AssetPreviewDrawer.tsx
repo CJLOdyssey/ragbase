@@ -103,7 +103,7 @@ export default function AssetPreviewDrawer({
         <KVRow
           label={t('assets.info.status')}
           value={
-            <span className="-ml-1">
+            <span className="-ml-2">
               <StatusPill status={status} />
             </span>
           }
