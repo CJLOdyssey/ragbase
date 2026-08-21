@@ -68,6 +68,7 @@ export default function AssetPreviewDrawer({
       ariaLabel={asset.name}
       width={640}
       hideHeaderBorder
+      hideFooterBorder
       bodyClassName="p-6 max-h-[70vh] overflow-y-auto"
       footer={
         <button
