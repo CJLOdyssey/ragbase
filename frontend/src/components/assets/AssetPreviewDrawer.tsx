@@ -3,12 +3,12 @@ import Modal from '../shared/Modal';
 import { STATUS_COLORS } from '../shared/statusColors';
 import { useQuery } from '@tanstack/react-query';
 import { Progress } from 'antd';
-import { FileText } from 'lucide-react';
+import { FileImage, FileSpreadsheet, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import { listAssetChunks, type IndexProgress } from '../../api/client/assets';
-import { ExtBadge, StatusPill } from './AssetBadges';
-import { getAssetStatus, getExt } from './assetUtils';
+import { StatusPill } from './AssetBadges';
+import { extColorOf, getAssetStatus, getExt } from './assetUtils';
 
 interface AssetPreviewDrawerProps {
   asset: AssetItem;
@@ -37,6 +37,31 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
       </div>
       {children}
     </div>
+  );
+}
+
+function FileTypeIcon({ ext }: { ext: string }) {
+  const color = extColorOf(ext);
+  const style = {
+    color,
+    background: `color-mix(in srgb, ${color} 12%, transparent)`,
+    border: `1px solid color-mix(in srgb, ${color} 24%, transparent)`,
+  } as React.CSSProperties;
+  const isSheet = ['xlsx', 'xls', 'csv'].includes(ext);
+  const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext);
+  return (
+    <span
+      className="inline-flex items-center justify-center h-7 w-7 rounded-[7px] shrink-0"
+      style={style}
+    >
+      {isSheet ? (
+        <FileSpreadsheet size={14} />
+      ) : isImage ? (
+        <FileImage size={14} />
+      ) : (
+        <FileText size={14} />
+      )}
+    </span>
   );
 }
 
@@ -80,14 +105,7 @@ export default function AssetPreviewDrawer({
       <Section label={t('assets.section.fileInfo')}>
         <KVRow
           label={t('assets.info.format')}
-          value={
-            <span className="inline-flex items-center gap-2">
-              <ExtBadge ext={ext} />
-              <span className="font-mono uppercase text-[var(--color-text-secondary)]">
-                {ext || asset.assetType}
-              </span>
-            </span>
-          }
+          value={<FileTypeIcon ext={ext} />}
         />
         <KVRow
           label={t('assets.info.size')}
