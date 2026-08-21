@@ -25,7 +25,7 @@ const handlers = {
 };
 
 describe('AssetsTable alignment', { tags: ['unit'] }, () => {
-  it('table header 操作 aligns right with row actions', () => {
+  it('table header 操作 aligns center between chunks and more', () => {
     render(
       <TestProviders>
         <AssetsTable
@@ -37,9 +37,9 @@ describe('AssetsTable alignment', { tags: ['unit'] }, () => {
       </TestProviders>,
     );
     const header = screen.getByText('操作');
-    expect(header.className).toContain('text-right');
+    expect(header.className).toContain('justify-center');
     const rowActions = document.querySelector(
-      '[data-testid="asset-item-1"] .justify-end',
+      '[data-testid="asset-item-1"] .justify-center',
     );
     expect(rowActions).toBeInTheDocument();
   });

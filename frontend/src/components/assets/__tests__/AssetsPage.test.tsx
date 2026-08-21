@@ -17,6 +17,21 @@ const { mocks } = vi.hoisted(() => ({
     renameAsset: vi.fn(),
     deleteAsset: vi.fn(),
     indexAsset: vi.fn(),
+    getIndexProgress: vi
+      .fn()
+      .mockResolvedValue({ stage: null, percentage: 0, message: '' }),
+    retryIndexAsset: vi.fn().mockResolvedValue({ retrying: true }),
+    importUrl: vi
+      .fn()
+      .mockResolvedValue({
+        id: 'a1',
+        name: 'x',
+        assetType: 'document',
+        sizeBytes: 100,
+        usageCount: 0,
+        indexed: false,
+      }),
+    listAssetChunks: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -131,7 +146,8 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
     mocks.listAssets.mockResolvedValue([DOC]);
     renderPage();
     await screen.findByTestId('asset-item-a1');
-    fireEvent.click(screen.getByTestId('delete-a1'));
+    fireEvent.click(screen.getByTestId('more-a1'));
+    fireEvent.click(await screen.findByTestId('delete-a1'));
     expect(
       await screen.findByText(/确定要删除素材 "brand.md" 吗/),
     ).toBeTruthy();
@@ -144,7 +160,8 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
     mocks.listAssets.mockResolvedValue([DOC]);
     renderPage();
     await screen.findByTestId('asset-item-a1');
-    fireEvent.click(screen.getByTestId('rename-a1'));
+    fireEvent.click(screen.getByTestId('more-a1'));
+    fireEvent.click(await screen.findByTestId('rename-a1'));
     const input = await screen.findByTestId('rename-input');
     fireEvent.change(input, { target: { value: 'new-name.md' } });
     fireEvent.click(screen.getByText('确定'));
@@ -230,7 +247,8 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
     mocks.listAssets.mockResolvedValue([DOC]);
     renderPage();
     await screen.findByTestId('asset-item-a1');
-    fireEvent.click(screen.getByTestId('delete-a1'));
+    fireEvent.click(screen.getByTestId('more-a1'));
+    fireEvent.click(await screen.findByTestId('delete-a1'));
     fireEvent.click(screen.getByText('取消'));
     await waitFor(() => expect(mocks.deleteAsset).not.toHaveBeenCalled());
     expect(screen.queryByText('确定')).toBeNull();
@@ -240,7 +258,8 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
     mocks.listAssets.mockResolvedValue([DOC]);
     renderPage();
     await screen.findByTestId('asset-item-a1');
-    fireEvent.click(screen.getByTestId('rename-a1'));
+    fireEvent.click(screen.getByTestId('more-a1'));
+    fireEvent.click(await screen.findByTestId('rename-a1'));
     const input = await screen.findByTestId('rename-input');
     fireEvent.change(input, { target: { value: '   ' } });
     fireEvent.click(screen.getByText('确定'));

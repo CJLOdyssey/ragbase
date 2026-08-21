@@ -89,10 +89,21 @@
       "unit": "个"
     },
     "toolbar": {
-      "searchPlaceholder": "搜索文件名…",
+      "searchPlaceholder": "Q搜索文件名.",
       "timeFrom": "开始时间",
       "timeTo": "结束时间",
       "clear": "清除"
+    },
+    "filter": {
+      "format": "格式",
+      "status": "索引状态",
+      "time": "修改时间",
+      "timeAll": "全部",
+      "timeToday": "今天",
+      "time7d": "最近7天",
+      "time30d": "最近30天",
+      "timeCustom": "自定义范围",
+      "clearAll": "清除全部"
     },
     "processing": "正在处理中，请稍候…",
     "loading": "加载中…",

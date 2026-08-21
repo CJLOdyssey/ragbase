@@ -1,5 +1,8 @@
 {
   "common": {
+    "all": "全部",
+    "selectAll": "全选",
+    "comingSoon": "功能开发中",
     "close": "关闭",
     "error": "出错了",
     "retry": "重试",

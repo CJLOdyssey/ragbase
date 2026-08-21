@@ -9,6 +9,99 @@ export interface IndexingEntry {
 
 export type AssetStatus = 'indexed' | 'processing' | 'failed' | 'pending';
 
+export const STATUS_OPTIONS: readonly AssetStatus[] = [
+  'indexed',
+  'processing',
+  'failed',
+  'pending',
+] as const;
+
+export const FORMAT_OPTIONS = [
+  'pdf',
+  'txt',
+  'md',
+  'docx',
+  'xlsx',
+  'csv',
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'gif',
+  'doc',
+  'xls',
+] as const;
+export type FormatOption = (typeof FORMAT_OPTIONS)[number];
+
+export const FORMAT_REGISTRY: Record<
+  string,
+  { label: string; category: 'document' | 'image' | 'data' }
+> = {
+  pdf: { label: 'PDF', category: 'document' },
+  txt: { label: 'TXT', category: 'document' },
+  md: { label: 'MD', category: 'document' },
+  doc: { label: 'DOC', category: 'document' },
+  docx: { label: 'DOCX', category: 'document' },
+  xlsx: { label: 'XLSX', category: 'data' },
+  xls: { label: 'XLS', category: 'data' },
+  csv: { label: 'CSV', category: 'data' },
+  png: { label: 'PNG', category: 'image' },
+  jpg: { label: 'JPG', category: 'image' },
+  jpeg: { label: 'JPEG', category: 'image' },
+  webp: { label: 'WEBP', category: 'image' },
+  gif: { label: 'GIF', category: 'image' },
+};
+
+export type TimeRange = 'all' | 'today' | '7d' | '30d' | 'custom';
+export const TIME_RANGES: {
+  value: TimeRange;
+  labelKey: string;
+  defaultLabel: string;
+}[] = [
+  { value: 'all', labelKey: 'assets.filter.timeAll', defaultLabel: '全部' },
+  { value: 'today', labelKey: 'assets.filter.timeToday', defaultLabel: '今天' },
+  { value: '7d', labelKey: 'assets.filter.time7d', defaultLabel: '最近7天' },
+  { value: '30d', labelKey: 'assets.filter.time30d', defaultLabel: '最近30天' },
+  {
+    value: 'custom',
+    labelKey: 'assets.filter.timeCustom',
+    defaultLabel: '自定义范围',
+  },
+];
+
+export function resolveTimeRange(
+  range: TimeRange,
+  customFrom: string,
+  customTo: string,
+): { from: number | null; to: number | null } {
+  const now = new Date();
+  const endOfToday = new Date(now);
+  endOfToday.setHours(23, 59, 59, 999);
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  if (range === 'all') return { from: null, to: null };
+  if (range === 'today')
+    return { from: startOfToday.getTime(), to: endOfToday.getTime() };
+  if (range === '7d') {
+    const from = new Date(startOfToday);
+    from.setDate(from.getDate() - 6);
+    return { from: from.getTime(), to: endOfToday.getTime() };
+  }
+  if (range === '30d') {
+    const from = new Date(startOfToday);
+    from.setDate(from.getDate() - 29);
+    return { from: from.getTime(), to: endOfToday.getTime() };
+  }
+  if (range === 'custom') {
+    const from = customFrom ? new Date(customFrom).getTime() : null;
+    const to = customTo
+      ? new Date(new Date(customTo).setHours(23, 59, 59, 999)).getTime()
+      : null;
+    return { from, to };
+  }
+  return { from: null, to: null };
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

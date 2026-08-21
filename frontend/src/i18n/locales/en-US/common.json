@@ -1,5 +1,8 @@
 {
   "common": {
+    "all": "All",
+    "selectAll": "Select all",
+    "comingSoon": "Coming soon",
     "close": "Close",
     "error": "An error occurred",
     "retry": "Retry",

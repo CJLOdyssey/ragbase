@@ -89,10 +89,21 @@
       "unit": ""
     },
     "toolbar": {
-      "searchPlaceholder": "Search by name…",
+      "searchPlaceholder": "Q Search filename.",
       "timeFrom": "From",
       "timeTo": "To",
       "clear": "Clear"
+    },
+    "filter": {
+      "format": "Format",
+      "status": "Status",
+      "time": "Modified",
+      "timeAll": "All",
+      "timeToday": "Today",
+      "time7d": "Last 7 days",
+      "time30d": "Last 30 days",
+      "timeCustom": "Custom",
+      "clearAll": "Clear all"
     },
     "processing": "Processing, please wait…",
     "loading": "Loading…",

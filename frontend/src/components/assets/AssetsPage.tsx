@@ -1,20 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import {
-  deleteAsset,
   getIndexProgress,
-  importUrl,
-  indexAsset,
   listAssets,
-  renameAsset,
-  retryIndexAsset,
-  uploadAsset,
   type IndexProgress,
 } from '../../api/client/assets';
 import AssetChunksModal from './AssetChunksModal';
@@ -26,27 +20,16 @@ import AssetsStats from './AssetsStats';
 import AssetsTable from './AssetsTable';
 import AssetsToolbar from './AssetsToolbar';
 import AssetsUrlModal from './AssetsUrlModal';
-import { computeStats, type IndexingEntry } from './assetUtils';
-import { filterAssets } from './useAssetFilters';
+import { type IndexingEntry } from './assetUtils';
+import { useAssetActions } from './useAssetActions';
+import { useAssetSelection } from './useAssetSelection';
 import { useToast } from '../../utils/useToast';
 
-const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const DOC_TYPES = new Set([
-  'application/pdf',
-  'text/plain',
-  'text/markdown',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-]);
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const MAX_DOC_BYTES = 20 * 1024 * 1024;
 const INDEX_POLL_MS = 3000;
-const INDEX_POLL_TIMEOUT_MS = 120_000;
 
 export default function AssetsPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<ViewMode>('table');
   const [dragging, setDragging] = useState(false);
@@ -62,11 +45,6 @@ export default function AssetsPage() {
   const [progressMap, setProgressMap] = useState<Record<string, IndexProgress>>(
     {},
   );
-  const [search, setSearch] = useState('');
-  const [formats, setFormats] = useState<string[]>([]);
-  const [statuses, setStatuses] = useState<string[]>([]);
-  const [timeFrom, setTimeFrom] = useState('');
-  const [timeTo, setTimeTo] = useState('');
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['assets'],
@@ -105,92 +83,25 @@ export default function AssetsPage() {
     return () => clearInterval(interval);
   }, [indexing]);
 
-  const uploadMutation = useMutation({
-    mutationFn: (file: File) => uploadAsset(file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-      toast(t('assets.upload.success'), 'success');
-    },
-    onError: () => toast(t('assets.upload.failed'), 'error'),
-  });
-
-  const renameMutation = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      renameAsset(id, name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-      setRenameTarget(null);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteAsset(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-      setDeleteTarget(null);
-      toast(t('assets.list.deleteSuccess'), 'success');
-    },
-  });
-
-  const indexMutation = useMutation({
-    mutationFn: (id: string) => indexAsset(id),
-    onSuccess: (_, id) => {
-      setIndexing((prev) => [
-        ...prev,
-        { id, deadline: Date.now() + INDEX_POLL_TIMEOUT_MS },
-      ]);
-      setProgressMap((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      toast(t('assets.list.indexSuccess'), 'success');
-    },
-    onError: () => toast(t('assets.list.documentsOnly'), 'error'),
-  });
-
-  const retryIndexMutation = useMutation({
-    mutationFn: (id: string) => retryIndexAsset(id),
-    onSuccess: (_, id) => {
-      setIndexing((prev) => [
-        ...prev,
-        { id, deadline: Date.now() + INDEX_POLL_TIMEOUT_MS },
-      ]);
-      setProgressMap((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      toast(t('assets.list.retrySuccess'), 'success');
-    },
-    onError: () => toast(t('assets.list.retryFailed'), 'error'),
-  });
-
-  const urlImportMutation = useMutation({
-    mutationFn: () => importUrl(urlValue, urlName || undefined),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-      setUrlImportOpen(false);
-      setUrlValue('');
-      setUrlName('');
-      toast(t('assets.upload.success'), 'success');
-    },
-    onError: () => toast(t('assets.urlImport.failed'), 'error'),
-  });
-
-  const validateAndUpload = (file: File) => {
-    const allowed = IMAGE_TYPES.has(file.type) || DOC_TYPES.has(file.type);
-    if (!allowed) {
-      toast(t('assets.upload.typeDenied', { name: file.name }), 'error');
-      return;
-    }
-    const limit = IMAGE_TYPES.has(file.type) ? MAX_IMAGE_BYTES : MAX_DOC_BYTES;
-    if (file.size > limit) {
-      toast(t('assets.upload.tooLarge', { name: file.name }), 'error');
-      return;
-    }
-    uploadMutation.mutate(file);
-  };
+  const {
+    uploadMutation,
+    renameMutation,
+    deleteMutation,
+    indexMutation,
+    retryIndexMutation,
+    urlImportMutation,
+    validateAndUpload,
+  } = useAssetActions(
+    setIndexing,
+    setProgressMap,
+    setRenameTarget,
+    setDeleteTarget,
+    setUrlImportOpen,
+    setUrlValue,
+    setUrlName,
+    urlValue,
+    urlName,
+  );
 
   const handleDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -205,33 +116,31 @@ export default function AssetsPage() {
     }
   };
 
-  const stats = useMemo(
-    () => computeStats(assets, indexing, progressMap),
-    [assets, indexing, progressMap],
-  );
+  const {
+    search,
+    setSearch,
+    formats,
+    setFormats,
+    statuses,
+    setStatuses,
+    timeRange,
+    setTimeRange,
+    customFrom,
+    setCustomFrom,
+    customTo,
+    setCustomTo,
+    sortField,
+    sortDir,
+    stats,
+    filteredAssets,
+    sortedAssets,
+    handleSort,
+  } = useAssetSelection(assets, indexing, progressMap);
 
-  const filteredAssets = useMemo(
-    () =>
-      filterAssets(assets, {
-        search,
-        timeFrom: timeFrom ? new Date(timeFrom).getTime() : null,
-        timeTo: timeTo ? new Date(timeTo).getTime() : null,
-        formats,
-        statuses,
-        indexing,
-        progressMap,
-      }),
-    [
-      assets,
-      search,
-      timeFrom,
-      timeTo,
-      formats,
-      statuses,
-      indexing,
-      progressMap,
-    ],
-  );
+  const handleDownload = (asset: AssetItem) => {
+    toast(t('common.comingSoon', { defaultValue: '下载功能开发中' }), 'info');
+    void asset;
+  };
 
   const showEmpty = !isLoading && assets.length === 0;
   const showFilteredEmpty =
@@ -289,22 +198,17 @@ export default function AssetsPage() {
             <AssetsToolbar
               search={search}
               onSearch={setSearch}
-              timeFrom={timeFrom}
-              timeTo={timeTo}
-              onTimeChange={(f, to) => {
-                setTimeFrom(f);
-                setTimeTo(to);
-              }}
               formats={formats}
               onFormatsChange={setFormats}
               statuses={statuses}
               onStatusesChange={setStatuses}
-              onClear={() => {
-                setSearch('');
-                setFormats([]);
-                setStatuses([]);
-                setTimeFrom('');
-                setTimeTo('');
+              timeRange={timeRange}
+              onTimeRangeChange={setTimeRange}
+              customFrom={customFrom}
+              customTo={customTo}
+              onCustomTimeChange={(f, to) => {
+                setCustomFrom(f);
+                setCustomTo(to);
               }}
             />
 
@@ -319,9 +223,12 @@ export default function AssetsPage() {
               </div>
             ) : view === 'table' ? (
               <AssetsTable
-                assets={filteredAssets}
+                assets={sortedAssets}
                 indexing={indexing}
                 progressMap={progressMap}
+                sortField={sortField}
+                sortDir={sortDir}
+                onSort={handleSort}
                 onPreview={setPreviewTarget}
                 onChunks={setChunksTarget}
                 onRename={(a) => {
@@ -329,12 +236,13 @@ export default function AssetsPage() {
                   setRenameValue(a.name);
                 }}
                 onDelete={setDeleteTarget}
+                onDownload={handleDownload}
                 onIndex={(id) => indexMutation.mutate(id)}
                 onRetry={(id) => retryIndexMutation.mutate(id)}
               />
             ) : (
               <AssetsGrid
-                assets={filteredAssets}
+                assets={sortedAssets}
                 indexing={indexing}
                 progressMap={progressMap}
                 onPreview={setPreviewTarget}
@@ -344,6 +252,7 @@ export default function AssetsPage() {
                   setRenameValue(a.name);
                 }}
                 onDelete={setDeleteTarget}
+                onDownload={handleDownload}
                 onIndex={(id) => indexMutation.mutate(id)}
                 onRetry={(id) => retryIndexMutation.mutate(id)}
               />

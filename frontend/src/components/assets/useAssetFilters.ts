@@ -13,9 +13,30 @@ export interface FilterOpts {
   getTime?: (a: AssetItem) => number;
 }
 
-function matchSearch(a: AssetItem, q: string): boolean {
+function formatDateForSearch(ts: number | null | undefined): string {
+  if (!ts) return '';
+  try {
+    return new Date(ts).toISOString().slice(0, 10);
+  } catch {
+    return '';
+  }
+}
+
+function matchSearch(
+  a: AssetItem,
+  q: string,
+  getTime?: (x: AssetItem) => number,
+): boolean {
   if (!q) return true;
-  return a.name.toLowerCase().includes(q);
+  const nameHit = a.name.toLowerCase().includes(q);
+  if (nameHit) return true;
+  const ext = getExt(a.name);
+  if (ext && ext.includes(q)) return true;
+  if (getTime) {
+    const dateStr = formatDateForSearch(getTime(a));
+    if (dateStr.includes(q)) return true;
+  }
+  return false;
 }
 
 function matchFormat(a: AssetItem, formats: string[]): boolean {
@@ -54,7 +75,7 @@ export function filterAssets(
 ): AssetItem[] {
   const q = opts.search.trim().toLowerCase();
   return assets.filter((a) => {
-    if (!matchSearch(a, q)) return false;
+    if (!matchSearch(a, q, opts.getTime)) return false;
     if (!matchFormat(a, opts.formats)) return false;
     if (!matchStatus(a, opts.statuses, opts.indexing, opts.progressMap))
       return false;
