@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
+import Modal from '../shared/Modal';
 import { STATUS_COLORS } from '../shared/statusColors';
 import { useQuery } from '@tanstack/react-query';
-import { Drawer, Progress } from 'antd';
+import { Progress } from 'antd';
 import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
@@ -59,13 +60,22 @@ export default function AssetPreviewDrawer({
   });
 
   return (
-    <Drawer
+    <Modal
       title={asset.name}
-      placement="right"
-      width={480}
-      open
       onClose={onClose}
-      styles={{ body: { padding: 20 } }}
+      ariaLabel={asset.name}
+      width={640}
+      hideHeaderBorder
+      bodyClassName="p-6 max-h-[70vh] overflow-y-auto"
+      footer={
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none bg-[var(--color-accent)] text-white hover:opacity-90"
+        >
+          {t('common.close')}
+        </button>
+      }
     >
       <Section label={t('assets.section.fileInfo')}>
         <KVRow
@@ -186,6 +196,6 @@ export default function AssetPreviewDrawer({
           </div>
         )}
       </Section>
-    </Drawer>
+    </Modal>
   );
 }
