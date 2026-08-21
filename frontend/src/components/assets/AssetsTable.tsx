@@ -24,7 +24,7 @@ import {
   type IndexingEntry,
 } from './assetUtils';
 
-const GRID = 'minmax(220px,3fr) 84px 92px 116px 110px 132px 150px';
+const GRID = 'minmax(220px,2.6fr) 72px 88px 108px 88px 148px 128px';
 
 function FileTypeIcon({ ext }: { ext: string }) {
   const color = extColorOf(ext);
@@ -148,7 +148,7 @@ export default function AssetsTable({
               const f = SORT_FIELDS[i];
               if (f && onSort) onSort(f);
             }}
-            className={`text-[10.5px] font-semibold tracking-[0.07em] uppercase font-mono text-[var(--color-text-tertiary)] flex items-center ${i === HEADERS.length - 1 ? 'justify-center' : ''} ${SORT_FIELDS[i] ? 'cursor-pointer hover:text-[var(--color-text-secondary)]' : ''}`}
+            className={`text-[10.5px] font-semibold tracking-[0.07em] uppercase font-mono text-[var(--color-text-tertiary)] flex items-center ${i === 0 ? 'justify-start' : 'justify-center text-center'} ${SORT_FIELDS[i] ? 'cursor-pointer hover:text-[var(--color-text-secondary)]' : ''}`}
           >
             {h}
             {renderSort(i)}
@@ -183,11 +183,11 @@ export default function AssetsTable({
               </span>
             </div>
 
-            <span className="text-[12px] font-mono uppercase text-[var(--color-text-secondary)]">
+            <span className="text-[12px] font-mono uppercase text-[var(--color-text-secondary)] text-center flex items-center justify-center">
               {ext || asset.assetType}
             </span>
 
-            <span className="text-[12px] font-mono text-[var(--color-text-secondary)]">
+            <span className="text-[12px] font-mono text-[var(--color-text-secondary)] text-center flex items-center justify-center">
               {asset.sizeBytes < 1024
                 ? `${asset.sizeBytes} B`
                 : asset.sizeBytes < 1024 * 1024
@@ -195,14 +195,14 @@ export default function AssetsTable({
                   : `${(asset.sizeBytes / 1024 / 1024).toFixed(1)} MB`}
             </span>
 
-            <div>
+            <div className="flex items-center justify-center">
               <StatusPill status={status} />
             </div>
 
-            <div className="pr-3">
+            <div className="flex items-center justify-center px-1">
               {isProcessing && progress ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden min-w-[40px]">
+                <div className="flex items-center gap-2 justify-center">
+                  <div className="flex-1 h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden min-w-[40px] max-w-[60px]">
                     <div
                       className="h-full rounded-full transition-[width] duration-300"
                       style={{
@@ -216,13 +216,13 @@ export default function AssetsTable({
                   </span>
                 </div>
               ) : (
-                <span className="text-[12px] text-[var(--color-text-muted)]">
+                <span className="text-[12px] text-[var(--color-text-muted)] text-center">
                   —
                 </span>
               )}
             </div>
 
-            <span className="text-[12px] font-mono text-[var(--color-text-muted)]">
+            <span className="text-[12px] font-mono text-[var(--color-text-muted)] text-center flex items-center justify-center">
               —
             </span>
 
