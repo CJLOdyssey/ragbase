@@ -80,7 +80,14 @@ export default function AssetPreviewDrawer({
       }
     >
       <Section label={t('assets.section.fileInfo')}>
-        <KVRow label={t('assets.info.format')} value={<ExtBadge ext={ext} />} />
+        <KVRow
+          label={t('assets.info.format')}
+          value={
+            <span className="-ml-1">
+              <ExtBadge ext={ext} />
+            </span>
+          }
+        />
         <KVRow
           label={t('assets.info.size')}
           value={
@@ -95,7 +102,11 @@ export default function AssetPreviewDrawer({
         />
         <KVRow
           label={t('assets.info.status')}
-          value={<StatusPill status={status} />}
+          value={
+            <span className="-ml-1">
+              <StatusPill status={status} />
+            </span>
+          }
         />
         <KVRow
           label={t('assets.info.chunks')}
