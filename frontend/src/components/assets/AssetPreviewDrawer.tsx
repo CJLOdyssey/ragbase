@@ -84,7 +84,7 @@ export default function AssetPreviewDrawer({
         <KVRow
           label={t('assets.info.size')}
           value={
-            <span className="font-mono text-[var(--color-text-secondary)]">
+            <span className="font-mono text-[var(--color-text-secondary)] inline-flex items-center h-7">
               {asset.sizeBytes < 1024
                 ? `${asset.sizeBytes} B`
                 : asset.sizeBytes < 1024 * 1024
@@ -101,17 +101,23 @@ export default function AssetPreviewDrawer({
           label={t('assets.info.chunks')}
           value={
             asset.indexed ? (
-              <span className="font-mono text-[var(--color-text-secondary)]">
+              <span className="font-mono text-[var(--color-text-secondary)] inline-flex items-center h-7">
                 {chunks ? `${chunks.length} ${t('assets.chunkUnit')}` : '—'}
               </span>
             ) : (
-              <span className="text-[var(--color-text-muted)]">—</span>
+              <span className="text-[var(--color-text-muted)] inline-flex items-center h-7">
+                —
+              </span>
             )
           }
         />
         <KVRow
           label={t('assets.info.updated')}
-          value={<span className="text-[var(--color-text-muted)]">—</span>}
+          value={
+            <span className="text-[var(--color-text-muted)] inline-flex items-center h-7">
+              —
+            </span>
+          }
         />
       </Section>
 
