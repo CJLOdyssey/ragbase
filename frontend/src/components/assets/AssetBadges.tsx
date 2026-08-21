@@ -16,6 +16,7 @@ export function StatusPill({ status }: { status: AssetStatus }) {
   const label = t(`assets.status.${status}`);
   return (
     <span
+      data-testid={`status-${status}`}
       className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium leading-none whitespace-nowrap"
       style={{
         color,
@@ -50,6 +51,7 @@ interface ActionButtonProps {
   onClick: () => void;
   children: ReactNode;
   disabled?: boolean;
+  'data-testid'?: string;
 }
 
 export function ActionButton({
@@ -58,6 +60,7 @@ export function ActionButton({
   onClick,
   children,
   disabled,
+  'data-testid': testId,
 }: ActionButtonProps) {
   return (
     <button
@@ -65,6 +68,7 @@ export function ActionButton({
       title={title}
       aria-label={title}
       disabled={disabled}
+      data-testid={testId}
       onClick={(e) => {
         e.stopPropagation();
         onClick();

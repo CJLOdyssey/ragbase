@@ -109,6 +109,7 @@ export default function AssetsGrid({
                   hoverVar="--color-accent"
                   onClick={() => onIndex(asset.id)}
                   disabled={isIndexingActive}
+                  data-testid={`index-${asset.id}`}
                 >
                   <Search size={12} />
                 </ActionButton>
@@ -118,6 +119,7 @@ export default function AssetsGrid({
                   title={t('assets.action.retry')}
                   hoverVar="--color-accent-soft"
                   onClick={() => onRetry(asset.id)}
+                  data-testid={`retry-${asset.id}`}
                 >
                   <RotateCcw size={12} />
                 </ActionButton>
@@ -127,6 +129,7 @@ export default function AssetsGrid({
                   title={t('assets.action.chunks')}
                   hoverVar="--color-accent"
                   onClick={() => onChunks(asset)}
+                  data-testid={`chunks-${asset.id}`}
                 >
                   <Braces size={12} />
                 </ActionButton>
@@ -135,6 +138,7 @@ export default function AssetsGrid({
                 title={t('assets.action.rename')}
                 hoverVar="--color-accent-soft"
                 onClick={() => onRename(asset)}
+                data-testid={`rename-${asset.id}`}
               >
                 <Pencil size={12} />
               </ActionButton>
@@ -142,6 +146,7 @@ export default function AssetsGrid({
                 title={t('assets.action.delete')}
                 hoverVar="--color-danger"
                 onClick={() => onDelete(asset)}
+                data-testid={`delete-${asset.id}`}
               >
                 <Trash2 size={12} />
               </ActionButton>

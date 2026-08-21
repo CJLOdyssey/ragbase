@@ -47,10 +47,10 @@ export default function AssetsTable({
         className="grid items-center h-10 px-[18px] border-b border-[var(--color-border-subtle)] bg-[color-mix(in_srgb,var(--color-surface-hover)_40%,transparent)]"
         style={{ gridTemplateColumns: GRID }}
       >
-        {HEADERS.map((h) => (
+        {HEADERS.map((h, i) => (
           <div
             key={h}
-            className="text-[10.5px] font-semibold tracking-[0.07em] uppercase font-mono text-[var(--color-text-tertiary)]"
+            className={`text-[10.5px] font-semibold tracking-[0.07em] uppercase font-mono text-[var(--color-text-tertiary)] ${i === HEADERS.length - 1 ? 'text-right' : ''}`}
           >
             {h}
           </div>
@@ -137,6 +137,7 @@ export default function AssetsTable({
                   hoverVar="--color-accent"
                   onClick={() => onIndex(asset.id)}
                   disabled={isIndexingActive}
+                  data-testid={`index-${asset.id}`}
                 >
                   <Search size={12} />
                 </ActionButton>
@@ -146,6 +147,7 @@ export default function AssetsTable({
                   title={t('assets.action.retry')}
                   hoverVar="--color-accent-soft"
                   onClick={() => onRetry(asset.id)}
+                  data-testid={`retry-${asset.id}`}
                 >
                   <RotateCcw size={12} />
                 </ActionButton>
@@ -155,6 +157,7 @@ export default function AssetsTable({
                   title={t('assets.action.chunks')}
                   hoverVar="--color-accent"
                   onClick={() => onChunks(asset)}
+                  data-testid={`chunks-${asset.id}`}
                 >
                   <Braces size={12} />
                 </ActionButton>
@@ -163,6 +166,7 @@ export default function AssetsTable({
                 title={t('assets.action.rename')}
                 hoverVar="--color-accent-soft"
                 onClick={() => onRename(asset)}
+                data-testid={`rename-${asset.id}`}
               >
                 <Pencil size={12} />
               </ActionButton>
@@ -170,6 +174,7 @@ export default function AssetsTable({
                 title={t('assets.action.delete')}
                 hoverVar="--color-danger"
                 onClick={() => onDelete(asset)}
+                data-testid={`delete-${asset.id}`}
               >
                 <Trash2 size={12} />
               </ActionButton>
