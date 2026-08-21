@@ -24,7 +24,7 @@ function KVRow({ label, value }: { label: string; value: ReactNode }) {
       <span className="text-xs leading-none text-[var(--color-text-tertiary)]">
         {label}
       </span>
-      <span className="text-[13px] leading-none text-[var(--color-text-primary)] inline-flex items-center h-7">
+      <span className="text-[13px] leading-none text-[var(--color-text-primary)] flex items-center justify-start h-7 w-full">
         {value}
       </span>
     </div>
