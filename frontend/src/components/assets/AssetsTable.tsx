@@ -24,7 +24,7 @@ import {
   type IndexingEntry,
 } from './assetUtils';
 
-const GRID = 'minmax(220px,2.6fr) 72px 88px 108px 88px 148px 128px';
+const GRID = 'minmax(160px,1.5fr) 84px 96px 110px 92px 148px 112px';
 
 function FileTypeIcon({ ext }: { ext: string }) {
   const color = extColorOf(ext);
@@ -215,7 +215,11 @@ export default function AssetsTable({
             </div>
 
             <div className="flex items-center justify-center px-1">
-              {isProcessing && progress ? (
+              {asset.assetType === 'image' ? (
+                <span className="text-[12px] text-[var(--color-text-muted)] text-center">
+                  —
+                </span>
+              ) : isProcessing && progress ? (
                 <div className="flex items-center gap-2 justify-center">
                   <div className="flex-1 h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden min-w-[40px] max-w-[60px]">
                     <div
@@ -260,7 +264,7 @@ export default function AssetsTable({
                   <Search size={12} />
                 </ActionButton>
               )}
-              {status === 'failed' && (
+              {asset.assetType === 'document' && status === 'failed' && (
                 <ActionButton
                   title={t('assets.action.retry')}
                   hoverVar="--color-accent-soft"
@@ -270,14 +274,16 @@ export default function AssetsTable({
                   <RotateCcw size={12} />
                 </ActionButton>
               )}
-              <ActionButton
-                title={t('assets.action.chunks')}
-                hoverVar="--color-accent"
-                onClick={() => onChunks(asset)}
-                data-testid={`chunks-${asset.id}`}
-              >
-                <Braces size={12} />
-              </ActionButton>
+              {asset.assetType === 'document' && (
+                <ActionButton
+                  title={t('assets.action.chunks')}
+                  hoverVar="--color-accent"
+                  onClick={() => onChunks(asset)}
+                  data-testid={`chunks-${asset.id}`}
+                >
+                  <Braces size={12} />
+                </ActionButton>
+              )}
               <div
                 className="relative"
                 ref={(el) => {

@@ -1,78 +1,74 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import FilePreview from '../shared/FilePreview';
 import Modal from '../shared/Modal';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
-import type { IndexProgress } from '../../api/client/assets';
-import { ExtBadge, StatusPill } from './AssetBadges';
-import { getAssetStatus, getExt } from './assetUtils';
+import { getAssetContent, type IndexProgress } from '../../api/client/assets';
 
 interface AssetPreviewDrawerProps {
   asset: AssetItem;
-  indexing: { id: string; deadline: number }[];
-  progressMap: Record<string, IndexProgress>;
+  indexing?: { id: string; deadline: number }[];
+  progressMap?: Record<string, IndexProgress>;
   onClose: () => void;
   onOpenChunks?: (asset: AssetItem) => void;
 }
 
-function formatUpdatedAt(v?: string | null): string {
-  if (!v) return '—';
-  try {
-    const d = new Date(v);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${y}-${m}-${day} ${hh}:${mm}`;
-  } catch {
-    return '—';
-  }
+const IMAGE_EXT = /^(png|jpg|jpeg|gif|webp|bmp|svg)$/;
+const TEXT_EXT =
+  /^(txt|md|pdf|docx|xlsx|csv|json|log|yaml|yml|doc|xls|html|htm|ppt|pptx)$/;
+
+function getExt(name: string) {
+  const idx = name.lastIndexOf('.');
+  return idx >= 0 ? name.slice(idx + 1).toLowerCase() : '';
 }
 
-function KVRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="grid grid-cols-[88px_1fr] items-center h-7 mb-2.5">
-      <span className="text-xs leading-none text-[var(--color-text-tertiary)]">
-        {label}
-      </span>
-      <span className="text-[13px] leading-none text-[var(--color-text-primary)] flex items-center justify-start h-7 w-full">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function Section({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="mb-[22px]">
-      <div className="text-[10.5px] font-mono font-semibold tracking-[0.08em] uppercase text-[var(--color-text-tertiary)] mb-3">
-        {label}
-      </div>
-      {children}
-    </div>
-  );
-}
-
+/**
+ * 素材文件预览 — 复用 FilePreview 组件（与 AttachmentPreviewModal 同款交互）
+ * 点击列表文件 -> 以文件预览弹窗展示原文件（图片直显 / 文本预加载），不再展示文件信息元数据
+ */
 export default function AssetPreviewDrawer({
   asset,
-  indexing,
-  progressMap,
   onClose,
 }: AssetPreviewDrawerProps) {
   const { t } = useTranslation();
   const ext = getExt(asset.name);
-  const progress = progressMap[asset.id];
-  const status = getAssetStatus(asset, indexing, progress);
+  const isImage = IMAGE_EXT.test(ext);
+  const isText = TEXT_EXT.test(ext);
+  // 既非图片也非文本（如 zip/二进制）则走 Unsupported 分支，提供下载
+  const url = `/api/assets/${asset.id}/file`;
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset img error when switching preview target
+    setImgFailed(false);
+  }, [asset.id]);
+
+  const {
+    data: contentData,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['asset-content', asset.id],
+    queryFn: () => getAssetContent(asset.id),
+    enabled: isText,
+    retry: false,
+  });
+
+  const text = contentData?.content ?? null;
+  const truncated = contentData?.truncated ?? false;
+  const failed = isError;
+  const loading = isLoading;
 
   return (
     <Modal
       title={asset.name}
       onClose={onClose}
       ariaLabel={asset.name}
-      width={640}
+      width={720}
       hideHeaderBorder
       hideFooterBorder
-      bodyClassName="p-6 max-h-[70vh] overflow-y-auto"
+      bodyClassName="p-5 max-h-[75vh] overflow-y-auto flex flex-col"
       footer={
         <button
           type="button"
@@ -83,54 +79,18 @@ export default function AssetPreviewDrawer({
         </button>
       }
     >
-      <Section label={t('assets.section.fileInfo')}>
-        <KVRow
-          label={t('assets.info.format')}
-          value={
-            <span className="-ml-1">
-              <ExtBadge ext={ext} />
-            </span>
-          }
-        />
-        <KVRow
-          label={t('assets.info.size')}
-          value={
-            <span className="font-mono text-[var(--color-text-secondary)] inline-flex items-center h-7">
-              {asset.sizeBytes < 1024
-                ? `${asset.sizeBytes} B`
-                : asset.sizeBytes < 1024 * 1024
-                  ? `${(asset.sizeBytes / 1024).toFixed(1)} KB`
-                  : `${(asset.sizeBytes / 1024 / 1024).toFixed(1)} MB`}
-            </span>
-          }
-        />
-        <KVRow
-          label={t('assets.info.status')}
-          value={
-            <span className="-ml-2">
-              <StatusPill status={status} />
-            </span>
-          }
-        />
-        <KVRow
-          label={t('assets.info.chunks')}
-          value={
-            <span className="font-mono text-[var(--color-text-secondary)] inline-flex items-center h-7">
-              {asset.chunkCount != null
-                ? `${asset.chunkCount} ${t('assets.chunkUnit')}`
-                : '—'}
-            </span>
-          }
-        />
-        <KVRow
-          label={t('assets.info.updated')}
-          value={
-            <span className="text-[var(--color-text-muted)] inline-flex items-center h-7">
-              {formatUpdatedAt(asset.updatedAt)}
-            </span>
-          }
-        />
-      </Section>
+      <FilePreview
+        url={url}
+        fileName={asset.name}
+        isImage={isImage}
+        isText={isText}
+        text={text}
+        loading={loading}
+        failed={failed}
+        imgFailed={imgFailed}
+        truncated={truncated}
+        onImgError={() => setImgFailed(true)}
+      />
     </Modal>
   );
 }

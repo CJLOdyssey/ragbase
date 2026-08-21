@@ -38,7 +38,7 @@ describe('listAssets', { tags: ['unit'] }, () => {
 
     const result = await listAssets();
 
-    expect(mockApi.get).toHaveBeenCalledWith('/assets');
+    expect(mockApi.get).toHaveBeenCalledWith('/assets', { params: undefined });
     expect(result).toEqual(mockData);
   });
 });

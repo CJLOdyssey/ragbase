@@ -7,6 +7,7 @@ import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import {
+  downloadAssetFile,
   getIndexProgress,
   listAssets,
   type IndexProgress,
@@ -22,6 +23,7 @@ import AssetsToolbar from './AssetsToolbar';
 import AssetsUrlModal from './AssetsUrlModal';
 import { type IndexingEntry } from './assetUtils';
 import { useAssetActions } from './useAssetActions';
+import { useAssetBump } from './useAssetBump';
 import { useAssetSelection } from './useAssetSelection';
 import { useToast } from '../../utils/useToast';
 
@@ -31,6 +33,7 @@ export default function AssetsPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<ViewMode>('table');
   const [dragging, setDragging] = useState(false);
   const [renameTarget, setRenameTarget] = useState<AssetItem | null>(null);
@@ -111,9 +114,16 @@ export default function AssetsPage() {
   };
 
   const handleRenameConfirm = () => {
-    if (renameTarget && renameValue.trim()) {
-      renameMutation.mutate({ id: renameTarget.id, name: renameValue.trim() });
-    }
+    if (!renameTarget) return;
+    const rawBase = renameValue.trim();
+    if (!rawBase) return;
+    // 仅允许 basename，禁止路径与扩展名篡改
+    if (rawBase.includes('/') || rawBase.includes('\\')) return;
+    const sanitizedBase = rawBase.split('.')[0] || rawBase;
+    const idx = renameTarget.name.lastIndexOf('.');
+    const ext = idx > 0 ? renameTarget.name.slice(idx) : '';
+    const fullName = (sanitizedBase + ext).slice(0, 256);
+    renameMutation.mutate({ id: renameTarget.id, name: fullName });
   };
 
   const {
@@ -137,9 +147,33 @@ export default function AssetsPage() {
     handleSort,
   } = useAssetSelection(assets, indexing, progressMap);
 
-  const handleDownload = (asset: AssetItem) => {
-    toast(t('common.comingSoon', { defaultValue: '下载功能开发中' }), 'info');
-    void asset;
+  const handleDownload = async (asset: AssetItem) => {
+    try {
+      await downloadAssetFile(asset.id, asset.name);
+      toast(
+        t('common.downloadSuccess', { defaultValue: '下载已开始' }),
+        'success',
+      );
+    } catch {
+      toast(t('common.downloadFailed', { defaultValue: '下载失败' }), 'error');
+    }
+  };
+
+  const { bump } = useAssetBump(scrollRef);
+
+  const handlePreview = (asset: AssetItem) => {
+    setPreviewTarget(asset);
+    bump(asset);
+  };
+
+  const handleChunks = (asset: AssetItem) => {
+    setChunksTarget(asset);
+    bump(asset);
+  };
+
+  const handleDownloadWithBump = async (asset: AssetItem) => {
+    bump(asset);
+    await handleDownload(asset);
   };
 
   const showEmpty = !isLoading && assets.length === 0;
@@ -158,6 +192,7 @@ export default function AssetsPage() {
       />
 
       <div
+        ref={scrollRef}
         className="flex-1 overflow-y-auto px-8 py-6 min-h-0 relative"
         onDragOver={(e) => {
           e.preventDefault();
@@ -229,14 +264,15 @@ export default function AssetsPage() {
                 sortField={sortField}
                 sortDir={sortDir}
                 onSort={handleSort}
-                onPreview={setPreviewTarget}
-                onChunks={setChunksTarget}
+                onPreview={handlePreview}
+                onChunks={handleChunks}
                 onRename={(a) => {
                   setRenameTarget(a);
-                  setRenameValue(a.name);
+                  const idx = a.name.lastIndexOf('.');
+                  setRenameValue(idx > 0 ? a.name.slice(0, idx) : a.name);
                 }}
                 onDelete={setDeleteTarget}
-                onDownload={handleDownload}
+                onDownload={handleDownloadWithBump}
                 onIndex={(id) => indexMutation.mutate(id)}
                 onRetry={(id) => retryIndexMutation.mutate(id)}
               />
@@ -245,14 +281,15 @@ export default function AssetsPage() {
                 assets={sortedAssets}
                 indexing={indexing}
                 progressMap={progressMap}
-                onPreview={setPreviewTarget}
-                onChunks={setChunksTarget}
+                onPreview={handlePreview}
+                onChunks={handleChunks}
                 onRename={(a) => {
                   setRenameTarget(a);
-                  setRenameValue(a.name);
+                  const idx = a.name.lastIndexOf('.');
+                  setRenameValue(idx > 0 ? a.name.slice(0, idx) : a.name);
                 }}
                 onDelete={setDeleteTarget}
-                onDownload={handleDownload}
+                onDownload={handleDownloadWithBump}
                 onIndex={(id) => indexMutation.mutate(id)}
                 onRetry={(id) => retryIndexMutation.mutate(id)}
               />

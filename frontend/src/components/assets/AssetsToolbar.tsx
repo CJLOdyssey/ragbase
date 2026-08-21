@@ -38,9 +38,9 @@ export default function AssetsToolbar({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 搜索行：仅搜索框 */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-[360px]">
+      {/* 搜索行：仅搜索框（居中） */}
+      <div className="flex items-center justify-center gap-2">
+        <div className="relative w-full max-w-[360px]">
           <Search
             size={14}
             className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] pointer-events-none"
@@ -49,10 +49,10 @@ export default function AssetsToolbar({
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder={t('assets.toolbar.searchPlaceholder', {
-              defaultValue: '搜索文件名…',
+              defaultValue: '请输入文件名',
             })}
             aria-label={t('assets.toolbar.searchPlaceholder', {
-              defaultValue: '搜索文件名…',
+              defaultValue: '请输入文件名',
             })}
             className="w-full h-9 pl-8 pr-3 rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-sm outline-none focus:border-[var(--color-accent)]"
             data-testid="assets-search"
@@ -60,8 +60,8 @@ export default function AssetsToolbar({
         </div>
       </div>
 
-      {/* 筛选行：三下拉并列 */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* 筛选行：三下拉并列（居中） */}
+      <div className="flex flex-wrap items-center justify-center gap-3">
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] font-mono tracking-[0.06em] uppercase text-[var(--color-text-tertiary)]">
             {t('assets.filter.format', { defaultValue: '格式' })}
@@ -73,7 +73,7 @@ export default function AssetsToolbar({
               if (v === 'all') onFormatsChange([]);
               else onFormatsChange([v]);
             }}
-            className="h-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+            className="h-8 w-[110px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
             data-testid="filter-format"
           >
             <option value="all">
@@ -98,7 +98,7 @@ export default function AssetsToolbar({
               if (v === 'all') onStatusesChange([]);
               else onStatusesChange([v]);
             }}
-            className="h-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+            className="h-8 w-[110px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
             data-testid="filter-status"
           >
             <option value="all">
@@ -117,12 +117,12 @@ export default function AssetsToolbar({
 
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] font-mono tracking-[0.06em] uppercase text-[var(--color-text-tertiary)]">
-            {t('assets.filter.time', { defaultValue: '修改时间' })}
+            {t('assets.filter.time', { defaultValue: '更新时间' })}
           </span>
           <select
             value={timeRange}
             onChange={(e) => onTimeRangeChange(e.target.value as TimeRange)}
-            className="h-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+            className="h-8 w-[110px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
             data-testid="filter-time"
           >
             {TIME_RANGES.map((r) => (

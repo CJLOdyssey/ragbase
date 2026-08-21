@@ -49,14 +49,14 @@ function TotalCard({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="rounded-[12px] border-2 border-[color-mix(in_srgb,var(--color-accent)_35%,var(--color-border))] bg-[var(--color-surface-raised)] px-4 py-3.5">
+    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-3.5">
       <div className="text-[10.5px] font-mono font-semibold tracking-[0.07em] uppercase text-[var(--color-text-tertiary)] mb-2">
         {t('assets.stat.total')}
       </div>
       <div className="flex items-baseline gap-1.5">
         <span
           className="text-[24px] font-bold leading-none tracking-[-0.04em]"
-          style={{ color: 'var(--color-accent)' }}
+          style={{ color: 'var(--color-text-primary)' }}
         >
           {String(total)}
         </span>

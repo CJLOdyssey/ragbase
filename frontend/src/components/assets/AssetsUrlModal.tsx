@@ -32,6 +32,7 @@ export default function AssetsUrlModal({
       ariaLabel={t('assets.urlImport.title')}
       width={480}
       hideHeaderBorder
+      hideFooterBorder
       bodyClassName="p-6"
       footer={
         <>

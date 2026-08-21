@@ -1,8 +1,8 @@
 """Document text extraction for asset indexing.
 
-Suffix-driven: PDF → pypdf; DOCX/XLSX → zipfile + XML via defusedxml
-(XXE-hardened — uploaded files are untrusted input); everything else reads
-as UTF-8 text.
+Suffix-driven: PDF → pypdf; DOCX/XLSX/PPTX → zipfile + XML via defusedxml
+(XXE-hardened — uploaded files are untrusted input); HTML strips tags;
+CSV/TXT/MD read as UTF-8 text.
 """
 
 import re
@@ -19,6 +19,7 @@ _XLSX_NS = {
 # XLSX cell types: s=shared string (index into sharedStrings.xml), inlineStr=inline text
 _XLSX_SHARED = "s"
 _XLSX_INLINE = "inlineStr"
+_PPTX_NS = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
 
 
 def extract_text(path: str | Path) -> str:
@@ -31,6 +32,12 @@ def extract_text(path: str | Path) -> str:
         return _extract_docx(p)
     if suffix == ".xlsx":
         return _extract_xlsx(p)
+    if suffix == ".pptx":
+        return _extract_pptx(p)
+    if suffix in (".html", ".htm"):
+        return _extract_html(p)
+    # .doc/.xls/.ppt (legacy OLE) 无轻量解析，退化为文本读取（乱码但不抛异常）
+    # .csv/.txt/.md/.json 等直接按文本读取
     return p.read_text(encoding="utf-8", errors="ignore")
 
 
@@ -115,3 +122,33 @@ def _xlsx_sheet_rows(xml: bytes, shared: list[str]) -> list[str]:
         if cells:
             rows.append(" | ".join(cells))
     return rows
+
+
+def _extract_pptx(path: Path) -> str:
+    """Extract text from PPTX slides (a:t nodes in ppt/slides/)."""
+    try:
+        with zipfile.ZipFile(path) as zf:
+            slide_names = sorted(
+                n for n in zf.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)
+            )
+            texts: list[str] = []
+            for name in slide_names:
+                root = ElementTree.fromstring(zf.read(name))
+                for node in root.iter(f"{{{_PPTX_NS['a']}}}t"):
+                    if node.text and node.text.strip():
+                        texts.append(node.text.strip())
+            return "\n\n".join(texts)
+    except (KeyError, zipfile.BadZipFile):
+        return ""
+    return ""
+
+
+def _extract_html(path: Path) -> str:
+    """Strip HTML tags to plain text for indexing."""
+    raw = path.read_text(encoding="utf-8", errors="ignore")
+    # 去 script/style 块
+    raw = re.sub(r"(?is)<script.*?>.*?</script>", " ", raw)
+    raw = re.sub(r"(?is)<style.*?>.*?</style>", " ", raw)
+    text = re.sub(r"<[^>]+>", " ", raw)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text

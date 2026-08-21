@@ -8,6 +8,7 @@ const STATUS_COLOR: Record<AssetStatus, string> = {
   processing: STATUS_COLORS.amber,
   failed: STATUS_COLORS.red,
   pending: STATUS_COLORS.gray,
+  noIndex: STATUS_COLORS.violet,
 };
 
 export function StatusPill({ status }: { status: AssetStatus }) {

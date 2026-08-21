@@ -10,6 +10,47 @@ import {
 } from './assetUtils';
 import { filterAssets } from './useAssetFilters';
 
+interface SortCtx {
+  indexing: IndexingEntry[];
+  progressMap: Record<string, IndexProgress>;
+}
+
+const getTime = (a: AssetItem) =>
+  a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+const assetStatus = (a: AssetItem, ctx: SortCtx) =>
+  getAssetStatus(a, ctx.indexing, ctx.progressMap[a.id]);
+
+const SORTERS: Record<
+  string,
+  (a: AssetItem, b: AssetItem, ctx: SortCtx) => number
+> = {
+  name: (a, b) => a.name.localeCompare(b.name),
+  format: (a, b) =>
+    (a.name.split('.').pop() || '').localeCompare(
+      b.name.split('.').pop() || '',
+    ),
+  size: (a, b) => a.sizeBytes - b.sizeBytes,
+  status: (a, b, ctx) => assetStatus(a, ctx).localeCompare(assetStatus(b, ctx)),
+  chunks: (a, b) => (a.chunkCount ?? -1) - (b.chunkCount ?? -1),
+  updated: (a, b) => getTime(a) - getTime(b),
+  usageCount: (a, b) =>
+    a.usageCount !== b.usageCount
+      ? a.usageCount - b.usageCount
+      : getTime(a) - getTime(b),
+  usage: (a, b) =>
+    a.usageCount !== b.usageCount
+      ? a.usageCount - b.usageCount
+      : getTime(a) - getTime(b),
+  lastUsed: (a, b) =>
+    getTime(a) !== getTime(b)
+      ? getTime(a) - getTime(b)
+      : a.usageCount - b.usageCount,
+  last_used: (a, b) =>
+    getTime(a) !== getTime(b)
+      ? getTime(a) - getTime(b)
+      : a.usageCount - b.usageCount,
+};
+
 export function useAssetSelection(
   assets: AssetItem[],
   indexing: IndexingEntry[],
@@ -23,8 +64,9 @@ export function useAssetSelection(
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 默认按点击排序：点击次数 + 最近一次点击 均从高到低（全栈对齐 backend order_by）
   const [sortField, setSortField] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -40,6 +82,9 @@ export function useAssetSelection(
     [timeRange, customFrom, customTo],
   );
 
+  const getUpdatedTime = (a: AssetItem) =>
+    a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+
   const filteredAssets = useMemo(
     () =>
       filterAssets(assets, {
@@ -50,6 +95,7 @@ export function useAssetSelection(
         statuses,
         indexing,
         progressMap,
+        getTime: getUpdatedTime,
       }),
     [
       assets,
@@ -77,26 +123,21 @@ export function useAssetSelection(
   }, [assets, indexing, progressMap]);
 
   const sortedAssets = useMemo(() => {
-    if (!sortField) return filteredAssets;
+    // 默认：最新一次点击优先，其次点击次数从高到低（全栈对齐 backend）
+    if (!sortField) {
+      return [...filteredAssets].sort((a, b) => {
+        const ta = getTime(a);
+        const tb = getTime(b);
+        if (tb !== ta) return tb - ta;
+        return b.usageCount - a.usageCount;
+      });
+    }
     const dir = sortDir === 'asc' ? 1 : -1;
-    return [...filteredAssets].sort((a, b) => {
-      if (sortField === 'name') return dir * a.name.localeCompare(b.name);
-      if (sortField === 'format')
-        return (
-          dir *
-          (a.name.split('.').pop() || '').localeCompare(
-            b.name.split('.').pop() || '',
-          )
-        );
-      if (sortField === 'size') return dir * (a.sizeBytes - b.sizeBytes);
-      if (sortField === 'status') {
-        const sa = a.indexed ? 'indexed' : 'pending';
-        const sb = b.indexed ? 'indexed' : 'pending';
-        return dir * sa.localeCompare(sb);
-      }
-      return 0;
-    });
-  }, [filteredAssets, sortField, sortDir]);
+    const ctx: SortCtx = { indexing, progressMap };
+    const cmp = SORTERS[sortField];
+    if (!cmp) return filteredAssets;
+    return [...filteredAssets].sort((a, b) => dir * cmp(a, b, ctx));
+  }, [filteredAssets, sortField, sortDir, indexing, progressMap]);
 
   const handleSort = (field: string) => {
     if (sortField !== field) {

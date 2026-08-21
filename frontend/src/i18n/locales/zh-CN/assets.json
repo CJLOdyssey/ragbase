@@ -5,7 +5,7 @@
     "viewTable": "表格视图",
     "viewGrid": "卡片视图",
     "dropHint": "拖拽文件到此处上传",
-    "dropFormats": "支持 .txt .md .pdf .docx，单文件不超过 20 MB",
+    "dropFormats": "支持 .txt .md .pdf .docx .xlsx .csv .html .doc .xls .ppt .pptx，单文件不超过 20 MB",
     "upload": {
       "button": "上传素材",
       "selectFile": "选择文件",
@@ -79,7 +79,8 @@
       "indexed": "已索引",
       "processing": "处理中",
       "failed": "失败",
-      "pending": "未索引"
+      "pending": "未索引",
+      "noIndex": "无需索引"
     },
     "stat": {
       "total": "文件总数",
@@ -89,7 +90,7 @@
       "unit": "个"
     },
     "toolbar": {
-      "searchPlaceholder": "Q搜索文件名.",
+      "searchPlaceholder": "请输入文件名",
       "timeFrom": "开始时间",
       "timeTo": "结束时间",
       "clear": "清除"
@@ -97,7 +98,7 @@
     "filter": {
       "format": "格式",
       "status": "索引状态",
-      "time": "修改时间",
+      "time": "更新时间",
       "timeAll": "全部",
       "timeToday": "今天",
       "time7d": "最近7天",

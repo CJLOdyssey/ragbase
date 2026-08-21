@@ -10,6 +10,7 @@ from auth import get_user_id
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from httpx import Timeout
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
@@ -17,6 +18,7 @@ from repository.assets import (
     create_asset,
     delete_asset,
     get_asset_for_user,
+    increment_asset_usage,
     list_assets_by_user,
     update_asset_name,
 )
@@ -30,13 +32,19 @@ ASSET_DIR.mkdir(parents=True, exist_ok=True)
 _MAX_IMAGE_MB = 10
 _MAX_DOC_MB = 20
 _MAX_REDIRECTS = 3
-_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp"}
+_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"}
 _DOC_TYPES = {
     "application/pdf",
     "text/plain",
     "text/markdown",
+    "text/csv",
+    "text/html",
+    "application/msword",
+    "application/vnd.ms-excel",
+    "application/vnd.ms-powerpoint",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
 
 
@@ -113,10 +121,18 @@ async def _chunk_counts_for(asset_ids: list[str]) -> dict[str, int]:
 
 
 @router.get("/api/assets", response_model=list[AssetItem])
-async def list_assets(request: Request) -> Any:
-    """List the current user's assets."""
+async def list_assets(
+    request: Request,
+    sort_by: str | None = None,
+    order: str | None = None,
+) -> Any:
+    """List the current user's assets.
+
+    默认按点击排序（点击次数 + 最近一次点击 均 desc，见 repository）。
+    支持 ?sort_by=usage_count|updated_at|name|size&order=asc|desc
+    """
     user_id = get_user_id(request)
-    assets = await list_assets_by_user(user_id)
+    assets = await list_assets_by_user(user_id, sort_by=sort_by, order=order)
     ids = [a.id for a in assets]
     counts = await _chunk_counts_for(ids)
     return [_to_item(a, counts.get(a.id, 0 if a.indexed else 0)) for a in assets]
@@ -131,6 +147,27 @@ async def upload_asset(
     """Upload a file as an asset, validating type and size limits."""
     user_id = get_user_id(request)
     content_type = file.content_type or "application/octet-stream"
+    # 浏览器/ curl 对 csv/doc 等可能误报 octet-stream，退化按扩展名推断
+    if content_type == "application/octet-stream" and file.filename:
+        import mimetypes
+
+        guessed, _ = mimetypes.guess_type(file.filename)
+        if guessed:
+            content_type = guessed
+        else:
+            ext = Path(file.filename).suffix.lower()
+            ext_fallback = {
+                ".csv": "text/csv",
+                ".html": "text/html",
+                ".htm": "text/html",
+                ".doc": "application/msword",
+                ".xls": "application/vnd.ms-excel",
+                ".ppt": "application/vnd.ms-powerpoint",
+                ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                ".md": "text/markdown",
+                ".txt": "text/plain",
+            }
+            content_type = ext_fallback.get(ext, content_type)
     content = await file.read()
     asset_type = _validate(content_type, len(content))
 
@@ -159,6 +196,42 @@ class UrlImportIn(BaseModel):
     name: str | None = None
 
 
+def _candidate_import_urls(url: str) -> list[str]:
+    """Google Workspace 友好：自动将分享链接转为可直接下载的 export 链接."""
+    import re
+
+    candidates: list[str] = []
+    # Docs
+    m = re.search(r"docs\.google\.com/document/d/([a-zA-Z0-9-_]+)", url)
+    if m:
+        candidates.append(f"https://docs.google.com/document/d/{m.group(1)}/export?format=docx")
+        candidates.append(f"https://docs.google.com/document/d/{m.group(1)}/export?format=pdf")
+    # Sheets
+    m = re.search(r"docs\.google\.com/spreadsheets/d/([a-zA-Z0-9-_]+)", url)
+    if m:
+        candidates.append(f"https://docs.google.com/spreadsheets/d/{m.group(1)}/export?format=xlsx")
+        candidates.append(f"https://docs.google.com/spreadsheets/d/{m.group(1)}/export?format=pdf")
+    # Slides
+    m = re.search(r"docs\.google\.com/presentation/d/([a-zA-Z0-9-_]+)", url)
+    if m:
+        candidates.append(f"https://docs.google.com/presentation/d/{m.group(1)}/export?format=pptx")
+        candidates.append(f"https://docs.google.com/presentation/d/{m.group(1)}/export?format=pdf")
+    # Drive file
+    m = re.search(r"drive\.google\.com/file/d/([a-zA-Z0-9-_]+)", url)
+    if m:
+        candidates.append(f"https://drive.google.com/uc?export=download&id={m.group(1)}")
+    # 原链接兜底
+    candidates.append(url)
+    # 去重保序
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for c in candidates:
+        if c not in seen:
+            seen.add(c)
+            uniq.append(c)
+    return uniq
+
+
 @router.post("/api/assets/import-url", response_model=AssetItem, status_code=201)
 async def import_asset_from_url(req: UrlImportIn, request: Request) -> Any:
     """Multi-source A: import a public document from a URL, then index as usual.
@@ -168,17 +241,85 @@ async def import_asset_from_url(req: UrlImportIn, request: Request) -> Any:
     """
     user_id = get_user_id(request)
 
-    timeout = Timeout(30.0)
+    # Google 文档私有会导致长时间重定向到登录页，需快速失败并给出可操作提示
+    is_google = "docs.google.com" in req.url or "drive.google.com" in req.url
+    timeout = Timeout(15.0 if is_google else 30.0)
+    last_exc: Exception | None = None
+    content: bytes | None = None
+    content_type = ""
+    last_url = req.url
+    for cand in _candidate_import_urls(req.url):
+        try:
+            logger.info("URL import try cand=%s", cand)
+            c, ct = await _fetch_public(cand, timeout)
+            logger.info("URL import cand ok ct=%s len=%d", ct, len(c))
+            # 检测 Google 私有文档的登录页（text/html 且含登录特征）
+            if is_google and ct.startswith("text/html"):
+                try:
+                    html = c[:4096].decode("utf-8", errors="ignore").lower()
+                except Exception:
+                    html = ""
+                if "accounts.google.com" in html or "servicelogin" in html or "signin" in html or "登录" in html:
+                    logger.warning("URL import cand private html %s", cand)
+                    last_exc = RuntimeError("google_private")
+                    continue
+            content, content_type = c, ct
+            last_url = cand
+            break
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning("URL import cand failed %s err=%s type=%s", cand, e, type(e).__name__)
+            last_exc = e
+            continue
+    if content is None:
+        if isinstance(last_exc, RuntimeError) and str(last_exc) == "google_private":
+            raise error_response(
+                ErrorCode.ATTACHMENT_TYPE_INVALID,
+                detail="该 Google 文档未公开：请先设为“任何拥有链接的人可查看”，或下载为 .docx 后上传",
+            ) from last_exc
+        raise error_response(
+            ErrorCode.ATTACHMENT_TYPE_INVALID,
+            detail="下载链接失败，请检查链接是否可公开访问",
+        ) from last_exc
+
+    # 兜底：仍为登录页
+    if is_google and content_type.startswith("text/html"):
+        try:
+            html = content[:4096].decode("utf-8", errors="ignore").lower()
+            if "accounts.google.com" in html or "servicelogin" in html:
+                raise error_response(
+                    ErrorCode.ATTACHMENT_TYPE_INVALID,
+                    detail="该 Google 文档未公开：请先设为“任何拥有链接的人可查看”，或下载为 .docx 后上传",
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
     try:
-        content, content_type = await _fetch_public(req.url, timeout)
-    except HTTPException:
+        asset_type = _validate(content_type, len(content))
+    except HTTPException as e:
+        logger.warning(
+            "URL import validate failed ct=%s len=%d err=%s", content_type, len(content) if content else 0, e
+        )
         raise
-    except Exception:
-        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="下载链接失败") from None
 
-    asset_type = _validate(content_type, len(content))
-
-    safe_name = Path(urllib.parse.urlparse(req.url).path or "asset").name or "asset"
+    safe_name = Path(urllib.parse.urlparse(last_url).path or "asset").name or "asset"
+    # export 链接的 path 为 /export，无文件名，需回退到原始 URL 的文件名或按类型补后缀
+    if safe_name == "export" or not Path(safe_name).suffix:
+        orig_name = Path(urllib.parse.urlparse(req.url).path or "").name or "document"
+        # 若原始链接也无后缀，按 content_type 补一个
+        if not Path(safe_name).suffix and Path(orig_name).suffix:
+            safe_name = orig_name
+        elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            safe_name = (Path(orig_name).stem or "document") + ".docx"
+        elif content_type == "application/pdf":
+            safe_name = (Path(orig_name).stem or "document") + ".pdf"
+        elif content_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+            safe_name = (Path(orig_name).stem or "spreadsheet") + ".xlsx"
+        elif content_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+            safe_name = (Path(orig_name).stem or "presentation") + ".pptx"
     filename = f"{user_id}-{uuid.uuid4().hex[:8]}-{safe_name}"
     storage_path = str(ASSET_DIR / filename)
     Path(storage_path).write_bytes(content)
@@ -222,11 +363,7 @@ async def _validate_public_host(hostname: str) -> None:
 
 
 async def _fetch_public(url: str, timeout: Any) -> tuple[bytes, str]:
-    """Download a public URL; validate scheme + host on EVERY redirect hop.
-
-    Redirects are followed manually (OWASP SSRF cheat sheet: disable client
-    redirection, else the initial allowlist/denylist check is bypassed).
-    """
+    """通用拉取：逐跳 SSRF 校验 + 手动跟随重定向（每跳都拒绝内网，防 open redirect）。"""
     import urllib.parse
 
     from httpx import AsyncClient
@@ -236,9 +373,16 @@ async def _fetch_public(url: str, timeout: Any) -> tuple[bytes, str]:
         parsed = urllib.parse.urlparse(current)
         if parsed.scheme not in ("http", "https"):
             raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="仅支持 http/https 链接")
+        # 每一跳都做 SSRF 复核，私网/回环/保留地址在任意跳均被拒绝
         await _validate_public_host(parsed.hostname or "")
         async with AsyncClient(follow_redirects=False, timeout=timeout) as client:
-            resp = await client.get(current)
+            resp = await client.get(
+                current,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (compatible; RagBase/1.0)",
+                    "Accept": "*/*",
+                },
+            )
         if resp.status_code in (301, 302, 303, 307, 308):
             location = resp.headers.get("location")
             if not location:
@@ -247,15 +391,43 @@ async def _fetch_public(url: str, timeout: Any) -> tuple[bytes, str]:
             continue
         resp.raise_for_status()
         content_type = resp.headers.get("content-type", "").split(";")[0].strip()
+        # 兜底：部分导出链接不带 content-type，按扩展名补型（如 googleusercontent 导出）
+        if not content_type:
+            ext = Path(urllib.parse.urlparse(str(resp.url)).path).suffix.lower()
+            if ext == ".docx":
+                content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            elif ext == ".pdf":
+                content_type = "application/pdf"
         return resp.content, content_type
     raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="重定向次数过多")
+    raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="下载失败")
 
 
 @router.put("/api/assets/{asset_id}", response_model=AssetItem)
 async def rename_asset(asset_id: str, request: Request, name: str) -> Any:
-    """Rename an asset owned by the current user."""
+    """Rename an asset owned by the current user（扩展名不可变，后端权威兜底）."""
     user_id = get_user_id(request)
-    asset = await update_asset_name(asset_id, user_id, name.strip()[:256])
+    existing = await get_asset_for_user(asset_id, user_id)
+    if existing is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    raw = name.strip()[:256]
+    if not raw:
+        raise error_response(ErrorCode.INVALID_REQUEST, detail="文件名不能为空")
+    # 扩展名守恒：仅允许修改 basename
+    orig_name: str = existing.name
+    idx = orig_name.rfind('.')
+    orig_ext = orig_name[idx:] if idx > 0 else ''
+    if orig_ext:
+        # 去除用户可能误带的扩展或路径
+        base = raw.split('.')[0].split('/')[0].split('\\')[0].strip()
+        if not base:
+            raise error_response(ErrorCode.INVALID_REQUEST, detail="文件名不能为空")
+        # 保留原始扩展（大小写按原始）
+        if not raw.lower().endswith(orig_ext.lower()):
+            raw = base + orig_ext
+        # 长度再截断
+        raw = raw[:256]
+    asset = await update_asset_name(asset_id, user_id, raw)
     if asset is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
     counts = await _chunk_counts_for([asset.id])
@@ -327,6 +499,66 @@ async def get_asset_chunks(asset_id: str, request: Request) -> Any:
     from rag.rag_store import PgVectorStore
 
     return await PgVectorStore().list_asset_chunks(asset_id, user_id)
+
+
+@router.get("/api/assets/{asset_id}/content")
+async def get_asset_content(asset_id: str, request: Request) -> Any:
+    """Return raw file content for preview (owner-scoped, truncated)."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    storage_path = getattr(asset, "storage_path", None)
+    if not storage_path or not Path(storage_path).exists():
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="文件不存在")
+    # 图片走 /file 直显，不在此提取文本；避免二进制按 utf-8 误读为乱码
+    if asset.asset_type == "image":
+        return {"content": "", "truncated": False, "assetType": asset.asset_type}
+    try:
+        from rag.rag_parsing import extract_text
+
+        text = extract_text(storage_path)
+        truncated = False
+        if len(text) > 20000:
+            text = text[:20000]
+            truncated = True
+        return {"content": text, "truncated": truncated, "assetType": asset.asset_type}
+    except Exception as e:
+        logger.warning("extract failed for %s: %s", asset_id, e)
+        raise error_response(ErrorCode.INTERNAL_ERROR, detail="文件解析失败") from e
+
+
+@router.get("/api/assets/{asset_id}/file")
+async def get_asset_file(asset_id: str, request: Request) -> Any:
+    """Serve raw asset file for preview / download (owner-scoped)."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    storage_path = getattr(asset, "storage_path", None)
+    if not storage_path or not Path(storage_path).exists():
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="文件不存在")
+    import mimetypes
+
+    media_type, _ = mimetypes.guess_type(asset.name)
+    media_type = media_type or "application/octet-stream"
+    return FileResponse(storage_path, filename=asset.name, media_type=media_type)
+
+
+@router.post("/api/assets/{asset_id}/touch", response_model=AssetItem)
+async def touch_asset(asset_id: str, request: Request) -> Any:
+    """显式点击埋点：增加次数并刷新最近点击，返回更新后资产（供前端乐观对账）."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    await increment_asset_usage(asset_id)
+    # 重新读取以拿到最新的 updated_at/usage_count
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    counts = await _chunk_counts_for([asset.id])
+    return _to_item(asset, counts.get(asset.id, 0 if asset.indexed else 0))
 
 
 @router.post("/api/assets/{asset_id}/retry-index")

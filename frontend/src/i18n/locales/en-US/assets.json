@@ -5,7 +5,7 @@
     "viewTable": "Table view",
     "viewGrid": "Card view",
     "dropHint": "Drag files here to upload",
-    "dropFormats": "Supports .txt .md .pdf .docx, up to 20 MB each",
+    "dropFormats": "Supports .txt .md .pdf .docx .xlsx .csv .html .doc .xls .ppt .pptx, up to 20 MB each",
     "upload": {
       "button": "Upload Asset",
       "selectFile": "Select File",
@@ -79,7 +79,8 @@
       "indexed": "Indexed",
       "processing": "Processing",
       "failed": "Failed",
-      "pending": "Not indexed"
+      "pending": "Not indexed",
+      "noIndex": "No index needed"
     },
     "stat": {
       "total": "Total files",
@@ -89,7 +90,7 @@
       "unit": ""
     },
     "toolbar": {
-      "searchPlaceholder": "Q Search filename.",
+      "searchPlaceholder": "Enter file name",
       "timeFrom": "From",
       "timeTo": "To",
       "clear": "Clear"
@@ -97,7 +98,7 @@
     "filter": {
       "format": "Format",
       "status": "Status",
-      "time": "Modified",
+      "time": "Updated",
       "timeAll": "All",
       "timeToday": "Today",
       "time7d": "Last 7 days",

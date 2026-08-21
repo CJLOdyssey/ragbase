@@ -161,116 +161,120 @@ export default function AssetsGrid({
               className="flex items-center gap-1.5 pt-3 border-t border-[var(--color-border)] relative"
               onClick={(e) => e.stopPropagation()}
             >
-              {asset.assetType === 'document' && !asset.indexed && (
-                <ActionButton
-                  title={t('assets.action.index')}
-                  hoverVar="--color-accent"
-                  onClick={() => onIndex(asset.id)}
-                  disabled={isIndexingActive}
-                  data-testid={`index-${asset.id}`}
-                >
-                  <Search size={12} />
-                </ActionButton>
-              )}
-              {status === 'failed' && (
-                <ActionButton
-                  title={t('assets.action.retry')}
-                  hoverVar="--color-accent-soft"
-                  onClick={() => onRetry(asset.id)}
-                  data-testid={`retry-${asset.id}`}
-                >
-                  <RotateCcw size={12} />
-                </ActionButton>
-              )}
-              <ActionButton
-                title={t('assets.action.chunks')}
-                hoverVar="--color-accent"
-                onClick={() => onChunks(asset)}
-                data-testid={`chunks-${asset.id}`}
-              >
-                <Braces size={12} />
-              </ActionButton>
-              <div
-                className="relative"
-                ref={(el) => {
-                  if (el) buttonRefs.current.set(asset.id, el);
-                  else buttonRefs.current.delete(asset.id);
-                }}
-              >
-                <ActionButton
-                  title="更多"
-                  hoverVar="--color-accent-soft"
-                  onClick={() => {
-                    const el = buttonRefs.current.get(asset.id);
-                    if (el) {
-                      const rect = el.getBoundingClientRect();
-                      setMenuPos({
-                        top: rect.bottom + 6,
-                        right: window.innerWidth - rect.right,
-                      });
-                    }
-                    setOpenMenu(openMenu === asset.id ? null : asset.id);
-                  }}
-                  data-testid={`more-${asset.id}`}
-                >
-                  <MoreHorizontal size={12} />
-                </ActionButton>
-                {openMenu === asset.id &&
-                  menuPos &&
-                  createPortal(
-                    <div
-                      ref={menuRef}
-                      style={{
-                        position: 'fixed',
-                        top: menuPos.top,
-                        right: menuPos.right,
-                      }}
-                      className="z-50 min-w-[140px] rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] shadow-xl py-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onRename(asset);
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
-                        data-testid={`rename-${asset.id}`}
-                      >
-                        <Pencil size={12} /> {t('assets.action.rename')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onDownload?.(asset);
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
-                        data-testid={`download-${asset.id}`}
-                      >
-                        <Download size={12} /> 下载
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onDelete(asset);
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-danger)] hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
-                        data-testid={`delete-${asset.id}`}
-                      >
-                        <Trash2 size={12} /> {t('assets.action.delete')}
-                      </button>
-                    </div>,
-                    document.body,
-                  )}
-              </div>
-              <div className="ml-auto text-[var(--color-text-tertiary)]">
+              <div className="text-[var(--color-text-tertiary)]">
                 {asset.assetType === 'image' ? (
                   <ImageIcon size={14} />
                 ) : (
                   <FileText size={14} />
                 )}
+              </div>
+              <div className="ml-auto flex items-center gap-1.5">
+                {asset.assetType === 'document' && !asset.indexed && (
+                  <ActionButton
+                    title={t('assets.action.index')}
+                    hoverVar="--color-accent"
+                    onClick={() => onIndex(asset.id)}
+                    disabled={isIndexingActive}
+                    data-testid={`index-${asset.id}`}
+                  >
+                    <Search size={12} />
+                  </ActionButton>
+                )}
+                {asset.assetType === 'image' ? null : status === 'failed' ? (
+                  <ActionButton
+                    title={t('assets.action.retry')}
+                    hoverVar="--color-accent-soft"
+                    onClick={() => onRetry(asset.id)}
+                    data-testid={`retry-${asset.id}`}
+                  >
+                    <RotateCcw size={12} />
+                  </ActionButton>
+                ) : null}
+                {asset.assetType === 'document' && (
+                  <ActionButton
+                    title={t('assets.action.chunks')}
+                    hoverVar="--color-accent"
+                    onClick={() => onChunks(asset)}
+                    data-testid={`chunks-${asset.id}`}
+                  >
+                    <Braces size={12} />
+                  </ActionButton>
+                )}
+                <div
+                  className="relative"
+                  ref={(el) => {
+                    if (el) buttonRefs.current.set(asset.id, el);
+                    else buttonRefs.current.delete(asset.id);
+                  }}
+                >
+                  <ActionButton
+                    title="更多"
+                    hoverVar="--color-accent-soft"
+                    onClick={() => {
+                      const el = buttonRefs.current.get(asset.id);
+                      if (el) {
+                        const rect = el.getBoundingClientRect();
+                        setMenuPos({
+                          top: rect.bottom + 6,
+                          right: window.innerWidth - rect.right,
+                        });
+                      }
+                      setOpenMenu(openMenu === asset.id ? null : asset.id);
+                    }}
+                    data-testid={`more-${asset.id}`}
+                  >
+                    <MoreHorizontal size={12} />
+                  </ActionButton>
+                  {openMenu === asset.id &&
+                    menuPos &&
+                    createPortal(
+                      <div
+                        ref={menuRef}
+                        style={{
+                          position: 'fixed',
+                          top: menuPos.top,
+                          right: menuPos.right,
+                        }}
+                        className="z-50 min-w-[140px] rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] shadow-xl py-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenu(null);
+                            onRename(asset);
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                          data-testid={`rename-${asset.id}`}
+                        >
+                          <Pencil size={12} /> {t('assets.action.rename')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenu(null);
+                            onDownload?.(asset);
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                          data-testid={`download-${asset.id}`}
+                        >
+                          <Download size={12} /> 下载
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenu(null);
+                            onDelete(asset);
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-danger)] hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                          data-testid={`delete-${asset.id}`}
+                        >
+                          <Trash2 size={12} /> {t('assets.action.delete')}
+                        </button>
+                      </div>,
+                      document.body,
+                    )}
+                </div>
               </div>
             </div>
           </div>

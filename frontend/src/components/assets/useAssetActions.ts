@@ -14,13 +14,25 @@ import type { IndexingEntry } from './assetUtils';
 import { useToast } from '../../utils/useToast';
 
 const INDEX_POLL_TIMEOUT_MS = 120_000;
-const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const IMAGE_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/bmp',
+]);
 const DOC_TYPES = new Set([
   'application/pdf',
   'text/plain',
   'text/markdown',
+  'text/csv',
+  'text/html',
+  'application/msword',
+  'application/vnd.ms-excel',
+  'application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ]);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_DOC_BYTES = 20 * 1024 * 1024;
@@ -112,16 +124,47 @@ export function useAssetActions(
       setUrlName('');
       toast(t('assets.upload.success'), 'success');
     },
-    onError: () => toast(t('assets.urlImport.failed'), 'error'),
+    onError: (err: unknown) => {
+      const anyErr = err as {
+        response?: { data?: { detail?: string | { message?: string } } };
+        message?: string;
+      };
+      const detail =
+        (typeof anyErr?.response?.data?.detail === 'string'
+          ? anyErr.response?.data?.detail
+          : (anyErr?.response?.data?.detail as { message?: string })
+              ?.message) || anyErr?.message;
+      // 后端对 Google 私有文档会返回可操作提示，优先展示
+      toast(detail || t('assets.urlImport.failed'), 'error');
+    },
   });
 
   const validateAndUpload = (file: File) => {
-    const allowed = IMAGE_TYPES.has(file.type) || DOC_TYPES.has(file.type);
+    let mime = file.type;
+    if (!mime || mime === 'application/octet-stream') {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      const fallback: Record<string, string> = {
+        csv: 'text/csv',
+        html: 'text/html',
+        htm: 'text/html',
+        doc: 'application/msword',
+        xls: 'application/vnd.ms-excel',
+        ppt: 'application/vnd.ms-powerpoint',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        md: 'text/markdown',
+        txt: 'text/plain',
+        pdf: 'application/pdf',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      };
+      mime = fallback[ext] || mime;
+    }
+    const allowed = IMAGE_TYPES.has(mime) || DOC_TYPES.has(mime);
     if (!allowed) {
       toast(t('assets.upload.typeDenied', { name: file.name }), 'error');
       return;
     }
-    const limit = IMAGE_TYPES.has(file.type) ? MAX_IMAGE_BYTES : MAX_DOC_BYTES;
+    const limit = IMAGE_TYPES.has(mime) ? MAX_IMAGE_BYTES : MAX_DOC_BYTES;
     if (file.size > limit) {
       toast(t('assets.upload.tooLarge', { name: file.name }), 'error');
       return;

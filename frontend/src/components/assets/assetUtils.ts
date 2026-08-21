@@ -7,13 +7,15 @@ export interface IndexingEntry {
   deadline: number;
 }
 
-export type AssetStatus = 'indexed' | 'processing' | 'failed' | 'pending';
+export type AssetStatus =
+  'indexed' | 'processing' | 'failed' | 'pending' | 'noIndex';
 
 export const STATUS_OPTIONS: readonly AssetStatus[] = [
   'indexed',
   'processing',
   'failed',
   'pending',
+  'noIndex',
 ] as const;
 
 export const FORMAT_OPTIONS = [
@@ -30,6 +32,10 @@ export const FORMAT_OPTIONS = [
   'gif',
   'doc',
   'xls',
+  'ppt',
+  'pptx',
+  'html',
+  'htm',
 ] as const;
 export type FormatOption = (typeof FORMAT_OPTIONS)[number];
 
@@ -45,11 +51,16 @@ export const FORMAT_REGISTRY: Record<
   xlsx: { label: 'XLSX', category: 'data' },
   xls: { label: 'XLS', category: 'data' },
   csv: { label: 'CSV', category: 'data' },
+  html: { label: 'HTML', category: 'document' },
+  htm: { label: 'HTM', category: 'document' },
+  ppt: { label: 'PPT', category: 'document' },
+  pptx: { label: 'PPTX', category: 'document' },
   png: { label: 'PNG', category: 'image' },
   jpg: { label: 'JPG', category: 'image' },
   jpeg: { label: 'JPEG', category: 'image' },
   webp: { label: 'WEBP', category: 'image' },
   gif: { label: 'GIF', category: 'image' },
+  bmp: { label: 'BMP', category: 'image' },
 };
 
 export type TimeRange = 'all' | 'today' | '7d' | '30d' | 'custom';
@@ -124,11 +135,16 @@ const EXT_COLORS: Record<string, string> = {
   xls: STATUS_COLORS.green,
   xlsx: STATUS_COLORS.green,
   csv: STATUS_COLORS.amber,
+  html: STATUS_COLORS.blue,
+  htm: STATUS_COLORS.blue,
+  ppt: STATUS_COLORS.amber,
+  pptx: STATUS_COLORS.amber,
   png: STATUS_COLORS.violet,
   jpg: STATUS_COLORS.violet,
   jpeg: STATUS_COLORS.violet,
   webp: STATUS_COLORS.violet,
   gif: STATUS_COLORS.violet,
+  bmp: STATUS_COLORS.violet,
 };
 
 export function extColorOf(ext: string): string {
@@ -148,6 +164,7 @@ export function getAssetStatus(
   indexing: IndexingEntry[],
   progress?: IndexProgress | null,
 ): AssetStatus {
+  if (asset.assetType === 'image') return 'noIndex';
   if (asset.indexed) return 'indexed';
   if (isLiveIndexing(asset, indexing)) {
     return progress?.stage === 'failed' ? 'failed' : 'processing';
@@ -177,6 +194,8 @@ export function computeStats(
   let totalBytes = 0;
   for (const a of assets) {
     totalBytes += a.sizeBytes;
+    // 图片无需索引，不占用 pending/failed 计数，保持状态与操作对齐
+    if (a.assetType === 'image') continue;
     if (a.indexed) {
       indexed += 1;
       continue;

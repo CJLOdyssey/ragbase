@@ -1,8 +1,22 @@
 import type { AssetIndexResult, AssetItem } from '../../types/assets';
 import api from './instance';
 
-export async function listAssets(): Promise<AssetItem[]> {
-  const { data } = await api.get('/assets');
+export async function listAssets(params?: unknown): Promise<AssetItem[]> {
+  // 兼容 react-query 直接传入 queryFn 场景：仅当显式传入 {sort_by,order} 才透传
+  let clean: Record<string, string> | undefined;
+  if (
+    params &&
+    typeof params === 'object' &&
+    !Array.isArray(params) &&
+    ('sort_by' in (params as Record<string, unknown>) ||
+      'order' in (params as Record<string, unknown>))
+  ) {
+    const p = params as Record<string, unknown>;
+    clean = {};
+    if (typeof p.sort_by === 'string') clean.sort_by = p.sort_by;
+    if (typeof p.order === 'string') clean.order = p.order;
+  }
+  const { data } = await api.get('/assets', { params: clean });
   return data;
 }
 
@@ -45,7 +59,11 @@ export async function importUrl(
   url: string,
   name?: string,
 ): Promise<AssetItem> {
-  const { data } = await api.post('/assets/import-url', { url, name });
+  const { data } = await api.post(
+    '/assets/import-url',
+    { url, name },
+    { timeout: 60000 },
+  );
   return data;
 }
 
@@ -78,4 +96,45 @@ export interface AssetChunk {
 export async function listAssetChunks(assetId: string): Promise<AssetChunk[]> {
   const { data } = await api.get(`/assets/${assetId}/chunks`);
   return data;
+}
+
+export async function getAssetContent(
+  assetId: string,
+): Promise<{ content: string; truncated: boolean; assetType: string }> {
+  const { data } = await api.get(`/assets/${assetId}/content`);
+  return data;
+}
+
+export async function touchAsset(assetId: string): Promise<AssetItem> {
+  const { data } = await api.post(`/assets/${assetId}/touch`);
+  return data;
+}
+
+export async function downloadAssetFile(
+  assetId: string,
+  fileName: string,
+): Promise<void> {
+  const resp = await api.get(`/assets/${assetId}/file`, {
+    responseType: 'blob',
+  });
+  const blob = resp.data as Blob;
+  // 尝试从 Content-Disposition 取文件名，兜底用传入的 fileName
+  const disposition: string | undefined = (
+    resp.headers as Record<string, string>
+  )?.['content-disposition'];
+  let outName = fileName;
+  if (disposition) {
+    const m =
+      /filename="([^"]+)"/.exec(disposition) ||
+      /filename=([^;]+)/.exec(disposition);
+    if (m?.[1]) outName = decodeURIComponent(m[1].replace(/"/g, '').trim());
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = outName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
