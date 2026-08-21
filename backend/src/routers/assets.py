@@ -51,6 +51,8 @@ class AssetItem(BaseModel):
     knowledge_base_id: str | None = None
     source: str = "upload"
     source_ref: str | None = None
+    updated_at: Any | None = None
+    chunk_count: int | None = None
 
 
 class AssetChunkOut(BaseModel):
@@ -74,8 +76,9 @@ def _validate(content_type: str, size: int) -> str:
     return asset_type
 
 
-def _to_item(asset: Any) -> AssetItem:
+def _to_item(asset: Any, chunk_count: int | None = None) -> AssetItem:
     kb_id = getattr(asset, "knowledge_base_id", None)
+    updated = getattr(asset, "updated_at", None)
     return AssetItem(
         id=asset.id,
         name=asset.name,
@@ -86,7 +89,27 @@ def _to_item(asset: Any) -> AssetItem:
         knowledge_base_id=kb_id if isinstance(kb_id, str) else None,
         source=asset.source,
         source_ref=asset.source_ref,
+        updated_at=updated,
+        chunk_count=chunk_count,
     )
+
+
+async def _chunk_counts_for(asset_ids: list[str]) -> dict[str, int]:
+    if not asset_ids:
+        return {}
+    try:
+        from core.infra.database import get_session_factory
+        from sqlalchemy import text
+
+        factory = get_session_factory()
+        async with factory() as session:
+            rows = await session.execute(
+                text("SELECT asset_id, COUNT(*) FROM vector_chunks WHERE asset_id = ANY(:aids) GROUP BY asset_id"),
+                {"aids": asset_ids},
+            )
+            return {r[0]: int(r[1]) for r in rows.fetchall()}
+    except Exception:
+        return {}
 
 
 @router.get("/api/assets", response_model=list[AssetItem])
@@ -94,7 +117,9 @@ async def list_assets(request: Request) -> Any:
     """List the current user's assets."""
     user_id = get_user_id(request)
     assets = await list_assets_by_user(user_id)
-    return [_to_item(a) for a in assets]
+    ids = [a.id for a in assets]
+    counts = await _chunk_counts_for(ids)
+    return [_to_item(a, counts.get(a.id, 0 if a.indexed else 0)) for a in assets]
 
 
 @router.post("/api/assets", response_model=AssetItem, status_code=201)
@@ -126,7 +151,7 @@ async def upload_asset(
         Path(storage_path).unlink(missing_ok=True)
         raise
     logger.info("Asset uploaded | user=%s | %s", user_id, storage_path)
-    return _to_item(asset)
+    return _to_item(asset, 0)
 
 
 class UrlImportIn(BaseModel):
@@ -172,7 +197,7 @@ async def import_asset_from_url(req: UrlImportIn, request: Request) -> Any:
         Path(storage_path).unlink(missing_ok=True)
         raise
     logger.info("Asset imported from url | user=%s | %s", user_id, req.url)
-    return _to_item(asset)
+    return _to_item(asset, 0)
 
 
 async def _resolve_host(hostname: str) -> str:
@@ -233,7 +258,8 @@ async def rename_asset(asset_id: str, request: Request, name: str) -> Any:
     asset = await update_asset_name(asset_id, user_id, name.strip()[:256])
     if asset is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
-    return _to_item(asset)
+    counts = await _chunk_counts_for([asset.id])
+    return _to_item(asset, counts.get(asset.id, 0))
 
 
 @router.delete("/api/assets/{asset_id}")

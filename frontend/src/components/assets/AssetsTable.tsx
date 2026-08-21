@@ -77,6 +77,21 @@ const SORT_FIELDS: Record<number, string> = {
   5: 'updated',
 };
 
+function formatUpdatedAt(v?: string | null): string {
+  if (!v) return '—';
+  try {
+    const d = new Date(v);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day} ${hh}:${mm}`;
+  } catch {
+    return '—';
+  }
+}
+
 export default function AssetsTable({
   assets,
   indexing,
@@ -215,6 +230,10 @@ export default function AssetsTable({
                     {progress.percentage}%
                   </span>
                 </div>
+              ) : asset.chunkCount != null ? (
+                <span className="text-[12px] font-mono text-[var(--color-text-secondary)]">
+                  {asset.chunkCount}
+                </span>
               ) : (
                 <span className="text-[12px] text-[var(--color-text-muted)] text-center">
                   —
@@ -222,8 +241,8 @@ export default function AssetsTable({
               )}
             </div>
 
-            <span className="text-[12px] font-mono text-[var(--color-text-muted)] text-center flex items-center justify-center">
-              —
+            <span className="text-[11px] font-mono text-[var(--color-text-muted)] text-center flex items-center justify-center">
+              {formatUpdatedAt(asset.updatedAt)}
             </span>
 
             <div
@@ -297,17 +316,6 @@ export default function AssetsTable({
                       className="z-50 min-w-[140px] rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] shadow-xl py-1"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onRename(asset);
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
-                        data-testid={`edit-${asset.id}`}
-                      >
-                        <Pencil size={12} /> 编辑
-                      </button>
                       <button
                         type="button"
                         onClick={() => {

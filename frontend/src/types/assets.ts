@@ -8,6 +8,8 @@ export interface AssetItem {
   knowledgeBaseId?: string | null;
   source?: string;
   sourceRef?: string | null;
+  updatedAt?: string | null;
+  chunkCount?: number | null;
 }
 
 export interface AssetIndexResult {
