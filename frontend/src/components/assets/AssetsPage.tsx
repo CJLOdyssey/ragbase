@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Link, Upload } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import {
@@ -24,8 +24,10 @@ import AssetsHeader, { type ViewMode } from './AssetsHeader';
 import AssetsRenameModal from './AssetsRenameModal';
 import AssetsStats from './AssetsStats';
 import AssetsTable from './AssetsTable';
+import AssetsToolbar from './AssetsToolbar';
 import AssetsUrlModal from './AssetsUrlModal';
 import { computeStats, type IndexingEntry } from './assetUtils';
+import { filterAssets } from './useAssetFilters';
 import { useToast } from '../../utils/useToast';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -60,6 +62,11 @@ export default function AssetsPage() {
   const [progressMap, setProgressMap] = useState<Record<string, IndexProgress>>(
     {},
   );
+  const [search, setSearch] = useState('');
+  const [formats, setFormats] = useState<string[]>([]);
+  const [statuses, setStatuses] = useState<string[]>([]);
+  const [timeFrom, setTimeFrom] = useState('');
+  const [timeTo, setTimeTo] = useState('');
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['assets'],
@@ -198,8 +205,37 @@ export default function AssetsPage() {
     }
   };
 
-  const stats = computeStats(assets, indexing);
+  const stats = useMemo(
+    () => computeStats(assets, indexing, progressMap),
+    [assets, indexing, progressMap],
+  );
+
+  const filteredAssets = useMemo(
+    () =>
+      filterAssets(assets, {
+        search,
+        timeFrom: timeFrom ? new Date(timeFrom).getTime() : null,
+        timeTo: timeTo ? new Date(timeTo).getTime() : null,
+        formats,
+        statuses,
+        indexing,
+        progressMap,
+      }),
+    [
+      assets,
+      search,
+      timeFrom,
+      timeTo,
+      formats,
+      statuses,
+      indexing,
+      progressMap,
+    ],
+  );
+
   const showEmpty = !isLoading && assets.length === 0;
+  const showFilteredEmpty =
+    !isLoading && assets.length > 0 && filteredAssets.length === 0;
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-surface)]">
@@ -209,9 +245,25 @@ export default function AssetsPage() {
         onUrlImport={() => setUrlImportOpen(true)}
         fileInputRef={fileInputRef}
         uploadPending={uploadMutation.isPending}
+        onFileSelect={validateAndUpload}
       />
 
-      <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0">
+      <div
+        className="flex-1 overflow-y-auto px-8 py-6 min-h-0 relative"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+      >
+        {dragging && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)] border-2 border-dashed border-[var(--color-accent)] rounded-[12px] pointer-events-none m-6">
+            <span className="text-sm font-bold text-[var(--color-accent)]">
+              松手上传素材
+            </span>
+          </div>
+        )}
         {isLoading ? (
           <LoadingState centered />
         ) : showEmpty ? (
@@ -229,67 +281,45 @@ export default function AssetsPage() {
               total={stats.total}
               indexed={stats.indexed}
               processing={stats.processing}
+              failed={stats.failed}
               totalBytes={stats.totalBytes}
+              filteredCount={filteredAssets.length}
             />
 
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragging(true);
+            <AssetsToolbar
+              search={search}
+              onSearch={setSearch}
+              timeFrom={timeFrom}
+              timeTo={timeTo}
+              onTimeChange={(f, to) => {
+                setTimeFrom(f);
+                setTimeTo(to);
               }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-3.5 rounded-[12px] border-2 border-dashed px-6 py-5 cursor-pointer transition-all"
-              style={{
-                borderColor: dragging
-                  ? 'color-mix(in_srgb, var(--color-accent) 60%, transparent)'
-                  : 'var(--color-border)',
-                background: dragging
-                  ? 'color-mix(in_srgb, var(--color-accent) 6%, transparent)'
-                  : 'transparent',
+              formats={formats}
+              onFormatsChange={setFormats}
+              statuses={statuses}
+              onStatusesChange={setStatuses}
+              onClear={() => {
+                setSearch('');
+                setFormats([]);
+                setStatuses([]);
+                setTimeFrom('');
+                setTimeTo('');
               }}
-            >
-              <div
-                className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
-                style={{
-                  color: 'var(--color-accent)',
-                  background:
-                    'color-mix(in_srgb, var(--color-accent) 10%, transparent)',
-                  border:
-                    '1px solid color-mix(in_srgb, var(--color-accent) 20%, transparent)',
-                }}
-              >
-                <Upload size={18} />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
-                  {t('assets.dropHint')}
-                </div>
-                <div className="text-[12px] text-[var(--color-text-tertiary)] mt-0.5">
-                  {t('assets.dropFormats')}
-                </div>
-              </div>
-              <div
-                className="ml-auto shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setUrlImportOpen(true);
-                }}
-              >
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-[9px] text-[13px] font-medium cursor-pointer border text-[var(--color-text-secondary)] border-[var(--color-border)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-                >
-                  <Link size={15} />
-                  {t('assets.urlImport.button')}
-                </button>
-              </div>
-            </div>
+            />
 
-            {view === 'table' ? (
+            {showFilteredEmpty ? (
+              <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-12 px-6 flex flex-col items-center justify-center text-center">
+                <EmptyState
+                  icon={<FileText size={24} />}
+                  title="无匹配素材"
+                  description="调整搜索或筛选条件"
+                  centered
+                />
+              </div>
+            ) : view === 'table' ? (
               <AssetsTable
-                assets={assets}
+                assets={filteredAssets}
                 indexing={indexing}
                 progressMap={progressMap}
                 onPreview={setPreviewTarget}
@@ -304,7 +334,7 @@ export default function AssetsPage() {
               />
             ) : (
               <AssetsGrid
-                assets={assets}
+                assets={filteredAssets}
                 indexing={indexing}
                 progressMap={progressMap}
                 onPreview={setPreviewTarget}

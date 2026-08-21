@@ -8,8 +8,9 @@ interface AssetsHeaderProps {
   view: ViewMode;
   onViewChange: (v: ViewMode) => void;
   onUrlImport: () => void;
-  fileInputRef: RefObject<HTMLInputElement>;
+  fileInputRef: RefObject<HTMLInputElement | null>;
   uploadPending: boolean;
+  onFileSelect?: (file: File) => void;
 }
 
 export default function AssetsHeader({
@@ -18,6 +19,7 @@ export default function AssetsHeader({
   onUrlImport,
   fileInputRef,
   uploadPending,
+  onFileSelect,
 }: AssetsHeaderProps) {
   const { t } = useTranslation();
 
@@ -72,11 +74,16 @@ export default function AssetsHeader({
         </button>
       </div>
       <input
-        ref={fileInputRef}
+        ref={fileInputRef as RefObject<HTMLInputElement>}
         type="file"
         accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         className="hidden"
         data-testid="asset-file-input"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f && onFileSelect) onFileSelect(f);
+          e.currentTarget.value = '';
+        }}
       />
     </div>
   );

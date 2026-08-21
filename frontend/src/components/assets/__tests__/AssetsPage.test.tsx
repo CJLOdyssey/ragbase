@@ -1,7 +1,13 @@
 import { TestProviders } from '../../../test/setup';
 import type { AssetItem } from '../../../types/assets';
 import AssetsPage from '../AssetsPage';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mocks } = vi.hoisted(() => ({
@@ -164,7 +170,11 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
     try {
       fireEvent.click(screen.getByTestId('index-a1'));
       await vi.advanceTimersByTimeAsync(0);
-      expect(screen.getByText('索引中…')).toBeTruthy();
+      expect(
+        within(screen.getByTestId('asset-item-a1')).getByTestId(
+          'status-processing',
+        ),
+      ).toBeTruthy();
 
       mocks.listAssets.mockResolvedValue([{ ...DOC, indexed: true }]);
       await vi.advanceTimersByTimeAsync(3000);
@@ -243,15 +253,16 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
       { ...DOC, id: 'a3', name: 'tiny.txt', sizeBytes: 500 },
     ]);
     renderPage();
-    expect(await screen.findByText(/5\.0 MB/)).toBeTruthy();
-    expect(screen.getByText(/500 B/)).toBeTruthy();
+    await screen.findByTestId('asset-item-a2');
+    expect(screen.getAllByText(/5\.0 MB/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/500 B/).length).toBeGreaterThan(0);
   });
 
   it('shows indexed badge for indexed assets', async () => {
     mocks.listAssets.mockResolvedValue([{ ...DOC, indexed: true }]);
     renderPage();
-    await screen.findByTestId('asset-item-a1');
-    expect(screen.getByText('indexed')).toBeTruthy();
+    const item = await screen.findByTestId('asset-item-a1');
+    expect(within(item).getByTestId('status-indexed')).toBeTruthy();
     expect(screen.queryByTestId('index-a1')).toBeNull();
   });
 });
