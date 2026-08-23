@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminUsersPage from '../AdminUsersPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -132,7 +132,26 @@ describe('AdminUsersPage', () => {
     });
   });
 
-  it('shows role select for each user', async () => {
+  /**
+   * Opens the per-row "more actions" dropdown (antd renders its menu into a
+   * body-level portal asynchronously) and clicks a menu item by i18n key.
+   * Scoped to `.ant-dropdown-menu` because some labels (e.g. the role key)
+   * also appear as table headers.
+   */
+  const openRowMenuAndClick = async (itemText: string) => {
+    const moreButton = screen.getByRole('button', {
+      name: 'admin.users.moreActions',
+    });
+    fireEvent.click(moreButton);
+    const menu = await waitFor(() => {
+      const el = document.querySelector('.ant-dropdown-menu');
+      expect(el).not.toBeNull();
+      return el as HTMLElement;
+    });
+    fireEvent.click(within(menu).getByText(itemText));
+  };
+
+  it('offers role editing in the row actions menu', async () => {
     const mockUsers = {
       users: [
         {
@@ -152,10 +171,17 @@ describe('AdminUsersPage', () => {
     vi.mocked(listAdminUsers).mockResolvedValue(mockUsers);
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
-      const roleSelect = screen.getByDisplayValue('member');
-      expect(roleSelect).toBeInTheDocument();
+      expect(screen.getByText('Test User')).toBeInTheDocument();
+    });
+    await openRowMenuAndClick('admin.users.role');
+
+    // Role edit opens the confirm dialog with the toggled target role.
+    await waitFor(() => {
+      expect(
+        screen.getByText('admin.users.confirmRoleChange'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -185,7 +211,7 @@ describe('AdminUsersPage', () => {
     });
   });
 
-  it('opens confirm dialog when changing role', async () => {
+  it('opens confirm dialog when changing role via actions menu', async () => {
     const mockUsers = {
       users: [
         {
@@ -207,16 +233,16 @@ describe('AdminUsersPage', () => {
     renderWithClient(<AdminUsersPage />);
 
     await waitFor(() => {
-      const roleSelect = screen.getByDisplayValue('member');
-      fireEvent.change(roleSelect, { target: { value: 'admin' } });
+      expect(screen.getByText('Test User')).toBeInTheDocument();
     });
+    await openRowMenuAndClick('admin.users.role');
 
     await waitFor(() => {
       expect(screen.getByText('admin.users.confirmRoleChange')).toBeInTheDocument();
     });
   });
 
-  it('opens confirm dialog when toggling status', async () => {
+  it('opens confirm dialog when toggling status via actions menu', async () => {
     const mockUsers = {
       users: [
         {
@@ -238,9 +264,9 @@ describe('AdminUsersPage', () => {
     renderWithClient(<AdminUsersPage />);
 
     await waitFor(() => {
-      const statusButton = screen.getByText('admin.users.active');
-      fireEvent.click(statusButton);
+      expect(screen.getByText('Test User')).toBeInTheDocument();
     });
+    await openRowMenuAndClick('admin.users.disable');
 
     await waitFor(() => {
       expect(screen.getByText('admin.users.confirmStatusChange')).toBeInTheDocument();
@@ -270,9 +296,9 @@ describe('AdminUsersPage', () => {
     renderWithClient(<AdminUsersPage />);
 
     await waitFor(() => {
-      const roleSelect = screen.getByDisplayValue('member');
-      fireEvent.change(roleSelect, { target: { value: 'admin' } });
+      expect(screen.getByText('Test User')).toBeInTheDocument();
     });
+    await openRowMenuAndClick('admin.users.role');
 
     await waitFor(() => {
       const confirmButton = screen.getByText('confirm.confirm');
@@ -307,9 +333,9 @@ describe('AdminUsersPage', () => {
     renderWithClient(<AdminUsersPage />);
 
     await waitFor(() => {
-      const statusButton = screen.getByText('admin.users.active');
-      fireEvent.click(statusButton);
+      expect(screen.getByText('Test User')).toBeInTheDocument();
     });
+    await openRowMenuAndClick('admin.users.disable');
 
     await waitFor(() => {
       const confirmButton = screen.getByText('confirm.confirm');

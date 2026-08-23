@@ -43,11 +43,11 @@ def _validate_session_id(session_id: str) -> str:
 
 
 async def _ensure_session_access(session_id: str, user_id: str) -> None:
-    """Session must exist; with auth enabled, it must belong to the caller."""
+    """Session must exist and belong to the caller."""
     sess = await get_session(session_id)
     if sess is None:
         raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="会话不存在")
-    if os.environ.get("AUTH_ENABLED", "0") == "1" and sess.user_id != user_id:
+    if sess.user_id != user_id:
         raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权访问该会话")
 
 
@@ -59,11 +59,10 @@ async def _ensure_attachment_access(attachment_id: str, user_id: str) -> Attachm
     att = await get_attachment_by_id(attachment_id)
     if att is None:
         raise error_response(ErrorCode.ATTACHMENT_NOT_FOUND, detail="附件不存在")
-    if os.environ.get("AUTH_ENABLED", "0") == "1":
-        if att.session_id:
-            await _ensure_session_access(att.session_id, user_id)
-        elif att.user_id != user_id:
-            raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权访问该附件")
+    if att.session_id:
+        await _ensure_session_access(att.session_id, user_id)
+    elif att.user_id != user_id:
+        raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权访问该附件")
     return att
 
 

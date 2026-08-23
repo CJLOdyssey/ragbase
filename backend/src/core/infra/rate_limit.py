@@ -11,10 +11,6 @@ from core.infra.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# 与 auth_rbac.AUTH_ENABLED 同源：认证启用时 X-User-ID 头不可信（可伪造），
-# 不参与 per-user 限流桶（否则攻击者可填满受害者桶 / 轮换头建无限桶）。
-AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "0") == "1"
-
 # Default: 60 requests per 60 seconds per IP
 DEFAULT_RATE = 60
 DEFAULT_WINDOW = 60
@@ -73,17 +69,9 @@ def _extract_client_ip(scope: dict[str, Any]) -> str:
 def _extract_user_id(scope: dict[str, Any]) -> str | None:
     """Extract user ID from the X-User-ID header if present.
 
-    Only trusted when auth is disabled (legacy/guest mode, where the header is a
-    guest-data namespace). When auth is enabled the header is client-controlled
-    and must not create per-user rate-limit buckets.
+    Auth is always enabled — X-User-ID header is not trusted for rate limiting
+    (client-controlled, could be forged). IP-based limiting only.
     """
-    if AUTH_ENABLED:
-        return None
-    for header_name, header_value in scope.get("headers", []):
-        if isinstance(header_name, bytes) and isinstance(header_value, bytes) and header_name == b"x-user-id":
-            uid = header_value.decode("utf-8").strip()
-            if uid and uid != "anonymous":
-                return uid
     return None
 
 

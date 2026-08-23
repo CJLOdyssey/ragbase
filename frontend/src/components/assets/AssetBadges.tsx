@@ -1,6 +1,16 @@
-import type { ReactNode } from 'react';
+/**
+ * Assets-domain badges — thin adapters over shared/list primitives (DIP).
+ *
+ * Domain mapping (status → color/label/testid) stays here; the visual
+ * primitive lives in shared/list/badges so every list page shares one look.
+ */
 import { STATUS_COLORS } from '../shared/statusColors';
 import { useTranslation } from 'react-i18next';
+import { StatusPill as SharedStatusPill } from '../shared/list/badges';
+import {
+  ActionButton as SharedActionButton,
+  type ActionButtonProps,
+} from '../shared/list/badges';
 import { extColorOf, type AssetStatus } from './assetUtils';
 
 const STATUS_COLOR: Record<AssetStatus, string> = {
@@ -13,20 +23,12 @@ const STATUS_COLOR: Record<AssetStatus, string> = {
 
 export function StatusPill({ status }: { status: AssetStatus }) {
   const { t } = useTranslation();
-  const color = STATUS_COLOR[status];
-  const label = t(`assets.status.${status}`);
   return (
-    <span
-      data-testid={`status-${status}`}
-      className="inline-flex items-center justify-center h-7 px-2.5 rounded-full text-[11px] font-medium leading-none whitespace-nowrap"
-      style={{
-        color,
-        background: `color-mix(in_srgb, ${color} 14%, transparent)`,
-        border: `1px solid color-mix(in_srgb, ${color} 30%, transparent)`,
-      }}
-    >
-      {label}
-    </span>
+    <SharedStatusPill
+      label={t(`assets.status.${status}`)}
+      color={STATUS_COLOR[status]}
+      testId={`status-${status}`}
+    />
   );
 }
 
@@ -46,38 +48,7 @@ export function ExtBadge({ ext }: { ext: string }) {
   );
 }
 
-interface ActionButtonProps {
-  title: string;
-  hoverVar: string;
-  onClick: () => void;
-  children: ReactNode;
-  disabled?: boolean;
-  'data-testid'?: string;
-}
-
-export function ActionButton({
-  title,
-  hoverVar,
-  onClick,
-  children,
-  disabled,
-  'data-testid': testId,
-}: ActionButtonProps) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      disabled={disabled}
-      data-testid={testId}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className="w-[27px] h-[27px] rounded-md border bg-[var(--color-surface)] text-[var(--color-text-muted)] cursor-pointer inline-flex items-center justify-center transition-colors border-[var(--color-border)] hover:bg-[color-mix(in_srgb,var(--hover)_12%,transparent)] hover:text-[var(--hover)] hover:border-[color-mix(in_srgb,var(--hover)_30%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
-      style={{ ['--hover' as string]: `var(${hoverVar})` }}
-    >
-      {children}
-    </button>
-  );
+/** Re-export under the same contract consumers already use. */
+export function ActionButton(props: ActionButtonProps) {
+  return <SharedActionButton {...props} />;
 }

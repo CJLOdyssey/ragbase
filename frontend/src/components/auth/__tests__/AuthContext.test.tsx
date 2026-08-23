@@ -186,25 +186,6 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
     expect(localStorage.getItem('ragbase_user_id')).toBe('u1');
   });
 
-  it('legacy mode (disabled auth) skips restore and clears loading', async () => {
-    vi.mocked(authApi.getAuthConfig).mockResolvedValue({
-      enabled: false,
-      mode: 'legacy',
-    });
-    vi.mocked(authApi.getMe).mockResolvedValue(undefined as never);
-
-    render(
-      <AuthProvider>
-        <AuthProbe />
-      </AuthProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('loading').textContent).toBe('false');
-    });
-    expect(screen.getByTestId('user').textContent).toBe('null');
-  });
-
   it('getMe failure falls back to refresh-then-restore', async () => {
     vi.mocked(authApi.getAuthConfig).mockResolvedValue({
       enabled: true,

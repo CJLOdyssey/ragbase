@@ -3,14 +3,20 @@ import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
 import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import PromptDetailDrawer from './PromptDetailDrawer';
+import type { PromptItem } from '../../api/client/prompts';
+import type { VersionItem } from '../../api/client/versions';
+import PromptDetailModal from './PromptDetailModal';
 import PromptEditorModal from './PromptEditorModal';
 import PromptGrid from './PromptGrid';
 import PromptHeader from './PromptHeader';
 import PromptHistoryModal from './PromptHistoryModal';
 import PromptTable from './PromptTable';
 import PromptTabs from './PromptTabs';
-import { usePromptLibrary } from './usePromptLibrary';
+import {
+  usePromptLibrary,
+  type DialogState,
+  type PromptSavePayload,
+} from './usePromptLibrary';
 import VersionViewModal from './VersionViewModal';
 
 export default function PromptLibraryPage() {
@@ -26,13 +32,16 @@ export default function PromptLibraryPage() {
     isLoading,
     historyPrompt,
     setHistoryPrompt,
-    detailPrompt,
-    setDetailPrompt,
+    selectedPrompt,
+    openDetail,
+    closeDetail,
     versions,
     dialog,
     setDialog,
-    handleSave,
+    handleCreate,
+    handleUpdate,
     handleRollback,
+    prompts,
     deleteMutation,
     isSaving,
     saveError,
@@ -62,31 +71,29 @@ export default function PromptLibraryPage() {
           view === 'table' ? (
             <PromptTable
               prompts={filtered}
-              onEdit={(row) => setDialog({ type: 'edit', row })}
-              onDelete={(row) => setDialog({ type: 'delete', row })}
+              onEdit={(row) => setDialog({ type: 'edit', id: row.id })}
+              onDelete={(row) => setDialog({ type: 'delete', id: row.id })}
               onHistory={setHistoryPrompt}
-              onSelect={setDetailPrompt}
+              onSelect={openDetail}
             />
           ) : (
-            <PromptGrid prompts={filtered} onSelect={setDetailPrompt} />
+            <PromptGrid
+              prompts={filtered}
+              onSelect={openDetail}
+              onEdit={(row) => setDialog({ type: 'edit', id: row.id })}
+              onDelete={(row) => setDialog({ type: 'delete', id: row.id })}
+              onHistory={setHistoryPrompt}
+            />
           )
         ) : null}
       </div>
 
-      <DialogLayer
-        dialog={dialog}
-        isSaving={isSaving}
-        saveError={saveError}
-        onSave={handleSave}
-        onDelete={(id) => deleteMutation.mutate(id)}
-        onRollback={handleRollback}
-        onClose={() => setDialog(null)}
-      />
-
-      {detailPrompt && (
-        <PromptDetailDrawer
-          prompt={detailPrompt}
-          onClose={() => setDetailPrompt(null)}
+      {/* 弹窗按 DOM 顺序层叠（后者在上）：详情 < 历史 < DialogLayer(编辑等) */}
+      {selectedPrompt && (
+        <PromptDetailModal
+          prompt={selectedPrompt}
+          onClose={closeDetail}
+          onEdit={() => setDialog({ type: 'edit', id: selectedPrompt.id })}
         />
       )}
 
@@ -102,6 +109,18 @@ export default function PromptLibraryPage() {
           }}
         />
       )}
+
+      <DialogLayer
+        dialog={dialog}
+        resolvePrompt={(id) => prompts.find((p) => p.id === id) ?? null}
+        isSaving={isSaving}
+        saveError={saveError}
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
+        onDelete={(id) => deleteMutation.mutate(id)}
+        onRollback={handleRollback}
+        onClose={() => setDialog(null)}
+      />
     </div>
   );
 }
@@ -111,7 +130,7 @@ function EmptyCard({ tab }: { tab: string }) {
   const isFiltered = tab !== 'all';
   if (isFiltered) {
     const label =
-      tab === 'published' ? '已发布' : tab === 'draft' ? '草稿' : tab;
+      tab === 'published' ? '启用' : tab === 'draft' ? '草稿' : tab;
     return (
       <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-10 px-6 text-center text-[13px] text-[var(--color-text-muted)]">
         暂无{label}数据
@@ -132,58 +151,72 @@ function EmptyCard({ tab }: { tab: string }) {
 
 function DialogLayer({
   dialog,
+  resolvePrompt,
   isSaving,
   saveError,
-  onSave,
+  onCreate,
+  onUpdate,
   onDelete,
   onRollback,
   onClose,
 }: {
-  dialog: ReturnType<typeof usePromptLibrary>['dialog'];
+  dialog: DialogState | null;
+  resolvePrompt: (id: string) => PromptItem | null;
   isSaving: boolean;
   saveError: string | null;
-  onSave: ReturnType<typeof usePromptLibrary>['handleSave'];
+  onCreate: (payload: PromptSavePayload) => void;
+  onUpdate: (id: string, payload: PromptSavePayload) => void;
   onDelete: (id: string) => void;
-  onRollback: ReturnType<typeof usePromptLibrary>['handleRollback'];
+  onRollback: (v: VersionItem) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   if (!dialog) return null;
+
   if (dialog.type === 'new' || dialog.type === 'edit') {
+    const initial =
+      dialog.type === 'edit' ? resolvePrompt(dialog.id) : null;
+    if (dialog.type === 'edit' && !initial) return null;
     return (
       <PromptEditorModal
         mode={dialog.type}
-        initial={dialog.row ?? null}
-        onSave={onSave}
+        initial={initial}
+        onSave={(payload) =>
+          dialog.type === 'edit'
+            ? onUpdate(dialog.id, payload)
+            : onCreate(payload)
+        }
         onClose={onClose}
         saving={isSaving}
         error={saveError}
       />
     );
   }
-  if (dialog.type === 'delete' && dialog.row) {
+
+  if (dialog.type === 'delete') {
+    const { id } = dialog;
+    const row = resolvePrompt(id);
+    if (!row) return null;
     return (
       <ConfirmDialog
         title={t('prompts.deleteTitle')}
-        message={t('prompts.deleteConfirm', { name: dialog.row.name })}
+        message={t('prompts.deleteConfirm', { name: row.name })}
         danger
         confirmLabel={t('confirm.delete')}
-        onConfirm={() => onDelete(dialog.row!.id)}
+        onConfirm={() => onDelete(id)}
         onCancel={onClose}
       />
     );
   }
-  if (dialog.type === 'version-view' && dialog.version) {
-    return (
-      <VersionViewModal
-        version={dialog.version}
-        onRollback={() => {
-          onRollback(dialog.version!);
-          onClose();
-        }}
-        onClose={onClose}
-      />
-    );
-  }
-  return null;
+
+  return (
+    <VersionViewModal
+      version={dialog.version}
+      onRollback={() => {
+        onRollback(dialog.version);
+        onClose();
+      }}
+      onClose={onClose}
+    />
+  );
 }

@@ -67,7 +67,12 @@
     "manageKeys": "Manage API Keys",
     "recent": "Recent",
     "statusDeprecated": "Deprecated",
-    "statusSunset": "Sunsetting"
+    "statusSunset": "Sunsetting",
+    "promptSelect": {
+      "label": "Prompt",
+      "none": "None",
+      "empty": "No active prompts"
+    }
   },
   "auth": {
     "login": "Log in",
@@ -348,7 +353,15 @@
       "rollbackSuccess": "Rolled back (new version created)"
     },
     "deleteTitle": "Delete Prompt",
-    "deleteConfirm": "Delete \"{{name}}\"?"
+    "deleteConfirm": "Delete \"{{name}}\"?",
+    "detail": {
+      "basicInfo": "Basic Info",
+      "content": "Prompt Content",
+      "uses": "Uses",
+      "copy": "Copy content",
+      "copied": "Copied",
+      "emptyContent": "No content yet"
+    }
   },
   "memory": {
     "title": "Session Memory",

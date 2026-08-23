@@ -106,6 +106,38 @@ class TestRunAgentPipeline:
         assert result is not None
         mock_agent_deps["SingleAgentGraph"].assert_called_once()
 
+    async def test_prompt_id_injects_system_prompt(self, mock_agent_deps):
+        """启用提示词经 prompt_id 加载并注入为 system_prompt。"""
+        graph = _default_mocks(mock_agent_deps)
+        with patch(
+            "graph.helpers.load_active_user_prompt",
+            new=AsyncMock(return_value="你是产品问答助手。"),
+        ):
+            await _run_agent_pipeline(
+                run_id="run-prompt",
+                requirement="问题",
+                session_id=None,
+                user_id="user-1",
+                prompt_id="prompt-1",
+            )
+        assert graph.run.call_args[1]["system_prompt"] == "你是产品问答助手。"
+
+    async def test_draft_prompt_yields_empty_system_prompt(self, mock_agent_deps):
+        """草稿提示词即使被直接传入也不注入（后端 active 硬门禁）。"""
+        graph = _default_mocks(mock_agent_deps)
+        with patch(
+            "graph.helpers.load_active_user_prompt",
+            new=AsyncMock(return_value=""),
+        ):
+            await _run_agent_pipeline(
+                run_id="run-draft",
+                requirement="问题",
+                session_id=None,
+                user_id="user-1",
+                prompt_id="draft-1",
+            )
+        assert graph.run.call_args[1]["system_prompt"] == ""
+
     async def test_runs_without_tools_binding(self, mock_agent_deps):
         """ragbase 无工具生态：管线不绑定任何工具，直接以默认图运行。"""
         graph = _default_mocks(mock_agent_deps)

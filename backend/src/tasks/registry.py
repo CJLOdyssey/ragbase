@@ -31,6 +31,7 @@ def run_agent(
     api_base: str | None = None,
     model: str | None = None,
     user_id: str = "system",
+    prompt_id: str | None = None,
 ) -> Any:
     """Run the agent pipeline for a requirement in the background."""
     t0 = time.time()
@@ -50,6 +51,7 @@ def run_agent(
                 api_base=api_base,
                 model=model,
                 user_id=user_id,
+                prompt_id=prompt_id,
             )
         )
         elapsed = time.time() - t0

@@ -15,6 +15,7 @@ from core.audit import log_audit
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from domain.capabilities import VALID, validate_capabilities
+from domain.validation import validate_base_url
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field, field_validator
 from repository import (
@@ -50,6 +51,11 @@ class KeyCreateRequest(BaseModel):
             raise ValueError(err)
         return v
 
+    @field_validator("base_url")
+    @classmethod
+    def _check_base_url(cls, v: str | None) -> str | None:
+        return validate_base_url(v)
+
     @field_validator("model_types")
     @classmethod
     def _check_model_types(cls, v: dict[str, str] | None) -> dict[str, str] | None:
@@ -81,6 +87,11 @@ class KeyUpdateRequest(BaseModel):
             raise ValueError(err)
         return v
 
+    @field_validator("base_url")
+    @classmethod
+    def _check_base_url(cls, v: str | None) -> str | None:
+        return validate_base_url(v)
+
     @field_validator("model_types")
     @classmethod
     def _check_model_types(cls, v: dict[str, str] | None) -> dict[str, str] | None:
@@ -96,6 +107,11 @@ class FetchModelsRequest(BaseModel):
     api_key: str = Field(..., min_length=1)
     base_url: str | None = None
     provider: str = Field(default="custom")
+
+    @field_validator("base_url")
+    @classmethod
+    def _check_base_url(cls, v: str | None) -> str | None:
+        return validate_base_url(v)
 
 
 class KeyResponse(BaseModel):

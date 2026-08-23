@@ -26,7 +26,6 @@ const mocks = vi.hoisted(() => ({
     user: null,
     isAuthenticated: false,
     loading: false,
-    legacyMode: false,
     loginModalOpen: false,
     loginModalView: 'login' as const,
     loginModalEmail: '',

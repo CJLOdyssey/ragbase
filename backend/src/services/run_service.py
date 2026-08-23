@@ -70,6 +70,7 @@ class RunService:
         model: str | None = None,
         parent_run_id: str | None = None,
         attachment_ids: list[str] | None = None,
+        prompt_id: str | None = None,
     ) -> dict[str, Any]:
         """Create a run, resolve credentials, subscribe to buffer, dispatch pipeline.
 
@@ -191,6 +192,7 @@ class RunService:
                     requirement=requirement, run_id=run_id, session_id=session_id,
                     api_key=api_key, api_base=api_base,
                     model=effective_model, user_id=user_id,
+                    prompt_id=prompt_id,
                 )
                 logger.info("Task -> celery | run=%s", run_id)
                 return {"run_id": run_id, "status": "pending", "session_id": session_id}
@@ -208,6 +210,7 @@ class RunService:
                     model=effective_model,
                     user_id=user_id,
                     image_model=image_model,
+                    prompt_id=prompt_id,
                 )
             )
             self._register_task(run_id, task)

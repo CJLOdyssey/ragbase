@@ -18,6 +18,7 @@ import AttachmentPreviewModal from './AttachmentPreviewModal';
 import CommandDropdown from './CommandDropdown';
 import FileAttach from './FileAttach';
 import ModelSelector from './ModelSelector';
+import PromptSelector from './PromptSelector';
 import { useCommandPalette } from '../../hooks/useCommandPalette';
 import { useMessageComposer } from '../../hooks/useMessageComposer';
 import { useToast } from '../../utils/useToast';
@@ -277,6 +278,7 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
                 onChange={onModelChange}
                 onConfigure={onConfigureModels}
               />
+              <PromptSelector />
               <FileAttach
                 onAdd={addFiles}
                 onReject={handleReject}

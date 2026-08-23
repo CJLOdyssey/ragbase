@@ -158,6 +158,7 @@ async def _run_agent_pipeline(
     model: str | None = None,
     user_id: str = 'system',
     image_model: bool = False,
+    prompt_id: str | None = None,
 ) -> dict[str, Any]:
     global _run_counter
     _run_counter += 1
@@ -185,7 +186,12 @@ async def _run_agent_pipeline(
     effective_api_base = api_base
     effective_model = model or cfg.model
 
+    # 用户选中的启用(active)提示词作为对话人设；草稿/不存在 → 空串不注入。
     system_prompt = ""
+    if prompt_id:
+        from graph.helpers import load_active_user_prompt
+
+        system_prompt = await load_active_user_prompt(prompt_id)
 
     session_context = ""
     rag_sources: list[dict[str, Any]] = []

@@ -15,6 +15,9 @@ interface Props {
   width?: number;
 }
 
+/** 已挂载弹窗栈：叠加弹窗时仅栈顶响应 Esc 与 Tab 陷阱。 */
+const modalStack: symbol[] = [];
+
 export default function Modal({
   title,
   onClose,
@@ -33,6 +36,8 @@ export default function Modal({
   useEffect(() => {
     const prevFocus = document.activeElement as HTMLElement;
     const modal = contentRef.current;
+    const stackKey = Symbol('modal');
+    modalStack.push(stackKey);
     if (modal) {
       const firstInput = modal.querySelector<HTMLElement>(
         'input:not([disabled]), textarea:not([disabled]), select:not([disabled])',
@@ -43,11 +48,12 @@ export default function Modal({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const isTop = modalStack[modalStack.length - 1] === stackKey;
       if (e.key === 'Escape') {
-        onClose();
+        if (isTop) onClose();
         return;
       }
-      if (e.key !== 'Tab' || !modal) return;
+      if (e.key !== 'Tab' || !isTop || !modal) return;
       const focusable = modal.querySelectorAll<HTMLElement>(
         'input:not([disabled]), button:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
       );
@@ -65,6 +71,8 @@ export default function Modal({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
+      const idx = modalStack.lastIndexOf(stackKey);
+      if (idx !== -1) modalStack.splice(idx, 1);
       document.removeEventListener('keydown', handleKeyDown);
       prevFocus?.focus();
     };

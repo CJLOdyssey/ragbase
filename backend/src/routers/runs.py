@@ -53,6 +53,10 @@ class RunRequest(BaseModel):
     model: str | None = None
     parent_run_id: str | None = None
     attachment_ids: list[str] | None = None
+    prompt_id: str | None = Field(
+        default=None,
+        description="启用(active)提示词 ID — 作为对话人设注入；草稿不生效",
+    )
 
 
 class RunResponse(BaseModel):
@@ -87,6 +91,7 @@ async def create_run(req: RunRequest, request: Request) -> Any:
             model=req.model,
             parent_run_id=req.parent_run_id,
             attachment_ids=req.attachment_ids,
+            prompt_id=req.prompt_id,
         )
         return RunResponse(**result)
     except ValueError as e:

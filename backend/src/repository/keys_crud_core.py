@@ -72,10 +72,6 @@ async def get_api_keys(
         rows: list[UserApiKey] = []
         seen_ids: set[str] = set()
         # Search candidate IDs in priority order, deduplicating by key id.
-        # "anonymous" is a real key namespace (guest-configured + pre-configured
-        # defaults) — AUTH_ENABLED resolves every unauthenticated request to it,
-        # so skipping it here would make guest chats and guest-configured keys
-        # permanently invisible.
         for cid in [user_id] + (fallback_ids or []):
             if not cid:
                 continue

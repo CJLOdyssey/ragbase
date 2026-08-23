@@ -27,8 +27,7 @@ logger = get_logger(__name__)
 SLOW_QUERY_THRESHOLD = 0.5
 
 # Load .env as fallback — never override already-set env vars (standard dotenv
-# semantics). Prevents test fixtures (which set e.g. AUTH_MODE=legacy before
-# core modules are imported) from being silently clobbered by backend/.env.
+# semantics). Prevents test fixtures from being silently clobbered by backend/.env.
 _env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 if _env_file.exists():
     for _line in _env_file.read_text().splitlines():

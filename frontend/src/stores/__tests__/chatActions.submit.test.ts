@@ -1,6 +1,7 @@
 // NOTE: vi.mock is hoisted above ALL imports — factories must not reference
 // top-level bindings directly; async factories re-import the shared helpers.
-import { editMessage, regenerateMessage } from '../chatActions';
+import { editMessage, regenerateMessage, submitRequirement } from '../chatActions';
+import { PROMPT_STORAGE_KEY } from '../selectedPrompt';
 import { useChatStore } from '../chatStore';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -110,6 +111,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'deepseek-chat',
       null,
       undefined,
+      undefined, // prompt_id
     );
   });
 
@@ -148,6 +150,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'Qwen/Qwen3-8B',
       null,
       undefined,
+      undefined, // prompt_id
     );
   });
 
@@ -174,6 +177,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'deepseek-chat',
       'run-2',
       undefined,
+      undefined, // prompt_id
     );
   });
 
@@ -200,6 +204,7 @@ describe('regenerateMessage', { tags: ['unit'] }, () => {
       'deepseek-chat',
       'run-1',
       undefined,
+      undefined, // prompt_id
     );
   });
 });
@@ -243,6 +248,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
       'deepseek-chat',
       null,
       undefined,
+      undefined, // prompt_id
     );
   });
 
@@ -268,6 +274,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
       'deepseek-chat',
       null,
       undefined,
+      undefined, // prompt_id
     );
   });
 
@@ -336,6 +343,7 @@ describe('editAndRegenerate', { tags: ['unit'] }, () => {
       'deepseek-chat',
       'parent-7',
       undefined,
+      undefined, // prompt_id
     );
   });
 });
@@ -360,6 +368,52 @@ describe('submitRequirement user-message binding', { tags: ['unit'] }, () => {
     expect(last.role).toBe('user');
     expect(last.id).toBe(
       'run-e69b278c-1234-4b6c-994c-f83084d5b4f3-requirement',
+    );
+  });
+});
+
+describe('prompt persona forwarding', { tags: ['unit'] }, () => {
+  it('forwards selected active prompt id to the runs API', async () => {
+    localStorage.setItem(PROMPT_STORAGE_KEY, 'prompt-9');
+    try {
+      useChatStore.setState({
+        messages: [makeMsg({ id: 'u1', role: 'user', content: 'original' })],
+        currentSessionId: 'sess-1',
+      });
+
+      await submitRequirement('original', 'sess-1');
+
+      expect(mockSubmitReq).toHaveBeenCalledWith(
+        'original',
+        'sess-1',
+        'key-1',
+        'deepseek-chat',
+        null,
+        undefined,
+        'prompt-9',
+      );
+    } finally {
+      localStorage.removeItem(PROMPT_STORAGE_KEY);
+    }
+  });
+
+  it('omits prompt_id when nothing is selected', async () => {
+    localStorage.removeItem(PROMPT_STORAGE_KEY);
+    useChatStore.setState({
+      messages: [makeMsg({ id: 'u1', role: 'user', content: 'original' })],
+      currentSessionId: 'sess-1',
+    });
+
+    await submitRequirement('original', 'sess-1');
+
+    expect(mockSubmitReq).toHaveBeenCalledWith(
+      'original',
+      'sess-1',
+      'key-1',
+      'deepseek-chat',
+      null,
+      undefined,
+      undefined,
     );
   });
 });

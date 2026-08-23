@@ -30,7 +30,6 @@ vi.mock('../components/auth/AuthContext', () => ({
   useAuth: () => ({
     user: null,
     loading: false,
-    legacyMode: false,
     isAuthenticated: false,
     loginModalOpen: false,
     loginModalView: 'login' as const,

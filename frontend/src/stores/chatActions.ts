@@ -16,6 +16,7 @@ import {
 import { useChatStore } from './chatStore';
 import { createStreamHandler } from './chatStreaming';
 import { invalidateSessionCache } from './sessionCache';
+import { readSelectedPromptId } from './selectedPrompt';
 import { uid } from './uid';
 
 export { continueGeneration } from './chatActionsContinue';
@@ -103,6 +104,7 @@ export async function submitRequirement(
       model,
       effectiveParentRunId,
       attachment_ids,
+      readSelectedPromptId(),
     );
     const run_id = resp.run_id;
     const returnedSessionId = resp.session_id || effectiveSessionId || null;

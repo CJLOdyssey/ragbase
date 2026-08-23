@@ -63,7 +63,7 @@ export default function RagBaseWorkstation() {
             s.handleNewChat();
           }}
           isSidebarOpen={s.isSidebarOpen}
-          onToggleSidebar={() => s.setIsSidebarOpen(false)}
+          onToggleSidebar={() => s.setIsSidebarOpen((prev) => !prev)}
           activeView={activeView}
           onNavigate={setActiveView}
         />
@@ -76,6 +76,8 @@ export default function RagBaseWorkstation() {
                 theme: s.isDarkMode ? 'light' : 'dark',
               })
             }
+            isSidebarOpen={s.isSidebarOpen}
+            onToggleSidebar={() => s.setIsSidebarOpen((prev) => !prev)}
           />
 
           <main

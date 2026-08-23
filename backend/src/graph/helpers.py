@@ -46,6 +46,28 @@ async def _load_context_guard_template() -> str | None:
     return None
 
 
+async def load_active_user_prompt(prompt_id: str) -> str:
+    """Load a user-selected prompt as the conversation persona/system template.
+
+    Lifecycle gate: only ``status == "active"``（启用）prompts participate in
+    conversations — drafts are never injected, even when addressed directly by
+    id. Fail-open to "" on any error so chat is never blocked by prompt lookup.
+    """
+    from repository.prompts import get_prompt
+
+    try:
+        prompt = await get_prompt(prompt_id)
+    except Exception:
+        logger.warning("Failed to load prompt %s", prompt_id, exc_info=True)
+        return ""
+    if prompt is None or prompt.status != "active":
+        logger.info(
+            "prompt_id=%s not active — skipped for system injection", prompt_id
+        )
+        return ""
+    return prompt.content or ""
+
+
 def _is_balance_error(error_body: str) -> bool:
     """Check if the API error response indicates insufficient balance/quota."""
     body_lower = error_body.lower()

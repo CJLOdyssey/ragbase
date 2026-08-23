@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   createPrompt,
@@ -13,11 +14,13 @@ import { useToast } from '../../utils/useToast';
 
 export type PromptTab = 'all' | 'published' | 'draft';
 
-export interface DialogState {
-  type: 'new' | 'edit' | 'delete' | 'version-view';
-  row?: PromptItem;
-  version?: VersionItem;
-}
+export type PromptSavePayload = Parameters<typeof createPrompt>[0];
+
+export type DialogState =
+  | { type: 'new' }
+  | { type: 'edit'; id: string }
+  | { type: 'delete'; id: string }
+  | { type: 'version-view'; version: VersionItem };
 
 const FILTER_STRATEGY: Record<PromptTab, (p: PromptItem) => boolean> = {
   all: () => true,
@@ -31,9 +34,9 @@ export function usePromptLibrary() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [historyPrompt, setHistoryPrompt] = useState<PromptItem | null>(null);
-  const [detailPrompt, setDetailPrompt] = useState<PromptItem | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [tab, setTab] = useState<PromptTab>('all');
   const [search, setSearch] = useState('');
@@ -54,6 +57,21 @@ export function usePromptLibrary() {
   const rawVersions = versionsQuery.data;
   const prompts = useMemo(() => rawPrompts ?? [], [rawPrompts]);
   const versions = useMemo(() => rawVersions ?? [], [rawVersions]);
+
+  const selectedId = searchParams.get('id');
+
+  /** 详情数据始终从 ['prompts'] 缓存按 id 派生，编辑保存后自动同步。 */
+  const selectedPrompt = useMemo(
+    () => prompts.find((p) => p.id === selectedId) ?? null,
+    [prompts, selectedId],
+  );
+
+  const openDetail = useCallback(
+    (id: string) => setSearchParams({ id }),
+    [setSearchParams],
+  );
+
+  const closeDetail = useCallback(() => setSearchParams({}), [setSearchParams]);
 
   const counts = useMemo(() => {
     const all = prompts.length;
@@ -109,11 +127,11 @@ export function usePromptLibrary() {
     onError: () => toast(t('toast.deleteFailed'), 'error'),
   });
 
-  const handleSave = (payload: Parameters<typeof createPrompt>[0]) => {
-    if (dialog?.type === 'new') createMutation.mutate(payload);
-    else if (dialog?.type === 'edit' && dialog.row)
-      updateMutation.mutate({ id: dialog.row.id, payload });
-  };
+  const handleCreate = (payload: PromptSavePayload) =>
+    createMutation.mutate(payload);
+
+  const handleUpdate = (id: string, payload: PromptSavePayload) =>
+    updateMutation.mutate({ id, payload });
 
   const handleRollback = (v: VersionItem) => {
     const targetId = historyPrompt?.id;
@@ -142,12 +160,14 @@ export function usePromptLibrary() {
     isLoading: promptsQuery.isLoading,
     historyPrompt,
     setHistoryPrompt,
-    detailPrompt,
-    setDetailPrompt,
+    selectedPrompt,
+    openDetail,
+    closeDetail,
     versions,
     dialog,
     setDialog,
-    handleSave,
+    handleCreate,
+    handleUpdate,
     handleRollback,
     createMutation,
     updateMutation,

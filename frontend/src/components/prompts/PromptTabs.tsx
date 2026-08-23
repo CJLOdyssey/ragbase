@@ -8,7 +8,7 @@ interface Props {
 
 const TAB_CONFIG: Array<{ key: PromptTab; label: string }> = [
   { key: 'all', label: '全部' },
-  { key: 'published', label: '已发布' },
+  { key: 'published', label: '启用' },
   { key: 'draft', label: '草稿' },
 ];
 

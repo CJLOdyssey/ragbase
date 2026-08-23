@@ -21,7 +21,7 @@ interface Props {
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'draft', label: '草稿' },
-  { value: 'published', label: '已发布' },
+  { value: 'published', label: '启用' },
 ];
 
 function statusToUi(status: string): string {

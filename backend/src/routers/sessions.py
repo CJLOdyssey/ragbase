@@ -5,7 +5,6 @@ import time
 from typing import Any
 
 from auth import get_user_id
-from auth.auth_rbac import AUTH_REQUIRE_LOGIN
 from broker import publish_user_event
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
@@ -60,14 +59,6 @@ class SessionPinRequest(BaseModel):
 async def list_sessions(request: Request, limit: int = 50) -> Any:
     """List sessions for the current user."""
     user_id = get_user_id(request)
-    # 认证启用时未登录（anonymous）→ 401 而非 200 []：否则 events/发送触发的
-    # refetch 在认证瞬时失效窗口会以 anonymous 返回空列表，前端覆盖缓存清空
-    # 会话列表（"最近对话消失，需刷新才恢复"）。401 → 前端拦截器自动 refresh
-    # 恢复后重试。
-    # 与中间件登录墙（AUTH_REQUIRE_LOGIN）同口径：guest 部署（AUTH_ENABLED=1
-    # + REQUIRE_LOGIN=0）放行 anonymous 数据；强制登录部署才 401 推登录。
-    if AUTH_REQUIRE_LOGIN and user_id == "anonymous":
-        raise error_response(ErrorCode.AUTH_UNAUTHORIZED, detail="请先登录")
     try:
         user_id = get_user_id(request)
         sessions = await get_sessions(limit=min(limit, 100), user_id=user_id)

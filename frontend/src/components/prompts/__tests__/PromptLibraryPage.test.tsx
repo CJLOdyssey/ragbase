@@ -6,7 +6,8 @@ import {
 import { listVersions } from '../../../api/client/versions';
 import PromptLibraryPage from '../PromptLibraryPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../api/client/prompts', () => ({
@@ -46,8 +47,22 @@ describe('PromptLibraryPage', () => {
 
   const renderWithClient = (ui: React.ReactElement) => {
     return render(
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>{ui}</MemoryRouter>
+      </QueryClientProvider>,
     );
+  };
+
+  const mockPrompt = {
+    id: 'prompt-1',
+    name: '测试提示词',
+    description: '测试描述',
+    content: '内容',
+    category: 'user',
+    model: null,
+    status: 'active',
+    version: 'v1',
+    created_at: '2024-01-01T00:00:00Z',
   };
 
   it('renders prompt library page title', async () => {
@@ -215,6 +230,31 @@ describe('PromptLibraryPage', () => {
       expect(screen.getByText('测试描述')).toBeInTheDocument();
       expect(screen.getByText('v1')).toBeInTheDocument();
     });
+  });
+
+  it('opens detail modal on row click and opens editor via its edit button', async () => {
+    vi.mocked(listPrompts).mockResolvedValue([mockPrompt]);
+
+    renderWithClient(<PromptLibraryPage />);
+
+    fireEvent.click(await screen.findByText('测试提示词'));
+
+    const detailDialog = await screen.findByRole('dialog', {
+      name: '测试提示词',
+    });
+    expect(
+      within(detailDialog).getByText('prompts.detail.basicInfo'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(detailDialog).getByRole('button', { name: 'prompts.list.edit' }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('prompts.editor.edit')).toBeInTheDocument();
+    });
+    const nameInput = screen.getByPlaceholderText('如：产品问答助手');
+    expect(nameInput).toHaveValue('测试提示词');
   });
 
   it('rolls back to a historical version from the history modal', async () => {

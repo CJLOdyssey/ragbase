@@ -69,6 +69,11 @@
     "statusDeprecated": "已弃用",
     "statusSunset": "即将下线"
   },
+  "promptSelect": {
+    "label": "提示词",
+    "none": "不使用",
+    "empty": "暂无启用的提示词"
+  },
   "auth": {
     "login": "登录",
     "register": "注册",
@@ -327,6 +332,14 @@
       "saving": "保存中…",
       "saveFailed": "保存失败",
       "retry": "重试"
+    },
+    "detail": {
+      "basicInfo": "基本信息",
+      "content": "提示词内容",
+      "uses": "调用次数",
+      "copy": "复制内容",
+      "copied": "已复制",
+      "emptyContent": "暂无内容"
     },
     "history": {
       "title": "版本历史",

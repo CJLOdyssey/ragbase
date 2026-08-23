@@ -56,7 +56,7 @@ def _startup_report() -> list[str]:
         platform.platform(terse=True),
         os.getpid(),
     )
-    _add(lines, "auth: mode=%s | enabled=%s", _env("AUTH_MODE", "legacy"), _env("AUTH_ENABLED", "0"))
+    _add(lines, "auth: mode=rbac | enabled=true")
     _user_rate = _env("RATE_LIMIT_USER", "none")
     _add(
         lines, "rate_limit: %s req/%ss | user=%s",

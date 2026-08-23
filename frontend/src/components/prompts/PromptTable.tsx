@@ -1,6 +1,9 @@
 import { History, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { PromptItem } from '../../api/client/prompts';
+import type { DataTableColumn } from '../shared/list';
+import { DataTable } from '../shared/list';
+import { ActionButton } from '../shared/list/badges';
 import { MonoBadge, StatusBadge, Tag } from './PromptBadges';
 
 interface Props {
@@ -8,19 +11,26 @@ interface Props {
   onEdit: (row: PromptItem) => void;
   onDelete: (row: PromptItem) => void;
   onHistory: (row: PromptItem) => void;
-  onSelect: (row: PromptItem) => void;
+  onSelect: (id: string) => void;
 }
 
-const GRID = '2fr 3.5fr 80px 110px 90px 110px';
+/** Centered cell wrapper matching assets visual baseline. */
+function CellCenter({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-center text-center min-w-0">
+      {children}
+    </div>
+  );
+}
 
-const HEADERS = [
-  'prompts.table.name',
-  'prompts.table.desc',
-  'prompts.table.status',
-  'prompts.table.version',
-  'prompts.table.uses',
-  'prompts.table.actions',
-] as const;
+function TagsOf(row: PromptItem): React.ReactNode {
+  const tags = (row as unknown as { tags?: string[] }).tags;
+  return Array.isArray(tags) ? (
+    tags.map((tag) => <Tag key={tag}>{tag}</Tag>)
+  ) : (
+    <Tag>{row.category}</Tag>
+  );
+}
 
 export default function PromptTable({
   prompts,
@@ -30,29 +40,23 @@ export default function PromptTable({
   onSelect,
 }: Props) {
   const { t } = useTranslation();
-  return (
-    <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-hidden">
-      <div
-        className="grid items-center h-10 px-[18px] border-b border-[var(--color-border-subtle)] bg-[color-mix(in_srgb,var(--color-surface-hover)_40%,transparent)]"
-        style={{ gridTemplateColumns: GRID }}
-      >
-        {HEADERS.map((k) => (
-          <div
-            key={k}
-            className="text-[10.5px] font-semibold tracking-[0.07em] uppercase font-mono text-[var(--color-text-tertiary)]"
-          >
-            {t(k)}
-          </div>
-        ))}
-      </div>
 
-      {prompts.map((row) => (
-        <div
-          key={row.id}
-          onClick={() => onSelect(row)}
-          className="grid items-center h-[60px] px-[18px] border-b border-[var(--color-border-subtle)] hover:bg-[color-mix(in_srgb,var(--color-accent)_4%,transparent)] transition-colors cursor-pointer"
-          style={{ gridTemplateColumns: GRID }}
-        >
+  const columns: DataTableColumn[] = [
+    { key: 'name', header: t('prompts.table.name'), width: '4fr' },
+    { key: 'desc', header: t('prompts.table.desc'), width: '2.5fr' },
+    { key: 'status', header: t('prompts.table.status'), width: '80px' },
+    { key: 'version', header: t('prompts.table.version'), width: '110px' },
+    { key: 'uses', header: t('prompts.table.uses'), width: '90px' },
+    { key: 'actions', header: t('prompts.table.actions'), width: '110px' },
+  ];
+
+  const renderCell = (
+    row: PromptItem,
+    col: DataTableColumn,
+  ): React.ReactNode => {
+    switch (col.key) {
+      case 'name':
+        return (
           <div className="min-w-0 pr-3">
             <div
               className="text-[13.5px] font-medium text-[var(--color-text-primary)] mb-0.5 truncate"
@@ -60,88 +64,76 @@ export default function PromptTable({
             >
               {row.name}
             </div>
-            <div className="flex gap-1 flex-wrap">
-              {(row as unknown as { tags?: string[] }).tags ? (
-                ((row as unknown as { tags: string[] }).tags as string[]).map(
-                  (tag) => <Tag key={tag}>{tag}</Tag>,
-                )
-              ) : (
-                <Tag>{row.category}</Tag>
-              )}
-            </div>
+            <div className="flex gap-1 flex-wrap">{TagsOf(row)}</div>
           </div>
-
+        );
+      case 'desc':
+        return (
           <div
             className="text-[12.5px] text-[var(--color-text-secondary)] truncate pr-3"
             title={row.description || ''}
           >
             {row.description || '—'}
           </div>
-
-          <div>
+        );
+      case 'status':
+        return (
+          <CellCenter>
             <StatusBadge status={row.status} />
-          </div>
-
-          <div>
+          </CellCenter>
+        );
+      case 'version':
+        return (
+          <CellCenter>
             <MonoBadge>{row.version}</MonoBadge>
-          </div>
-
-          <div className="text-[12.5px] font-mono text-[var(--color-text-secondary)]">
-            {((row as unknown as { uses?: number }).uses ?? 0).toLocaleString()}
-          </div>
-
-          <div
-            className="flex gap-1 justify-end"
-            onClick={(e) => e.stopPropagation()}
-          >
+          </CellCenter>
+        );
+      case 'uses':
+        return (
+          <CellCenter>
+            <span className="text-[12.5px] font-mono text-[var(--color-text-secondary)]">
+              {((row as unknown as { uses?: number }).uses ?? 0).toLocaleString()}
+            </span>
+          </CellCenter>
+        );
+      case 'actions':
+        return (
+          <div className="flex gap-1 justify-center">
             <ActionButton
               title={t('prompts.list.edit')}
-              onClick={() => onEdit(row)}
               hoverVar="--color-accent"
+              onClick={() => onEdit(row)}
             >
               <Pencil size={12} />
             </ActionButton>
             <ActionButton
               title={t('prompts.list.history')}
-              onClick={() => onHistory(row)}
               hoverVar="--color-accent-soft"
+              onClick={() => onHistory(row)}
             >
               <History size={12} />
             </ActionButton>
             <ActionButton
               title={t('prompts.list.delete')}
-              onClick={() => onDelete(row)}
               hoverVar="--color-danger"
+              onClick={() => onDelete(row)}
             >
               <Trash2 size={12} />
             </ActionButton>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+        );
+      default:
+        return null;
+    }
+  };
 
-function ActionButton({
-  title,
-  hoverVar,
-  onClick,
-  children,
-}: {
-  title: string;
-  hoverVar: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
   return (
-    <button
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-      className="w-[27px] h-[27px] rounded-md border bg-[var(--color-surface)] text-[var(--color-text-muted)] cursor-pointer inline-flex items-center justify-center transition-colors border-[var(--color-border)] hover:bg-[color-mix(in_srgb,var(--hover)_12%,transparent)] hover:text-[var(--hover)] hover:border-[color-mix(in_srgb,var(--hover)_30%,transparent)]"
-      style={{ ['--hover' as string]: `var(${hoverVar})` }}
-    >
-      {children}
-    </button>
+    <DataTable<PromptItem>
+      rows={prompts}
+      columns={columns}
+      rowKey={(p) => p.id}
+      renderCell={(row, col) => renderCell(row, col)}
+      onRowClick={(p) => onSelect(p.id)}
+    />
   );
 }
