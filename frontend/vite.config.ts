@@ -123,6 +123,7 @@ export default defineConfig(({ mode }) => {
               'react-syntax-highlighter',
               'reactflow',
               '@ant-design/cssinjs',
+              'echarts',
             ],
           },
         },

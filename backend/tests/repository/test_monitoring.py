@@ -54,6 +54,7 @@ class TestRetrievalSummary:
             "total": 0,
             "empty_recall_count": 0,
             "empty_recall_rate": 0.0,
+            "avg_hit_count": None,
             "latency_p50_ms": None,
             "latency_p95_ms": None,
         }
@@ -94,7 +95,13 @@ class TestRetrievalSummary:
 class TestFeedbackSummary:
     async def test_empty_db(self):
         summary = await feedback_summary("u1", 24)
-        assert summary == {"total": 0, "good_count": 0, "bad_count": 0, "good_ratio": None}
+        assert summary == {
+            "total": 0,
+            "good_count": 0,
+            "bad_count": 0,
+            "good_ratio": None,
+            "answered_runs": 0,
+        }
 
     async def test_good_ratio(self):
         await _seed_feedback(["good", "good", "bad"])

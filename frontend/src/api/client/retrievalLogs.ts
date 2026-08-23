@@ -25,6 +25,7 @@ export interface RetrievalLogParams {
   page_size?: number;
   empty_only?: boolean;
   max_latency_ms?: number;
+  since_hours?: number;
 }
 
 export async function listRetrievalLogs(params?: RetrievalLogParams): Promise<RetrievalLogListResponse> {

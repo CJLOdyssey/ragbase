@@ -171,6 +171,7 @@ from orm import (  # noqa: F401
     ChatMessage,
     CommandLogDB,
     FeedbackLog,
+    FeedbackReviewDB,
     KeyUsageLog,
     KnowledgeBaseDB,
     MemoryEntry,
@@ -188,7 +189,7 @@ from orm import (  # noqa: F401
 
 __all__ = [
     "AssetDB", "AttachmentDB", "AuditLogDB",
-    "FeedbackLog",
+    "FeedbackLog", "FeedbackReviewDB",
     "ChatMessage", "CommandLogDB", "KeyUsageLog",
     "KnowledgeBaseDB",
     "MemoryEntry", "ProjectRun",

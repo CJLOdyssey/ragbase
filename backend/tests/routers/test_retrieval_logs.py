@@ -20,13 +20,13 @@ async def test_get_retrieval_logs_with_data(client: TestClient):
     """Should return logs for current user."""
     # Create some logs
     await create_retrieval_log(
-        user_id="anonymous",
+        user_id="admin-login",
         query="测试查询1",
         latency_ms=100,
         hit_count=2,
     )
     await create_retrieval_log(
-        user_id="anonymous",
+        user_id="admin-login",
         query="测试查询2",
         latency_ms=200,
         hit_count=1,
@@ -45,7 +45,7 @@ async def test_get_retrieval_logs_pagination(client: TestClient):
     # Create 5 logs
     for i in range(5):
         await create_retrieval_log(
-            user_id="anonymous",
+            user_id="admin-login",
             query=f"查询{i}",
             latency_ms=100 + i * 10,
             hit_count=i,
@@ -70,13 +70,13 @@ async def test_get_retrieval_logs_pagination(client: TestClient):
 async def test_get_retrieval_logs_filter_empty_only(client: TestClient):
     """Should filter logs with zero hits."""
     await create_retrieval_log(
-        user_id="anonymous",
+        user_id="admin-login",
         query="有结果",
         latency_ms=100,
         hit_count=2,
     )
     await create_retrieval_log(
-        user_id="anonymous",
+        user_id="admin-login",
         query="无结果",
         latency_ms=50,
         hit_count=0,
@@ -93,13 +93,13 @@ async def test_get_retrieval_logs_filter_empty_only(client: TestClient):
 async def test_get_retrieval_logs_filter_min_hit_count(client: TestClient):
     """Should filter logs by minimum hit count."""
     await create_retrieval_log(
-        user_id="anonymous",
+        user_id="admin-login",
         query="查询1",
         latency_ms=100,
         hit_count=1,
     )
     await create_retrieval_log(
-        user_id="anonymous",
+        user_id="admin-login",
         query="查询2",
         latency_ms=100,
         hit_count=3,
@@ -116,13 +116,13 @@ async def test_get_retrieval_logs_filter_min_hit_count(client: TestClient):
 async def test_get_retrieval_logs_filter_max_latency(client: TestClient):
     """Should filter logs by maximum latency."""
     await create_retrieval_log(
-        user_id="anonymous",
+        user_id="admin-login",
         query="快速查询",
         latency_ms=50,
         hit_count=1,
     )
     await create_retrieval_log(
-        user_id="anonymous",
+        user_id="admin-login",
         query="慢查询",
         latency_ms=500,
         hit_count=1,

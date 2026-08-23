@@ -148,7 +148,10 @@ def _build_session_context(memories: list[Any]) -> str:
 
 
 async def _get_rag_context(
-    query: str, session_id: str, user_id: str = "anonymous"
+    query: str,
+    session_id: str,
+    user_id: str = "anonymous",
+    run_id: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     """Retrieve RAG context + structured sources for citation.
 
@@ -184,6 +187,7 @@ async def _get_rag_context(
             await create_retrieval_log(
                 user_id=user_id,
                 session_id=session_id,
+                run_id=run_id,
                 query=query,
                 latency_ms=latency_ms,
                 hit_count=len(sources),

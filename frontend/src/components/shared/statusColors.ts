@@ -34,6 +34,7 @@ const STATUS_COLOR_NAME: Record<string, StatusColorName> = {
   invited: 'amber',
   pending: 'amber',
   warn: 'amber',
+  warning: 'amber',
   disabled: 'gray',
   inactive: 'gray',
   error: 'gray',

@@ -18,6 +18,7 @@ async def create_retrieval_log(
     latency_ms: int,
     hit_count: int,
     session_id: str | None = None,
+    run_id: str | None = None,
     top_k: int = 5,
     rerank: bool = False,
     min_score: float | None = None,
@@ -27,6 +28,7 @@ async def create_retrieval_log(
     entry = RetrievalLogDB(
         user_id=user_id,
         session_id=session_id,
+        run_id=run_id,
         query=query,
         top_k=top_k,
         rerank=rerank,
@@ -67,18 +69,30 @@ async def list_retrieval_logs(
     min_hit_count: int | None = None,
     max_latency_ms: int | None = None,
     empty_only: bool = False,
+    since_hours: int | None = None,
 ) -> tuple[list[RetrievalLogDB], int]:
-    """List retrieval logs for a user with pagination and filters."""
+    """List retrieval logs for a user with pagination and filters.
+
+    ``since_hours`` bounds the window to the trailing N hours
+    (None/<=0 = all time) — powers the monitoring drill-down link.
+    """
+    from datetime import UTC, datetime, timedelta
+
     factory = get_session_factory()
     async with factory() as session:
-        query = select(RetrievalLogDB).where(RetrievalLogDB.user_id == user_id)
-
+        conds = [RetrievalLogDB.user_id == user_id]
         if min_hit_count is not None:
-            query = query.where(RetrievalLogDB.hit_count >= min_hit_count)
+            conds.append(RetrievalLogDB.hit_count >= min_hit_count)
         if max_latency_ms is not None:
-            query = query.where(RetrievalLogDB.latency_ms <= max_latency_ms)
+            conds.append(RetrievalLogDB.latency_ms <= max_latency_ms)
         if empty_only:
-            query = query.where(RetrievalLogDB.hit_count == 0)
+            conds.append(RetrievalLogDB.hit_count == 0)
+        if since_hours is not None and since_hours > 0:
+            conds.append(
+                RetrievalLogDB.created_at
+                >= datetime.now(UTC) - timedelta(hours=since_hours)
+            )
+        query = select(RetrievalLogDB).where(*conds)
 
         count_query = select(func.count()).select_from(query.subquery())
         total_result = await session.execute(count_query)

@@ -2,6 +2,12 @@
   "monitoring": {
     "title": "质量监控",
     "subtitle": "监控检索命中率、响应延迟与用户反馈趋势",
+    "tabs": {
+      "overview": "总览",
+      "conversion": "转化分析",
+      "diagnosis": "根因诊断",
+      "feedback": "差评审查"
+    },
     "windowLabel": "统计窗口",
     "windowDay": "近 24 小时",
     "windowWeek": "近 7 天",
@@ -13,6 +19,7 @@
       "emptyRecall": "空召回率",
       "p50": "延迟 P50",
       "p95": "延迟 P95",
+      "p99": "延迟 P99",
       "noSamples": "暂无数据"
     },
     "feedback": {
@@ -25,22 +32,82 @@
     "alerts": {
       "title": "告警",
       "none": "当前无告警",
+      "breach": "阈值突破",
       "empty_recall_high": "空召回率 {{current}} 超过阈值 {{threshold}}",
       "p95_latency_high": "延迟 P95 {{current}} 超过阈值 {{threshold}}",
       "good_ratio_low": "好评率 {{current}} 低于阈值 {{threshold}}"
     },
+    "health": {
+      "title": "综合健康分",
+      "factorRetrieval": "检索",
+      "factorLatency": "延迟",
+      "factorSatisfaction": "满意度",
+      "weightsHint": "权重 检索{{w1}} 延迟{{w2}} 满意度{{w3}} · 阈值处=70分"
+    },
+    "funnel": {
+      "title": "检索转化漏斗",
+      "queries": "总检索",
+      "hit": "有命中",
+      "rated": "已评价",
+      "good": "好评",
+      "emptyDesc": "产生检索记录后将在此显示各级转化"
+    },
+    "pareto": {
+      "title": "差评根因帕累托",
+      "count": "差评数",
+      "cum": "累计占比",
+      "emptyDesc": "标记差评根因后，将按类别汇总展示"
+    },
+    "topQueries": {
+      "title": "问题查询 Top 10",
+      "tabEmpty": "零召回",
+      "tabSlow": "最慢",
+      "query": "查询内容",
+      "count": "次数",
+      "avgLatency": "平均延迟",
+      "emptyDesc": "该窗口内暂无此类查询"
+    },
     "kpiTotal": "总检索次数",
+    "kpiPeak": "峰值",
     "kpiAvgHit": "平均命中数",
-    "kpiAvgLatency": "平均延迟",
+    "kpiAvgLatency": "P50 延迟",
+    "coverage": "覆盖率",
+    "sloAttain": "SLO 达成",
+    "sloBurn": "燃烧率",
     "kpiGoodRate": "好评率",
+    "chartThreshold": "阈值",
+    "chartVolumeTitle": "检索次数趋势",
+    "chartHitsTitle": "平均命中趋势",
+    "chartGoodRateTitle": "好评率趋势",
+    "chartEmptyRecallTitle": "空召回率趋势",
+    "prevPeriod": "上期",
     "chartQualityTitle": "检索质量趋势",
-    "chartQualityLabel": "命中率",
-    "chartLatencyTitle": "响应延迟分布",
-    "chartLatencyLabel": "P50 延迟 (ms)",
+    "chartQualityLabel": "检索次数",
+    "chartLatencyTitle": "响应延迟趋势",
+    "chartLatencyLabel": "平均延迟 (ms)",
     "feedbackSectionTitle": "用户反馈",
     "feedbackEmptyTitle": "暂无反馈数据",
     "feedbackEmptyDesc": "用户对话评价后将在此显示",
+    "review": {
+      "title": "差评审查队列",
+      "empty": "暂无待审差评",
+      "filterAll": "全部",
+      "statusPending": "待处理",
+      "statusResolved": "已解决",
+      "statusDismissed": "已忽略",
+      "selectCause": "选择根因",
+      "causeRetrievalMiss": "检索不准",
+      "causeWrongAnswer": "回答错误",
+      "causeBadFormat": "格式问题",
+      "causeOther": "其他",
+      "resolve": "标记解决",
+      "dismiss": "忽略",
+      "notePlaceholder": "备注（可选）"
+    },
     "alertsSectionTitle": "告警规则",
+    "deltaBaseline": "较上一同等周期",
+    "rangeStart": "开始时间",
+    "rangeEnd": "结束时间",
     "noData": "暂无数据",
     "loading": "加载中…",
     "loadFailed": "监控数据加载失败"

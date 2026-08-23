@@ -389,7 +389,9 @@
     "noLogs": "No Retrieval Logs",
     "noLogsDesc": "Records will appear here after retrieval",
     "sourceDetail": "Source details",
-    "detail": "Log Details"
+    "detail": "Log Details",
+    "timeRange": "Time range",
+    "last72h": "Last 72h"
   },
   "admin": {
     "navTitle": "User Management",

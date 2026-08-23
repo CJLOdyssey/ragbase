@@ -7,11 +7,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from starlette.testclient import TestClient
 
 os.environ.update({
-    "AUTH_MODE": "legacy",
     "DATABASE_URL": "sqlite+aiosqlite:///:memory:",
     "REDIS_URL": "redis://localhost:6379/0",
     "KEY_VAULT_SECRET": "0123456789abcdef0123456789abcdef",
-    "AUTH_ENABLED": "0",
     "RATE_LIMIT": "9999",
     "CHECKPOINTER_BACKEND": "memory",
 })
@@ -104,4 +102,11 @@ def client():
         patch("routers.auth.password.get_redis", return_value=mock_redis),
     ):
         with TestClient(app) as c:
+            # 认证已无 legacy 旁路：通过真实登录取得 httpOnly JWT cookie，
+            # 后续请求以 admin-login 身份通过 AuthMiddleware。
+            resp = c.post(
+                "/api/auth/login",
+                json={"email": "admin@test.com", "password": "admin123"},
+            )
+            assert resp.status_code == 200, resp.text
             yield c

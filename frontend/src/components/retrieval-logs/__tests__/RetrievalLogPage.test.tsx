@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import RetrievalLogPage from '../RetrievalLogPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { listRetrievalLogs } from '../../../api/client/retrievalLogs';
 
 vi.mock('../../../api/client/retrievalLogs', () => ({
@@ -35,7 +36,7 @@ describe('RetrievalLogPage', () => {
   const renderWithClient = (ui: React.ReactElement) => {
     return render(
       <QueryClientProvider client={queryClient}>
-        {ui}
+        <MemoryRouter>{ui}</MemoryRouter>
       </QueryClientProvider>
     );
   };
@@ -115,7 +116,8 @@ describe('RetrievalLogPage', () => {
     
     await waitFor(() => {
       expect(screen.getByText('测试查询')).toBeInTheDocument();
-      expect(screen.getByText('150ms')).toBeInTheDocument();
+      // LatencyBar 汇总与行内数值都会渲染 150ms，断言存在即可。
+      expect(screen.getAllByText('150ms').length).toBeGreaterThan(0);
     });
   });
 

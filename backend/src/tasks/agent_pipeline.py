@@ -206,7 +206,9 @@ async def _run_agent_pipeline(
             ]
             if memories:
                 session_context = _build_session_context(memories)
-            rag_ctx, rag_sources = await _get_rag_context(requirement, session_id, user_id)
+            rag_ctx, rag_sources = await _get_rag_context(
+                requirement, session_id, user_id, run_id=run_id
+            )
             if rag_ctx:
                 session_context += "\n" + rag_ctx
         except Exception:

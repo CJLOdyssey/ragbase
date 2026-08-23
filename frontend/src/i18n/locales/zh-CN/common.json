@@ -389,7 +389,9 @@
     "noLogs": "暂无检索日志",
     "noLogsDesc": "发起检索后将在此显示记录",
     "sourceDetail": "来源详情",
-    "detail": "日志详情"
+    "detail": "日志详情",
+    "timeRange": "时间范围",
+    "last72h": "近 72 小时"
   },
   "admin": {
     "navTitle": "用户管理",

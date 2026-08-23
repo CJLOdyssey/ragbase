@@ -141,6 +141,42 @@ class FeedbackLog(Base):
     )
 
 
+class FeedbackReviewDB(Base):
+    """Human triage of a bad rating — feeds the golden-set eval pipeline.
+
+    One review per feedback row (unique feedback_id). Status flow:
+    pending → resolved | dismissed. ``root_cause`` is the enum that later
+    becomes the eval-case category.
+    """
+
+    __tablename__ = "feedback_reviews"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    feedback_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("feedback_logs.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    root_cause: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16),
+        default="pending",
+        server_default="pending",
+        comment="pending|resolved|dismissed",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class RetrievalLogDB(Base):
     """Append-only retrieval activity log (OWASP LLM08 — forensics + quality).
 
@@ -153,6 +189,12 @@ class RetrievalLogDB(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    run_id: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+        index=True,
+        comment="project_runs.id — enables log-to-conversation replay",
+    )
     query: Mapped[str] = mapped_column(Text, nullable=False)
     top_k: Mapped[int] = mapped_column(Integer, default=5)
     rerank: Mapped[bool] = mapped_column(Boolean, default=False)

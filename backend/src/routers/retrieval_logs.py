@@ -19,6 +19,7 @@ class RetrievalLogItem(BaseModel):
     id: str
     query: str
     session_id: str | None
+    run_id: str | None
     latency_ms: int
     hit_count: int
     top_k: int
@@ -55,6 +56,7 @@ async def get_retrieval_logs(
     min_hit_count: int | None = Query(None, ge=0),
     max_latency_ms: int | None = Query(None, ge=0),
     empty_only: bool = Query(False),
+    since_hours: int | None = Query(None, ge=0, le=24 * 30),
 ) -> Any:
     """List retrieval logs for the current user with pagination and filters."""
     user_id = get_user_id(request)
@@ -66,6 +68,7 @@ async def get_retrieval_logs(
         min_hit_count=min_hit_count,
         max_latency_ms=max_latency_ms,
         empty_only=empty_only,
+        since_hours=since_hours,
     )
 
     log_items = [
@@ -73,6 +76,7 @@ async def get_retrieval_logs(
             id=log.id,
             query=log.query,
             session_id=log.session_id,
+            run_id=log.run_id,
             latency_ms=log.latency_ms,
             hit_count=log.hit_count,
             top_k=log.top_k,

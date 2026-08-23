@@ -117,6 +117,9 @@ class ErrorCode(StrEnum):
     # ── Run ─────────────────────────────────────────────────────────
     RUN_NOT_FOUND = "RUN_001"
 
+    # ── Monitoring / review queue ───────────────────────────────────
+    REVIEW_NOT_FOUND = "REVIEW_001"
+
     # ── General ──────────────────────────────────────────────────────
     INTERNAL_ERROR = "GENERAL_001"
     INVALID_REQUEST = "GENERAL_002"
@@ -152,6 +155,7 @@ _STATUS_MAP: dict[ErrorCode, int] = {
     ErrorCode.WORKFLOW_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.SYSTEM_TEAM_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.RUN_NOT_FOUND: HTTP_404_NOT_FOUND,
+    ErrorCode.REVIEW_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.MEMORY_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.AUTH_USER_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.ASSET_NOT_FOUND: HTTP_404_NOT_FOUND,

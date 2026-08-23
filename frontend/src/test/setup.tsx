@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { SettingsProvider } from '../contexts/SettingsContext';
 import { ToastProvider } from '../utils/useToast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { VirtuosoMockContext } from 'react-virtuoso';
 import { expect, vi } from 'vitest';
 import * as axeMatchers from 'vitest-axe/matchers';
@@ -112,6 +113,7 @@ export function TestProviders({ children }: { children: ReactNode }) {
   const queryClient = createTestQueryClient();
   return (
     <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
       <SettingsProvider>
         <ToastProvider>
           <VirtuosoMockContext.Provider
@@ -121,6 +123,7 @@ export function TestProviders({ children }: { children: ReactNode }) {
           </VirtuosoMockContext.Provider>
         </ToastProvider>
       </SettingsProvider>
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }

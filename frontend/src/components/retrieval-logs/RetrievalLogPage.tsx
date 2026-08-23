@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
 import { useQuery } from '@tanstack/react-query';
@@ -9,22 +10,137 @@ import { listRetrievalLogs } from '../../api/client/retrievalLogs';
 import LatencyBar from './LatencyBar';
 import RetrievalTable from './RetrievalTable';
 
+const HOUR_OPTIONS = [0, 24, 72, 168];
+
+/** 筛选工具栏 —— 自持 URL 同步；页码重置由父组件的参数派生逻辑处理。 */
+function LogsToolbar({
+  sinceHours,
+  emptyOnly,
+  maxLatency,
+  onLatencyChange,
+}: {
+  sinceHours: number;
+  emptyOnly: boolean;
+  maxLatency: string;
+  onLatencyChange: (v: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [, setSearchParams] = useSearchParams();
+
+  return (
+    <div className="flex items-center gap-4 mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-[var(--color-text-secondary)]">
+          {t('retrievalLogs.timeRange')}
+        </span>
+        <select
+          value={sinceHours}
+          onChange={(e) => {
+            const hours = Number(e.target.value);
+            setSearchParams(
+              (prev) => {
+                const next = new URLSearchParams(prev);
+                if (hours > 0) next.set('hours', String(hours));
+                else next.delete('hours');
+                return next;
+              },
+              { replace: true },
+            );
+          }}
+          className="h-7 px-1.5 rounded-md border border-[var(--color-border)] bg-transparent text-xs text-[var(--color-text-secondary)] cursor-pointer"
+          data-testid="logs-since-hours"
+        >
+          {HOUR_OPTIONS.map((h) => (
+            <option key={h} value={h}>
+              {h === 0
+                ? t('monitoring.windowAll')
+                : h === 24
+                  ? t('monitoring.windowDay')
+                  : h === 72
+                    ? t('retrievalLogs.last72h')
+                    : t('monitoring.windowWeek')}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="w-px h-4 bg-[var(--color-border)]" />
+      <Checkbox
+        checked={emptyOnly}
+        onChange={(e) => {
+          setSearchParams(
+            (prev) => {
+              const next = new URLSearchParams(prev);
+              if (e.target.checked) next.set('empty', '1');
+              else next.delete('empty');
+              return next;
+            },
+            { replace: true },
+          );
+        }}
+      >
+        {t('retrievalLogs.emptyOnly')}
+      </Checkbox>
+      <div className="w-px h-4 bg-[var(--color-border)]" />
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-[var(--color-text-secondary)]">
+          {t('retrievalLogs.maxLatency')}
+        </span>
+        <InputNumber
+          value={maxLatency ? Number(maxLatency) : null}
+          placeholder="0"
+          min={0}
+          onChange={(v) => onLatencyChange(v == null ? '' : String(v))}
+          className="w-24"
+        />
+        <span className="text-xs text-[var(--color-text-muted)] font-mono">
+          ms
+        </span>
+      </div>
+      <div className="ml-auto flex items-center gap-2">
+        {emptyOnly && (
+          <Tag color="warning" style={{ marginInlineEnd: 0 }}>
+            {t('retrievalLogs.emptyRecall')}
+          </Tag>
+        )}
+        {maxLatency && (
+          <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+            {t('retrievalLogs.latencyFilterTag', { maxLatency })}
+          </Tag>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function RetrievalLogPage() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  // 下钻契约：监控页 KPI 卡通过 ?hours=&empty= 携带过滤条件直达。
+  // 下钻参数直接派生为过滤态（渲染期调整，避免 effect 级联渲染）。
+  const sinceHours = Number(searchParams.get('hours')) || 0;
+  const emptyOnly = searchParams.get('empty') === '1';
+  const paramsKey = `${sinceHours}|${emptyOnly}`;
+
   const [page, setPage] = useState(1);
-  const [emptyOnly, setEmptyOnly] = useState(false);
+  const [prevParamsKey, setPrevParamsKey] = useState(paramsKey);
   const [maxLatency, setMaxLatency] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const pageSize = 20;
 
+  if (prevParamsKey !== paramsKey) {
+    setPrevParamsKey(paramsKey);
+    if (page !== 1) setPage(1);
+  }
+
   const { data, isLoading } = useQuery({
-    queryKey: ['retrieval-logs', page, emptyOnly, maxLatency],
+    queryKey: ['retrieval-logs', page, emptyOnly, maxLatency, sinceHours],
     queryFn: () =>
       listRetrievalLogs({
         page,
         page_size: pageSize,
         empty_only: emptyOnly || undefined,
         max_latency_ms: maxLatency ? Number(maxLatency) : undefined,
+        since_hours: sinceHours || undefined,
       }),
   });
 
@@ -52,6 +168,17 @@ export default function RetrievalLogPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 px-8 py-6">
+        {!isLoading && (
+          <LogsToolbar
+            sinceHours={sinceHours}
+            emptyOnly={emptyOnly}
+            maxLatency={maxLatency}
+            onLatencyChange={(v) => {
+              setMaxLatency(v);
+              setPage(1);
+            }}
+          />
+        )}
         {isLoading ? (
           <LoadingState centered />
         ) : items.length === 0 ? (
@@ -64,49 +191,6 @@ export default function RetrievalLogPage() {
         ) : (
           <>
             <LatencyBar items={items} />
-
-            <div className="flex items-center gap-4 mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5">
-              <Checkbox
-                checked={emptyOnly}
-                onChange={(e) => {
-                  setEmptyOnly(e.target.checked);
-                  setPage(1);
-                }}
-              >
-                {t('retrievalLogs.emptyOnly')}
-              </Checkbox>
-              <div className="w-px h-4 bg-[var(--color-border)]" />
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-[var(--color-text-secondary)]">
-                  {t('retrievalLogs.maxLatency')}
-                </span>
-                <InputNumber
-                  value={maxLatency ? Number(maxLatency) : null}
-                  placeholder="0"
-                  min={0}
-                  onChange={(v) => {
-                    setMaxLatency(v == null ? '' : String(v));
-                    setPage(1);
-                  }}
-                  className="w-24"
-                />
-                <span className="text-xs text-[var(--color-text-muted)] font-mono">
-                  ms
-                </span>
-              </div>
-              <div className="ml-auto flex items-center gap-2">
-                {emptyOnly && (
-                  <Tag color="warning" style={{ marginInlineEnd: 0 }}>
-                    {t('retrievalLogs.emptyRecall')}
-                  </Tag>
-                )}
-                {maxLatency && (
-                  <Tag color="blue" style={{ marginInlineEnd: 0 }}>
-                    {t('retrievalLogs.latencyFilterTag', { maxLatency })}
-                  </Tag>
-                )}
-              </div>
-            </div>
 
             <RetrievalTable
               items={items}
