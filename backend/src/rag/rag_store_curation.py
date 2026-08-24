@@ -111,6 +111,7 @@ class CurationMixin(_Host):
         embedding: list[float],
         embed_model: str | None,
         asset_name: str | None = None,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> str:
         """Insert a manually curated chunk (embedded with the KB's binding).
 
@@ -127,6 +128,7 @@ class CurationMixin(_Host):
             **({"asset_name": asset_name} if asset_name else {}),
             "embed_model": embed_model,
             "manual": True,
+            **(extra_metadata or {}),
         }
         factory = get_session_factory()
         async with factory() as session:

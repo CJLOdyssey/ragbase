@@ -2,11 +2,12 @@ import { useEffect, useRef, useState, type DragEvent } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import {
+  setAssetTags as apiSetAssetTags,
   downloadAssetFile,
   getIndexProgress,
   listAssets,
@@ -22,6 +23,7 @@ import AssetsTable from './AssetsTable';
 import AssetsToolbar from './AssetsToolbar';
 import AssetsUrlModal from './AssetsUrlModal';
 import { type IndexingEntry } from './assetUtils';
+import TagEditModal from './TagEditModal';
 import { useAssetActions } from './useAssetActions';
 import { useAssetBump } from './useAssetBump';
 import { useAssetSelection } from './useAssetSelection';
@@ -31,6 +33,7 @@ const INDEX_POLL_MS = 3000;
 
 export default function AssetsPage() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -166,6 +169,16 @@ export default function AssetsPage() {
     bump(asset);
   };
 
+  const [tagTarget, setTagTarget] = useState<AssetItem | null>(null);
+  const setTagsMutation = useMutation({
+    mutationFn: (vars: { id: string; tags: string[] }) =>
+      apiSetAssetTags(vars.id, vars.tags),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['assets'] });
+      setTagTarget(null);
+    },
+  });
+
   const handleChunks = (asset: AssetItem) => {
     setChunksTarget(asset);
     bump(asset);
@@ -271,6 +284,7 @@ export default function AssetsPage() {
                   const idx = a.name.lastIndexOf('.');
                   setRenameValue(idx > 0 ? a.name.slice(0, idx) : a.name);
                 }}
+                onTags={setTagTarget}
                 onDelete={setDeleteTarget}
                 onDownload={handleDownloadWithBump}
                 onIndex={(id) => indexMutation.mutate(id)}
@@ -288,6 +302,7 @@ export default function AssetsPage() {
                   const idx = a.name.lastIndexOf('.');
                   setRenameValue(idx > 0 ? a.name.slice(0, idx) : a.name);
                 }}
+                onTags={setTagTarget}
                 onDelete={setDeleteTarget}
                 onDownload={handleDownloadWithBump}
                 onIndex={(id) => indexMutation.mutate(id)}
@@ -297,6 +312,16 @@ export default function AssetsPage() {
           </div>
         )}
       </div>
+
+      {tagTarget && (
+        <TagEditModal
+          key={tagTarget.id}
+          asset={tagTarget}
+          saving={setTagsMutation.isPending}
+          onClose={() => setTagTarget(null)}
+          onSave={(id, tags) => setTagsMutation.mutate({ id, tags })}
+        />
+      )}
 
       <AssetsRenameModal
         target={renameTarget}

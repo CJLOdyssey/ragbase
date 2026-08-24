@@ -446,7 +446,13 @@
     "embeddingNotConfigured": "未配置 Embedding，无法检索",
     "emptyHint": "无命中：可尝试开启「改写查询」，或在素材库补充文档",
     "similarity": "相似度",
-    "source": "来源"
+    "source": "来源",
+    "method": "检索方式",
+    "methodHybrid": "混合检索（向量+关键词）",
+    "methodSemantic": "仅向量检索",
+    "methodLexical": "仅关键词检索",
+    "tagFilter": "标签过滤",
+    "tagFilterPlaceholder": "逗号分隔，如: api, 部署"
   },
   "feedback": {
     "feedbackNotice": "感谢反馈，这将帮助优化后续检索"

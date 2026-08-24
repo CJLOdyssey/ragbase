@@ -56,7 +56,19 @@
       "addPlaceholder": "输入要追加的文本，保存后自动嵌入…",
       "addButton": "追加",
       "deleteTitle": "删除 chunk",
-      "deleteConfirm": "确认删除该 chunk？该操作不可恢复。"
+      "deleteConfirm": "确认删除该 chunk？该操作不可恢复。",
+      "tabChunks": "文档 chunks",
+      "tabQa": "QA 导入",
+      "qa": {
+        "hint": "每行一对问答，保存后按知识库绑定的嵌入模型自动向量化；问答对不依赖文档解析。",
+        "questionPlaceholder": "问题，如：支持哪些部署方式？",
+        "answerPlaceholder": "答案…",
+        "addRow": "添加一行",
+        "removeRow": "移除该行",
+        "import": "导入 {count} 对",
+        "importing": "导入中…",
+        "importFailed": "导入失败，请重试"
+      }
     },
     "table": {
       "fileName": "文件名",
@@ -72,7 +84,8 @@
       "retry": "重试",
       "chunks": "分块预览",
       "rename": "重命名",
-      "delete": "删除"
+      "delete": "删除",
+      "tags": "标签"
     },
     "section": {
       "fileInfo": "文件信息",
@@ -121,6 +134,11 @@
     "noChunks": "暂无分块数据",
     "viewAllChunks": "查看全部 {{count}} 个分块",
     "notIndexed": "该文件尚未索引，无分块预览",
-    "chunkUnit": "块"
+    "chunkUnit": "块",
+    "tags": {
+      "title": "编辑标签",
+      "placeholder": "输入后回车添加标签",
+      "hint": "标签在重新索引时写入 chunk，并可用于检索测试的标签过滤"
+    }
   }
 }

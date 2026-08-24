@@ -1,6 +1,6 @@
 """RAG retrieval test workbench — validate retrieval quality before/after ingest."""
 
-from typing import Any
+from typing import Any, Literal
 
 from auth import get_user_id
 from core.infra.logging_config import get_logger
@@ -23,6 +23,8 @@ class RetrievalTestIn(BaseModel):
     rerank: bool = False
     rewrite: bool = False
     knowledge_base_id: str | None = None
+    retrieval_method: Literal["hybrid", "semantic", "lexical"] = "hybrid"
+    tags: list[str] | None = None
 
 
 class RetrievalSourceOut(BaseModel):
@@ -71,6 +73,8 @@ async def test_retrieval(req: RetrievalTestIn, request: Request) -> Any:
         asset_ids=asset_ids,
         top_k=req.top_k,
         rerank=req.rerank,
+        tags=[t.strip().lower() for t in req.tags or [] if t.strip()],
+        retrieval_method=req.retrieval_method,
     )
 
     logger.info(

@@ -142,3 +142,17 @@ async def set_asset_indexed(asset_id: str, indexed: bool) -> None:
         if asset is not None:
             asset.indexed = indexed
             await session.commit()
+
+
+async def update_asset_tags(
+    asset_id: str, user_id: str, tags: list[str]
+) -> AssetDB | None:
+    """Replace an asset's curated tags (owner-scoped); returns updated asset."""
+    factory = get_session_factory()
+    async with factory() as session:
+        asset = await session.get(AssetDB, asset_id)
+        if asset is None or asset.user_id != user_id:
+            return None
+        asset.tags = tags
+        await session.commit()
+        return asset

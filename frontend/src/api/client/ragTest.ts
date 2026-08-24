@@ -15,12 +15,16 @@ export interface RetrievalTestResult {
   sources: RetrievalSource[];
 }
 
+export type RetrievalMethod = 'hybrid' | 'semantic' | 'lexical';
+
 export interface RetrievalTestParams {
   query: string;
   topK?: number;
   rerank?: boolean;
   rewrite?: boolean;
   knowledgeBaseId?: string | null;
+  retrievalMethod?: RetrievalMethod;
+  tags?: string[];
 }
 
 export async function testRetrieval(

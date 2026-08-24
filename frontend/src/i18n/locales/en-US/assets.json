@@ -56,7 +56,19 @@
       "addPlaceholder": "Enter text to append — it will be embedded automatically on save…",
       "addButton": "Append",
       "deleteTitle": "Delete chunk",
-      "deleteConfirm": "Delete this chunk? This cannot be undone."
+      "deleteConfirm": "Delete this chunk? This cannot be undone.",
+      "tabChunks": "Document chunks",
+      "tabQa": "QA import",
+      "qa": {
+        "hint": "One vector chunk per Q/A pair, embedded with the KB's bound model — no document parsing required.",
+        "questionPlaceholder": "Question, e.g. Which deployment modes are supported?",
+        "answerPlaceholder": "Answer…",
+        "addRow": "Add row",
+        "removeRow": "Remove row",
+        "import": "Import {count} pairs",
+        "importing": "Importing…",
+        "importFailed": "Import failed, please retry"
+      }
     },
     "table": {
       "fileName": "File name",
@@ -72,7 +84,8 @@
       "retry": "Retry",
       "chunks": "Chunks",
       "rename": "Rename",
-      "delete": "Delete"
+      "delete": "Delete",
+      "tags": "Tags"
     },
     "section": {
       "fileInfo": "File Info",
@@ -121,6 +134,11 @@
     "noChunks": "No chunk data yet",
     "viewAllChunks": "View all {{count}} chunks",
     "notIndexed": "This file is not indexed, no chunk preview",
-    "chunkUnit": "chunks"
+    "chunkUnit": "chunks",
+    "tags": {
+      "title": "Edit tags",
+      "placeholder": "Type and press enter to add",
+      "hint": "Tags are baked into chunks on re-index and usable as a recall filter."
+    }
   }
 }

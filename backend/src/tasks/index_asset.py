@@ -78,6 +78,12 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
             chunk_size=chunk_size,
             overlap=overlap,
         )
+        # User-curated asset tags ride along on every chunk so retrieval can
+        # filter by them (store's tag_filter leg).
+        asset_tags = [t.strip().lower() for t in (getattr(asset, "tags", None) or []) if t.strip()]
+        if asset_tags:
+            for c in chunks:
+                c.tags = list(dict.fromkeys([*c.tags, *asset_tags]))
 
         await set_index_progress(asset_id, "embedding", 50, "Generating embeddings...")
 

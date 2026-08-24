@@ -142,6 +142,7 @@ async def retrieve_sources(
     top_k: int = 5,
     rerank: bool = False,
     min_score: float | None = DEFAULT_MIN_SCORE,
+    retrieval_method: str = "hybrid",
 ) -> list[dict[str, Any]]:
     """Structured retrieval for citation UI — same pipeline as retrieve_context.
 
@@ -159,6 +160,7 @@ async def retrieve_sources(
         top_k=top_k,
         rerank=rerank,
         min_score=min_score,
+        retrieval_method=retrieval_method,
     )
     return [
         {
@@ -180,6 +182,7 @@ async def _search_results(
     top_k: int = 5,
     rerank: bool = False,
     min_score: float | None = DEFAULT_MIN_SCORE,
+    retrieval_method: str = "hybrid",
 ) -> list[dict[str, Any]]:
     """Shared retrieval core: embed → hybrid search → optional rerank.
 
@@ -199,9 +202,12 @@ async def _search_results(
     candidate_k = RERANK_CANDIDATES if rerank else top_k
 
     if len(groups) == 1:
-        if _embedding_provider is None:
+        if _embedding_provider is None and retrieval_method != "lexical":
             return []
-        query_embedding = await _embedding_provider.embed_query(query)
+        query_embedding: list[float] = (
+            [] if retrieval_method == "lexical" or _embedding_provider is None
+            else await _embedding_provider.embed_query(query)
+        )
         results: list[dict[str, Any]] = await store.search(
             query_embedding,
             query_text=query,
@@ -211,6 +217,7 @@ async def _search_results(
             asset_ids=asset_ids,
             top_k=candidate_k,
             min_score=min_score,
+            method=retrieval_method,
         )
     else:
         # Lazy: repository.keys sits at the tail of the rag import chain.
@@ -244,6 +251,7 @@ async def _search_results(
                     min_score=min_score,
                     embed_model=model,
                     embed_model_filter=True,
+                    method=retrieval_method,
                 )
             )
         results = sorted(merged, key=lambda r: r["score"], reverse=True)[:candidate_k]

@@ -59,8 +59,13 @@ class AssetItem(BaseModel):
     knowledge_base_id: str | None = None
     source: str = "upload"
     source_ref: str | None = None
+    tags: list[str] = []
     updated_at: Any | None = None
     chunk_count: int | None = None
+
+
+class AssetTagsIn(BaseModel):
+    tags: list[str] = Field(default_factory=list, max_length=20)
 
 
 class AssetChunkOut(BaseModel):
@@ -78,6 +83,15 @@ class ChunkTextIn(BaseModel):
 
 class ChunkToggleIn(BaseModel):
     enabled: bool
+
+
+class ChunkQAPairIn(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    answer: str = Field(min_length=1, max_length=4000)
+
+
+class ChunkBatchQAIn(BaseModel):
+    pairs: list[ChunkQAPairIn] = Field(min_length=1, max_length=50)
 
 
 async def _embed_for_asset(
@@ -136,6 +150,7 @@ def _to_item(asset: Any, chunk_count: int | None = None) -> AssetItem:
         knowledge_base_id=kb_id if isinstance(kb_id, str) else None,
         source=asset.source,
         source_ref=asset.source_ref,
+        tags=list(getattr(asset, "tags", None) or []),
         updated_at=updated,
         chunk_count=chunk_count,
     )
@@ -473,6 +488,37 @@ async def rename_asset(asset_id: str, request: Request, name: str) -> Any:
     return _to_item(asset, counts.get(asset.id, 0))
 
 
+def _sanitize_tags(raw: list[str]) -> list[str]:
+    """Normalize user tags: trim/lower/dedupe/cap length — max 20."""
+    out: list[str] = []
+    for t in raw:
+        clean = t.strip().lower()[:32]
+        if clean and clean not in out:
+            out.append(clean)
+    return out[:20]
+
+
+@router.put("/api/assets/{asset_id}/tags", response_model=AssetItem)
+async def set_asset_tags(asset_id: str, req: AssetTagsIn, request: Request) -> Any:
+    """Replace an asset's curated tags (owner-scoped).
+
+    Tags are injected into the asset's chunks at (re)index time and usable
+    as a retrieval filter.
+    """
+    from repository.assets import update_asset_tags
+
+    user_id = get_user_id(request)
+    existing = await get_asset_for_user(asset_id, user_id)
+    if existing is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    asset = await update_asset_tags(asset_id, user_id, _sanitize_tags(req.tags))
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    counts = await _chunk_counts_for([asset.id])
+    logger.info("Asset tags set | user=%s | asset=%s | n=%d", user_id, asset_id, len(asset.tags))
+    return _to_item(asset, counts.get(asset.id, 0))
+
+
 @router.delete("/api/assets/{asset_id}")
 async def remove_asset(asset_id: str, request: Request) -> Any:
     """Delete an asset and purge its vector chunks from the store."""
@@ -532,8 +578,6 @@ async def get_asset_chunks(asset_id: str, request: Request) -> Any:
     asset = await get_asset_for_user(asset_id, user_id)
     if asset is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
-    if not asset.indexed:
-        return []
 
     from rag.rag_store import PgVectorStore
 
@@ -547,8 +591,6 @@ async def add_asset_chunk(asset_id: str, req: ChunkTextIn, request: Request) -> 
     asset = await get_asset_for_user(asset_id, user_id)
     if asset is None:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
-    if not asset.indexed:
-        raise error_response(ErrorCode.INVALID_REQUEST, detail="素材尚未建立索引")
 
     from rag.rag_store import PgVectorStore
 
@@ -719,3 +761,43 @@ async def retry_index_asset(asset_id: str, request: Request) -> Any:
 
     logger.info("Asset re-index retry queued | user=%s | asset=%s", user_id, asset_id)
     return {"retrying": True}
+
+
+@router.post("/api/assets/{asset_id}/chunks/batch-qa", status_code=201)
+async def add_qa_chunks(asset_id: str, req: ChunkBatchQAIn, request: Request) -> Any:
+    """Bulk-import curated Q&A pairs as chunks (one chunk per pair).
+
+    The question rides in metadata for structured display; text embeds as
+    "question\\nanswer" so queries match either side. Works on unindexed
+    assets — QA ingestion does not depend on document parsing.
+    """
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+
+    from rag.rag_store import PgVectorStore
+
+    texts = [f"{p.question.strip()}\n{p.answer.strip()}" for p in req.pairs]
+    try:
+        embeddings, model = await _embed_for_asset(asset, texts)
+    except RuntimeError as e:
+        raise error_response(ErrorCode.INVALID_REQUEST, detail=str(e)) from e
+
+    store: PgVectorStore = PgVectorStore()
+    ids = []
+    for pair, emb in zip(req.pairs, embeddings, strict=True):
+        cid = await store.add_manual_chunk(
+            asset_id,
+            user_id,
+            f"{pair.question.strip()}\n{pair.answer.strip()}",
+            emb,
+            model,
+            asset_name=asset.name,
+            extra_metadata={"qa": True, "question": pair.question.strip()},
+        )
+        ids.append(cid)
+    logger.info(
+        "QA chunks imported | user=%s | asset=%s | n=%d", user_id, asset_id, len(ids)
+    )
+    return {"created": len(ids)}

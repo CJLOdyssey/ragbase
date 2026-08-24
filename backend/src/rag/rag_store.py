@@ -147,8 +147,12 @@ class PgVectorStore(CurationMixin):
         min_score: float | None = None,
         embed_model: str | None = None,
         embed_model_filter: bool = False,
+        method: str = "hybrid",
     ) -> list[dict[str, Any]]:
-        """Hybrid search: HNSW cosine leg + pg_trgm leg, fused via RRF.
+        """Vector / lexical / hybrid search over the chunk store.
+
+        method: 'hybrid' (default) fuses HNSW cosine ‖ pg_trgm legs via RRF;
+        'semantic' runs the vector leg only; 'lexical' the trgm leg only.
 
         user_id is mandatory — chunks of other owners are never candidates.
         min_score (optional) drops vector-leg hits below a similarity floor —
@@ -182,7 +186,7 @@ class PgVectorStore(CurationMixin):
                     where_clauses.append("metadata->>'embed_model' = :em")
                     params["em"] = embed_model
 
-            if min_score is not None:
+            if min_score is not None and method in ("hybrid", "semantic"):
                 where_clauses.append(
                     "(1 - (embedding <=> CAST(:emb AS vector))) >= :min_score"
                 )
@@ -194,22 +198,26 @@ class PgVectorStore(CurationMixin):
 
             legs: list[list[dict[str, Any]]] = []
 
-            vec_rows = await session.execute(
-                text(
-                    f"""
-                    SELECT id, text, tags, session_id, run_id, asset_id, metadata,
-                           1 - (embedding <=> CAST(:emb AS vector)) AS similarity
-                    FROM vector_chunks
-                    WHERE {where_sql}
-                    ORDER BY embedding <=> CAST(:emb AS vector)
-                    LIMIT :vec_k
-                """
-                ),
-                {**params, "emb": emb_str, "vec_k": top_k * 5},
-            )
-            legs.append(_rows_to_dicts(vec_rows.fetchall()))
+            if method in ("hybrid", "semantic"):
+                vec_rows = await session.execute(
+                    text(
+                        f"""
+                        SELECT id, text, tags, session_id, run_id, asset_id, metadata,
+                               1 - (embedding <=> CAST(:emb AS vector)) AS similarity
+                        FROM vector_chunks
+                        WHERE {where_sql}
+                        ORDER BY embedding <=> CAST(:emb AS vector)
+                        LIMIT :vec_k
+                    """
+                    ),
+                    {**params, "emb": emb_str, "vec_k": top_k * 5},
+                )
+                legs.append(_rows_to_dicts(vec_rows.fetchall()))
 
-            if len(query_text.strip()) >= _LEXICAL_MIN_LEN:
+            if len(query_text.strip()) >= _LEXICAL_MIN_LEN and method in (
+                "hybrid",
+                "lexical",
+            ):
                 await session.execute(text("SET LOCAL pg_trgm.word_similarity_threshold = 0.3"))
                 lex_rows = await session.execute(
                     text(
@@ -226,6 +234,13 @@ class PgVectorStore(CurationMixin):
                 )
                 legs.append(_rows_to_dicts(lex_rows.fetchall()))
 
+        if len(legs) == 1:
+            # Single-leg method: order by similarity (RRF is meaningless with
+            # one ranking); score mirrors similarity for downstream merging.
+            leg = legs[0]
+            for row in leg:
+                row["score"] = row["similarity"]
+            return sorted(leg, key=lambda r: r["score"], reverse=True)[:top_k]
         return _rrf_fuse(legs, top_k)
 
     async def embed_model_groups(

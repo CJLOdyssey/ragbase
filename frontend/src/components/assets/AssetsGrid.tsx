@@ -1,5 +1,7 @@
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { DataGrid } from '../shared/list';
+import { useRowMenu } from '../shared/list/useRowMenu';
 import { STATUS_COLORS } from '../shared/statusColors';
 import {
   Braces,
@@ -12,13 +14,12 @@ import {
   Pencil,
   RotateCcw,
   Search,
+  Tags,
   Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import type { IndexProgress } from '../../api/client/assets';
-import { DataGrid } from '../shared/list';
-import { useRowMenu } from '../shared/list/useRowMenu';
 import { ActionButton, StatusPill } from './AssetBadges';
 import {
   extColorOf,
@@ -59,6 +60,7 @@ interface AssetsGridProps {
   onPreview: (asset: AssetItem) => void;
   onChunks: (asset: AssetItem) => void;
   onRename: (asset: AssetItem) => void;
+  onTags?: (asset: AssetItem) => void;
   onDelete: (asset: AssetItem) => void;
   onDownload?: (asset: AssetItem) => void;
   onIndex: (id: string) => void;
@@ -78,6 +80,7 @@ export default function AssetsGrid({
   onPreview,
   onChunks,
   onRename,
+  onTags,
   onDelete,
   onDownload,
   onIndex,
@@ -226,6 +229,19 @@ export default function AssetsGrid({
                     >
                       <Download size={12} /> 下载
                     </button>
+                    {onTags && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          menu.close();
+                          onTags(asset);
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                        data-testid={`tags-${asset.id}`}
+                      >
+                        <Tags size={12} /> {t('assets.action.tags')}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {

@@ -6,6 +6,7 @@ export interface AssetItem {
   usageCount: number;
   indexed: boolean;
   knowledgeBaseId?: string | null;
+  tags?: string[];
   source?: string;
   sourceRef?: string | null;
   updatedAt?: string | null;

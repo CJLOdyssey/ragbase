@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Modal as AntdModal, Switch } from 'antd';
+import { Modal as AntdModal, Switch, Tabs } from 'antd';
 import { FileText, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
@@ -12,6 +12,7 @@ import {
   toggleAssetChunk,
   updateAssetChunk,
 } from '../../api/client/assets';
+import QaImportPanel from './QaImportPanel';
 
 interface AssetChunksModalProps {
   asset: AssetItem;
@@ -33,6 +34,7 @@ export default function AssetChunksModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'chunks' | 'qa'>('chunks');
   const pageSize = 20;
 
   const invalidate = () =>
@@ -98,7 +100,25 @@ export default function AssetChunksModal({
       }
       styles={{ body: { maxHeight: '65vh', overflowY: 'auto' } }}
     >
-      {isLoading ? (
+      <Tabs
+        activeKey={activeTab}
+        onChange={(k) => setActiveTab(k as 'chunks' | 'qa')}
+        items={[
+          { key: 'chunks', label: t('assets.chunks.tabChunks') },
+          { key: 'qa', label: t('assets.chunks.tabQa') },
+        ]}
+        size="small"
+      />
+
+      {activeTab === 'qa' ? (
+        <QaImportPanel
+          assetId={asset.id}
+          onDone={() => {
+            setActiveTab('chunks');
+            void invalidate();
+          }}
+        />
+      ) : isLoading ? (
         <div className="py-12 text-center text-sm text-[var(--color-text-muted)]">
           {t('assets.chunks.loading')}
         </div>

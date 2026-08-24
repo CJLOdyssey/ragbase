@@ -446,7 +446,13 @@
     "embeddingNotConfigured": "Embedding not configured",
     "emptyHint": "No hits: try enabling \"rewrite\", or add documents in Assets",
     "similarity": "Similarity",
-    "source": "Source"
+    "source": "Source",
+    "method": "Retrieval method",
+    "methodHybrid": "Hybrid (vector + keyword)",
+    "methodSemantic": "Vector only",
+    "methodLexical": "Keyword only",
+    "tagFilter": "Tag filter",
+    "tagFilterPlaceholder": "comma separated, e.g. api, deploy"
   },
   "feedback": {
     "feedbackNotice": "Thanks for your feedback — it will help optimize future retrievals"

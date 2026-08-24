@@ -174,3 +174,26 @@ export async function downloadAssetFile(
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export async function setAssetTags(
+  assetId: string,
+  tags: string[],
+): Promise<AssetItem> {
+  const { data } = await api.put(`/assets/${assetId}/tags`, { tags });
+  return data;
+}
+
+export interface QAPair {
+  question: string;
+  answer: string;
+}
+
+export async function addQaChunks(
+  assetId: string,
+  pairs: QAPair[],
+): Promise<{ created: number }> {
+  const { data } = await api.post(`/assets/${assetId}/chunks/batch-qa`, {
+    pairs,
+  });
+  return data;
+}

@@ -13,6 +13,7 @@ import {
   Pencil,
   RotateCcw,
   Search,
+  Tags,
   Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -62,6 +63,7 @@ interface AssetsTableProps {
   onPreview: (asset: AssetItem) => void;
   onChunks: (asset: AssetItem) => void;
   onRename: (asset: AssetItem) => void;
+  onTags?: (asset: AssetItem) => void;
   onDelete: (asset: AssetItem) => void;
   onDownload?: (asset: AssetItem) => void;
   onIndex: (id: string) => void;
@@ -108,6 +110,7 @@ export default function AssetsTable({
   onPreview,
   onChunks,
   onRename,
+  onTags,
   onDelete,
   onDownload,
   onIndex,
@@ -244,6 +247,17 @@ export default function AssetsTable({
                   data-testid={`download-${asset.id}`}
                 >
                   <Download size={12} /> 下载
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    menu.close();
+                    onTags?.(asset);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                  data-testid={`tags-${asset.id}`}
+                >
+                  <Tags size={12} /> {t('assets.action.tags')}
                 </button>
                 <button
                   type="button"

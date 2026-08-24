@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import EmptyState from '../shared/EmptyState';
 import { useMutation } from '@tanstack/react-query';
-import { Input, InputNumber, Modal, Switch } from 'antd';
+import { Input, InputNumber, Modal, Select, Switch } from 'antd';
 import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   testRetrieval,
+  type RetrievalMethod,
   type RetrievalTestResult,
 } from '../../api/client/ragTest';
 
@@ -27,6 +28,8 @@ export default function KbRecallModal({
   const [topK, setTopK] = useState(5);
   const [threshold, setThreshold] = useState(0.75);
   const [rewrite, setRewrite] = useState(false);
+  const [method, setMethod] = useState<RetrievalMethod>('hybrid');
+  const [tagText, setTagText] = useState('');
   const [result, setResult] = useState<RetrievalTestResult | null>(null);
 
   const testMutation = useMutation({
@@ -42,6 +45,11 @@ export default function KbRecallModal({
       topK,
       rewrite,
       knowledgeBaseId,
+      retrievalMethod: method,
+      tags: tagText
+        .split(/[,，]/)
+        .map((t) => t.trim())
+        .filter(Boolean),
     });
   };
 
@@ -74,7 +82,31 @@ export default function KbRecallModal({
             placeholder={t('ragTest.queryPlaceholder')}
             className="!bg-[var(--color-surface)] !border-[var(--color-border)] !text-[var(--color-text-primary)] resize-none"
           />
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-3 flex flex-col gap-1.5">
+            <label className="text-xs text-[var(--color-text-secondary)]">
+              {t('ragTest.method')}
+            </label>
+            <Select
+              value={method}
+              onChange={(v) => setMethod(v)}
+              options={[
+                { value: 'hybrid', label: t('ragTest.methodHybrid') },
+                { value: 'semantic', label: t('ragTest.methodSemantic') },
+                { value: 'lexical', label: t('ragTest.methodLexical') },
+              ]}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-[var(--color-text-secondary)]">
+              {t('ragTest.tagFilter')}
+            </label>
+            <Input
+              value={tagText}
+              onChange={(e) => setTagText(e.target.value)}
+              placeholder={t('ragTest.tagFilterPlaceholder')}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-[var(--color-text-secondary)]">
                 Top K
