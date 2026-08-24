@@ -1,3 +1,4 @@
+import { SettingsProvider } from '../../../contexts/SettingsContext';
 import { TestProviders } from '../../../test/setup';
 import type {
   MonitoringSummary,
@@ -5,18 +6,18 @@ import type {
   RootCauseBreakdown,
   TopQueriesResponse,
 } from '../../../types/monitoring';
-import QualityMonitor from '../QualityMonitor';
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, useLocation } from 'react-router-dom';
-import { SettingsProvider } from '../../../contexts/SettingsContext';
 import { ToastProvider } from '../../../utils/useToast';
+import QualityMonitor from '../QualityMonitor';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mocks } = vi.hoisted(() => ({
   mocks: {
     fetchMonitoringSummary: vi.fn(),
     fetchMonitoringTimeseries: vi.fn(),
+    fetchHealthScoreHistory: vi.fn(),
     fetchRootCauses: vi.fn(),
     fetchTopQueries: vi.fn(),
     fetchBadFeedback: vi.fn(),
@@ -26,17 +27,44 @@ const { mocks } = vi.hoisted(() => ({
 
 vi.mock('../../../api/client/monitoring', () => mocks);
 
+const HEALTH_SCORE_OK = {
+  score: 71,
+  factors: [
+    { key: 'retrieval', score: 78, weight: 0.3 },
+    { key: 'latency', score: 60, weight: 0.3 },
+    { key: 'satisfaction', score: 75, weight: 0.4 },
+  ],
+};
+
+const HEALTH_SCORE_NULL = {
+  score: null,
+  factors: [
+    { key: 'retrieval', score: null, weight: 0 },
+    { key: 'latency', score: null, weight: 0 },
+    { key: 'satisfaction', score: null, weight: 0 },
+  ],
+};
+
 const EMPTY: MonitoringSummary = {
   window_hours: 24,
   retrieval: {
     total: 0,
     empty_recall_count: 0,
     empty_recall_rate: 0,
+    slow_count: 0,
+    slow_rate: 0,
     avg_hit_count: null,
     latency_p50_ms: null,
     latency_p95_ms: null,
   },
-  feedback: { total: 0, good_count: 0, bad_count: 0, good_ratio: null, answered_runs: 0 },
+  feedback: {
+    total: 0,
+    good_count: 0,
+    bad_count: 0,
+    good_ratio: null,
+    answered_runs: 0,
+  },
+  health_score: HEALTH_SCORE_NULL,
   alerts: [],
 };
 
@@ -115,17 +143,36 @@ const TS_WITH_DATA: MonitoringTimeseries = {
   ],
 };
 
+/** 上期无任何评价：好评率环比无基线 → 占位「—」，其余卡正常显示徽章。 */
+const TS_PREV_NO_FEEDBACK: MonitoringTimeseries = {
+  ...TS_WITH_DATA,
+  previous_points: (TS_WITH_DATA.previous_points ?? []).map((p) => ({
+    ...p,
+    good: 0,
+    bad: 0,
+  })),
+};
+
 const HEALTHY: MonitoringSummary = {
   window_hours: 24,
   retrieval: {
     total: 120,
     empty_recall_count: 4,
     empty_recall_rate: 0.0333,
+    slow_count: 2,
+    slow_rate: 0.02,
     avg_hit_count: 3.5,
     latency_p50_ms: 480,
     latency_p95_ms: 2100,
   },
-  feedback: { total: 20, good_count: 18, bad_count: 2, good_ratio: 0.9, answered_runs: 120 },
+  feedback: {
+    total: 20,
+    good_count: 18,
+    bad_count: 2,
+    good_ratio: 0.9,
+    answered_runs: 120,
+  },
+  health_score: HEALTH_SCORE_OK,
   alerts: [],
 };
 
@@ -241,6 +288,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.fetchMonitoringSummary.mockResolvedValue(EMPTY);
   mocks.fetchMonitoringTimeseries.mockResolvedValue(EMPTY_TS);
+  mocks.fetchHealthScoreHistory.mockResolvedValue({ hours: 168, points: [] });
   mocks.fetchRootCauses.mockResolvedValue(ROOT_CAUSES_EMPTY);
   mocks.fetchTopQueries.mockResolvedValue(TOPQ_EMPTY);
   mocks.fetchBadFeedback.mockResolvedValue(BAD_FEEDBACK_EMPTY);
@@ -287,6 +335,15 @@ describe('QualityMonitor', { tags: ['unit'] }, () => {
     expect(screen.getByText('响应延迟趋势')).toBeTruthy();
   });
 
+  it('shows a muted placeholder when a metric lacks previous-period baseline', async () => {
+    mocks.fetchMonitoringSummary.mockResolvedValue(HEALTHY);
+    mocks.fetchMonitoringTimeseries.mockResolvedValue(TS_PREV_NO_FEEDBACK);
+    renderPage();
+    await screen.findByText('检索次数趋势');
+    // 预设窗口下环比位恒在：无基线的卡显示灰色占位（hover 提示）而非消失。
+    expect(screen.getAllByTitle('上期无数据，无法对比')).toHaveLength(1);
+  });
+
   it('shows hits trend on conversion tab', async () => {
     mocks.fetchMonitoringSummary.mockResolvedValue(HEALTHY);
     mocks.fetchMonitoringTimeseries.mockResolvedValue(TS_WITH_DATA);
@@ -315,11 +372,12 @@ describe('QualityMonitor', { tags: ['unit'] }, () => {
     mocks.fetchMonitoringSummary.mockResolvedValue(HEALTHY);
     renderPage();
     expect(await screen.findByTestId('health-score-card')).toBeTruthy();
-    // HEALTHY fixture → 检索93/延迟92/满意度100 加权 ≈ 96。
-    expect(screen.getByTestId('health-score-card').textContent).toContain(
-      '检索',
-    );
+    // 服务端错误预算载荷直接渲染：总分 71，三因子齐全。
+    expect(screen.getByTestId('health-score-card').textContent).toContain('71');
     expect(screen.getByTestId('health-factor-satisfaction')).toBeTruthy();
+    expect(screen.getByTestId('health-factor-retrieval').textContent).toContain(
+      '78',
+    );
   });
 
   it('shows pareto and top-queries sections on diagnosis tab', async () => {
@@ -385,7 +443,11 @@ describe('QualityMonitor', { tags: ['unit'] }, () => {
   it('falls back to overview on invalid ?tab= param', async () => {
     renderMonitorAt(['/?tab=unknown']);
     expect(await screen.findByTestId('retrieval-section')).toBeTruthy();
-    expect(screen.queryByTestId('monitoring-tab-overview')!.getAttribute('aria-selected')).toBe('true');
+    expect(
+      screen
+        .queryByTestId('monitoring-tab-overview')!
+        .getAttribute('aria-selected'),
+    ).toBe('true');
   });
 
   it('syncs tab switches back to the URL search params', async () => {

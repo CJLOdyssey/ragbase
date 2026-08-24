@@ -48,6 +48,11 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.registry.reindex_sweep",
         "schedule": 300.0,
     },
+    # Hourly error-budget health-score snapshots (score trend source).
+    "health-score-snapshot": {
+        "task": "tasks.registry.health_snapshot",
+        "schedule": 3600.0,
+    },
 }
 
 # ---------------------------------------------------------------------------

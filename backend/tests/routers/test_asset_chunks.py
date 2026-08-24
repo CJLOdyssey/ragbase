@@ -57,4 +57,4 @@ class TestAssetChunks:
         assert data[0]["text"] == "支持三种部署模式"
         assert data[0]["tags"] == ["spec"]
         assert data[1]["text"] == "私有化部署需 4 核 8G"
-        assert mock_list.await_args_list[0].args == ("asset-1", "anonymous")
+        assert mock_list.await_args_list[0].args == ("asset-1", "admin-login")

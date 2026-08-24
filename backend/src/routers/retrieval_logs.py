@@ -1,6 +1,7 @@
 """Retrieval logs browse API — paginated retrieval activity logs."""
 
 import json
+from datetime import datetime
 from typing import Any
 
 from auth import get_user_id
@@ -8,7 +9,7 @@ from core.infra.logging_config import get_logger
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
-from repository.retrieval_logs import list_retrieval_logs
+from repository.retrieval_logs import get_retrieval_stats, list_retrieval_logs
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["retrieval_logs"])
@@ -57,8 +58,14 @@ async def get_retrieval_logs(
     max_latency_ms: int | None = Query(None, ge=0),
     empty_only: bool = Query(False),
     since_hours: int | None = Query(None, ge=0, le=24 * 30),
+    since: datetime | None = Query(None),
+    until: datetime | None = Query(None),
 ) -> Any:
-    """List retrieval logs for the current user with pagination and filters."""
+    """List retrieval logs for the current user with pagination and filters.
+
+    Absolute ``since``/``until`` (ISO 8601) wins over the ``since_hours``
+    preset — powers the header RangePicker custom range.
+    """
     user_id = get_user_id(request)
 
     items, total = await list_retrieval_logs(
@@ -69,6 +76,8 @@ async def get_retrieval_logs(
         max_latency_ms=max_latency_ms,
         empty_only=empty_only,
         since_hours=since_hours,
+        since=since,
+        until=until,
     )
 
     log_items = [
@@ -98,4 +107,80 @@ async def get_retrieval_logs(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+class LatencyBucket(BaseModel):
+    model_config = {"alias_generator": to_camel, "populate_by_name": True}
+    range: str
+    count: int
+    percentage: float
+
+
+class HitRateStats(BaseModel):
+    model_config = {"alias_generator": to_camel, "populate_by_name": True}
+    total: int
+    empty_recall: int
+    hit_recall: int
+    empty_recall_rate: float
+
+
+class VolumeTrendPoint(BaseModel):
+    model_config = {"alias_generator": to_camel, "populate_by_name": True}
+    ts: str
+    count: int
+    avg_latency: float
+
+
+class DailyActivity(BaseModel):
+    model_config = {"alias_generator": to_camel, "populate_by_name": True}
+    day: int
+    hour: int
+    count: int
+
+
+class RetrievalStatsResponse(BaseModel):
+    model_config = {"alias_generator": to_camel, "populate_by_name": True}
+    latency_distribution: list[LatencyBucket]
+    hit_rate: HitRateStats
+    volume_trend: list[VolumeTrendPoint]
+    daily_activity: list[DailyActivity]
+
+
+@router.get("/api/retrieval-logs/stats", response_model=RetrievalStatsResponse)
+async def get_retrieval_logs_stats(
+    request: Request,
+    max_latency_ms: int | None = Query(None, ge=0),
+    empty_only: bool = Query(False),
+    since_hours: int | None = Query(None, ge=0, le=24 * 30),
+    since: datetime | None = Query(None),
+    until: datetime | None = Query(None),
+) -> Any:
+    """Get aggregated retrieval statistics for chart visualization.
+
+    Scoping: ``empty_only``/``max_latency_ms`` apply only to the subset-scope
+    aggregates (volume trend, daily activity); composition metrics (latency
+    distribution, hit rate) always report the full time-window baseline so a
+    filter on their own dimension cannot collapse them into tautologies.
+    """
+    user_id = get_user_id(request)
+
+    stats = await get_retrieval_stats(
+        user_id=user_id,
+        since_hours=since_hours,
+        empty_only=empty_only,
+        max_latency_ms=max_latency_ms,
+        since=since,
+        until=until,
+    )
+
+    logger.info("Retrieval stats fetched | user=%s", user_id)
+
+    return RetrievalStatsResponse(
+        latency_distribution=[
+            LatencyBucket(**b) for b in stats.latency_distribution
+        ],
+        hit_rate=HitRateStats(**stats.hit_rate),
+        volume_trend=[VolumeTrendPoint(**p) for p in stats.volume_trend],
+        daily_activity=[DailyActivity(**d) for d in stats.daily_activity],
     )

@@ -82,6 +82,10 @@ vi.mock('@/components/input/ModelSelector', () => ({
     models?.length ? <div data-testid="model-selector" /> : null,
 }));
 
+vi.mock('@/components/input/PromptSelector', () => ({
+  default: () => <div data-testid="prompt-selector" />,
+}));
+
 vi.mock('@/components/input/FileAttach', () => ({
   default: ({
     onReject,

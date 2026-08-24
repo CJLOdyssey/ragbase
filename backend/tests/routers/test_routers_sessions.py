@@ -1,7 +1,6 @@
 """Sessions router tests — merged from test_coverage_boost and test_coverage_gaps."""
 
 import asyncio
-import os
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,98 +8,6 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-import pytest
-from starlette.testclient import TestClient
-
-os.environ["AUTH_MODE"] = "legacy"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-os.environ["REDIS_URL"] = "redis://localhost:6379/0"
-os.environ["KEY_VAULT_SECRET"] = "0123456789abcdef0123456789abcdef"
-os.environ["AUTH_ENABLED"] = "0"
-os.environ["RATE_LIMIT"] = "9999"
-os.environ["CHECKPOINTER_BACKEND"] = "memory"
-
-import core.infra.database as db_mod
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-if db_mod._async_engine is None:
-    _sqlite_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    db_mod._async_engine = _sqlite_engine
-if db_mod._async_session_factory is None:
-    db_mod._async_session_factory = async_sessionmaker(
-        db_mod._async_engine if db_mod._async_engine is not None else create_async_engine("sqlite+aiosqlite:///:memory:"),
-        expire_on_commit=False,
-    )
-db_mod.DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-from core.app import app
-from core.base import Base
-
-
-@pytest.fixture
-def client():
-    import core.app_lifespan as lifespan_mod
-
-    async def _safe_init_db():
-        engine = db_mod.get_async_engine()
-        async with engine.begin() as conn:
-            # Self-contained reset: don't rely on the routers _reset_db
-            # autouse fixture (not reliably ordered under xdist worksteal).
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-        from core.seed import seed_default_roles_and_admin
-        await seed_default_roles_and_admin()
-        import bcrypt
-        from core.infra.database import UserDB, get_session_factory
-        from sqlalchemy import select
-        factory = get_session_factory()
-        async with factory() as session:
-            existing = await session.execute(
-                select(UserDB).where(UserDB.email == "admin@test.com")
-            )
-            if not existing.scalar_one_or_none():
-                user = UserDB(
-                    id="admin-login",
-                    username="admin-login",
-                    email="admin@test.com",
-                    password_hash=bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode(),
-                    is_active=True,
-                    is_verified=True,
-                )
-                session.add(user)
-                await session.commit()
-
-    lifespan_mod.init_db = _safe_init_db
-
-    store: dict[str, str] = {}
-
-    async def _redis_get(key: str) -> str | None:
-        return store.get(key)
-
-    async def _redis_set(key: str, value: str, *args: object, **kwargs: object) -> bool:
-        store[key] = value
-        return True
-
-    async def _redis_delete(key: str) -> bool:
-        store.pop(key, None)
-        return True
-
-    mock_redis = AsyncMock()
-    mock_redis.incr.return_value = 1
-    mock_redis.expire.return_value = True
-    mock_redis.ping.return_value = True
-    mock_redis.publish.return_value = 1
-    mock_redis.get.side_effect = _redis_get
-    mock_redis.set.side_effect = _redis_set
-    mock_redis.delete.side_effect = _redis_delete
-
-    with patch("broker.get_redis", return_value=mock_redis), \
-         patch("core.app_lifespan.get_redis", return_value=mock_redis), \
-         patch("routers.auth.login.get_redis", return_value=mock_redis), \
-         patch("routers.auth.register.get_redis", return_value=mock_redis), \
-         patch("routers.auth.password.get_redis", return_value=mock_redis):
-        with TestClient(app) as c:
-            yield c
 
 
 class TestSessions:
@@ -109,23 +16,27 @@ class TestSessions:
     # ── List / Create ────────────────────────────────────────────────────
 
     def test_list_sessions(self, client):
-        resp = client.get("/api/sessions", headers={"X-User-ID": "admin"})
+        resp = client.get("/api/sessions")
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
     def test_list_sessions_exception(self, client):
         with patch("routers.sessions.get_sessions", new_callable=AsyncMock, side_effect=RuntimeError("db error")):
-            resp = client.get("/api/sessions", headers={"X-User-ID": "admin"})
+            resp = client.get("/api/sessions")
             assert resp.status_code == 500
 
     def test_list_sessions_login_wall_401_anonymous(self, client):
-        """登录墙（AUTH_REQUIRE_LOGIN=1）下 anonymous 列表 → 401 而非 200 []。"""
-        with patch("routers.sessions.AUTH_REQUIRE_LOGIN", True):
-            resp = client.get("/api/sessions")  # 无 X-User-ID → anonymous
-            assert resp.status_code == 401
+        """登录墙恒开：完全无令牌（清空 cookie）列表 → 401 而非 200 []。"""
+        saved = dict(client.cookies)
+        client.cookies.clear()
+        try:
+            resp = client.get("/api/sessions")
+        finally:
+            client.cookies.update(saved)
+        assert resp.status_code == 401
 
     def test_create_session(self, client):
-        resp = client.post("/api/sessions", json={"title": "new-sess"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "new-sess"})
         assert resp.status_code == 201
         data = resp.json()
         assert data["title"] == "new-sess"
@@ -133,15 +44,15 @@ class TestSessions:
 
     def test_create_session_exception(self, client):
         with patch("routers.sessions.create_session", new_callable=AsyncMock, side_effect=RuntimeError("err")):
-            resp = client.post("/api/sessions", json={"title": "x"}, headers={"X-User-ID": "admin"})
+            resp = client.post("/api/sessions", json={"title": "x"})
             assert resp.status_code == 500
 
     # ── Get detail ───────────────────────────────────────────────────────
 
     def test_get_session_detail(self, client):
-        resp = client.post("/api/sessions", json={"title": "detail-test"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "detail-test"})
         session_id = resp.json()["id"]
-        resp = client.get(f"/api/sessions/{session_id}", headers={"X-User-ID": "admin"})
+        resp = client.get(f"/api/sessions/{session_id}")
         assert resp.status_code == 200
         data = resp.json()
         assert "runs" in data
@@ -153,12 +64,12 @@ class TestSessions:
         back to run.requirement/code without thinking."""
         from repository import create_run, save_message
 
-        resp = client.post("/api/sessions", json={"title": "detail-thinking"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "detail-thinking"})
         session_id = resp.json()["id"]
         run_id = asyncio.run(create_run("打开抖音", session_id=session_id))
         asyncio.run(save_message(run_id, "Agent", "Agent", "已打开抖音", 1, thinking="先想一下再回答"))
 
-        resp = client.get(f"/api/sessions/{session_id}", headers={"X-User-ID": "admin"})
+        resp = client.get(f"/api/sessions/{session_id}")
         assert resp.status_code == 200
         runs = resp.json()["runs"]
         assert len(runs) == 1
@@ -172,179 +83,173 @@ class TestSessions:
         assert messages[1]["thinking"] == "先想一下再回答"
 
     def test_get_session_not_found(self, client):
-        resp = client.get("/api/sessions/nonexistent", headers={"X-User-ID": "admin"})
+        resp = client.get("/api/sessions/nonexistent")
         assert resp.status_code == 404
 
-    def test_get_session_forbidden(self, client):
-        resp = client.post("/api/sessions", json={"title": "owner-session"}, headers={"X-User-ID": "admin"})
+    def test_get_session_forbidden(self, client, other_user_headers):
+        resp = client.post("/api/sessions", json={"title": "owner-session"})
         session_id = resp.json()["id"]
-        resp = client.get(f"/api/sessions/{session_id}", headers={"X-User-ID": "other-user"})
+        resp = client.get(f"/api/sessions/{session_id}", headers=other_user_headers)
         assert resp.status_code == 403
 
     def test_get_session_exception(self, client):
         with patch("routers.sessions.get_session", new_callable=AsyncMock, side_effect=RuntimeError("error")):
-            resp = client.get("/api/sessions/some-id", headers={"X-User-ID": "admin"})
+            resp = client.get("/api/sessions/some-id")
             assert resp.status_code == 500
 
     # ── Rename ───────────────────────────────────────────────────────────
 
     def test_rename_session(self, client):
-        resp = client.post("/api/sessions", json={"title": "old-name"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "old-name"})
         session_id = resp.json()["id"]
-        resp = client.put(f"/api/sessions/{session_id}", json={"title": "new-name"}, headers={"X-User-ID": "admin"})
+        resp = client.put(f"/api/sessions/{session_id}", json={"title": "new-name"})
         assert resp.status_code == 200
         assert resp.json()["title"] == "new-name"
         assert resp.json()["status"] == "updated"
 
     def test_rename_session_not_found(self, client):
-        resp = client.put("/api/sessions/nonexistent", json={"title": "x"}, headers={"X-User-ID": "admin"})
+        resp = client.put("/api/sessions/nonexistent", json={"title": "x"})
         assert resp.status_code == 404
 
-    def test_rename_session_forbidden(self, client):
-        resp = client.post("/api/sessions", json={"title": "own"}, headers={"X-User-ID": "admin"})
+    def test_rename_session_forbidden(self, client, other_user_headers):
+        resp = client.post("/api/sessions", json={"title": "own"})
         session_id = resp.json()["id"]
         resp = client.put(f"/api/sessions/{session_id}", json={"title": "new"},
-                          headers={"X-User-ID": "other"})
+                          headers=other_user_headers)
         assert resp.status_code == 403
 
     def test_rename_session_update_returns_none(self, client):
-        resp = client.post("/api/sessions", json={"title": "x"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "x"})
         session_id = resp.json()["id"]
         with patch("routers.sessions.update_session_title", new_callable=AsyncMock, return_value=None):
-            resp = client.put(f"/api/sessions/{session_id}", json={"title": "new"},
-                              headers={"X-User-ID": "admin"})
+            resp = client.put(f"/api/sessions/{session_id}", json={"title": "new"})
             assert resp.status_code == 404
 
     def test_rename_session_exception(self, client):
-        resp = client.post("/api/sessions", json={"title": "x"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "x"})
         session_id = resp.json()["id"]
         with patch("routers.sessions.update_session_title", new_callable=AsyncMock, side_effect=RuntimeError("err")):
-            resp = client.put(f"/api/sessions/{session_id}", json={"title": "new"},
-                              headers={"X-User-ID": "admin"})
+            resp = client.put(f"/api/sessions/{session_id}", json={"title": "new"})
             assert resp.status_code == 500
 
     # ── Pin ──────────────────────────────────────────────────────────────
 
     def test_pin_session(self, client):
-        resp = client.post("/api/sessions", json={"title": "p"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "p"})
         session_id = resp.json()["id"]
-        resp = client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": True},
-                          headers={"X-User-ID": "admin"})
+        resp = client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": True})
         assert resp.status_code == 200
         assert resp.json()["is_pinned"] is True
 
     def test_pin_session_unpin(self, client):
-        resp = client.post("/api/sessions", json={"title": "p"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "p"})
         session_id = resp.json()["id"]
-        client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": True},
-                   headers={"X-User-ID": "admin"})
-        resp = client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": False},
-                          headers={"X-User-ID": "admin"})
+        client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": True})
+        resp = client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": False})
         assert resp.status_code == 200
         assert resp.json()["is_pinned"] is False
 
     def test_pin_session_not_found(self, client):
-        resp = client.put("/api/sessions/nonexistent/pin", json={"is_pinned": True},
-                          headers={"X-User-ID": "admin"})
+        resp = client.put("/api/sessions/nonexistent/pin", json={"is_pinned": True})
         assert resp.status_code == 404
 
-    def test_pin_session_forbidden(self, client):
-        resp = client.post("/api/sessions", json={"title": "own"}, headers={"X-User-ID": "admin"})
+    def test_pin_session_forbidden(self, client, other_user_headers):
+        resp = client.post("/api/sessions", json={"title": "own"})
         session_id = resp.json()["id"]
         resp = client.put(f"/api/sessions/{session_id}/pin", json={"is_pinned": True},
-                          headers={"X-User-ID": "other"})
+                          headers=other_user_headers)
         assert resp.status_code == 403
 
     # ── Delete ───────────────────────────────────────────────────────────
 
     def test_delete_session(self, client):
-        resp = client.post("/api/sessions", json={"title": "to-delete"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "to-delete"})
         session_id = resp.json()["id"]
-        resp = client.delete(f"/api/sessions/{session_id}", headers={"X-User-ID": "admin"})
+        resp = client.delete(f"/api/sessions/{session_id}")
         assert resp.status_code == 200
         assert resp.json()["status"] == "deleted"
 
     def test_delete_session_not_found(self, client):
-        resp = client.delete("/api/sessions/nonexistent", headers={"X-User-ID": "admin"})
+        resp = client.delete("/api/sessions/nonexistent")
         assert resp.status_code == 404
 
-    def test_delete_session_forbidden(self, client):
-        resp = client.post("/api/sessions", json={"title": "own-del"}, headers={"X-User-ID": "admin"})
+    def test_delete_session_forbidden(self, client, other_user_headers):
+        resp = client.post("/api/sessions", json={"title": "own-del"})
         session_id = resp.json()["id"]
-        resp = client.delete(f"/api/sessions/{session_id}", headers={"X-User-ID": "other"})
+        resp = client.delete(f"/api/sessions/{session_id}", headers=other_user_headers)
         assert resp.status_code == 403
 
     def test_delete_session_returns_false(self, client):
-        resp = client.post("/api/sessions", json={"title": "x"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "x"})
         session_id = resp.json()["id"]
         with patch("routers.sessions.delete_session", new_callable=AsyncMock, return_value=False):
-            resp = client.delete(f"/api/sessions/{session_id}", headers={"X-User-ID": "admin"})
+            resp = client.delete(f"/api/sessions/{session_id}")
             assert resp.status_code == 404
 
     def test_delete_session_exception(self, client):
-        resp = client.post("/api/sessions", json={"title": "x"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "x"})
         session_id = resp.json()["id"]
         with patch("routers.sessions.delete_session", new_callable=AsyncMock, side_effect=RuntimeError("err")):
-            resp = client.delete(f"/api/sessions/{session_id}", headers={"X-User-ID": "admin"})
+            resp = client.delete(f"/api/sessions/{session_id}")
             assert resp.status_code == 500
 
     # ── Memories ─────────────────────────────────────────────────────────
 
     def test_list_memories(self, client):
-        resp = client.post("/api/sessions", json={"title": "mem-test"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "mem-test"})
         session_id = resp.json()["id"]
-        resp = client.get(f"/api/sessions/{session_id}/memories", headers={"X-User-ID": "admin"})
+        resp = client.get(f"/api/sessions/{session_id}/memories")
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
     def test_list_memories_session_not_found(self, client):
-        resp = client.get("/api/sessions/nonexistent/memories", headers={"X-User-ID": "admin"})
+        resp = client.get("/api/sessions/nonexistent/memories")
         assert resp.status_code == 404
 
-    def test_list_memories_forbidden(self, client):
-        resp = client.post("/api/sessions", json={"title": "mem-own"}, headers={"X-User-ID": "admin"})
+    def test_list_memories_forbidden(self, client, other_user_headers):
+        resp = client.post("/api/sessions", json={"title": "mem-own"})
         session_id = resp.json()["id"]
-        resp = client.get(f"/api/sessions/{session_id}/memories", headers={"X-User-ID": "other"})
+        resp = client.get(f"/api/sessions/{session_id}/memories", headers=other_user_headers)
         assert resp.status_code == 403
 
     def test_list_memories_exception(self, client):
         with patch("routers.sessions.get_session", new_callable=AsyncMock, side_effect=RuntimeError("err")):
-            resp = client.get("/api/sessions/id/memories", headers={"X-User-ID": "admin"})
+            resp = client.get("/api/sessions/id/memories")
             assert resp.status_code == 500
 
     def test_delete_memory_not_found(self, client):
-        resp = client.delete("/api/memories/nonexistent", headers={"X-User-ID": "admin"})
+        resp = client.delete("/api/memories/nonexistent")
         assert resp.status_code == 404
 
     def test_delete_memory_success(self, client):
         with patch("routers.sessions.delete_memory_entry", new_callable=AsyncMock) as mock_del:
             mock_del.return_value = True
-            resp = client.delete("/api/memories/mem-1", headers={"X-User-ID": "admin"})
+            resp = client.delete("/api/memories/mem-1")
             assert resp.status_code == 200
 
     def test_delete_memory_exception(self, client):
         with patch("routers.sessions.delete_memory_entry", new_callable=AsyncMock, side_effect=RuntimeError("err")):
-            resp = client.delete("/api/memories/mem-1", headers={"X-User-ID": "admin"})
+            resp = client.delete("/api/memories/mem-1")
             assert resp.status_code == 500
 
     # ── Export memories ──────────────────────────────────────────────────
 
     def test_export_memories_json(self, client):
-        resp = client.post("/api/sessions", json={"title": "export-json"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "export-json"})
         session_id = resp.json()["id"]
-        resp = client.get(f"/api/sessions/{session_id}/memories/export?format=json", headers={"X-User-ID": "admin"})
+        resp = client.get(f"/api/sessions/{session_id}/memories/export?format=json")
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "application/json"
 
     def test_export_memories_markdown(self, client):
-        resp = client.post("/api/sessions", json={"title": "export-md"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "export-md"})
         session_id = resp.json()["id"]
-        resp = client.get(f"/api/sessions/{session_id}/memories/export?format=md", headers={"X-User-ID": "admin"})
+        resp = client.get(f"/api/sessions/{session_id}/memories/export?format=md")
         assert resp.status_code == 200
         assert "markdown" in resp.headers["content-type"]
 
     def test_export_memories_markdown_with_memory(self, client):
-        resp = client.post("/api/sessions", json={"title": "md-export"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "md-export"})
         session_id = resp.json()["id"]
         with patch("routers.sessions.get_session_memories", new_callable=AsyncMock) as mock_mems:
             m = MagicMock()
@@ -355,32 +260,30 @@ class TestSessions:
             m.details = "Test details"
             m.created_at = datetime.now(UTC)
             mock_mems.return_value = [m]
-            resp = client.get(f"/api/sessions/{session_id}/memories/export?format=md",
-                              headers={"X-User-ID": "admin"})
+            resp = client.get(f"/api/sessions/{session_id}/memories/export?format=md")
             assert resp.status_code == 200
             assert "markdown" in resp.headers["content-type"]
 
     def test_export_memories_invalid_format(self, client):
-        resp = client.post("/api/sessions", json={"title": "export-bad"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "export-bad"})
         session_id = resp.json()["id"]
-        resp = client.get(f"/api/sessions/{session_id}/memories/export?format=csv", headers={"X-User-ID": "admin"})
+        resp = client.get(f"/api/sessions/{session_id}/memories/export?format=csv")
         assert resp.status_code == 400
 
     def test_export_memories_session_not_found(self, client):
-        resp = client.get("/api/sessions/nonexistent/memories/export?format=json", headers={"X-User-ID": "admin"})
+        resp = client.get("/api/sessions/nonexistent/memories/export?format=json")
         assert resp.status_code == 404
 
-    def test_export_memories_forbidden(self, client):
-        resp = client.post("/api/sessions", json={"title": "exp-own"}, headers={"X-User-ID": "admin"})
+    def test_export_memories_forbidden(self, client, other_user_headers):
+        resp = client.post("/api/sessions", json={"title": "exp-own"})
         session_id = resp.json()["id"]
         resp = client.get(f"/api/sessions/{session_id}/memories/export?format=json",
-                          headers={"X-User-ID": "other"})
+                          headers=other_user_headers)
         assert resp.status_code == 403
 
     def test_export_memories_exception(self, client):
         with patch("routers.sessions.get_session", new_callable=AsyncMock, side_effect=RuntimeError("err")):
-            resp = client.get("/api/sessions/id/memories/export?format=json",
-                              headers={"X-User-ID": "admin"})
+            resp = client.get("/api/sessions/id/memories/export?format=json")
             assert resp.status_code == 500
 
     # ── Model tests ──────────────────────────────────────────────────────

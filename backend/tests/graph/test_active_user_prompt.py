@@ -7,7 +7,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from graph.helpers import load_active_user_prompt
 
 

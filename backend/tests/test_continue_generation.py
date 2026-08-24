@@ -181,6 +181,18 @@ class TestContinueRun:
 class TestCompleteRunEndpoint:
     """Test the /api/runs/complete endpoint."""
 
+    @pytest.fixture(autouse=True)
+    async def _authenticated_client(self, test_client):
+        """登录墙恒开：为 session 级 test_client 注入有效身份令牌。"""
+        from unittest.mock import patch as _patch
+
+        with _patch("auth.auth_middleware.decode_jwt",
+                    return_value={"sub": "tester"}), \
+             _patch("repository.auth.get_user_by_id", return_value=object()):
+            test_client.headers["Authorization"] = "Bearer t"
+            yield test_client
+            test_client.headers.pop("Authorization", None)
+
     @pytest.mark.asyncio
     async def test_complete_run_endpoint_success(self, test_client):
         """POST /api/runs/complete returns run response."""

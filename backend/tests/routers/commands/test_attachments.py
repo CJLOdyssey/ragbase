@@ -17,7 +17,7 @@ class TestAttachments:
         assert resp.status_code == 404
 
     async def test_upload_too_large(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-test"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-test"})
         assert resp.status_code == 201
         session_id = resp.json()["id"]
 
@@ -33,7 +33,7 @@ class TestAttachments:
             assert resp.status_code == 413
 
     async def test_upload_text_file(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-text"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-text"})
         session_id = resp.json()["id"]
 
         resp = client.post(
@@ -48,7 +48,7 @@ class TestAttachments:
         assert data["size_bytes"] == 11
 
     async def test_upload_json_file(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-json"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-json"})
         session_id = resp.json()["id"]
 
         resp = client.post(
@@ -60,7 +60,7 @@ class TestAttachments:
         assert resp.json()["has_extracted_text"] is True
 
     async def test_upload_pdf_file(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-pdf"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-pdf"})
         session_id = resp.json()["id"]
 
         resp = client.post(
@@ -72,7 +72,7 @@ class TestAttachments:
         assert resp.json()["has_extracted_text"] is True
 
     async def test_upload_image_file(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-img"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-img"})
         session_id = resp.json()["id"]
 
         resp = client.post(
@@ -84,7 +84,7 @@ class TestAttachments:
         assert resp.json()["has_extracted_text"] is True
 
     async def test_upload_binary_content_type(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-bin"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-bin"})
         session_id = resp.json()["id"]
 
         resp = client.post(
@@ -95,7 +95,7 @@ class TestAttachments:
         assert resp.status_code == 415
 
     async def test_upload_no_filename(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-nofn"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-nofn"})
         session_id = resp.json()["id"]
 
         resp = client.post(
@@ -106,7 +106,7 @@ class TestAttachments:
         assert resp.status_code == 201
 
     async def test_upload_save_failure(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-save-fail"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-save-fail"})
         session_id = resp.json()["id"]
         with patch("pathlib.Path.write_bytes", side_effect=Exception("disk full")):
             resp = client.post(
@@ -121,7 +121,7 @@ class TestAttachments:
         assert resp.status_code == 404
 
     async def test_get_attachment_file_missing(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-file-miss"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-file-miss"})
         session_id = resp.json()["id"]
         resp = client.post(
             "/api/attachments",
@@ -134,7 +134,7 @@ class TestAttachments:
             assert resp.status_code == 410
 
     async def test_list_session_attachments(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-list"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-list"})
         session_id = resp.json()["id"]
 
         client.post(
@@ -158,7 +158,7 @@ class TestAttachments:
         assert resp.status_code == 404
 
     async def test_delete_attachment_success(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-del"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-del"})
         session_id = resp.json()["id"]
 
         resp = client.post(
@@ -173,7 +173,7 @@ class TestAttachments:
         assert resp.json()["success"] is True
 
     async def test_delete_attachment_disk_failure(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-disk-fail"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-disk-fail"})
         session_id = resp.json()["id"]
         resp = client.post(
             "/api/attachments",
@@ -219,7 +219,7 @@ class TestAttachments:
         assert resp.status_code == 400
 
     async def test_upload_magic_mismatch(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-magic"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-magic"})
         session_id = resp.json()["id"]
         resp = client.post(
             "/api/attachments",
@@ -229,7 +229,7 @@ class TestAttachments:
         assert resp.status_code == 415
 
     async def test_upload_text_with_nul_byte(self, client):
-        resp = client.post("/api/sessions", json={"title": "att-nul"}, headers={"X-User-ID": "admin"})
+        resp = client.post("/api/sessions", json={"title": "att-nul"})
         session_id = resp.json()["id"]
         resp = client.post(
             "/api/attachments",
@@ -238,8 +238,8 @@ class TestAttachments:
         )
         assert resp.status_code == 415
 
-    async def test_get_attachment_forbidden_when_auth_enabled(self, client, monkeypatch):
-        resp = client.post("/api/sessions", json={"title": "att-auth"}, headers={"X-User-ID": "admin"})
+    async def test_get_attachment_forbidden_when_auth_enabled(self, client, other_user_headers):
+        resp = client.post("/api/sessions", json={"title": "att-auth"})
         session_id = resp.json()["id"]
         resp = client.post(
             "/api/attachments",
@@ -247,9 +247,8 @@ class TestAttachments:
             data={"session_id": session_id},
         )
         attachment_id = resp.json()["id"]
-        monkeypatch.setenv("AUTH_ENABLED", "1")
-        # Unauthenticated caller (no cookie/state) resolves to "anonymous" → 403
-        resp = client.get(f"/api/attachments/{attachment_id}")
+        # 另一真实用户（Bearer 覆盖身份）≠ 上传者 → 403
+        resp = client.get(f"/api/attachments/{attachment_id}", headers=other_user_headers)
         assert resp.status_code == 403
 
     async def test_upload_without_session(self, client):
@@ -276,10 +275,10 @@ class TestAttachments:
 
         att = await get_attachment_by_id(resp.json()["id"])
         assert att is not None
-        assert att.user_id == "admin"
-        assert "_u_admin" in att.storage_path
+        assert att.user_id == "admin-login"
+        assert "_u_admin-login" in att.storage_path
 
-    async def test_get_pending_attachment_forbidden_for_other_user(self, client, monkeypatch):
+    async def test_get_pending_attachment_forbidden_for_other_user(self, client, other_user_headers):
         resp = client.post(
             "/api/attachments",
             files={"file": ("pre.txt", b"pre-session upload", "text/plain")},
@@ -287,9 +286,8 @@ class TestAttachments:
             headers={"X-User-ID": "admin"},
         )
         attachment_id = resp.json()["id"]
-        monkeypatch.setenv("AUTH_ENABLED", "1")
-        resp = client.get(f"/api/attachments/{attachment_id}")
-        # Unauthenticated caller resolves to "anonymous" ≠ uploader "admin"
+        # 另一真实用户（Bearer 覆盖身份）≠ 上传者 → 403
+        resp = client.get(f"/api/attachments/{attachment_id}", headers=other_user_headers)
         assert resp.status_code == 403
 
     def test_upload_dir_creation(self):

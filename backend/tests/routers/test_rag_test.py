@@ -74,12 +74,12 @@ class TestRagTestRetrieval:
                 json={"query": "部署方式", "knowledgeBaseId": "kb-1"},
             )
         assert response.status_code == 200
-        mock_kb.assert_awaited_once_with("kb-1", "anonymous")
+        mock_kb.assert_awaited_once_with("kb-1", "admin-login")
         mock_rs.assert_awaited_once()
         kwargs = mock_rs.await_args_list[0].kwargs
         assert kwargs is not None
         assert kwargs["asset_ids"] == ["asset-1", "asset-2"]
-        assert kwargs["user_id"] == "anonymous"
+        assert kwargs["user_id"] == "admin-login"
 
     async def test_rewrite_applies(self, client):
         """rewrite=true rewrites before retrieval."""

@@ -56,7 +56,7 @@ export default function RetrievalTable({
       {items.map((item) => {
         const expanded = expandedId === item.id;
         const kb = knowledgeBase(item);
-        const hitColor = item.hit_count === 0 ? LATENCY_RED : LATENCY_GREEN;
+        const hitColor = item.hitCount === 0 ? LATENCY_RED : LATENCY_GREEN;
         return (
           <div
             key={item.id}
@@ -67,7 +67,7 @@ export default function RetrievalTable({
               className={`${GRID} px-[18px] h-[50px] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)] ${expanded ? 'bg-[var(--color-surface-hover)]' : ''}`}
             >
               <div className="flex items-center gap-2 min-w-0">
-                {item.hit_count === 0 && (
+                {item.hitCount === 0 && (
                   <span
                     className="w-1.5 h-1.5 rounded-full shrink-0"
                     style={{ background: LATENCY_AMBER }}
@@ -88,13 +88,13 @@ export default function RetrievalTable({
                 )}
               </div>
               <Tag style={pillStyle(hitColor)}>
-                {t('retrievalLogs.hitCountTag', { count: item.hit_count })}
+                {t('retrievalLogs.hitCountTag', { count: item.hitCount })}
               </Tag>
-              <Tag style={pillStyle(latencyColor(item.latency_ms))}>
-                {item.latency_ms}ms
+              <Tag style={pillStyle(latencyColor(item.latencyMs))}>
+                {item.latencyMs}ms
               </Tag>
               <span className="text-xs text-[var(--color-text-muted)] font-mono">
-                {formatTime(item.created_at)}
+                {formatTime(item.createdAt)}
               </span>
               <span
                 className="flex justify-center text-[var(--color-text-muted)]"
@@ -121,10 +121,10 @@ function ExpandedDetail({ item, kb }: { item: RetrievalLogItem; kb: string }) {
     [t('retrievalLogs.knowledgeBase'), kb],
     [
       t('retrievalLogs.hitBlocks'),
-      t('retrievalLogs.hitBlocksValue', { count: item.hit_count }),
+      t('retrievalLogs.hitBlocksValue', { count: item.hitCount }),
     ],
-    [t('retrievalLogs.respLatency'), `${item.latency_ms} ms`],
-    [t('retrievalLogs.time'), formatTime(item.created_at)],
+    [t('retrievalLogs.respLatency'), `${item.latencyMs} ms`],
+    [t('retrievalLogs.time'), formatTime(item.createdAt)],
   ];
   return (
     <div className="px-[18px] pb-4 pt-1 bg-[var(--color-surface)]">
@@ -143,7 +143,7 @@ function ExpandedDetail({ item, kb }: { item: RetrievalLogItem; kb: string }) {
           </div>
         ))}
       </div>
-      {item.hit_count > 0 && (
+      {item.hitCount > 0 && (
         <div>
           <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
             {t('retrievalLogs.chunkSection')}

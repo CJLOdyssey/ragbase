@@ -35,14 +35,21 @@
       "breach": "阈值突破",
       "empty_recall_high": "空召回率 {{current}} 超过阈值 {{threshold}}",
       "p95_latency_high": "延迟 P95 {{current}} 超过阈值 {{threshold}}",
-      "good_ratio_low": "好评率 {{current}} 低于阈值 {{threshold}}"
+      "good_ratio_low": "好评率 {{current}} 低于阈值 {{threshold}}",
+      "retrieval_burn_fast": "检索预算快速燃烧 {{current}}（阈值 {{threshold}}）——短窗确认持续",
+      "latency_burn_fast": "延迟预算快速燃烧 {{current}}（阈值 {{threshold}}）——短窗确认持续",
+      "satisfaction_burn_fast": "满意度预算快速燃烧 {{current}}（阈值 {{threshold}}）——短窗确认持续",
+      "retrieval_burn_slow": "检索预算慢速燃烧 {{current}}（阈值 {{threshold}}）",
+      "latency_burn_slow": "延迟预算慢速燃烧 {{current}}（阈值 {{threshold}}）",
+      "satisfaction_burn_slow": "满意度预算慢速燃烧 {{current}}（阈值 {{threshold}}）"
     },
     "health": {
       "title": "综合健康分",
       "factorRetrieval": "检索",
       "factorLatency": "延迟",
       "factorSatisfaction": "满意度",
-      "weightsHint": "权重 检索{{w1}} 延迟{{w2}} 满意度{{w3}} · 阈值处=70分"
+      "trendTitle": "近 7 天快照",
+      "budgetHint": "分数 = 错误预算剩余 · 权重 检索{{w1}} 延迟{{w2}} 满意度{{w3}}"
     },
     "funnel": {
       "title": "检索转化漏斗",
@@ -73,7 +80,6 @@
     "kpiAvgLatency": "P50 延迟",
     "coverage": "覆盖率",
     "sloAttain": "SLO 达成",
-    "sloBurn": "燃烧率",
     "kpiGoodRate": "好评率",
     "chartThreshold": "阈值",
     "chartVolumeTitle": "检索次数趋势",
@@ -106,10 +112,23 @@
     },
     "alertsSectionTitle": "告警规则",
     "deltaBaseline": "较上一同等周期",
+    "deltaNoBaseline": "上期无数据，无法对比",
     "rangeStart": "开始时间",
     "rangeEnd": "结束时间",
     "noData": "暂无数据",
     "loading": "加载中…",
-    "loadFailed": "监控数据加载失败"
+    "loadFailed": "监控数据加载失败",
+    "chartCompositionTitle": "反馈构成趋势",
+    "chartCompositionDesc": "产生检索与评价后将在此显示构成变化",
+    "chartHeatmapTitle": "延迟分布热力图",
+    "chartHeatmapDesc": "颜色越深 = 该时段该延迟区间的检索越多",
+    "chartScatterTitle": "延迟与命中相关性",
+    "chartScatterDesc": "每个点是一次检索；红线为 8s SLO，红点为超限请求",
+    "scatter": {
+      "normal": "≤SLO",
+      "slow": "超 SLO",
+      "hits": "命中数",
+      "latency": "延迟 (ms)"
+    }
   }
 }

@@ -209,6 +209,28 @@ class RetrievalLogDB(Base):
     )
 
 
+class HealthScoreSnapshotDB(Base):
+    """Hourly composite health-score snapshot (error-budget model).
+
+    Written by the Celery beat task ``tasks.registry.health_snapshot`` so
+    the monitoring page can render a score trend independent of dashboard
+    polling. ``factors`` is a JSON array of {key, score, weight}.
+    """
+
+    __tablename__ = "health_score_snapshots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    factors: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="JSON array of {key, score, weight}"
+    )
+    window_hours: Mapped[int] = mapped_column(Integer, default=24)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
+    )
+
+
 class ShadowRetrievalLogDB(Base):
     """O4: append-only shadow retrieval log (variant config comparison).
 

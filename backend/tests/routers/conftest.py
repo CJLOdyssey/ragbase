@@ -63,9 +63,15 @@ def client():
         from core.seed import seed_default_roles_and_admin
         await seed_default_roles_and_admin()
         import bcrypt
-        from core.infra.database import UserDB, get_session_factory
+        from core.infra.database import (
+            RoleDB,
+            UserDB,
+            UserRoleDB,
+            get_session_factory,
+        )
         from sqlalchemy import select
         factory = get_session_factory()
+
         async with factory() as session:
             existing = await session.execute(
                 select(UserDB).where(UserDB.email == "admin@test.com")
@@ -82,7 +88,30 @@ def client():
                 session.add(user)
                 await session.commit()
 
-    lifespan_mod.init_db = _init_db
+        # admin-login 授予 admin 角色：登录身份与 RBAC 依赖（require_role）对齐
+        async with factory() as session:
+            admin_role = (
+                await session.execute(
+                    select(RoleDB).where(RoleDB.name == "admin")
+                )
+            ).scalar_one_or_none()
+            admin_login = (
+                await session.execute(
+                    select(UserDB).where(UserDB.id == "admin-login")
+                )
+            ).scalar_one_or_none()
+            if admin_role is not None and admin_login is not None:
+                already = await session.execute(
+                    select(UserRoleDB).where(
+                        UserRoleDB.user_id == "admin-login",
+                        UserRoleDB.role_id == admin_role.id,
+                    )
+                )
+                if not already.scalar_one_or_none():
+                    session.add(
+                        UserRoleDB(user_id="admin-login", role_id=admin_role.id)
+                    )
+                    await session.commit()
 
     store: dict[str, str] = {}
     mock_redis = AsyncMock()
@@ -95,6 +124,8 @@ def client():
     mock_redis.delete.side_effect = lambda k: store.pop(k, None) or True
 
     with (
+        # patcher 自动还原：init_db 覆写不得泄漏给同 worker 后续测试
+        patch.object(lifespan_mod, "init_db", _init_db),
         patch("broker.get_redis", return_value=mock_redis),
         patch("core.app_lifespan.get_redis", return_value=mock_redis),
         patch("routers.auth.login.get_redis", return_value=mock_redis),
@@ -110,3 +141,62 @@ def client():
             )
             assert resp.status_code == 200, resp.text
             yield c
+
+
+SECOND_USER_ID = "second-login"
+
+
+async def _ensure_second_user() -> None:
+    """Create the cross-user test identity if absent."""
+    import bcrypt
+    from core.infra.database import UserDB, get_session_factory
+    from sqlalchemy import select
+
+    factory = get_session_factory()
+    async with factory() as session:
+        existing = await session.execute(
+            select(UserDB).where(UserDB.id == SECOND_USER_ID)
+        )
+        if not existing.scalar_one_or_none():
+            session.add(
+                UserDB(
+                    id=SECOND_USER_ID,
+                    username=SECOND_USER_ID,
+                    email="second@test.com",
+                    password_hash=bcrypt.hashpw(
+                        b"second123", bcrypt.gensalt()
+                    ).decode(),
+                    is_active=True,
+                    is_verified=True,
+                )
+            )
+            await session.commit()
+
+
+@pytest.fixture
+def other_user_headers(client):
+    """Authorization header authenticating as a second real user.
+
+    跨用户隔离用例用：同一 client（cookie 为主身份），对单请求以
+    Bearer <second user> 覆盖身份，中间件按 header 优先取 token。
+    """
+    import os
+
+    from auth.auth_jwt import create_token
+
+    client.portal.call(_ensure_second_user)
+    secret = os.environ["AUTH_SECRET"]
+    token = create_token(SECOND_USER_ID, secret)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def anonymous_headers(client):
+    """Bearer token 指向不存在的用户 → 中间件标记 invalid → 匿名语义。"""
+    import os
+
+    from auth.auth_jwt import create_token
+
+    secret = os.environ["AUTH_SECRET"]
+    token = create_token("ghost-user-not-in-db", secret)
+    return {"Authorization": f"Bearer {token}"}

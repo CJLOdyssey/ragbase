@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
+import EChart, { type EChartsOption } from '../shared/EChart';
 import { useTranslation } from 'react-i18next';
 import type { RetrievalLogItem } from '../../api/client/retrievalLogs';
+import { axisLabelBase, axisLineBase, axisUnitName } from './chartAxis';
 import { latencyColor, percentile } from './latency';
 
 interface LatencyBarProps {
@@ -8,19 +11,56 @@ interface LatencyBarProps {
 
 export default function LatencyBar({ items }: LatencyBarProps) {
   const { t } = useTranslation();
-  const latencies = items.map((i) => i.latency_ms);
+  const latencies = items.map((i) => i.latencyMs);
   const p50 = percentile(latencies, 0.5);
   const p90 = percentile(latencies, 0.9);
   const max = latencies.length ? Math.max(...latencies) : 0;
 
-  const barW = 28;
-  const gap = 8;
-  const height = 40;
-  const width = Math.max(
-    1,
-    latencies.length * barW + (latencies.length - 1) * gap,
-  );
-  const maxRef = Math.max(max, 1);
+  const option: EChartsOption = useMemo(() => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const labels = items.map((i) => {
+      const d = new Date(i.createdAt);
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    });
+    return {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: unknown) => {
+          const p = params as Array<{ dataIndex: number; value: number }>;
+          const item = items[p[0].dataIndex];
+          return `<div style="font-weight:600">${item.query.slice(0, 40)}</div><div style="margin-top:4px">${labels[p[0].dataIndex]}：<b>${item.latencyMs}ms</b></div>`;
+        },
+      },
+      grid: { left: 48, right: 16, top: 28, bottom: 24 },
+      xAxis: {
+        type: 'category',
+        data: labels,
+        axisLabel: { ...axisLabelBase, hideOverlap: true },
+        axisTick: { show: false },
+        axisLine: axisLineBase.axisLine,
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { type: 'dashed' } },
+        axisLabel: axisLabelBase,
+        ...axisUnitName('ms'),
+      },
+      series: [
+        {
+          type: 'bar',
+          data: items.map((i) => ({
+            value: i.latencyMs,
+            itemStyle: {
+              color: latencyColor(i.latencyMs),
+              borderRadius: [3, 3, 0, 0],
+            },
+          })),
+          barWidth: '60%',
+        },
+      ],
+    };
+  }, [items]);
 
   const stats = [
     { label: 'P50', value: `${p50}ms`, color: latencyColor(p50) },
@@ -55,29 +95,12 @@ export default function LatencyBar({ items }: LatencyBarProps) {
           {t('retrievalLogs.latencyNoData')}
         </div>
       ) : (
-        <svg
-          width="100%"
-          height={height}
-          viewBox={`0 0 ${width} ${height}`}
-          preserveAspectRatio="none"
-        >
-          {latencies.map((ms, i) => {
-            const x = i * (barW + gap);
-            const h = Math.max(4, (ms / maxRef) * (height - 4));
-            return (
-              <rect
-                key={i}
-                x={x}
-                y={height - h}
-                width={barW}
-                height={h}
-                rx={3}
-                fill={latencyColor(ms)}
-                fillOpacity={0.5}
-              />
-            );
-          })}
-        </svg>
+        <EChart
+          option={option}
+          height={140}
+          ariaLabel={t('retrievalLogs.latencyTrend')}
+          testId="latency-trend-chart"
+        />
       )}
     </div>
   );

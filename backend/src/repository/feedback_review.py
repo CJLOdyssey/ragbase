@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from core.infra.database import FeedbackLog, FeedbackReviewDB, get_session_factory
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 ALLOWED_CAUSES = {"retrieval_miss", "wrong_answer", "bad_format", "other"}
 ALLOWED_STATUSES = {"pending", "resolved", "dismissed"}
@@ -50,7 +50,17 @@ async def list_bad_feedback(
             .outerjoin(FeedbackReviewDB, FeedbackReviewDB.feedback_id == FeedbackLog.id)
             .where(*conds)
         )
-        if status is not None:
+        if status == "pending":
+            # 未审查（无 review 行，LEFT JOIN 后 status 为 NULL）≡ 待处理，
+            # 与 root_cause_breakdown 的派生口径一致；直接等值比较会漏掉全部
+            # 未审查差评（NULL == 'pending' 恒为假），导致队列恒空。
+            base = base.where(
+                or_(
+                    FeedbackReviewDB.status.is_(None),
+                    FeedbackReviewDB.status == "pending",
+                )
+            )
+        elif status is not None:
             base = base.where(FeedbackReviewDB.status == status)
 
         count_q = select(func.count()).select_from(

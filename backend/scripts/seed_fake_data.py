@@ -1,14 +1,14 @@
 """Seed fake data for admin account — prompts + assets/knowledge bases."""
-import asyncio, os, sys
-from datetime import UTC, datetime
-from uuid import uuid4
+import asyncio
+import os
+import sys
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "backend", "src"))
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5433/ragbase")
 
-from sqlalchemy import select
 from core.infra.database import get_session_factory
+from sqlalchemy import select
 
 PROMPTS = [
     {"name": "代码审查助手", "description": "对代码进行安全、性能、可维护性审查", "category": "system",

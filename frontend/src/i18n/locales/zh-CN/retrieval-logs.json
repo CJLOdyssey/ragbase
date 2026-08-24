@@ -13,6 +13,21 @@
     "moreChunks": "还有 {{count}} 个片段…",
     "hitBlocks": "命中块数",
     "hitBlocksValue": "{{count}} 块",
-    "respLatency": "响应延迟"
+    "respLatency": "响应延迟",
+    "latencyDistribution": "延迟分布",
+    "hitRate": "召回构成",
+    "queryTrend": "查询趋势 · {{range}}",
+    "activityHeatmap": "活跃时段（星期 × 小时）",
+    "hitRecall": "有召回",
+    "emptyRecallRate": "空召回率",
+    "dayMon": "一",
+    "dayTue": "二",
+    "dayWed": "三",
+    "dayThu": "四",
+    "dayFri": "五",
+    "daySat": "六",
+    "daySun": "日",
+    "unit.count": "次数",
+    "unit.hour": "时"
   }
 }

@@ -18,11 +18,10 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "backend", "src"))
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5433/ragbase")
 
-from sqlalchemy import delete, select
-
 from core.infra.database import get_session_factory
 from orm.auth import UserDB
 from orm.infra import FeedbackLog, FeedbackReviewDB, RetrievalLogDB
+from sqlalchemy import delete, select
 
 random.seed(42)
 
@@ -198,7 +197,9 @@ async def main():
         r2 = await session.execute(delete(FeedbackLog))
         r3 = await session.execute(delete(RetrievalLogDB))
         await session.commit()
-        print(f"🗑️  Cleared: {r3.rowcount} retrievals, {r2.rowcount} feedback, {r1.rowcount} reviews")
+        # session.execute(delete(...)) 运行时返回 CursorResult（有 rowcount），
+        # 静态签名是 Result[Any]，与 tests/conftest.py 的 ignore 约定一致。
+        print(f"🗑️  Cleared: {r3.rowcount} retrievals, {r2.rowcount} feedback, {r1.rowcount} reviews")  # type: ignore[attr-defined]
 
     retrievals = build_retrievals(days)
     feedback_rows, bad_ids = build_feedback(retrievals)
@@ -211,11 +212,11 @@ async def main():
                 user_id=admin_id,
                 query=q,
                 hit_count=h,
-                latency_ms=l,
+                latency_ms=latency_ms,
                 top_k=5,
                 created_at=c,
             )
-            for c, q, h, l in retrievals
+            for c, q, h, latency_ms in retrievals
         )
         await session.commit()
 

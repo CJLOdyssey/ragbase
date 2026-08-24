@@ -154,7 +154,7 @@ async def test_assign_asset_to_knowledge_base(client: TestClient):
     async with factory() as session:
         asset = AssetDB(
             id="test-asset-123",
-            user_id="anonymous",
+            user_id="admin-login",
             name="Test Asset",
             asset_type="text",
             storage_path="/tmp/test",
@@ -183,7 +183,7 @@ async def test_unassign_asset_from_knowledge_base(client: TestClient):
     async with factory() as session:
         asset = AssetDB(
             id="test-asset-456",
-            user_id="anonymous",
+            user_id="admin-login",
             name="Test Asset",
             asset_type="text",
             storage_path="/tmp/test",

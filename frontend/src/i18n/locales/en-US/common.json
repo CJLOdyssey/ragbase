@@ -67,12 +67,12 @@
     "manageKeys": "Manage API Keys",
     "recent": "Recent",
     "statusDeprecated": "Deprecated",
-    "statusSunset": "Sunsetting",
-    "promptSelect": {
-      "label": "Prompt",
-      "none": "None",
-      "empty": "No active prompts"
-    }
+    "statusSunset": "Sunsetting"
+  },
+  "promptSelect": {
+    "label": "Prompt",
+    "none": "None",
+    "empty": "No active prompts"
   },
   "auth": {
     "login": "Log in",

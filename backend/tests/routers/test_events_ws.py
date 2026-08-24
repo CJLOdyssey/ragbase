@@ -1,6 +1,6 @@
 """Tests for the per-user event WebSocket channel (/api/ws/events)."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 import starlette.websockets as ws_errors
@@ -53,29 +53,24 @@ def test_user_events_ws_pings_on_idle(client, monkeypatch):
 
 
 class TestWsUserId:
-    """_ws_user_id 身份解析各分支。"""
-
-    def test_guest_when_auth_disabled(self):
-        with patch("routers.events.AUTH_ENABLED", False):
-            assert _ws_user_id(MagicMock()) == "guest"
+    """_ws_user_id 身份解析各分支（cookie JWT，无 legacy 开关）。"""
 
     def test_empty_without_token(self):
         ws = MagicMock()
         ws.cookies.get.return_value = None
-        with patch("routers.events.AUTH_ENABLED", True), \
-             patch("routers.events.decode_jwt", return_value=None):
-            assert _ws_user_id(ws) == ""
+        assert _ws_user_id(ws) == ""
 
     def test_user_from_valid_token(self):
+        import os
+
+        from auth.auth_jwt import create_token
+
+        token = create_token("u-1", os.environ["AUTH_SECRET"])
         ws = MagicMock()
-        ws.cookies.get.return_value = "tok"
-        with patch("routers.events.AUTH_ENABLED", True), \
-             patch("routers.events.decode_jwt", return_value={"sub": "u-1"}):
-            assert _ws_user_id(ws) == "u-1"
+        ws.cookies.get.return_value = token
+        assert _ws_user_id(ws) == "u-1"
 
     def test_empty_when_invalid_token(self):
         ws = MagicMock()
-        ws.cookies.get.return_value = "bad"
-        with patch("routers.events.AUTH_ENABLED", True), \
-             patch("routers.events.decode_jwt", return_value=None):
-            assert _ws_user_id(ws) == ""
+        ws.cookies.get.return_value = "not-a-jwt"
+        assert _ws_user_id(ws) == ""

@@ -35,14 +35,21 @@
       "breach": "Threshold breach",
       "empty_recall_high": "Empty recall rate {{current}} exceeds threshold {{threshold}}",
       "p95_latency_high": "Latency P95 {{current}} exceeds threshold {{threshold}}",
-      "good_ratio_low": "Good rate {{current}} below threshold {{threshold}}"
+      "good_ratio_low": "Good rate {{current}} below threshold {{threshold}}",
+      "retrieval_burn_fast": "Retrieval budget burning fast at {{current}} (threshold {{threshold}}) — confirmed by short window",
+      "latency_burn_fast": "Latency budget burning fast at {{current}} (threshold {{threshold}}) — confirmed by short window",
+      "satisfaction_burn_fast": "Satisfaction budget burning fast at {{current}} (threshold {{threshold}}) — confirmed by short window",
+      "retrieval_burn_slow": "Retrieval budget burning slowly at {{current}} (threshold {{threshold}})",
+      "latency_burn_slow": "Latency budget burning slowly at {{current}} (threshold {{threshold}})",
+      "satisfaction_burn_slow": "Satisfaction budget burning slowly at {{current}} (threshold {{threshold}})"
     },
     "health": {
       "title": "Health score",
       "factorRetrieval": "Retrieval",
       "factorLatency": "Latency",
       "factorSatisfaction": "Satisfaction",
-      "weightsHint": "Weights: retrieval {{w1}} · latency {{w2}} · satisfaction {{w3}} · 70 at threshold"
+      "trendTitle": "Last 7 days snapshots",
+      "budgetHint": "Score = error budget remaining · Weights: retrieval {{w1}} · latency {{w2}} · satisfaction {{w3}}"
     },
     "funnel": {
       "title": "Retrieval funnel",
@@ -73,7 +80,6 @@
     "kpiAvgLatency": "P50 latency",
     "coverage": "Coverage",
     "sloAttain": "SLO met",
-    "sloBurn": "SLO burn",
     "kpiGoodRate": "Good rate",
     "chartThreshold": "Threshold",
     "chartVolumeTitle": "Retrieval volume trend",
@@ -106,10 +112,23 @@
     },
     "alertsSectionTitle": "Alert rules",
     "deltaBaseline": "vs previous equal period",
+    "deltaNoBaseline": "No previous-period data to compare",
     "rangeStart": "Start time",
     "rangeEnd": "End time",
     "noData": "No data",
     "loading": "Loading…",
-    "loadFailed": "Failed to load monitoring data"
+    "loadFailed": "Failed to load monitoring data",
+    "chartCompositionTitle": "Feedback composition",
+    "chartCompositionDesc": "Shows composition trends after retrievals and ratings are logged",
+    "chartHeatmapTitle": "Latency distribution heatmap",
+    "chartHeatmapDesc": "Darker = more retrievals in that time-bucket × latency bin",
+    "chartScatterTitle": "Latency vs hits",
+    "chartScatterDesc": "Each point is a retrieval; red line = 8s SLO, red points exceed SLO",
+    "scatter": {
+      "normal": "≤SLO",
+      "slow": ">SLO",
+      "hits": "Hits",
+      "latency": "Latency (ms)"
+    }
   }
 }

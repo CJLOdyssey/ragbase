@@ -7,9 +7,8 @@ and constants ``PUBLIC_PATHS`` / ``PUBLIC_PREFIXES``.
 from dataclasses import dataclass, field
 from typing import Any
 
-from fastapi import Depends, HTTPException, Request, status
-
 from core.infra.logging_config import get_logger
+from fastapi import Depends, HTTPException, Request, status
 
 from auth.auth_jwt import AUTH_SECRET, decode_jwt
 

@@ -1,9 +1,9 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { listRetrievalLogs } from '../../../api/client/retrievalLogs';
 import RetrievalLogPage from '../RetrievalLogPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { listRetrievalLogs } from '../../../api/client/retrievalLogs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../api/client/retrievalLogs', () => ({
   listRetrievalLogs: vi.fn(),
@@ -33,11 +33,14 @@ describe('RetrievalLogPage', () => {
     vi.clearAllMocks();
   });
 
-  const renderWithClient = (ui: React.ReactElement) => {
+  const renderWithClient = (
+    ui: React.ReactElement,
+    { route = '/retrieval-logs' }: { route?: string } = {},
+  ) => {
     return render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>{ui}</MemoryRouter>
-      </QueryClientProvider>
+        <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
+      </QueryClientProvider>,
     );
   };
 
@@ -50,7 +53,7 @@ describe('RetrievalLogPage', () => {
     });
 
     renderWithClient(<RetrievalLogPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('retrievalLogs.title')).toBeInTheDocument();
     });
@@ -65,7 +68,7 @@ describe('RetrievalLogPage', () => {
     });
 
     renderWithClient(<RetrievalLogPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('retrievalLogs.emptyOnly')).toBeInTheDocument();
       expect(screen.getByText('retrievalLogs.maxLatency')).toBeInTheDocument();
@@ -81,7 +84,7 @@ describe('RetrievalLogPage', () => {
     });
 
     renderWithClient(<RetrievalLogPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('retrievalLogs.noLogs')).toBeInTheDocument();
     });
@@ -101,8 +104,8 @@ describe('RetrievalLogPage', () => {
               metadata: { title: '文档1' },
             },
           ],
-          latency_ms: 150,
-          created_at: '2024-01-01T00:00:00Z',
+          latencyMs: 150,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -113,7 +116,7 @@ describe('RetrievalLogPage', () => {
     vi.mocked(listRetrievalLogs).mockResolvedValue(mockLogs);
 
     renderWithClient(<RetrievalLogPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('测试查询')).toBeInTheDocument();
       // LatencyBar 汇总与行内数值都会渲染 150ms，断言存在即可。
@@ -130,16 +133,18 @@ describe('RetrievalLogPage', () => {
     });
 
     renderWithClient(<RetrievalLogPage />);
-    
+
     await waitFor(() => {
       const checkbox = screen.getByRole('checkbox');
       fireEvent.click(checkbox);
     });
 
     await waitFor(() => {
-      expect(listRetrievalLogs).toHaveBeenCalledWith(expect.objectContaining({
-        empty_only: true,
-      }));
+      expect(listRetrievalLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          empty_only: true,
+        }),
+      );
     });
   });
 
@@ -152,16 +157,44 @@ describe('RetrievalLogPage', () => {
     });
 
     renderWithClient(<RetrievalLogPage />);
-    
+
     await waitFor(() => {
       const input = screen.getByPlaceholderText('0');
       fireEvent.change(input, { target: { value: '500' } });
     });
 
     await waitFor(() => {
-      expect(listRetrievalLogs).toHaveBeenCalledWith(expect.objectContaining({
-        max_latency_ms: 500,
-      }));
+      expect(listRetrievalLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          max_latency_ms: 500,
+        }),
+      );
+    });
+  });
+
+  it('restores max latency filter from URL', async () => {
+    // URL 为唯一事实源：刷新/分享链接可直接还原最大延迟筛选。
+    vi.mocked(listRetrievalLogs).mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderWithClient(<RetrievalLogPage />, {
+      route: '/retrieval-logs?max_latency=500',
+    });
+
+    await waitFor(() => {
+      expect(listRetrievalLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          max_latency_ms: 500,
+        }),
+      );
+      // 加载完成后工具栏（含激活标签）才渲染，与请求断言同处等待。
+      expect(
+        screen.getByText('retrievalLogs.latencyFilterTag'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -185,8 +218,8 @@ describe('RetrievalLogPage', () => {
               metadata: { title: '文档2' },
             },
           ],
-          latency_ms: 150,
-          created_at: '2024-01-01T00:00:00Z',
+          latencyMs: 150,
+          createdAt: '2024-01-01T00:00:00Z',
         },
       ],
       total: 1,
@@ -197,7 +230,7 @@ describe('RetrievalLogPage', () => {
     vi.mocked(listRetrievalLogs).mockResolvedValue(mockLogs);
 
     renderWithClient(<RetrievalLogPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('2 sources')).toBeInTheDocument();
     });
@@ -209,8 +242,8 @@ describe('RetrievalLogPage', () => {
         id: `log-${i}`,
         query: `查询${i}`,
         sources: [],
-        latency_ms: 100,
-        created_at: '2024-01-01T00:00:00Z',
+        latencyMs: 100,
+        createdAt: '2024-01-01T00:00:00Z',
       })),
       total: 50,
       page: 1,
@@ -220,7 +253,7 @@ describe('RetrievalLogPage', () => {
     vi.mocked(listRetrievalLogs).mockResolvedValue(mockLogs);
 
     renderWithClient(<RetrievalLogPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('common.prev')).toBeInTheDocument();
       expect(screen.getByText('common.next')).toBeInTheDocument();

@@ -47,12 +47,12 @@ class TestAuthProfile:
 
     def test_merge_guest_data_with_x_user_id(self, client):
         with patch("routers.auth.profile._merge_guest_data", new_callable=AsyncMock) as mock_merge:
-            resp = client.post("/api/auth/merge", json={"guest_id": "guest-456"},
-                               headers={"X-User-ID": "header-id"})
+            resp = client.post("/api/auth/merge", json={"guest_id": "guest-456"})
             assert resp.status_code == 200
             mock_merge.assert_called_once()
             call_args = mock_merge.call_args
             ids = call_args[0][0]
             assert "guest-456" in ids
-            assert "header-id" in ids
+            # cookie 身份 admin-login 不应出现在待合并集合里
+            assert "admin-login" not in ids
             assert "anonymous" in ids

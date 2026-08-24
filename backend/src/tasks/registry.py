@@ -10,6 +10,7 @@ from core.mock_fallback import ENABLE as ENABLE_MOCK_FALLBACK
 
 from .agent_pipeline import _run_agent_pipeline
 from .complete_pipeline import _complete_pipeline
+from .health_snapshot import run_health_snapshot
 from .index_asset import _index_asset
 from .pipeline_utils import _report_run_error, _run_async, _try_mock_fallback
 from .reindex_sweep import run_reindex_sweep
@@ -112,6 +113,17 @@ def reindex_sweep() -> Any:
     """Celery beat entry: queue reindexes for changed/unindexed assets."""
     result = run_reindex_sweep()
     logger.info("Celery reindex sweep | queued=%s", result.get("queued"))
+    return result
+
+
+@_task(bind=True, max_retries=2, default_retry_delay=30)
+def health_snapshot(self: Any) -> Any:
+    """Celery beat entry: persist hourly composite health-score snapshots."""
+    result = run_health_snapshot()
+    logger.info(
+        "Celery health snapshot | users=%s | failed=%s | pruned=%s",
+        result.get("users"), result.get("failed"), result.get("pruned"),
+    )
     return result
 
 

@@ -133,3 +133,80 @@ async def test_get_retrieval_logs_filter_max_latency(client: TestClient):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["latencyMs"] == 50
+
+
+@pytest.mark.asyncio
+async def test_stats_hit_rate_not_degenerate_under_empty_only(client: TestClient):
+    """Hit rate must stay baseline-scoped: empty-only filter must not pin it at 100%."""
+    await create_retrieval_log(
+        user_id="admin-login",
+        query="有结果",
+        latency_ms=100,
+        hit_count=2,
+    )
+    await create_retrieval_log(
+        user_id="admin-login",
+        query="无结果",
+        latency_ms=50,
+        hit_count=0,
+    )
+
+    response = client.get("/api/retrieval-logs/stats?empty_only=true")
+    assert response.status_code == 200
+    hit_rate = response.json()["hitRate"]
+    # Baseline scope: both rows counted, real ratio — not the filtered tautology.
+    assert hit_rate["total"] == 2
+    assert hit_rate["emptyRecall"] == 1
+    assert hit_rate["hitRecall"] == 1
+    assert hit_rate["emptyRecallRate"] == 50.0
+
+
+@pytest.mark.asyncio
+async def test_stats_latency_distribution_full_under_max_latency(client: TestClient):
+    """Latency distribution must keep all buckets when max-latency filter hides slow rows."""
+    await create_retrieval_log(
+        user_id="admin-login",
+        query="快速查询",
+        latency_ms=50,
+        hit_count=1,
+    )
+    await create_retrieval_log(
+        user_id="admin-login",
+        query="慢查询",
+        latency_ms=500,
+        hit_count=1,
+    )
+
+    response = client.get("/api/retrieval-logs/stats?max_latency_ms=100")
+    assert response.status_code == 200
+    data = response.json()
+    # Baseline scope: >300ms bucket survives even though no row matches the filter.
+    slow_bucket = next(
+        b for b in data["latencyDistribution"] if b["range"] == ">300ms"
+    )
+    assert slow_bucket["count"] == 1
+    assert data["hitRate"]["total"] == 2
+
+
+@pytest.mark.asyncio
+async def test_stats_trend_daily_subset_scope_under_empty_only(client: TestClient):
+    """Volume trend / daily activity follow the filters (subset scope)."""
+    await create_retrieval_log(
+        user_id="admin-login",
+        query="有结果",
+        latency_ms=100,
+        hit_count=2,
+    )
+    await create_retrieval_log(
+        user_id="admin-login",
+        query="无结果",
+        latency_ms=50,
+        hit_count=0,
+    )
+
+    response = client.get("/api/retrieval-logs/stats?empty_only=true")
+    assert response.status_code == 200
+    data = response.json()
+    # Subset scope: only the empty-recall row appears in timing aggregates.
+    assert sum(p["count"] for p in data["volumeTrend"]) == 1
+    assert sum(d["count"] for d in data["dailyActivity"]) == 1

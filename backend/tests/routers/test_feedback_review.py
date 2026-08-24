@@ -49,6 +49,18 @@ class TestBadFeedbackQueue:
         items = resp.json()["items"]
         assert [i["feedbackId"] for i in items] == ["fb-1"]
 
+    def test_pending_filter_includes_unreviewed(self, client):
+        """回归：无 review 行的差评 ≡ 待处理，pending 过滤不得漏掉（曾致队列恒空）。"""
+        client.portal.call(_seed_feedback, "fb-unreviewed")
+
+        resp = client.get(
+            "/api/monitoring/bad-feedback", params={"status": "pending"}
+        )
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert [i["feedbackId"] for i in items] == ["fb-unreviewed"]
+        assert items[0]["review"] is None
+
     def test_review_upsert_flow(self, client):
         client.portal.call(_seed_feedback, "fb-1")
 

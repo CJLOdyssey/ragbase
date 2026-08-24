@@ -1,19 +1,9 @@
 """Tests for the observability debug router (backend/observability/router.py)."""
 
-from unittest.mock import patch
 
-import pytest
-from starlette.testclient import TestClient
 
 
 class TestDebugRouter:
-    @pytest.fixture
-    def client(self):
-        # Lazy import to avoid early startup side-effects
-        with patch("observability.startup_guard.health", return_value={"status": "ok"}):
-            from core.app import app
-            with TestClient(app) as c:
-                yield c
 
     def test_debug_health_endpoint(self, client):
         resp = client.get("/api/debug/health")

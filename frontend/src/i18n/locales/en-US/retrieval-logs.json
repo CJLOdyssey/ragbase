@@ -13,6 +13,21 @@
     "moreChunks": "{{count}} more chunks…",
     "hitBlocks": "Hit Blocks",
     "hitBlocksValue": "{{count}} blocks",
-    "respLatency": "Response Latency"
+    "respLatency": "Response Latency",
+    "latencyDistribution": "Latency Distribution",
+    "hitRate": "Recall Breakdown",
+    "queryTrend": "Query Trend · {{range}}",
+    "activityHeatmap": "Activity Heatmap (Day × Hour)",
+    "hitRecall": "With Hits",
+    "emptyRecallRate": "Empty recall rate",
+    "dayMon": "Mon",
+    "dayTue": "Tue",
+    "dayWed": "Wed",
+    "dayThu": "Thu",
+    "dayFri": "Fri",
+    "daySat": "Sat",
+    "daySun": "Sun",
+    "unit.count": "Count",
+    "unit.hour": "h"
   }
 }

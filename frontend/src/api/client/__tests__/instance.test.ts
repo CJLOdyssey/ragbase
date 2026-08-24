@@ -139,7 +139,8 @@ describe('instance', { tags: ['unit'] }, () => {
       expect(result.headers.Authorization).toBeUndefined();
     });
 
-    it('adds X-User-ID header', async () => {
+    it('does not add X-User-ID header (user identity comes from JWT cookie)', async () => {
+      localStorage.setItem('ragbase_user_id', 'legacy-uid');
       const handlers = captureHandlers();
       await import('../instance');
       const result = handlers.request!({
@@ -147,29 +148,8 @@ describe('instance', { tags: ['unit'] }, () => {
         method: 'GET',
         url: '/test',
       });
-      expect(result.headers['X-User-ID']).toBeDefined();
-    });
-
-    it('generates user ID when none exists', async () => {
-      const handlers = captureHandlers();
-      await import('../instance');
-      const result = handlers.request!({
-        headers: {},
-        method: 'GET',
-        url: '/test',
-      });
-      const uid = result.headers['X-User-ID'];
-      expect(uid).toBeDefined();
-      expect(uid.startsWith('u_')).toBe(true);
-      expect(localStorage.getItem('ragbase_user_id')).toBe(uid);
-    });
-
-    it('reuses existing user ID', async () => {
-      localStorage.setItem('ragbase_user_id', 'existing-uid');
-      const handlers = captureHandlers();
-      await import('../instance');
-      const result = handlers.request!({ headers: {} });
-      expect(result.headers['X-User-ID']).toBe('existing-uid');
+      expect(result.headers['X-User-ID']).toBeUndefined();
+      expect(result.headers.Authorization).toBeUndefined();
     });
   });
 

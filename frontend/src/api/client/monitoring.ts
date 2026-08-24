@@ -1,5 +1,8 @@
 import type {
   BadFeedbackResponse,
+  HealthScoreHistoryResponse,
+  LatencyHeatmapResponse,
+  LatencyScatterResponse,
   MonitoringSummary,
   MonitoringTimeseries,
   ReviewRootCause,
@@ -15,6 +18,15 @@ export async function fetchMonitoringSummary(
   range: TimeRangeQuery,
 ): Promise<MonitoringSummary> {
   const { data } = await api.get('/monitoring/summary', { params: range });
+  return data;
+}
+
+export async function fetchHealthScoreHistory(
+  hours: number,
+): Promise<HealthScoreHistoryResponse> {
+  const { data } = await api.get('/monitoring/health-score/history', {
+    params: { hours },
+  });
   return data;
 }
 
@@ -46,11 +58,13 @@ export async function fetchTopQueries(range: {
   return data;
 }
 
-export async function fetchBadFeedback(params: TimeRangeQuery & {
-  status?: ReviewStatus;
-  page?: number;
-  page_size?: number;
-}): Promise<BadFeedbackResponse> {
+export async function fetchBadFeedback(
+  params: TimeRangeQuery & {
+    status?: ReviewStatus;
+    page?: number;
+    page_size?: number;
+  },
+): Promise<BadFeedbackResponse> {
   const { data } = await api.get('/monitoring/bad-feedback', { params });
   return data;
 }
@@ -67,5 +81,23 @@ export async function reviewBadFeedback(
     `/monitoring/bad-feedback/${feedbackId}/review`,
     body,
   );
+  return data;
+}
+
+export async function fetchLatencyHeatmap(
+  range: TimeRangeQuery,
+): Promise<LatencyHeatmapResponse> {
+  const { data } = await api.get('/monitoring/latency-heatmap', {
+    params: range,
+  });
+  return data;
+}
+
+export async function fetchLatencyScatter(
+  range: TimeRangeQuery & { limit?: number },
+): Promise<LatencyScatterResponse> {
+  const { data } = await api.get('/monitoring/latency-scatter', {
+    params: range,
+  });
   return data;
 }

@@ -75,6 +75,7 @@ ignore = ["E402"]
 "backend/src/routers/*.py" = ["B008"]
 "backend/src/auth/auth_rbac.py" = ["F401"]
 "backend/tests/*.py" = ["E501", "SIM117", "N806"]
+"backend/scripts/*.py" = ["E501"]
 
 [tool.mypy]
 strict = true
@@ -85,9 +86,17 @@ warn_unused_ignores = true
 mypy_path = ["backend/src", "backend/stubs"]
 exclude = ["backend/tests/", "backend/stubs/", "backend/alembic/", "backend/src/system_team/"]
 
+# 与 mypy_path / 运行时 PYTHONPATH 对齐同一导入根，否则 IDE LSP（pyright）
+# 解析不到 from auth import … 等顶层导入，报 unknown import symbol 误报。
+[tool.pyright]
+extraPaths = ["backend/src", "backend/stubs"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
+
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
-pythonpath = ["backend/src"]
+pythonpath = ["backend/src", "backend/tests"]
 addopts = ["-n", "auto", "--dist", "worksteal", "--reruns=2", "--reruns-delay=1"]
 asyncio_mode = "auto"
 markers = [

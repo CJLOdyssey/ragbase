@@ -1,18 +1,18 @@
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import type { TimeRangeQuery } from '../../../types/monitoring';
 import EChart from '../../shared/EChart';
 import AlertsSummaryCard from '../AlertsSummaryCard';
 import DataGate from '../DataGate';
+import { formatCount, formatMs, formatPct } from '../formatters';
 import HealthScoreCard from '../HealthScoreCard';
 import MetricPanel from '../MetricPanel';
-import { formatCount, formatMs, formatPct } from '../formatters';
 import {
   isIntradayQuery,
   useMonitoringSummaryQuery,
   useMonitoringTimeseriesQuery,
 } from '../useMonitoringQueries';
-import { useOverviewDerived } from '../useOverviewDerived';
+import { SLO_TARGET_PCT, useOverviewDerived } from '../useOverviewDerived';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   timeQuery: TimeRangeQuery;
@@ -58,7 +58,6 @@ export default function OverviewPanel({ timeQuery }: Props) {
     goodRateDelta,
     latDelta,
     sloPct,
-    sloBurnRate,
   } = useOverviewDerived({ points, prevPoints, intraday });
 
   const retryAll = () => {
@@ -66,6 +65,10 @@ export default function OverviewPanel({ timeQuery }: Props) {
     void tsRefetch();
   };
   const ready = data != null && ts != null;
+
+  // 预设窗口后端返回对齐上期 → 环比位恒在（徽章或无基线占位）；
+  // 自定义范围无对比概念 → 环比位整体隐藏。
+  const comparisonAvailable = prevPoints != null;
 
   return (
     <DataGate
@@ -81,10 +84,7 @@ export default function OverviewPanel({ timeQuery }: Props) {
             data-testid="retrieval-section"
           >
             <div className="lg:row-span-2">
-              <HealthScoreCard
-                retrieval={data.retrieval}
-                feedback={data.feedback}
-              />
+              <HealthScoreCard health={data.health_score} />
             </div>
 
             <MetricPanel
@@ -96,6 +96,7 @@ export default function OverviewPanel({ timeQuery }: Props) {
               }
               delta={totalDelta}
               deltaGoodWhenUp={true}
+              comparisonAvailable={comparisonAvailable}
               href={logsHref(timeQuery)}
               testId="chart-volume"
             >
@@ -109,15 +110,14 @@ export default function OverviewPanel({ timeQuery }: Props) {
 
             <MetricPanel
               title={t('monitoring.chartEmptyRecallTitle')}
-              value={
-                formatPct(
-                  data.retrieval.total > 0
-                    ? data.retrieval.empty_recall_rate
-                    : null,
-                )
-              }
+              value={formatPct(
+                data.retrieval.total > 0
+                  ? data.retrieval.empty_recall_rate
+                  : null,
+              )}
               delta={emptyRecallDelta}
               deltaGoodWhenUp={false}
+              comparisonAvailable={comparisonAvailable}
               href={logsHref(timeQuery, true)}
               testId="chart-emptyrecall-panel"
             >
@@ -134,6 +134,7 @@ export default function OverviewPanel({ timeQuery }: Props) {
               value={formatPct(data.feedback.good_ratio)}
               delta={goodRateDelta}
               deltaGoodWhenUp={true}
+              comparisonAvailable={comparisonAvailable}
               testId="chart-goodrate-panel"
             >
               <EChart
@@ -149,12 +150,11 @@ export default function OverviewPanel({ timeQuery }: Props) {
               value={formatMs(data.retrieval.latency_p50_ms)}
               delta={latDelta}
               deltaGoodWhenUp={false}
+              comparisonAvailable={comparisonAvailable}
               substat={`P95 ${formatMs(
                 data.retrieval.latency_p95_ms,
-              )} · ${t('monitoring.sloAttain')} ${sloPct ?? '—'}% · ${t(
-                'monitoring.sloBurn',
-              )} ${sloBurnRate ?? '—'}×`}
-              substatDanger={sloBurnRate != null && sloBurnRate >= 1}
+              )} · ${t('monitoring.sloAttain')} ${sloPct ?? '—'}%`}
+              substatDanger={sloPct != null && sloPct < SLO_TARGET_PCT}
               href={logsHref(timeQuery)}
               testId="chart-latency-panel"
             >

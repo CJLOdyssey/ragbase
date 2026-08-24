@@ -29,7 +29,8 @@ def _clear_limits():
         except Exception:
             pass
 
-pytestmark = pytest.mark.benchmark
+# benchmark + integration：需真实运行的后端，CI/本地无后端时自动跳过
+pytestmark = [pytest.mark.benchmark, pytest.mark.integration]
 
 WS_BASE = os.environ.get("BENCH_WS_URL", "ws://localhost:8080")
 

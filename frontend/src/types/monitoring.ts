@@ -2,6 +2,9 @@ export interface RetrievalMetrics {
   total: number;
   empty_recall_count: number;
   empty_recall_rate: number;
+  /** 超延迟 SLO 请求数与占比 —— 错误预算健康分的延迟维度数据源。 */
+  slow_count: number;
+  slow_rate: number;
   avg_hit_count: number | null;
   latency_p50_ms: number | null;
   latency_p95_ms: number | null;
@@ -24,11 +27,39 @@ export interface QualityAlert {
   threshold: number;
 }
 
+export type HealthFactorKey = 'retrieval' | 'latency' | 'satisfaction';
+
+/** 服务端错误预算模型算出的单因子：分数即预算剩余百分比。 */
+export interface HealthFactorPayload {
+  key: HealthFactorKey;
+  /** null = 该因子窗口内无样本。 */
+  score: number | null;
+  /** 重分配后的最终权重。 */
+  weight: number;
+}
+
+/** 综合健康分（服务端计算，Google SRE 错误预算模型）。 */
+export interface HealthScorePayload {
+  score: number | null;
+  factors: HealthFactorPayload[];
+}
+
 export interface MonitoringSummary {
   window_hours: number;
   retrieval: RetrievalMetrics;
   feedback: FeedbackMetrics;
+  health_score: HealthScorePayload;
   alerts: QualityAlert[];
+}
+
+export interface HealthScoreHistoryPoint {
+  ts: string;
+  score: number | null;
+}
+
+export interface HealthScoreHistoryResponse {
+  hours: number;
+  points: HealthScoreHistoryPoint[];
 }
 
 export interface MonitoringPoint {
@@ -62,10 +93,7 @@ export interface TimeRangeQuery {
 
 export type ReviewStatus = 'pending' | 'resolved' | 'dismissed';
 export type ReviewRootCause =
-  | 'retrieval_miss'
-  | 'wrong_answer'
-  | 'bad_format'
-  | 'other';
+  'retrieval_miss' | 'wrong_answer' | 'bad_format' | 'other';
 
 export interface BadFeedbackReview {
   status: ReviewStatus;
@@ -117,4 +145,29 @@ export interface TopQueriesResponse {
   window_hours: number;
   kind: TopQueryKind;
   items: TopQueryItem[];
+}
+
+export interface LatencyHeatmapPoint {
+  ts: string;
+  counts: number[];
+}
+
+export interface LatencyHeatmapResponse {
+  window_hours: number;
+  bucket_hours: number;
+  bin_edges_ms: number[];
+  points: LatencyHeatmapPoint[];
+}
+
+export interface LatencyScatterItem {
+  ts: string;
+  hits: number;
+  latency_ms: number;
+}
+
+export interface LatencyScatterResponse {
+  window_hours: number;
+  total: number;
+  sampled: number;
+  items: LatencyScatterItem[];
 }

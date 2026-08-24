@@ -3,7 +3,6 @@
 Supports per-IP and optional per-user rate limiting.
 """
 
-import os
 import time
 from typing import Any
 

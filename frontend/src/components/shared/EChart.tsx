@@ -1,53 +1,73 @@
 import { useEffect, useRef } from 'react';
-import * as echarts from 'echarts/core';
 import {
   BarChart,
   FunnelChart,
   GaugeChart,
+  HeatmapChart,
   LineChart,
+  PieChart,
+  ScatterChart,
   type BarSeriesOption,
   type FunnelSeriesOption,
   type GaugeSeriesOption,
+  type HeatmapSeriesOption,
   type LineSeriesOption,
+  type PieSeriesOption,
+  type ScatterSeriesOption,
 } from 'echarts/charts';
 import {
+  DataZoomInsideComponent,
   GridComponent,
   LegendComponent,
   MarkLineComponent,
   MarkPointComponent,
   TooltipComponent,
+  VisualMapComponent,
+  type DataZoomComponentOption,
   type GridComponentOption,
   type LegendComponentOption,
   type MarkLineComponentOption,
   type MarkPointComponentOption,
   type TooltipComponentOption,
+  type VisualMapComponentOption,
 } from 'echarts/components';
-import { SVGRenderer } from 'echarts/renderers';
+import * as echarts from 'echarts/core';
 import type { ComposeOption } from 'echarts/core';
+import { SVGRenderer } from 'echarts/renderers';
 
 export type EChartsOption = ComposeOption<
   | BarSeriesOption
   | FunnelSeriesOption
   | GaugeSeriesOption
+  | HeatmapSeriesOption
   | LineSeriesOption
+  | PieSeriesOption
+  | ScatterSeriesOption
+  | DataZoomComponentOption
   | GridComponentOption
   | LegendComponentOption
   | MarkLineComponentOption
   | MarkPointComponentOption
   | TooltipComponentOption
+  | VisualMapComponentOption
 >;
 
-// 按需注册：折线/柱/漏斗/仪表族 + 网格/图例/标线标点/提示框 + SVG 渲染器。
+// 按需注册：折线/柱/漏斗/仪表/热力/散点/饼图族 + 网格/图例/标线标点/提示框/视觉映射/内置缩放 + SVG 渲染器。
 echarts.use([
   BarChart,
   FunnelChart,
   GaugeChart,
+  HeatmapChart,
   LineChart,
+  PieChart,
+  ScatterChart,
+  DataZoomInsideComponent,
   GridComponent,
   LegendComponent,
   MarkLineComponent,
   MarkPointComponent,
   TooltipComponent,
+  VisualMapComponent,
   SVGRenderer,
 ]);
 

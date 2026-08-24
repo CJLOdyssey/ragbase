@@ -1,22 +1,20 @@
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import type { FeedbackMetrics, RetrievalMetrics } from '../../types/monitoring';
 import EChart from '../shared/EChart';
 import { STATUS_COLORS } from '../shared/statusColors';
-import { healthGaugeOption } from './chartOptions';
-import {
-  computeHealthScore,
-  DEFAULT_HEALTH_THRESHOLDS,
-  HEALTH_WEIGHTS,
-  type HealthFactorKey,
-} from './healthScore';
+import { useTranslation } from 'react-i18next';
+import type {
+  HealthFactorKey,
+  HealthScorePayload,
+} from '../../types/monitoring';
+import { healthGaugeOption, healthTrendOption } from './chartOptions';
+import { useHealthScoreHistoryQuery } from './useMonitoringQueries';
 
 interface Props {
-  retrieval: RetrievalMetrics;
-  feedback: FeedbackMetrics;
+  /** 服务端 /monitoring/summary 返回的错误预算健康分。 */
+  health: HealthScorePayload;
 }
 
-function gradeColor(score: number | null): string {
+export function gradeColor(score: number | null): string {
   if (score == null) return 'var(--color-text-muted)';
   if (score >= 80) return STATUS_COLORS.green;
   if (score >= 60) return STATUS_COLORS.amber;
@@ -31,15 +29,16 @@ const FACTOR_I18N_KEY: Record<HealthFactorKey, string> = {
 
 /**
  * 综合健康分竖卡（Datadog service health 式）：
- * 顶部大仪表 + 底部三因子贡献条，与相邻趋势图等高构成总览行左栏。
+ * 大仪表（服务端错误预算模型）+ 因子贡献条 + 近 7 天快照 sparkline。
  */
-export default function HealthScoreCard({ retrieval, feedback }: Props) {
+export default function HealthScoreCard({ health }: Props) {
   const { t } = useTranslation();
-  const { score, factors } = useMemo(
-    () => computeHealthScore(retrieval, feedback, DEFAULT_HEALTH_THRESHOLDS),
-    [retrieval, feedback],
-  );
+  const { score, factors } = health;
   const color = gradeColor(score);
+
+  // 近 7 天小时级快照；无数据时静默隐藏趋势区。
+  const { data: history } = useHealthScoreHistoryQuery(168);
+  const historyPoints = useMemo(() => history?.points ?? [], [history]);
 
   const option = useMemo(
     () =>
@@ -49,6 +48,11 @@ export default function HealthScoreCard({ retrieval, feedback }: Props) {
         label: t('monitoring.health.title'),
       }),
     [score, color, t],
+  );
+
+  const trendOption = useMemo(
+    () => healthTrendOption({ points: historyPoints }),
+    [historyPoints],
   );
 
   return (
@@ -91,11 +95,31 @@ export default function HealthScoreCard({ retrieval, feedback }: Props) {
             </div>
           </div>
         ))}
+        {historyPoints.length > 1 ? (
+          <div data-testid="health-trend">
+            <div className="font-mono text-[9px] text-[var(--color-text-muted)] mb-0.5">
+              {t('monitoring.health.trendTitle')}
+            </div>
+            <EChart
+              option={trendOption}
+              height={56}
+              ariaLabel={t('monitoring.health.trendTitle')}
+              testId="health-trend-canvas"
+            />
+          </div>
+        ) : null}
         <div className="font-mono text-[9px] leading-relaxed text-[var(--color-text-muted)]">
-          {t('monitoring.health.weightsHint', {
-            w1: Math.round(HEALTH_WEIGHTS.retrieval * 100),
-            w2: Math.round(HEALTH_WEIGHTS.latency * 100),
-            w3: Math.round(HEALTH_WEIGHTS.satisfaction * 100),
+          {t('monitoring.health.budgetHint', {
+            w1: Math.round(
+              (factors.find((f) => f.key === 'retrieval')?.weight ?? 0) * 100,
+            ),
+            w2: Math.round(
+              (factors.find((f) => f.key === 'latency')?.weight ?? 0) * 100,
+            ),
+            w3: Math.round(
+              (factors.find((f) => f.key === 'satisfaction')?.weight ?? 0) *
+                100,
+            ),
           })}
         </div>
       </div>
