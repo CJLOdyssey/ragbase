@@ -2,8 +2,8 @@ import { useState } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
-import Modal from '../shared/Modal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Modal as AntdModal } from 'antd';
 import { Search, UserPlus, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -315,13 +315,12 @@ function UserDetailModal({
     },
   ];
   return (
-    <Modal
+    <AntdModal
       title={t('admin.users.userDetails')}
-      onClose={onClose}
-      ariaLabel={t('admin.users.userDetails')}
+      open={true}
+      onCancel={onClose}
+      centered
       width={480}
-      hideHeaderBorder
-      bodyClassName="p-6"
     >
       <div className="flex flex-col gap-4">
         {rows.map((row) => (
@@ -335,7 +334,7 @@ function UserDetailModal({
           </div>
         ))}
       </div>
-    </Modal>
+    </AntdModal>
   );
 }
 

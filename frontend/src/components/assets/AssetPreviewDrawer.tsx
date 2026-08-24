@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import FilePreview from '../shared/FilePreview';
-import Modal from '../shared/Modal';
 import { useQuery } from '@tanstack/react-query';
+import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import { getAssetContent, type IndexProgress } from '../../api/client/assets';
@@ -61,14 +61,20 @@ export default function AssetPreviewDrawer({
   const loading = isLoading;
 
   return (
-    <Modal
+    <AntdModal
       title={asset.name}
-      onClose={onClose}
-      ariaLabel={asset.name}
+      open={true}
+      onCancel={onClose}
+      centered
       width={720}
-      hideHeaderBorder
-      hideFooterBorder
-      bodyClassName="p-5 max-h-[75vh] overflow-y-auto flex flex-col"
+      styles={{
+        body: {
+          maxHeight: '75vh',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
       footer={
         <button
           type="button"
@@ -91,6 +97,6 @@ export default function AssetPreviewDrawer({
         truncated={truncated}
         onImgError={() => setImgFailed(true)}
       />
-    </Modal>
+    </AntdModal>
   );
 }

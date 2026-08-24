@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { changeLanguage } from '../../i18n/index';
-import Modal from '@/components/shared/Modal';
 import ToggleSwitch from '@/components/shared/ToggleSwitch';
+import { Modal as AntdModal } from 'antd';
 import { Globe, Info, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ChangePasswordForm from './ChangePasswordForm';
@@ -23,12 +23,14 @@ export default function SettingsModal({ onClose }: Props) {
   const fontPct = ((settings.fontSize - 14) / 6) * 100;
 
   return (
-    <Modal
+    <AntdModal
       title={t('settings.title')}
-      onClose={onClose}
-      className="w-[970px] h-[600px] flex flex-col overflow-hidden"
-      hideHeaderBorder
-      hideFooterBorder
+      open={true}
+      onCancel={onClose}
+      centered
+      width={970}
+      classNames={{ container: 'flex flex-col overflow-hidden' }}
+      styles={{ container: { height: 600 } }}
       footer={
         <>
           <button
@@ -229,7 +231,7 @@ export default function SettingsModal({ onClose }: Props) {
           )}
         </div>
       </div>
-    </Modal>
+    </AntdModal>
   );
 }
 

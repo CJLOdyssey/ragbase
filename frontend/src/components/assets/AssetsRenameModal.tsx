@@ -1,4 +1,4 @@
-import Modal from '../shared/Modal';
+import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 
@@ -30,14 +30,12 @@ export default function AssetsRenameModal({
   const { ext } = splitName(target.name);
 
   return (
-    <Modal
+    <AntdModal
       title={t('assets.list.rename')}
-      onClose={onClose}
-      ariaLabel={t('assets.list.rename')}
+      open={true}
+      onCancel={onClose}
+      centered
       width={420}
-      hideHeaderBorder
-      hideFooterBorder
-      bodyClassName="p-6"
       footer={
         <>
           <button
@@ -74,6 +72,6 @@ export default function AssetsRenameModal({
           </span>
         )}
       </div>
-    </Modal>
+    </AntdModal>
   );
 }

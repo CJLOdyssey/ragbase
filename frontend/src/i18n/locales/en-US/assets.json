@@ -46,7 +46,17 @@
       "emptyDesc": "This asset has no chunks yet",
       "loading": "Loading chunks…",
       "count": "{{count}} chunks",
-      "truncated": "Showing first {{count}} chunks"
+      "truncated": "Showing first {{count}} chunks",
+      "manualTag": "manual",
+      "toggle": "Enable/disable",
+      "edit": "Edit chunk",
+      "save": "Save",
+      "saving": "Saving…",
+      "addLabel": "Append manual chunk",
+      "addPlaceholder": "Enter text to append — it will be embedded automatically on save…",
+      "addButton": "Append",
+      "deleteTitle": "Delete chunk",
+      "deleteConfirm": "Delete this chunk? This cannot be undone."
     },
     "table": {
       "fileName": "File name",

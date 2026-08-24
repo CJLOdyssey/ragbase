@@ -16,10 +16,21 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     from repository.assets import get_asset, set_asset_indexed
     from repository.index_progress import set_index_progress
     from repository.keys import get_embedding_config
+    from repository.knowledge_bases import get_kb
 
     asset = await get_asset(asset_id)
     if asset is None or asset.user_id != user_id:
         raise ValueError(f"asset {asset_id} not found or not owned by user")
+
+    # Per-KB binding: vectors in one KB share a single embedding space, so the
+    # owning KB's bound model (when set) wins over the global heuristic.
+    kb_embed_model: str | None = None
+    kb_parser_config: dict[str, Any] | None = None
+    if asset.knowledge_base_id:
+        kb = await get_kb(asset.knowledge_base_id, user_id)
+        if kb is not None:
+            kb_embed_model = getattr(kb, "embed_model", None)
+            kb_parser_config = getattr(kb, "parser_config", None) or None
 
     from rag.rag_guard import ALLOWED_INDEX_SOURCES, scan_document
     from rag.rag_parsing import extract_text
@@ -45,13 +56,28 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
 
         await set_index_progress(asset_id, "chunking", 30, "Chunking document...")
 
-        cfg = await get_embedding_config()
+        cfg = await get_embedding_config(preferred_model=kb_embed_model)
         if cfg is None or cfg["api_key"] is None:
             raise RuntimeError("no embedding API key configured")
 
-        chunks = semantic_chunk(text, session_id=f"asset:{asset.id}", run_id=None)
-        for chunk in chunks:
-            chunk.metadata = {"asset_id": asset.id, "asset_name": asset.name}
+        # Per-KB chunking parameters (engine-honest: size + word-window overlap).
+        chunk_size = 512
+        overlap = 64
+        if kb_parser_config:
+            raw_size = kb_parser_config.get("chunk_size")
+            raw_overlap = kb_parser_config.get("overlap")
+            if isinstance(raw_size, int):
+                chunk_size = max(50, min(2000, raw_size))
+            if isinstance(raw_overlap, int):
+                overlap = max(0, min(chunk_size - 1, raw_overlap))
+
+        chunks = semantic_chunk(
+            text,
+            session_id=f"asset:{asset.id}",
+            run_id=None,
+            chunk_size=chunk_size,
+            overlap=overlap,
+        )
 
         await set_index_progress(asset_id, "embedding", 50, "Generating embeddings...")
 
@@ -63,6 +89,22 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
         embeddings = await provider.embed([c.text for c in chunks])
         for chunk, emb in zip(chunks, embeddings, strict=False):
             chunk.embedding = emb
+            # Record the model that produced this vector — retrieval groups by
+            # it so mixed-model corpora never cross vector spaces.
+            chunk.metadata = {
+                "asset_id": asset.id,
+                "asset_name": asset.name,
+                "embed_model": provider.model,
+            }
+
+        # Race guard against a concurrent rebind: if the KB's binding changed
+        # while we were embedding, these vectors belong to the old space —
+        # abort (fail-loud) and let the reindex sweep redo it with the new one.
+        if kb_embed_model is not None and provider.model != kb_embed_model:
+            raise RuntimeError(
+                f"KB embed model changed to {kb_embed_model!r} mid-indexing; "
+                "discarding stale-space vectors"
+            )
 
         await set_index_progress(asset_id, "storing", 80, "Storing vectors...")
 

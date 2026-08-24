@@ -1,12 +1,26 @@
 """Knowledge base repository — multi-KB isolation CRUD."""
 
+from typing import Any
+
 from core.infra.database import AssetDB, KnowledgeBaseDB, get_session_factory
 from sqlalchemy import func, select, update
 
 
-async def create_kb(user_id: str, name: str, description: str = "") -> KnowledgeBaseDB:
+async def create_kb(
+    user_id: str,
+    name: str,
+    description: str = "",
+    embed_model: str | None = None,
+    parser_config: dict[str, Any] | None = None,
+) -> KnowledgeBaseDB:
     """Create and persist a knowledge base row; returns the created KB."""
-    kb = KnowledgeBaseDB(user_id=user_id, name=name, description=description)
+    kb = KnowledgeBaseDB(
+        user_id=user_id,
+        name=name,
+        description=description,
+        embed_model=embed_model,
+        parser_config=parser_config,
+    )
     factory = get_session_factory()
     async with factory() as session:
         session.add(kb)
@@ -102,6 +116,69 @@ async def update_kb(
             kb.description = description
         await session.commit()
         return kb
+
+
+async def change_indexing_config(
+    kb_id: str,
+    user_id: str,
+    embed_model: str | None = None,
+    parser_config: dict[str, Any] | None = None,
+) -> tuple[KnowledgeBaseDB | None, list[str]]:
+    """Rebind a KB's indexing config and invalidate its indexed assets.
+
+    Vectors are products of (embedding model, chunking parameters): changing
+    either makes existing vectors stale, so every indexed asset of the KB is
+    reset to ``indexed=False`` in the same transaction — the caller then
+    purges stale chunks and requeues indexing (last-write-wins: rebinding
+    again mid-rebuild is safe).
+
+    Only the provided fields change; passing both as-is is a no-op.
+    Returns (updated_kb, affected_asset_ids); (None, []) when not found.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(KnowledgeBaseDB).where(
+                KnowledgeBaseDB.id == kb_id,
+                KnowledgeBaseDB.user_id == user_id,
+            )
+        )
+        kb = result.scalar_one_or_none()
+        if kb is None:
+            return None, []
+
+        affected: list[str] = []
+        model_changed = embed_model is not None and kb.embed_model != embed_model
+        config_changed = (
+            parser_config is not None and kb.parser_config != parser_config
+        )
+        if model_changed or config_changed:
+            rows = await session.execute(
+                select(AssetDB.id).where(
+                    AssetDB.knowledge_base_id == kb_id,
+                    AssetDB.indexed.is_(True),
+                )
+            )
+            affected = list(rows.scalars().all())
+            if affected:
+                await session.execute(
+                    update(AssetDB)
+                    .where(AssetDB.id.in_(affected))
+                    .values(indexed=False)
+                )
+            if model_changed:
+                kb.embed_model = embed_model
+            if config_changed:
+                kb.parser_config = parser_config
+        await session.commit()
+        return kb, affected
+
+
+async def change_embed_model(
+    kb_id: str, user_id: str, embed_model: str
+) -> tuple[KnowledgeBaseDB | None, list[str]]:
+    """Backward-compatible shim — rebind only the embedding model."""
+    return await change_indexing_config(kb_id, user_id, embed_model=embed_model)
 
 
 async def assign_asset_to_kb(asset_id: str, kb_id: str | None, user_id: str) -> bool:

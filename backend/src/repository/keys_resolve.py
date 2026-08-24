@@ -5,7 +5,10 @@ from typing import Any
 
 from core.infra.database import UserApiKey, get_session_factory
 from core.infra.key_vault import decrypt_api_key
+from core.infra.logging_config import get_logger
 from sqlalchemy import select
+
+logger = get_logger(__name__)
 
 
 async def _resolve_key_row(session: Any, user_id: str) -> Any:
@@ -186,28 +189,52 @@ async def get_rerank_config() -> dict[str, str] | None:
     return None
 
 
-async def get_embedding_config() -> dict[str, str | None] | None:
+async def get_embedding_config(
+    preferred_model: str | None = None,
+) -> dict[str, str | None] | None:
     """Resolve the embedding endpoint: {api_key, base_url, model}.
 
-    Prefers an active key whose models list names an embedding model (e.g.
-    bge-m3 / *-embedding-*); falls back to the oldest embedding-capability
-    key with the legacy DashScope endpoint.
+    With ``preferred_model`` (a KB's bound embedding model), an active
+    embedding-capability key declaring exactly that model wins — keeping
+    query/document vectors in the KB's own space. Falls back to the global
+    heuristic: an active embedding-capability key whose models list names an
+    embedding model (e.g. bge-m3 / *-embedding-*); else the oldest
+    embedding-capability key with the legacy DashScope endpoint.
     """
     from core.infra.database import UserApiKey
     from core.infra.key_vault import decrypt_api_key
 
-    factory = get_session_factory()
-    async with factory() as session:
-        stmt = (
-            select(UserApiKey)
-            .where(
-                UserApiKey.is_active.is_(True),
-                _capabilities_contains(session, "embedding"),
+    async def _embedding_key_rows() -> list[Any]:
+        """Active embedding-capability keys, oldest first."""
+        factory = get_session_factory()
+        async with factory() as session:
+            stmt = (
+                select(UserApiKey)
+                .where(
+                    UserApiKey.is_active.is_(True),
+                    _capabilities_contains(session, "embedding"),
+                )
+                .order_by(UserApiKey.created_at)
             )
-            .order_by(UserApiKey.created_at)
-        )
-        rows = (await session.execute(stmt)).scalars().all()
+            rows = (await session.execute(stmt)).scalars().all()
+        return list(rows)
 
+    if preferred_model:
+        for row in await _embedding_key_rows():
+            declared = [x.strip() for x in (row.models or "").split(",")]
+            if preferred_model in declared:
+                return {
+                    "api_key": decrypt_api_key(row.encrypted_key),
+                    "base_url": row.base_url,
+                    "model": preferred_model,
+                }
+        logger.warning(
+            "Preferred embedding model %r not declared on any active "
+            "embedding-capability key — falling back to global resolution",
+            preferred_model,
+        )
+
+    rows = await _embedding_key_rows()
     if not rows:
         return None
     for row in rows:

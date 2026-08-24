@@ -1,62 +1,199 @@
-import { useEffect } from 'react';
-import { Form, Input, Modal, Select } from 'antd';
+import { useEffect, useMemo } from 'react';
+import { Alert, Form, Input, Modal, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
+import type {
+  KnowledgeBase,
+  ParserConfigForm,
+} from '../../api/client/knowledgeBases';
 import type { ModelInfo } from '../../api/client/models';
+import ChunkingFields from './ChunkingFields';
 
 export interface KbNewModalProps {
   open: boolean;
   mode: 'create' | 'edit';
-  initialName: string;
-  initialDescription: string;
+  /** Edit target; omitted in create mode. */
+  kb?: KnowledgeBase | null;
+  /** Indexed-asset count — drives the rebuild warning on config change. */
+  indexedCount: number;
   models: ModelInfo[];
+  modelsLoading?: boolean;
   saving: boolean;
   onClose: () => void;
-  onSave: (name: string, description: string) => void;
+  onSave: (
+    name: string,
+    description: string,
+    embedModel: string,
+    parserConfig: ParserConfigForm,
+  ) => void;
 }
 
-const STRATEGIES = [
-  { value: '相似度检索', key: 'strategySimilarity' },
-  { value: '混合检索', key: 'strategyHybrid' },
-  { value: 'MMR 多样性', key: 'strategyMmr' },
-];
+const DEFAULT_CHUNK_SIZE = 512;
+const DEFAULT_OVERLAP = 64;
+
+function getInitialFields(kb: KnowledgeBase | null): {
+  name: string;
+  description: string;
+  embedModel: string;
+  config: ParserConfigForm;
+} {
+  return {
+    name: kb?.name ?? '',
+    description: kb?.description ?? '',
+    embedModel: kb?.embedModel ?? '',
+    config: {
+      chunkSize: kb?.parserConfig?.chunk_size ?? DEFAULT_CHUNK_SIZE,
+      overlap: kb?.parserConfig?.overlap ?? DEFAULT_OVERLAP,
+    },
+  };
+}
+
+interface FormValues {
+  name?: string;
+  description?: string;
+  embedModel?: string;
+  chunkSize?: number;
+  overlap?: number;
+}
+
+/** Rebuild is needed when a bound KB's model or chunking params change. */
+function computeWillRebuild(
+  mode: KbNewModalProps['mode'],
+  indexedCount: number,
+  values: FormValues | null,
+  initialEmbedModel: string,
+  initialConfig: ParserConfigForm,
+): boolean {
+  const v = values ?? {};
+  if (mode !== 'edit' || indexedCount === 0) return false;
+  const modelChanged =
+    Boolean(v.embedModel) && v.embedModel !== initialEmbedModel;
+  const configChanged =
+    (v.chunkSize ?? initialConfig.chunkSize) !== initialConfig.chunkSize ||
+    (v.overlap ?? initialConfig.overlap) !== initialConfig.overlap;
+  return modelChanged || configChanged;
+}
+
+function submitValues(
+  values: FormValues,
+  onSave: KbNewModalProps['onSave'],
+): void {
+  const name = values.name?.trim();
+  if (!name || !values.embedModel) return;
+  onSave(
+    name,
+    values.description?.trim() ?? '',
+    values.embedModel,
+    buildParserConfig(values),
+  );
+}
+
+/** Embedding-model picker — only type==='embedding' models are bindable. */
+function EmbedModelFields({
+  models,
+  modelsLoading,
+}: {
+  models: ModelInfo[];
+  modelsLoading: boolean;
+}) {
+  const { t } = useTranslation();
+  const bindable = useMemo(
+    () => models.filter((m) => m.type === 'embedding'),
+    [models],
+  );
+  return (
+    <Form.Item
+      name="embedModel"
+      label={t('kb.embedModel')}
+      required
+      extra={t('kb.embedModelHint')}
+      rules={[{ required: true, message: t('kb.embedModelRequired') }]}
+    >
+      <Select
+        loading={modelsLoading}
+        showSearch={false}
+        placeholder={
+          bindable.length === 0
+            ? t('kb.noEmbedModels')
+            : t('kb.embedModelPlaceholder')
+        }
+        notFoundContent={t('kb.noEmbedModels')}
+        options={bindable.map((m) => ({
+          value: m.id,
+          label: m.label || m.id,
+        }))}
+      />
+    </Form.Item>
+  );
+}
 
 export default function KbNewModal({
   open,
   mode,
-  initialName,
-  initialDescription,
+  kb = null,
+  indexedCount,
   models,
+  modelsLoading = false,
   saving,
   onClose,
   onSave,
 }: KbNewModalProps) {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const initial = getInitialFields(kb);
+
+  // Fill only EMPTY fields on open — idempotent across re-renders and
+  // never clobbers user input; embedModel falls back to the first key model.
+  const firstEmbeddingId = useMemo(
+    () => models.filter((m) => m.type === 'embedding').find(Boolean)?.id,
+    [models],
+  );
 
   useEffect(() => {
-    if (open) {
-      form.setFieldsValue({
-        name: initialName,
-        description: initialDescription,
-        embedModel: models[0]?.id ?? undefined,
-        strategy: STRATEGIES[0].value,
-      });
+    if (!open) return;
+    const cur = form.getFieldsValue([
+      'name',
+      'description',
+      'embedModel',
+      'chunkSize',
+      'overlap',
+    ]) as FormValues;
+    const patch: Partial<FormValues> = {};
+    if (cur.chunkSize == null) patch.chunkSize = initial.config.chunkSize;
+    if (cur.overlap == null) patch.overlap = initial.config.overlap;
+    if (mode === 'edit') {
+      if (cur.name == null) patch.name = initial.name;
+      if (cur.description == null) patch.description = initial.description;
     }
-  }, [open, initialName, initialDescription, models, form]);
+    const modelFallback =
+      mode === 'edit'
+        ? initial.embedModel
+        : initial.embedModel || firstEmbeddingId;
+    if (modelFallback && !cur.embedModel) patch.embedModel = modelFallback;
+    if (Object.keys(patch).length > 0) form.setFieldsValue(patch);
+  }, [open, mode, form, initial, firstEmbeddingId]);
 
-  const handleOk = async () => {
-    const values = await form.validateFields();
-    if (!values.name?.trim()) return;
-    onSave(values.name.trim(), values.description?.trim() ?? '');
-  };
+  const watched = Form.useWatch((values: FormValues) => values, form);
 
-  const isCreate = mode === 'create';
+  function handleOk() {
+    void form
+      .validateFields()
+      .then((values) => submitValues(values as FormValues, onSave));
+  }
+
+  const willRebuild = computeWillRebuild(
+    mode,
+    indexedCount,
+    watched,
+    initial.embedModel,
+    initial.config,
+  );
 
   return (
     <Modal
-      title={isCreate ? t('kb.createTitle') : t('kb.editTitle')}
+      title={mode === 'create' ? t('kb.createTitle') : t('kb.editTitle')}
       open={open}
       onCancel={onClose}
+      centered
       okText={t('confirm.confirm')}
       cancelText={t('confirm.cancel')}
       confirmLoading={saving}
@@ -91,31 +228,26 @@ export default function KbNewModal({
           />
         </Form.Item>
 
-        {isCreate && (
-          <>
-            <Form.Item name="embedModel" label={t('kb.embedModel')}>
-              <Select
-                showSearch={false}
-                placeholder={t('kb.embedModelPlaceholder')}
-                options={models.map((m) => ({
-                  value: m.id,
-                  label: m.label || m.id,
-                }))}
-              />
-            </Form.Item>
+        <EmbedModelFields models={models} modelsLoading={modelsLoading} />
 
-            <Form.Item name="strategy" label={t('kb.strategy')}>
-              <Select
-                showSearch={false}
-                options={STRATEGIES.map((s) => ({
-                  value: s.value,
-                  label: t(`kb.${s.key}`),
-                }))}
-              />
-            </Form.Item>
-          </>
+        <ChunkingFields />
+
+        {willRebuild && (
+          <Alert
+            type="warning"
+            showIcon
+            message={t('kb.changeModelWarning', { count: indexedCount })}
+            className="!mb-2"
+          />
         )}
       </Form>
     </Modal>
   );
+}
+
+function buildParserConfig(v: FormValues): ParserConfigForm {
+  return {
+    chunkSize: v.chunkSize ?? DEFAULT_CHUNK_SIZE,
+    overlap: v.overlap ?? DEFAULT_OVERLAP,
+  };
 }

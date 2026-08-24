@@ -2,10 +2,12 @@
 
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from core.base import Base
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -80,6 +82,18 @@ class KnowledgeBaseDB(Base):
     user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
+    embed_model: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Bound embedding model — vectors in this KB share one space; "
+        "NULL only on legacy rows (global resolution until first edit)",
+    )
+    parser_config: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"),
+        nullable=True,
+        comment="Chunking parameters {chunk_size, overlap} applied at (re)index; "
+        "NULL = engine defaults. Changing it invalidates the KB's vectors",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

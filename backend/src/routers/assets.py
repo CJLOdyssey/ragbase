@@ -12,7 +12,7 @@ from core.infra.logging_config import get_logger
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from httpx import Timeout
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
 from repository.assets import (
     create_asset,
@@ -65,9 +65,48 @@ class AssetItem(BaseModel):
 
 class AssetChunkOut(BaseModel):
     model_config = {"alias_generator": to_camel, "populate_by_name": True}
+    id: str | None = None
+    enabled: bool = True
     text: str
     tags: list[str] = []
     metadata: dict[str, Any] = {}
+
+
+class ChunkTextIn(BaseModel):
+    text: str = Field(min_length=1, max_length=8000)
+
+
+class ChunkToggleIn(BaseModel):
+    enabled: bool
+
+
+async def _embed_for_asset(
+    asset: Any, texts: list[str]
+) -> tuple[list[list[float]], str | None]:
+    """Embed texts with the asset's KB binding (model + chunk cohort).
+
+    Raises RuntimeError when no embedding key is configured — curation ops
+    must fail loudly rather than write vectors from an unknown space.
+    """
+    from rag.rag_embedding import EmbeddingProvider
+    from repository.keys import get_embedding_config
+    from repository.knowledge_bases import get_kb
+
+    kb_embed_model: str | None = None
+    if asset.knowledge_base_id:
+        kb = await get_kb(asset.knowledge_base_id, asset.user_id)
+        if kb is not None:
+            kb_embed_model = getattr(kb, "embed_model", None)
+    cfg = await get_embedding_config(preferred_model=kb_embed_model)
+    if cfg is None or cfg["api_key"] is None:
+        raise RuntimeError("no embedding API key configured")
+    provider = EmbeddingProvider(
+        api_key=cfg["api_key"],
+        model=cfg["model"] or "text-embedding-v3",
+        base_url=cfg["base_url"],
+    )
+    embeddings = await provider.embed(texts)
+    return embeddings, provider.model
 
 
 def _validate(content_type: str, size: int) -> str:
@@ -499,6 +538,107 @@ async def get_asset_chunks(asset_id: str, request: Request) -> Any:
     from rag.rag_store import PgVectorStore
 
     return await PgVectorStore().list_asset_chunks(asset_id, user_id)
+
+
+@router.post("/api/assets/{asset_id}/chunks", response_model=AssetChunkOut, status_code=201)
+async def add_asset_chunk(asset_id: str, req: ChunkTextIn, request: Request) -> Any:
+    """Manually append a curated chunk (embedded with the KB's binding)."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+    if not asset.indexed:
+        raise error_response(ErrorCode.INVALID_REQUEST, detail="素材尚未建立索引")
+
+    from rag.rag_store import PgVectorStore
+
+    try:
+        embeddings, model = await _embed_for_asset(asset, [req.text.strip()])
+    except RuntimeError as e:
+        raise error_response(ErrorCode.INVALID_REQUEST, detail=str(e)) from e
+    store: PgVectorStore = PgVectorStore()
+    chunk_id = await store.add_manual_chunk(
+        asset_id,
+        user_id,
+        req.text.strip(),
+        embeddings[0],
+        model,
+        asset_name=asset.name,
+    )
+    logger.info(
+        "Manual chunk added | user=%s | asset=%s | chunk=%s", user_id, asset_id, chunk_id
+    )
+    return AssetChunkOut(
+        id=chunk_id, enabled=True, text=req.text.strip(), metadata={"manual": True}
+    )
+
+
+@router.patch(
+    "/api/assets/{asset_id}/chunks/{chunk_id}", response_model=AssetChunkOut
+)
+async def edit_asset_chunk(
+    asset_id: str, chunk_id: str, req: ChunkTextIn, request: Request
+) -> Any:
+    """Rewrite a chunk's text and re-embed it in place."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+
+    from rag.rag_store import PgVectorStore
+
+    try:
+        embeddings, model = await _embed_for_asset(asset, [req.text.strip()])
+    except RuntimeError as e:
+        raise error_response(ErrorCode.INVALID_REQUEST, detail=str(e)) from e
+    new_id = await PgVectorStore().update_chunk_text(
+        chunk_id, asset_id, user_id, req.text.strip(), embeddings[0], model
+    )
+    if new_id is None:
+        raise error_response(ErrorCode.CHUNK_NOT_FOUND, detail="chunk 不存在")
+    logger.info(
+        "Chunk edited | user=%s | asset=%s | chunk=%s -> %s",
+        user_id, asset_id, chunk_id, new_id,
+    )
+    return AssetChunkOut(id=new_id, text=req.text.strip(), metadata={})
+
+
+@router.delete("/api/assets/{asset_id}/chunks/{chunk_id}")
+async def delete_asset_chunk(
+    asset_id: str, chunk_id: str, request: Request
+) -> Any:
+    """Hard-delete a single curated chunk."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+
+    from rag.rag_store import PgVectorStore
+
+    ok = await PgVectorStore().delete_chunk(chunk_id, asset_id, user_id)
+    if not ok:
+        raise error_response(ErrorCode.CHUNK_NOT_FOUND, detail="chunk 不存在")
+    return {"deleted": True}
+
+
+@router.post("/api/assets/{asset_id}/chunks/{chunk_id}/toggle")
+async def toggle_asset_chunk(
+    asset_id: str, chunk_id: str, req: ChunkToggleIn, request: Request
+) -> Any:
+    """Soft-disable/enable a single chunk (excluded from retrieval)."""
+    user_id = get_user_id(request)
+    asset = await get_asset_for_user(asset_id, user_id)
+    if asset is None:
+        raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
+
+    from rag.rag_store import PgVectorStore
+
+    ok = await PgVectorStore().set_chunk_enabled(
+        chunk_id, asset_id, user_id, req.enabled
+    )
+    if not ok:
+        raise error_response(ErrorCode.CHUNK_NOT_FOUND, detail="chunk 不存在")
+    return {"enabled": req.enabled}
 
 
 @router.get("/api/assets/{asset_id}/content")

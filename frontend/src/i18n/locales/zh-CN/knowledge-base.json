@@ -27,12 +27,20 @@
     "descriptionPlaceholder": "说明该知识库的用途",
     "embedModel": "嵌入模型",
     "embedModelPlaceholder": "选择嵌入模型",
-    "strategy": "检索策略",
-    "strategySimilarity": "相似度检索",
-    "strategyHybrid": "混合检索",
-    "strategyMmr": "MMR 多样性",
+    "embedModelRequired": "请选择嵌入模型",
+    "noEmbedModels": "先在「API 管理」中配置嵌入模型",
+    "embedModelHint": "决定该库向量的生成方式；更换将自动重建索引",
+    "changeModelWarning": "更换嵌入模型将清除本库 {{count}} 个已索引资产的向量并自动重新索引，期间该库检索暂无结果",
+    "autoModel": "自动",
     "similarityThreshold": "相似度阈值",
     "recallResults": "检索结果",
-    "recallEmptyPrompt": "输入查询并运行检索"
+    "recallEmptyPrompt": "输入查询并运行检索",
+    "chunkSize": "分块大小",
+    "chunkSizeHint": "每块词窗口长度（50–2000）",
+    "chunkSizeRequired": "请输入分块大小",
+    "overlap": "重叠词数",
+    "overlapHint": "相邻块的重叠词数（0–500）",
+    "overlapRequired": "请输入重叠词数",
+    "overlapLessThanSize": "重叠必须小于分块大小"
   }
 }

@@ -27,12 +27,20 @@
     "descriptionPlaceholder": "Describe the knowledge base",
     "embedModel": "Embedding model",
     "embedModelPlaceholder": "Select embedding model",
-    "strategy": "Retrieval strategy",
-    "strategySimilarity": "Similarity",
-    "strategyHybrid": "Hybrid",
-    "strategyMmr": "MMR Diversity",
+    "embedModelRequired": "Please select an embedding model",
+    "noEmbedModels": "Configure an embedding model in API Management first",
+    "embedModelHint": "Determines how vectors are generated; changing it rebuilds the index automatically",
+    "changeModelWarning": "Changing the embedding model will purge vectors of {{count}} indexed assets and re-index them automatically — retrieval in this KB returns nothing until done",
+    "autoModel": "Auto",
     "similarityThreshold": "Similarity threshold",
     "recallResults": "Retrieval results",
-    "recallEmptyPrompt": "Enter a query and run retrieval"
+    "recallEmptyPrompt": "Enter a query and run retrieval",
+    "chunkSize": "Chunk size",
+    "chunkSizeHint": "Word-window length per chunk (50–2000)",
+    "chunkSizeRequired": "Please enter a chunk size",
+    "overlap": "Overlap",
+    "overlapHint": "Overlapping words between chunks (0–500)",
+    "overlapRequired": "Please enter an overlap",
+    "overlapLessThanSize": "Overlap must be smaller than the chunk size"
   }
 }

@@ -6,7 +6,13 @@ import {
 import { listVersions } from '../../../api/client/versions';
 import PromptLibraryPage from '../PromptLibraryPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -239,8 +245,9 @@ describe('PromptLibraryPage', () => {
 
     fireEvent.click(await screen.findByText('测试提示词'));
 
+    // antd 用 aria-labelledby 指向标题容器，可访问名为「名称+徽标+版本」拼接，用包含式匹配
     const detailDialog = await screen.findByRole('dialog', {
-      name: '测试提示词',
+      name: /测试提示词/,
     });
     expect(
       within(detailDialog).getByText('prompts.detail.basicInfo'),

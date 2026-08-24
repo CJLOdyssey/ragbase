@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { PromptItem } from '../../api/client/prompts';
-import { useToast } from '../../utils/useToast';
-import Modal from '../shared/Modal';
 import { StatusBadge } from './PromptBadges';
+import { useToast } from '../../utils/useToast';
 
 interface Props {
   prompt: PromptItem;
@@ -18,7 +18,9 @@ export default function PromptDetailModal({ prompt, onClose, onEdit }: Props) {
   const [copied, setCopied] = useState(false);
 
   const content = prompt.content?.trim() ? prompt.content : '';
-  const uses = ((prompt as unknown as { uses?: number }).uses ?? 0).toLocaleString();
+  const uses = (
+    (prompt as unknown as { uses?: number }).uses ?? 0
+  ).toLocaleString();
 
   useEffect(() => {
     if (!copied) return;
@@ -37,7 +39,7 @@ export default function PromptDetailModal({ prompt, onClose, onEdit }: Props) {
   };
 
   return (
-    <Modal
+    <AntdModal
       title={
         <span className="flex items-center gap-2.5 min-w-0 pr-4">
           <span className="text-lg font-semibold text-[var(--color-text-primary)] truncate">
@@ -51,9 +53,11 @@ export default function PromptDetailModal({ prompt, onClose, onEdit }: Props) {
           </span>
         </span>
       }
-      onClose={onClose}
-      ariaLabel={prompt.name}
+      open={true}
+      onCancel={onClose}
+      centered
       width={680}
+      aria-label={prompt.name}
       footer={
         <>
           <button
@@ -102,9 +106,7 @@ export default function PromptDetailModal({ prompt, onClose, onEdit }: Props) {
               disabled={!content}
               className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-[var(--color-border)] bg-transparent text-[11px] text-[var(--color-text-secondary)] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {copied
-                ? t('prompts.detail.copied')
-                : t('prompts.detail.copy')}
+              {copied ? t('prompts.detail.copied') : t('prompts.detail.copy')}
             </button>
           </div>
           <pre className="m-0 p-3.5 max-h-[320px] overflow-y-auto rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[12px] font-mono leading-[1.7] text-[var(--color-text-secondary)] whitespace-pre-wrap break-words">
@@ -116,7 +118,7 @@ export default function PromptDetailModal({ prompt, onClose, onEdit }: Props) {
           </pre>
         </div>
       </div>
-    </Modal>
+    </AntdModal>
   );
 }
 

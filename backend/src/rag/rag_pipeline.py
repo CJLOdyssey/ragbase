@@ -181,20 +181,72 @@ async def _search_results(
     rerank: bool = False,
     min_score: float | None = DEFAULT_MIN_SCORE,
 ) -> list[dict[str, Any]]:
-    """Shared retrieval core: embed → hybrid search → optional rerank."""
-    if _embedding_provider is None:
-        return []
-    query_embedding = await _embedding_provider.embed_query(query)
-    results: list[dict[str, Any]] = await _vector_store.search(
-        query_embedding,
-        query_text=query,
-        user_id=user_id,
-        session_id=session_id,
-        tag_filter=tags,
-        asset_ids=asset_ids,
-        top_k=RERANK_CANDIDATES if rerank else top_k,
-        min_score=min_score,
+    """Shared retrieval core: embed → hybrid search → optional rerank.
+
+    Mixed-model corpora: the query is embedded once per distinct embedding
+    cohort (the ``embed_model`` marker recorded at index time), so vectors
+    are only ever compared inside their own space. Group results merge by
+    RRF score — an ordering heuristic across models; enabling rerank lets
+    the cross-encoder restore a common scale.
+    """
+    store = _vector_store
+    groups = await store.embed_model_groups(
+        user_id, session_id=session_id, tag_filter=tags, asset_ids=asset_ids
     )
+    if not groups:
+        return []
+
+    candidate_k = RERANK_CANDIDATES if rerank else top_k
+
+    if len(groups) == 1:
+        if _embedding_provider is None:
+            return []
+        query_embedding = await _embedding_provider.embed_query(query)
+        results: list[dict[str, Any]] = await store.search(
+            query_embedding,
+            query_text=query,
+            user_id=user_id,
+            session_id=session_id,
+            tag_filter=tags,
+            asset_ids=asset_ids,
+            top_k=candidate_k,
+            min_score=min_score,
+        )
+    else:
+        # Lazy: repository.keys sits at the tail of the rag import chain.
+        from repository.keys import get_embedding_config
+
+        merged: list[dict[str, Any]] = []
+        for model in groups:
+            cfg = await get_embedding_config(preferred_model=model)
+            if cfg is None or cfg["api_key"] is None:
+                logger.warning("no embedding config for cohort %r — skipped", model)
+                continue
+            provider = EmbeddingProvider(
+                api_key=cfg["api_key"],
+                model=cfg["model"] or "text-embedding-v3",
+                base_url=cfg["base_url"],
+            )
+            try:
+                query_embedding = await provider.embed_query(query)
+            except Exception:
+                logger.exception("query embedding failed for %r — group skipped", model)
+                continue
+            merged.extend(
+                await store.search(
+                    query_embedding,
+                    query_text=query,
+                    user_id=user_id,
+                    session_id=session_id,
+                    tag_filter=tags,
+                    asset_ids=asset_ids,
+                    top_k=candidate_k,
+                    min_score=min_score,
+                    embed_model=model,
+                    embed_model_filter=True,
+                )
+            )
+        results = sorted(merged, key=lambda r: r["score"], reverse=True)[:candidate_k]
 
     if results and rerank and len(results) > top_k:
         results = await _rerank_results(query, results, top_k)

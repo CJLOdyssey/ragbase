@@ -82,7 +82,7 @@ describe('ConfirmDialog', { tags: ['unit'] }, () => {
   });
 
   it('has no header/footer border lines', () => {
-    const { container } = render(
+    render(
       <TestProviders>
         <ConfirmDialog
           title="T"
@@ -92,7 +92,8 @@ describe('ConfirmDialog', { tags: ['unit'] }, () => {
         />
       </TestProviders>,
     );
-    const dialog = container.querySelector('[role="dialog"]')!;
+    // antd Modal 渲染进 document.body portal，需从全局查询
+    const dialog = document.body.querySelector('[role="dialog"]')!;
     expect(dialog.querySelector('[class*="border-b"]')).toBeNull();
     expect(dialog.querySelector('[class*="border-t"]')).toBeNull();
   });

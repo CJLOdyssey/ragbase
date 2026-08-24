@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Modal from '../shared/Modal';
+import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { PromptItem } from '../../api/client/prompts';
 
@@ -81,17 +81,14 @@ export default function PromptEditorModal({
   };
 
   return (
-    <Modal
+    <AntdModal
       title={
         mode === 'new' ? t('prompts.editor.new') : t('prompts.editor.edit')
       }
-      onClose={onClose}
-      ariaLabel={
-        mode === 'new' ? t('prompts.editor.new') : t('prompts.editor.edit')
-      }
+      open={true}
+      onCancel={onClose}
+      centered
       width={520}
-      hideHeaderBorder
-      bodyClassName="p-6"
       footer={
         <>
           <button
@@ -191,6 +188,6 @@ export default function PromptEditorModal({
           {t('prompts.editor.saveHint')}
         </p>
       </div>
-    </Modal>
+    </AntdModal>
   );
 }

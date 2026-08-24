@@ -1,5 +1,5 @@
 import { STATUS_COLORS } from '../shared/statusColors';
-import { Database, Pencil, Search, Trash2 } from 'lucide-react';
+import { Box, Database, Pencil, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { KnowledgeBase } from '../../api/client/knowledgeBases';
 
@@ -67,6 +67,12 @@ export default function KbCard({
             </div>
             <div className="mt-0.5 line-clamp-1 text-xs text-[var(--color-text-secondary)]">
               {kb.description || t('kb.noDescription')}
+            </div>
+            <div className="mt-1 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide text-[var(--color-text-muted)]">
+              <Box size={10} className="shrink-0" />
+              <span className="truncate">
+                {kb.embedModel || t('kb.autoModel')}
+              </span>
             </div>
           </div>
         </div>

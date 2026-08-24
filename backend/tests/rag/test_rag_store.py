@@ -466,8 +466,17 @@ class TestPgVectorStore:
             query = str(delete_call[0][0])
             params = delete_call[0][1]
             assert "DELETE FROM vector_chunks" in query
-            assert "asset_id = :aid" in query
-            assert params["aid"] == "a1"
+            assert "asset_id = ANY(:aids)" in query
+            assert params["aids"] == ["a1"]
+
+    @pytest.mark.asyncio
+    async def test_clear_assets_batch_skips_empty(self):
+        """Empty id list must not touch the DB at all."""
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        with _patch_db(mock_session):
+            await store.clear_assets([])
+            mock_session.execute.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_clear_session(self):

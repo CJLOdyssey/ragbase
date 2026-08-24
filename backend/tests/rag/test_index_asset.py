@@ -19,6 +19,7 @@ def _asset(asset_id: str = "a1", user_id: str = "u1", name: str = "手册"):
     asset.name = name
     asset.source = "upload"
     asset.storage_path = "/tmp/ragbase-test-asset.md"
+    asset.knowledge_base_id = None
     return asset
 
 
@@ -43,6 +44,7 @@ def _patch_asset_env(tmp_path: Path, text: str = "## 节一\n内容 ABC-12345"):
     }
     provider_cls = MagicMock()
     provider = MagicMock()
+    provider.model = "BAAI/bge-m3"
     provider.embed = AsyncMock(return_value=[[0.1] * 1024])
     provider_cls.return_value = provider
 
@@ -54,6 +56,33 @@ def _patch_asset_env(tmp_path: Path, text: str = "## 节一\n内容 ABC-12345"):
 
 
 class TestIndexAsset:
+    @pytest.mark.asyncio
+    async def test_kb_bound_model_preferred(self, tmp_path):
+        """An asset in a KB with a bound model resolves config via that model."""
+        repo, provider_cls, store, asset = _patch_asset_env(tmp_path)
+        asset.knowledge_base_id = "kb-1"
+
+        kb = MagicMock()
+        kb.embed_model = "BAAI/bge-m3"
+
+        with (
+            patch("repository.assets.get_asset", repo["get_asset"]),
+            patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
+            patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
+            patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
+            patch("rag.rag_store.PgVectorStore", return_value=store),
+            patch("repository.knowledge_bases.get_kb", AsyncMock(return_value=kb)),
+        ):
+            await _index_asset("a1", "u1")
+
+        repo["get_embedding_config"].assert_awaited_once_with(
+            preferred_model="BAAI/bge-m3"
+        )
+        stored_chunks = store.add.call_args.args[0]
+        assert all(
+            c.metadata.get("embed_model") == "BAAI/bge-m3" for c in stored_chunks
+        )
+
     @pytest.mark.asyncio
     async def test_owner_only(self, tmp_path):
         """A user may not index an asset they do not own."""

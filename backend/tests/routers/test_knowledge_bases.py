@@ -5,6 +5,21 @@ from datetime import UTC, datetime
 import pytest
 from core.infra.database import AssetDB, get_session_factory
 from fastapi.testclient import TestClient
+from routers.models import ModelInfo
+
+
+@pytest.fixture(autouse=True)
+def _fake_embedding_models(monkeypatch):
+    """Seed one embedding-capable model for embed-model validation."""
+
+    async def fake_get_user_models(user_id: str) -> list[ModelInfo]:
+        return [
+            ModelInfo(
+                id="bge-m3", label="bge-m3", provider="siliconflow", type="embedding"
+            )
+        ]
+
+    monkeypatch.setattr("routers.models.get_user_models", fake_get_user_models)
 
 
 @pytest.mark.asyncio
@@ -21,15 +36,39 @@ async def test_create_knowledge_base(client: TestClient):
     """Should create a new knowledge base."""
     response = client.post(
         "/api/knowledge-bases",
-        json={"name": "Test KB", "description": "Test description"}
+        json={
+            "name": "Test KB",
+            "description": "Test description",
+            "embedModel": "bge-m3",
+        },
     )
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Test KB"
     assert data["description"] == "Test description"
+    assert data["embedModel"] == "bge-m3"
     assert "id" in data
     assert "createdAt" in data
     assert "updatedAt" in data
+
+
+@pytest.mark.asyncio
+async def test_create_knowledge_base_requires_embed_model(client: TestClient):
+    """Missing embed_model should be rejected (422)."""
+    response = client.post(
+        "/api/knowledge-bases", json={"name": "No Model KB"}
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_knowledge_base_rejects_unknown_model(client: TestClient):
+    """A model not declared on any active key must be rejected (400)."""
+    response = client.post(
+        "/api/knowledge-bases",
+        json={"name": "KB", "embedModel": "not-a-real-model"},
+    )
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -38,7 +77,7 @@ async def test_create_knowledge_base_truncates_name(client: TestClient):
     long_name = "x" * 300
     response = client.post(
         "/api/knowledge-bases",
-        json={"name": long_name, "description": "Test"}
+        json={"name": long_name, "description": "Test", "embedModel": "bge-m3"},
     )
     assert response.status_code == 201
     data = response.json()
@@ -50,7 +89,7 @@ async def test_create_knowledge_base_strips_whitespace(client: TestClient):
     """Should strip whitespace from name."""
     response = client.post(
         "/api/knowledge-bases",
-        json={"name": "  Test KB  ", "description": "Test"}
+        json={"name": "  Test KB  ", "description": "Test", "embedModel": "bge-m3"},
     )
     assert response.status_code == 201
     data = response.json()
@@ -63,19 +102,20 @@ async def test_update_knowledge_base(client: TestClient):
     # Create a KB first
     create_response = client.post(
         "/api/knowledge-bases",
-        json={"name": "Original", "description": "Original desc"}
+        json={"name": "Original", "description": "Original desc", "embedModel": "bge-m3"},
     )
     kb_id = create_response.json()["id"]
 
     # Update it
     response = client.put(
         f"/api/knowledge-bases/{kb_id}",
-        json={"name": "Updated", "description": "Updated desc"}
+        json={"name": "Updated", "description": "Updated desc"},
     )
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "Updated"
     assert data["description"] == "Updated desc"
+    assert data["embedModel"] == "bge-m3"
 
 
 @pytest.mark.asyncio
@@ -84,7 +124,7 @@ async def test_update_knowledge_base_partial(client: TestClient):
     # Create a KB first
     create_response = client.post(
         "/api/knowledge-bases",
-        json={"name": "Original", "description": "Original desc"}
+        json={"name": "Original", "description": "Original desc", "embedModel": "bge-m3"},
     )
     kb_id = create_response.json()["id"]
 
@@ -115,7 +155,7 @@ async def test_delete_knowledge_base(client: TestClient):
     # Create a KB first
     create_response = client.post(
         "/api/knowledge-bases",
-        json={"name": "To Delete", "description": "Test"}
+        json={"name": "To Delete", "description": "Test", "embedModel": "bge-m3"},
     )
     kb_id = create_response.json()["id"]
 
@@ -144,7 +184,7 @@ async def test_assign_asset_to_knowledge_base(client: TestClient):
     # Create a KB
     kb_response = client.post(
         "/api/knowledge-bases",
-        json={"name": "Test KB", "description": "Test"}
+        json={"name": "Test KB", "description": "Test", "embedModel": "bge-m3"},
     )
     kb_id = kb_response.json()["id"]
 
@@ -211,3 +251,33 @@ async def test_assign_asset_not_found(client: TestClient):
         json={"knowledgeBaseId": "some-kb-id"}
     )
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_knowledge_base_with_parser_config(client: TestClient):
+    """parserConfig round-trips through create → response."""
+    response = client.post(
+        "/api/knowledge-bases",
+        json={
+            "name": "Cfg KB",
+            "embedModel": "bge-m3",
+            "parserConfig": {"chunkSize": 256, "overlap": 32},
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["parserConfig"] == {"chunk_size": 256, "overlap": 32}
+
+
+@pytest.mark.asyncio
+async def test_create_knowledge_base_rejects_bad_parser_config(client: TestClient):
+    """Out-of-range chunking params must be rejected (422)."""
+    response = client.post(
+        "/api/knowledge-bases",
+        json={
+            "name": "Bad Cfg",
+            "embedModel": "bge-m3",
+            "parserConfig": {"chunkSize": 10, "overlap": 5},
+        },
+    )
+    assert response.status_code == 422

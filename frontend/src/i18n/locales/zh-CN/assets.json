@@ -46,7 +46,17 @@
       "emptyDesc": "该素材尚未生成分块",
       "loading": "加载分块中…",
       "count": "共 {{count}} 个分块",
-      "truncated": "仅显示前 {{count}} 个分块"
+      "truncated": "仅显示前 {{count}} 个分块",
+      "manualTag": "手动",
+      "toggle": "启用/停用",
+      "edit": "编辑 chunk",
+      "save": "保存",
+      "saving": "保存中…",
+      "addLabel": "手动追加 chunk",
+      "addPlaceholder": "输入要追加的文本，保存后自动嵌入…",
+      "addButton": "追加",
+      "deleteTitle": "删除 chunk",
+      "deleteConfirm": "确认删除该 chunk？该操作不可恢复。"
     },
     "table": {
       "fileName": "文件名",

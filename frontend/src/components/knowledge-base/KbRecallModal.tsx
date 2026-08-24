@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import EmptyState from '../shared/EmptyState';
 import { useMutation } from '@tanstack/react-query';
-import { Drawer, Input, InputNumber, Switch } from 'antd';
+import { Input, InputNumber, Modal, Switch } from 'antd';
 import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,19 +9,19 @@ import {
   type RetrievalTestResult,
 } from '../../api/client/ragTest';
 
-export interface KbRecallDrawerProps {
+export interface KbRecallModalProps {
   open: boolean;
   knowledgeBaseId: string;
   knowledgeBaseName: string;
   onClose: () => void;
 }
 
-export default function KbRecallDrawer({
+export default function KbRecallModal({
   open,
   knowledgeBaseId,
   knowledgeBaseName,
   onClose,
-}: KbRecallDrawerProps) {
+}: KbRecallModalProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [topK, setTopK] = useState(5);
@@ -49,12 +49,14 @@ export default function KbRecallDrawer({
   const canRun = query.trim().length > 0 && !testMutation.isPending;
 
   return (
-    <Drawer
+    <Modal
       title={`${t('ragTest.title')} · ${knowledgeBaseName}`}
       open={open}
-      onClose={onClose}
-      width={520}
-      styles={{ body: { padding: 20 } }}
+      onCancel={onClose}
+      centered
+      width={640}
+      footer={null}
+      styles={{ body: { padding: 20, maxHeight: '65vh', overflowY: 'auto' } }}
     >
       <div className="flex flex-col gap-4">
         <section>
@@ -126,7 +128,7 @@ export default function KbRecallDrawer({
           />
         </section>
       </div>
-    </Drawer>
+    </Modal>
   );
 }
 

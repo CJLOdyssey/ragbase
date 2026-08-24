@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import Modal from '../shared/Modal';
-import { Input, Select } from 'antd';
+import { Modal as AntdModal, Input, Select } from 'antd';
 import { Mail, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -34,10 +33,11 @@ export default function InviteUserModal({
   };
 
   return (
-    <Modal
+    <AntdModal
       title={t('admin.invite.title')}
-      onClose={onClose}
-      ariaLabel={t('admin.invite.title')}
+      open={true}
+      onCancel={onClose}
+      centered
       width={460}
       footer={
         <>
@@ -108,6 +108,6 @@ export default function InviteUserModal({
           />
         </div>
       </div>
-    </Modal>
+    </AntdModal>
   );
 }

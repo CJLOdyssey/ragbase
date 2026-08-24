@@ -88,6 +88,8 @@ export async function retryIndexAsset(
 }
 
 export interface AssetChunk {
+  id?: string;
+  enabled?: boolean;
   text: string;
   tags: string[];
   metadata: Record<string, unknown>;
@@ -96,6 +98,40 @@ export interface AssetChunk {
 export async function listAssetChunks(assetId: string): Promise<AssetChunk[]> {
   const { data } = await api.get(`/assets/${assetId}/chunks`);
   return data;
+}
+
+export async function addAssetChunk(
+  assetId: string,
+  text: string,
+): Promise<AssetChunk> {
+  const { data } = await api.post(`/assets/${assetId}/chunks`, { text });
+  return data;
+}
+
+export async function updateAssetChunk(
+  assetId: string,
+  chunkId: string,
+  text: string,
+): Promise<AssetChunk> {
+  const { data } = await api.patch(`/assets/${assetId}/chunks/${chunkId}`, {
+    text,
+  });
+  return data;
+}
+
+export async function deleteAssetChunk(
+  assetId: string,
+  chunkId: string,
+): Promise<void> {
+  await api.delete(`/assets/${assetId}/chunks/${chunkId}`);
+}
+
+export async function toggleAssetChunk(
+  assetId: string,
+  chunkId: string,
+  enabled: boolean,
+): Promise<void> {
+  await api.post(`/assets/${assetId}/chunks/${chunkId}/toggle`, { enabled });
 }
 
 export async function getAssetContent(

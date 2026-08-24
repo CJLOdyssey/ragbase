@@ -1,4 +1,4 @@
-import Modal from '../shared/Modal';
+import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { VersionItem } from '../../api/client/versions';
 
@@ -20,14 +20,13 @@ export default function VersionViewModal({
   const snapContent = snap.content ?? '';
 
   return (
-    <Modal
+    <AntdModal
       title={t('prompts.version.rollbackTitle', {
         version: `v${version.version_num}`,
       })}
-      onClose={onClose}
-      ariaLabel={t('prompts.version.rollbackTitle', {
-        version: `v${version.version_num}`,
-      })}
+      open={true}
+      onCancel={onClose}
+      centered
       width={560}
       footer={
         <>
@@ -77,6 +76,6 @@ export default function VersionViewModal({
           </pre>
         </div>
       </div>
-    </Modal>
+    </AntdModal>
   );
 }

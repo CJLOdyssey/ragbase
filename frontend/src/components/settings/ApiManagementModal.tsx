@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Modal from '@/components/shared/Modal';
+import { Modal as AntdModal } from 'antd';
 import { Globe, Key, Server } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ApiProviderTab from './ApiProviderTab';
@@ -52,12 +52,13 @@ export default function ApiManagementModal({ onClose }: Props) {
   };
 
   return (
-    <Modal
+    <AntdModal
       title="API"
-      onClose={onClose}
+      open={true}
+      onCancel={onClose}
+      centered
       className="api-modal"
-      hideHeaderBorder
-      bodyClassName="p-3"
+      styles={{ body: { padding: 12 } }}
     >
       <div className="flex h-full min-h-0 overflow-hidden">
         <div className="w-[160px] px-4 py-5 flex flex-col gap-1 overflow-hidden min-h-0">
@@ -183,6 +184,6 @@ export default function ApiManagementModal({ onClose }: Props) {
           danger
         />
       )}
-    </Modal>
+    </AntdModal>
   );
 }

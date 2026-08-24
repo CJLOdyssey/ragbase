@@ -120,6 +120,9 @@ class ErrorCode(StrEnum):
     # ── Monitoring / review queue ───────────────────────────────────
     REVIEW_NOT_FOUND = "REVIEW_001"
 
+    # ── RAG chunks ───────────────────────────────────────────────────
+    CHUNK_NOT_FOUND = "CHUNK_001"
+
     # ── General ──────────────────────────────────────────────────────
     INTERNAL_ERROR = "GENERAL_001"
     INVALID_REQUEST = "GENERAL_002"
@@ -127,6 +130,7 @@ class ErrorCode(StrEnum):
 
 _STATUS_MAP: dict[ErrorCode, int] = {
     # 400
+    ErrorCode.CHUNK_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.INVALID_REQUEST: HTTP_400_BAD_REQUEST,
     ErrorCode.AGENT_LAST_APPROVER: HTTP_400_BAD_REQUEST,
     ErrorCode.AGENT_LAST_ACTIVE: HTTP_400_BAD_REQUEST,

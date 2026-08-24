@@ -1,4 +1,4 @@
-import Modal from '../shared/Modal';
+import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
 
 interface AssetsUrlModalProps {
@@ -26,14 +26,12 @@ export default function AssetsUrlModal({
   if (!open) return null;
 
   return (
-    <Modal
+    <AntdModal
       title={t('assets.urlImport.title')}
-      onClose={onClose}
-      ariaLabel={t('assets.urlImport.title')}
+      open={true}
+      onCancel={onClose}
+      centered
       width={480}
-      hideHeaderBorder
-      hideFooterBorder
-      bodyClassName="p-6"
       footer={
         <>
           <button
@@ -80,6 +78,6 @@ export default function AssetsUrlModal({
           />
         </div>
       </div>
-    </Modal>
+    </AntdModal>
   );
 }

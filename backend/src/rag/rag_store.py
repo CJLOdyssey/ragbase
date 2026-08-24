@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from rag.rag_chunking import Chunk
 from rag.rag_embedding import EMBEDDING_DIM
+from rag.rag_store_curation import CurationMixin
 
 logger = get_logger(__name__)
 
@@ -25,7 +26,7 @@ _RRF_K = 60
 _LEXICAL_MIN_LEN = 3  # pg_trgm degenerates below a trigram's worth of chars
 
 
-class PgVectorStore:
+class PgVectorStore(CurationMixin):
     """PostgreSQL vector store with hybrid search and per-user isolation.
 
     Requires:
@@ -60,7 +61,8 @@ class PgVectorStore:
                         embedding vector({EMBEDDING_DIM}),
                         user_id TEXT NOT NULL DEFAULT '',
                         asset_id TEXT,
-                        metadata JSONB
+                        metadata JSONB,
+                        enabled BOOLEAN NOT NULL DEFAULT TRUE
                     )
                 """
                 )
@@ -143,6 +145,8 @@ class PgVectorStore:
         asset_ids: list[str] | None = None,
         top_k: int = 5,
         min_score: float | None = None,
+        embed_model: str | None = None,
+        embed_model_filter: bool = False,
     ) -> list[dict[str, Any]]:
         """Hybrid search: HNSW cosine leg + pg_trgm leg, fused via RRF.
 
@@ -150,6 +154,9 @@ class PgVectorStore:
         min_score (optional) drops vector-leg hits below a similarity floor —
         low-scoring chunks never enter the RRF fusion. The lexical leg is
         already bounded by the pg_trgm word_similarity_threshold (0.3).
+        ``embed_model`` + ``embed_model_filter`` restrict candidates to one
+        embedding cohort (NULL matches legacy chunks without the marker) so
+        query vectors are only compared against same-space vectors.
         Returns list of {text, tags, session_id, run_id, asset_id, metadata,
         similarity, score}, ordered by RRF score descending.
         """
@@ -159,26 +166,21 @@ class PgVectorStore:
 
         factory = get_session_factory()
         async with factory() as session:
-            where_clauses = ["user_id = :uid"]
             params: dict[str, Any] = {"uid": user_id}
+            where_clauses = _scope_filters(
+                params,
+                session_id=session_id,
+                tag_filter=tag_filter,
+                asset_ids=asset_ids,
+            )
+            where_clauses += ["user_id = :uid", "enabled"]
 
-            if session_id:
-                where_clauses.append("session_id = :sid")
-                params["sid"] = session_id
-
-            if tag_filter:
-                tag_conditions = []
-                for i, tag in enumerate(tag_filter):
-                    param_name = f"tag{i}"
-                    tag_conditions.append(f":{param_name} = ANY(tags)")
-                    params[param_name] = tag.lower()
-                where_clauses.append("(" + " OR ".join(tag_conditions) + ")")
-
-            if asset_ids is not None:
-                if not asset_ids:
-                    return []
-                where_clauses.append("asset_id = ANY(:aids)")
-                params["aids"] = asset_ids
+            if embed_model_filter:
+                if embed_model is None:
+                    where_clauses.append("(metadata->>'embed_model') IS NULL")
+                else:
+                    where_clauses.append("metadata->>'embed_model' = :em")
+                    params["em"] = embed_model
 
             if min_score is not None:
                 where_clauses.append(
@@ -226,16 +228,59 @@ class PgVectorStore:
 
         return _rrf_fuse(legs, top_k)
 
+    async def embed_model_groups(
+        self,
+        user_id: str,
+        session_id: str | None = None,
+        tag_filter: list[str] | None = None,
+        asset_ids: list[str] | None = None,
+    ) -> list[str | None]:
+        """Distinct embedding-model cohorts inside the candidate scope.
+
+        Mirrors what indexing records in chunk metadata; NULL covers legacy
+        chunks written before per-KB binding (session-message ingest too).
+        """
+        await self._ensure_table()
+        from core.infra.database import get_session_factory
+
+        factory = get_session_factory()
+        async with factory() as session:
+            params: dict[str, Any] = {"uid": user_id}
+            where_clauses = _scope_filters(
+                params,
+                session_id=session_id,
+                tag_filter=tag_filter,
+                asset_ids=asset_ids,
+            )
+            where_clauses += ["user_id = :uid", "enabled"]
+            rows = await session.execute(
+                text(
+                    f"""
+                    SELECT DISTINCT metadata->>'embed_model' AS em
+                    FROM vector_chunks
+                    WHERE {" AND ".join(where_clauses)}
+                """
+                ),
+                params,
+            )
+            return [r[0] for r in rows.fetchall()]
+
     async def clear_asset(self, asset_id: str) -> None:
         """Delete all chunks of an asset — used on asset delete and reindex."""
+        await self.clear_assets([asset_id])
+
+    async def clear_assets(self, asset_ids: list[str]) -> None:
+        """Batch-delete chunks of multiple assets (e.g. KB-wide rebind purge)."""
+        if not asset_ids:
+            return
         await self._ensure_table()
         from core.infra.database import get_session_factory
 
         factory = get_session_factory()
         async with factory() as session:
             await session.execute(
-                text("DELETE FROM vector_chunks WHERE asset_id = :aid"),
-                {"aid": asset_id},
+                text("DELETE FROM vector_chunks WHERE asset_id = ANY(:aids)"),
+                {"aids": asset_ids},
             )
             await session.commit()
 
@@ -254,7 +299,7 @@ class PgVectorStore:
             rows = await session.execute(
                 text(
                     """
-                    SELECT text, tags, metadata
+                    SELECT id, text, tags, metadata, enabled
                     FROM vector_chunks
                     WHERE asset_id = :aid AND user_id = :uid
                     ORDER BY id
@@ -265,9 +310,11 @@ class PgVectorStore:
             )
             return [
                 {
-                    "text": r[0],
-                    "tags": r[1] if r[1] else [],
-                    "metadata": r[2] if r[2] else {},
+                    "id": r[0],
+                    "text": r[1],
+                    "tags": r[2] if r[2] else [],
+                    "metadata": r[3] if r[3] else {},
+                    "enabled": bool(r[4]) if r[4] is not None else True,
                 }
                 for r in rows.fetchall()
             ]
@@ -283,6 +330,39 @@ class PgVectorStore:
                 {"sid": session_id},
             )
             await session.commit()
+
+
+def _scope_filters(
+    params: dict[str, Any],
+    session_id: str | None,
+    tag_filter: list[str] | None,
+    asset_ids: list[str] | None,
+) -> list[str]:
+    """Shared WHERE fragments for scoped chunk queries; binds SQL params.
+
+    ``asset_ids`` uses tri-state semantics: None = unfiltered, [] = match
+    nothing, non-empty = restricted set. Caller appends ``user_id = :uid``.
+    """
+    clauses: list[str] = []
+    if session_id:
+        clauses.append("session_id = :sid")
+        params["sid"] = session_id
+
+    if tag_filter:
+        tag_conditions = []
+        for i, tag in enumerate(tag_filter):
+            param_name = f"tag{i}"
+            tag_conditions.append(f":{param_name} = ANY(tags)")
+            params[param_name] = tag.lower()
+        clauses.append("(" + " OR ".join(tag_conditions) + ")")
+
+    if asset_ids is not None:
+        if not asset_ids:
+            clauses.append("FALSE")
+        else:
+            clauses.append("asset_id = ANY(:aids)")
+            params["aids"] = asset_ids
+    return clauses
 
 
 def _rows_to_dicts(rows: Sequence[Any]) -> list[dict[str, Any]]:

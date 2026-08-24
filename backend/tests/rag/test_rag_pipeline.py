@@ -7,6 +7,21 @@ from rag import rag_pipeline
 from rag.rag_chunking import Chunk
 
 
+@pytest.fixture(autouse=True)
+def _stub_embed_model_groups(monkeypatch):
+    """Keep retrieval tests off the DB: default scope has one legacy cohort.
+
+    Tests using a MagicMock store set their own ``embed_model_groups`` and
+    therefore shadow this class-level stub.
+    """
+    monkeypatch.setattr(
+        rag_pipeline.PgVectorStore,
+        "embed_model_groups",
+        AsyncMock(return_value=[None]),
+        raising=True,
+    )
+
+
 class TestRagPipeline:
     def test_get_rag_pipeline(self):
         p, store = rag_pipeline.get_rag_pipeline()
@@ -61,8 +76,12 @@ class TestRagPipeline:
         provider = MagicMock()
         provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
         store = MagicMock()
+        store.embed_model_groups = AsyncMock(return_value=[None])
         store.search = AsyncMock(
-            return_value=[{"asset_id": f"a-{i}", "metadata": {}} for i in range(3)]
+            return_value=[
+                {"asset_id": f"a-{i}", "metadata": {}, "score": 1 / (60 + i + 1)}
+                for i in range(3)
+            ]
         )
         with (
             patch.object(rag_pipeline, "_embedding_provider", provider),
@@ -81,6 +100,7 @@ class TestRagPipeline:
         provider = MagicMock()
         provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
         store = MagicMock()
+        store.embed_model_groups = AsyncMock(return_value=[None])
         store.search = AsyncMock(return_value=[{"asset_id": "a-1"}])
         with (
             patch.object(rag_pipeline, "_embedding_provider", provider),

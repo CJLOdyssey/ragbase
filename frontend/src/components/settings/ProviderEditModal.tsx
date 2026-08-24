@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Modal from '@/components/shared/Modal';
+import { Modal as AntdModal } from 'antd';
 import { AlertCircle, Loader2, Save, Tag, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchModelsFromProvider } from '../../api/client/keys';
@@ -254,7 +254,7 @@ export default function ProviderEditModal({
   };
 
   return (
-    <Modal
+    <AntdModal
       title={
         <div className="flex items-center gap-3">
           <div className="w-[38px] h-[38px] rounded-[10px] bg-[color-mix(in_srgb,var(--color-surface),var(--color-text-primary)_8%)] flex items-center justify-center text-[var(--color-accent)] shrink-0">
@@ -269,9 +269,12 @@ export default function ProviderEditModal({
           </div>
         </div>
       }
-      onClose={onClose}
+      open={true}
+      onCancel={onClose}
+      centered
       width={480}
-      bodyClassName="px-6 py-5 space-y-5"
+      classNames={{ body: 'space-y-5' }}
+      styles={{ body: { padding: '20px 24px' } }}
       footer={
         <>
           <button
@@ -357,6 +360,6 @@ export default function ProviderEditModal({
           />
         </div>
       )}
-    </Modal>
+    </AntdModal>
   );
 }
