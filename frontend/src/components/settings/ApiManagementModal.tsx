@@ -57,6 +57,8 @@ export default function ApiManagementModal({ onClose }: Props) {
       open={true}
       onCancel={onClose}
       centered
+      width={970}
+      footer={null}
       className="api-modal"
       styles={{ body: { padding: 12 } }}
     >

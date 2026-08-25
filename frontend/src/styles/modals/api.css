@@ -1,12 +1,28 @@
 /* modals/api.css — all classes migrated to Tailwind (Phase 5), except api-modal and btn-sm */
 
-/* api-modal — api management modal dimensions */
+/* api-modal — api management modal dimensions
+   display 必须是 inline-level（inline-flex）：antd centered 弹层靠 wrap 的
+   ::before 占位符 + 行内流垂直居中，块级 flex 会脱离行内流被压到视口外。 */
 .api-modal {
   width: 970px;
   height: 600px;
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* antd v6：container 是 modal 的内容壳（close+header+body），须撑满并纵向分配，
+   body 弹性填充剩余高度，内部 h-full 布局才有基准。 */
+.api-modal .ant-modal-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.api-modal .ant-modal-body {
+  flex: 1;
+  min-height: 0;
 }
 
 /* btn-sm — compact icon button used in VersionHistoryModal and Workspace */
