@@ -30,7 +30,13 @@ export default function SettingsModal({ onClose }: Props) {
       centered
       width={970}
       classNames={{ container: 'flex flex-col overflow-hidden' }}
-      styles={{ container: { height: 600 } }}
+      styles={{
+        container: { height: 600 },
+        // antd v6 body 默认 flex:0 1 auto + min-height:auto，会被内容撑高、
+        // 被 container 的 overflow-hidden 硬裁（无滚动条截断）；须约束在
+        // 剩余空间内，内部 overflow-y-auto 才有滚动基准。
+        body: { flex: 1, minHeight: 0 },
+      }}
       footer={
         <>
           <button

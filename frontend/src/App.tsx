@@ -10,6 +10,8 @@ import { AuthProvider, useAuth } from './components/auth/AuthContext';
 import LoginModal from './components/auth/LoginModal';
 import RagBaseWorkstation from './components/studio/RagBaseWorkstation';
 import { useSettings } from './contexts/SettingsContext';
+import { palette } from './theme/palette';
+import { useResolvedIsDark } from './theme/useResolvedTheme';
 import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
 
@@ -23,9 +25,7 @@ const QualityMonitor = lazy(
 const RetrievalLogPage = lazy(
   () => import('./components/retrieval-logs/RetrievalLogPage'),
 );
-const AdminUsersPage = lazy(
-  () => import('./components/admin/AdminUsersPage'),
-);
+const AdminUsersPage = lazy(() => import('./components/admin/AdminUsersPage'));
 const KnowledgeBasePage = lazy(
   () => import('./components/knowledge-base/KnowledgeBasePage'),
 );
@@ -41,12 +41,6 @@ function PageLoading() {
 
 const CSS_VARS = {
   accent: '--color-accent',
-  surface: '--color-surface',
-  surfaceRaised: '--color-surface-raised',
-  textPrimary: '--color-text-primary',
-  textSecondary: '--color-text-secondary',
-  border: '--color-border',
-  surfaceHover: '--color-surface-hover',
 } as const;
 
 const queryClient = new QueryClient({
@@ -109,21 +103,11 @@ function getCssVar(name: string): string {
 function ThemedApp() {
   const { settings } = useSettings();
   const { t } = useTranslation();
-  const isDark = settings.theme === 'dark';
-  const bgColor =
-    getCssVar(CSS_VARS.surface) || (isDark ? '#0f1117' : '#ffffff');
-  const bgElevated =
-    getCssVar(CSS_VARS.surfaceRaised) || (isDark ? '#1c1e24' : '#f7f8fa');
-  const txtColor =
-    getCssVar(CSS_VARS.textPrimary) || (isDark ? '#f1f1f1' : '#1a1a2e');
-  const txtSecondary =
-    getCssVar(CSS_VARS.textSecondary) || (isDark ? '#a0a5b0' : '#495057');
-  const borderColor =
-    getCssVar(CSS_VARS.border) ||
-    (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)');
-  const surfaceHover =
-    getCssVar(CSS_VARS.surfaceHover) ||
-    (isDark ? 'rgba(255,255,255,0.08)' : '#f1f3f5');
+  // 令牌取自静态调色板（见 theme/palette.ts）——不能渲染期 getCssVar 读 DOM：
+  // .dark class 在 effect 中翻转，渲染期读到的是上一次主题的值（竞态，
+  // 曾导致弹窗配色不随主题切换）。accent 不随主题变，读 DOM 无竞态。
+  const isDark = useResolvedIsDark(settings.theme);
+  const colors = palette[isDark ? 'dark' : 'light'];
   const accentColor = getCssVar(CSS_VARS.accent) || '#6366f1';
 
   return (
@@ -133,19 +117,19 @@ function ThemedApp() {
           algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
             colorPrimary: accentColor,
-            colorBgContainer: bgColor,
-            colorBgElevated: bgElevated,
-            colorText: txtColor,
-            colorTextSecondary: txtSecondary,
-            colorBorder: borderColor,
-            colorBgTextHover: surfaceHover,
+            colorBgContainer: colors.surface,
+            colorBgElevated: colors.surfaceRaised,
+            colorText: colors.textPrimary,
+            colorTextSecondary: colors.textSecondary,
+            colorBorder: colors.border,
+            colorBgTextHover: colors.surfaceHover,
             borderRadius: 6,
             fontSize: 14,
           },
           components: {
             Button: {
-              defaultBg: bgElevated,
-              colorBgContainer: bgElevated,
+              defaultBg: colors.surfaceRaised,
+              colorBgContainer: colors.surfaceRaised,
             },
             Pagination: {
               itemBg: 'transparent',

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useResolvedIsDark } from '../../theme/useResolvedTheme';
 import { useAuth } from '../auth/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +36,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 export function useHomeState() {
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
+  const isDarkMode = useResolvedIsDark(settings.theme);
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const messages = useChatStore((s) => s.messages);
@@ -407,7 +409,7 @@ export function useHomeState() {
     t,
     settings,
     updateSettings,
-    isDarkMode: settings.theme === 'dark',
+    isDarkMode,
     conversations: sessionOps.conversations,
     activeConvId,
     setActiveConvId: sessionOps.handleSelectConversation,
