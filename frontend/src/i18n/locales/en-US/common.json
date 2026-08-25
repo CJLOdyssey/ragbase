@@ -304,6 +304,7 @@
     "table": {
       "name": "Name",
       "desc": "Description",
+      "category": "Category",
       "status": "Status",
       "version": "Version",
       "uses": "Uses",

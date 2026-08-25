@@ -10,7 +10,7 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mocks } = vi.hoisted(() => ({
+const { mocks, kbMocks } = vi.hoisted(() => ({
   mocks: {
     listAssets: vi.fn(),
     uploadAsset: vi.fn(),
@@ -21,21 +21,27 @@ const { mocks } = vi.hoisted(() => ({
       .fn()
       .mockResolvedValue({ stage: null, percentage: 0, message: '' }),
     retryIndexAsset: vi.fn().mockResolvedValue({ retrying: true }),
-    importUrl: vi
-      .fn()
-      .mockResolvedValue({
-        id: 'a1',
-        name: 'x',
-        assetType: 'document',
-        sizeBytes: 100,
-        usageCount: 0,
-        indexed: false,
-      }),
+    importUrl: vi.fn().mockResolvedValue({
+      id: 'a1',
+      name: 'x',
+      assetType: 'document',
+      sizeBytes: 100,
+      usageCount: 0,
+      indexed: false,
+    }),
     listAssetChunks: vi.fn().mockResolvedValue([]),
+  },
+  kbMocks: {
+    listKnowledgeBases: vi.fn().mockResolvedValue([]),
+    assignAssetToKb: vi.fn(),
+    batchAssignAssetsToKb: vi
+      .fn()
+      .mockResolvedValue({ assignedCount: 0, skippedCount: 0 }),
   },
 }));
 
 vi.mock('../../../api/client/assets', () => mocks);
+vi.mock('../../../api/client/knowledgeBases', () => kbMocks);
 
 const DOC: AssetItem = {
   id: 'a1',
@@ -70,6 +76,7 @@ function makeFile(name: string, type: string, size = 1024): File {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.listAssets.mockResolvedValue([]);
+  kbMocks.listKnowledgeBases.mockResolvedValue([]);
   mocks.uploadAsset.mockResolvedValue({ ...DOC, name: 'brand.md' });
   mocks.renameAsset.mockResolvedValue(DOC);
   mocks.deleteAsset.mockResolvedValue({ deleted: true });
@@ -283,5 +290,73 @@ describe('AssetsPage', { tags: ['unit'] }, () => {
     const item = await screen.findByTestId('asset-item-a1');
     expect(within(item).getByTestId('status-indexed')).toBeTruthy();
     expect(screen.queryByTestId('index-a1')).toBeNull();
+  });
+
+  it('filters by knowledge base: all / unassigned / specific kb', async () => {
+    kbMocks.listKnowledgeBases.mockResolvedValue([
+      { id: 'kb-1', name: '产品库' },
+    ]);
+    mocks.listAssets.mockResolvedValue([
+      { ...DOC, id: 'a1', name: 'assigned.md', knowledgeBaseId: 'kb-1' },
+      { ...DOC, id: 'a3', name: 'loose.txt' },
+    ]);
+    renderPage();
+    expect(await screen.findByTestId('asset-item-a1')).toBeTruthy();
+    expect(screen.getByTestId('asset-item-a3')).toBeTruthy();
+
+    // 未分配 → 仅剩无库素材
+    fireEvent.change(screen.getByTestId('filter-kb'), {
+      target: { value: 'unassigned' },
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('asset-item-a1')).toBeNull(),
+    );
+    expect(screen.getByTestId('asset-item-a3')).toBeTruthy();
+
+    // 具体知识库 → 仅剩该库素材，chip 显示库名
+    fireEvent.change(screen.getByTestId('filter-kb'), {
+      target: { value: 'kb-1' },
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('asset-item-a3')).toBeNull(),
+    );
+    expect(screen.getByTestId('asset-item-a1')).toBeTruthy();
+    expect(screen.getAllByText('产品库').length).toBeGreaterThan(0);
+
+    // 清除筛选 → 恢复全部
+    fireEvent.click(screen.getByTestId('clear-kb-filter'));
+    await waitFor(() => {
+      expect(screen.getByTestId('asset-item-a1')).toBeTruthy();
+      expect(screen.getByTestId('asset-item-a3')).toBeTruthy();
+    });
+  });
+
+  it('shows failed badge for an asset with persisted indexError', async () => {
+    mocks.listAssets.mockResolvedValue([
+      { ...DOC, indexError: 'startxref not found' },
+    ]);
+    renderPage();
+    const item = await screen.findByTestId('asset-item-a1');
+    expect(within(item).getByTestId('status-failed')).toBeTruthy();
+  });
+
+  it('banner click enters unassigned filter with chip', async () => {
+    mocks.listAssets.mockResolvedValue([
+      { ...DOC, id: 'a1', name: 'assigned.md', knowledgeBaseId: 'kb-1' },
+      { ...DOC, id: 'a3', name: 'loose.txt' },
+    ]);
+    renderPage();
+    await screen.findByTestId('asset-item-a1');
+    fireEvent.click(screen.getByTestId('assets-uncategorized-banner'));
+    // 仅保留未分配素材，chip 显示「未分类」
+    await waitFor(() =>
+      expect(screen.queryByTestId('asset-item-a1')).toBeNull(),
+    );
+    expect(screen.getByTestId('asset-item-a3')).toBeTruthy();
+    expect(screen.getAllByText('未分类').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId('clear-kb-filter'));
+    await waitFor(() =>
+      expect(screen.getByTestId('asset-item-a1')).toBeTruthy(),
+    );
   });
 });

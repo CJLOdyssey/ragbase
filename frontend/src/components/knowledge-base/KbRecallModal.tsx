@@ -14,6 +14,8 @@ export interface KbRecallModalProps {
   open: boolean;
   knowledgeBaseId: string;
   knowledgeBaseName: string;
+  /** 该库已索引资产数 — 让用户知道测试的召回范围 */
+  indexedCount: number;
   onClose: () => void;
 }
 
@@ -21,6 +23,7 @@ export default function KbRecallModal({
   open,
   knowledgeBaseId,
   knowledgeBaseName,
+  indexedCount,
   onClose,
 }: KbRecallModalProps) {
   const { t } = useTranslation();
@@ -67,6 +70,9 @@ export default function KbRecallModal({
       styles={{ body: { padding: 20, maxHeight: '65vh', overflowY: 'auto' } }}
     >
       <div className="flex flex-col gap-4">
+        <p className="m-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-text-muted)]">
+          {t('kb.recallScope', { count: indexedCount })}
+        </p>
         <section>
           <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
             {t('ragTest.queryLabel')}

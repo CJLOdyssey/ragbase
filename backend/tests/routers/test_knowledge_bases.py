@@ -281,3 +281,99 @@ async def test_create_knowledge_base_rejects_bad_parser_config(client: TestClien
         },
     )
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_assign_assets_kb_batch(client: TestClient):
+    """Should assign many assets to one KB in one request."""
+    kb_response = client.post(
+        "/api/knowledge-bases",
+        json={"name": "Batch KB", "embedModel": "bge-m3"},
+    )
+    kb_id = kb_response.json()["id"]
+
+    factory = get_session_factory()
+    async with factory() as session:
+        for i in range(3):
+            session.add(
+                AssetDB(
+                    id=f"batch-asset-{i}",
+                    user_id="admin-login",
+                    name=f"Asset {i}",
+                    asset_type="text",
+                    storage_path="/tmp/test",
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
+                )
+            )
+        await session.commit()
+
+    response = client.post(
+        "/api/assets/assign-kb/batch",
+        json={
+            "assetIds": ["batch-asset-0", "batch-asset-1", "batch-asset-2"],
+            "knowledgeBaseId": kb_id,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["assignedCount"] == 3
+    assert data["skippedCount"] == 0
+
+
+@pytest.mark.asyncio
+async def test_assign_assets_kb_batch_skips_foreign_assets(client: TestClient):
+    """Assets not owned by the caller are skipped and reported."""
+    kb_response = client.post(
+        "/api/knowledge-bases",
+        json={"name": "Batch KB 2", "embedModel": "bge-m3"},
+    )
+    kb_id = kb_response.json()["id"]
+
+    factory = get_session_factory()
+    async with factory() as session:
+        session.add(
+            AssetDB(
+                id="mine-1",
+                user_id="admin-login",
+                name="Mine",
+                asset_type="text",
+                storage_path="/tmp/test",
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
+        )
+        await session.commit()
+
+    response = client.post(
+        "/api/assets/assign-kb/batch",
+        json={
+            "assetIds": ["mine-1", "nonexistent", "foreign-asset"],
+            "knowledgeBaseId": kb_id,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["assignedCount"] == 1
+    assert data["skippedCount"] == 2
+    assert set(data["skippedIds"]) == {"nonexistent", "foreign-asset"}
+
+
+@pytest.mark.asyncio
+async def test_assign_assets_kb_batch_unknown_kb(client: TestClient):
+    """Unknown KB id must 404."""
+    response = client.post(
+        "/api/assets/assign-kb/batch",
+        json={"assetIds": ["a-1"], "knowledgeBaseId": "no-such-kb"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_assign_assets_kb_batch_rejects_empty(client: TestClient):
+    """Empty asset_ids must be rejected (422)."""
+    response = client.post(
+        "/api/assets/assign-kb/batch",
+        json={"assetIds": [], "knowledgeBaseId": "kb-x"},
+    )
+    assert response.status_code == 422

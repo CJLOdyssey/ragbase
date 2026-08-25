@@ -169,6 +169,8 @@ export function getAssetStatus(
   if (isLiveIndexing(asset, indexing)) {
     return progress?.stage === 'failed' ? 'failed' : 'processing';
   }
+  // 后端持久化的失败终态（Redis progress 10 分钟 TTL 过期后仍可见）
+  if (asset.indexError) return 'failed';
   if (progress) return 'failed';
   return 'pending';
 }
@@ -204,6 +206,10 @@ export function computeStats(
       const p = progressMap[a.id];
       if (p?.stage === 'failed') failed += 1;
       else processing += 1;
+      continue;
+    }
+    if (a.indexError) {
+      failed += 1;
       continue;
     }
     if (progressMap[a.id]) {

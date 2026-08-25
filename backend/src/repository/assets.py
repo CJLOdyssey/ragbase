@@ -134,13 +134,21 @@ async def increment_asset_usage(asset_id: str) -> None:
             await session.commit()
 
 
-async def set_asset_indexed(asset_id: str, indexed: bool) -> None:
-    """Set whether an asset has been indexed into the vector store."""
+async def set_asset_index_result(
+    asset_id: str, indexed: bool, index_error: str | None
+) -> None:
+    """Persist the indexing terminal state on the asset row.
+
+    Success: (True, None) — clears any previous failure. Failure:
+    (False, reason) — the UI reads this after Redis progress (10-min TTL)
+    expires, so a failed asset never degrades to "unindexed".
+    """
     factory = get_session_factory()
     async with factory() as session:
         asset = await session.get(AssetDB, asset_id)
         if asset is not None:
             asset.indexed = indexed
+            asset.index_error = index_error
             await session.commit()
 
 

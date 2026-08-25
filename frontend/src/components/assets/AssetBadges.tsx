@@ -4,13 +4,13 @@
  * Domain mapping (status → color/label/testid) stays here; the visual
  * primitive lives in shared/list/badges so every list page shares one look.
  */
-import { STATUS_COLORS } from '../shared/statusColors';
-import { useTranslation } from 'react-i18next';
-import { StatusPill as SharedStatusPill } from '../shared/list/badges';
 import {
   ActionButton as SharedActionButton,
+  StatusPill as SharedStatusPill,
   type ActionButtonProps,
 } from '../shared/list/badges';
+import { STATUS_COLORS } from '../shared/statusColors';
+import { useTranslation } from 'react-i18next';
 import { extColorOf, type AssetStatus } from './assetUtils';
 
 const STATUS_COLOR: Record<AssetStatus, string> = {
@@ -21,13 +21,21 @@ const STATUS_COLOR: Record<AssetStatus, string> = {
   noIndex: STATUS_COLORS.violet,
 };
 
-export function StatusPill({ status }: { status: AssetStatus }) {
+export function StatusPill({
+  status,
+  title,
+}: {
+  status: AssetStatus;
+  /** 失败原因 tooltip（仅 failed 态由调用方传入） */
+  title?: string;
+}) {
   const { t } = useTranslation();
   return (
     <SharedStatusPill
       label={t(`assets.status.${status}`)}
       color={STATUS_COLOR[status]}
       testId={`status-${status}`}
+      title={title}
     />
   );
 }

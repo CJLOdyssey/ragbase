@@ -8,7 +8,7 @@ interface KbCardGridProps {
   perKb: Map<string, KbStat>;
   onCreate: () => void;
   onTest: (kb: KnowledgeBase) => void;
-  onRename: (kb: KnowledgeBase) => void;
+  onEdit: (kb: KnowledgeBase) => void;
   onDelete: (kb: KnowledgeBase) => void;
 }
 
@@ -17,7 +17,7 @@ export default function KbCardGrid({
   perKb,
   onCreate,
   onTest,
-  onRename,
+  onEdit,
   onDelete,
 }: KbCardGridProps) {
   const { t } = useTranslation();
@@ -37,7 +37,7 @@ export default function KbCardGrid({
             indexedCount={s.indexedCount}
             indexRate={indexRate}
             onTest={() => onTest(kb)}
-            onRename={() => onRename(kb)}
+            onEdit={() => onEdit(kb)}
             onDelete={() => onDelete(kb)}
           />
         );

@@ -1,9 +1,8 @@
+import { DataTable, type DataTableColumn } from '../shared/list';
+import { ActionButton } from '../shared/list/badges';
 import { History, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { PromptItem } from '../../api/client/prompts';
-import type { DataTableColumn } from '../shared/list';
-import { DataTable } from '../shared/list';
-import { ActionButton } from '../shared/list/badges';
 import { MonoBadge, StatusBadge, Tag } from './PromptBadges';
 
 interface Props {
@@ -23,15 +22,6 @@ function CellCenter({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TagsOf(row: PromptItem): React.ReactNode {
-  const tags = (row as unknown as { tags?: string[] }).tags;
-  return Array.isArray(tags) ? (
-    tags.map((tag) => <Tag key={tag}>{tag}</Tag>)
-  ) : (
-    <Tag>{row.category}</Tag>
-  );
-}
-
 export default function PromptTable({
   prompts,
   onEdit,
@@ -44,6 +34,7 @@ export default function PromptTable({
   const columns: DataTableColumn[] = [
     { key: 'name', header: t('prompts.table.name'), width: '4fr' },
     { key: 'desc', header: t('prompts.table.desc'), width: '2.5fr' },
+    { key: 'category', header: t('prompts.table.category'), width: '90px' },
     { key: 'status', header: t('prompts.table.status'), width: '80px' },
     { key: 'version', header: t('prompts.table.version'), width: '110px' },
     { key: 'uses', header: t('prompts.table.uses'), width: '90px' },
@@ -64,7 +55,6 @@ export default function PromptTable({
             >
               {row.name}
             </div>
-            <div className="flex gap-1 flex-wrap">{TagsOf(row)}</div>
           </div>
         );
       case 'desc':
@@ -75,6 +65,12 @@ export default function PromptTable({
           >
             {row.description || '—'}
           </div>
+        );
+      case 'category':
+        return (
+          <CellCenter>
+            <Tag>{row.category}</Tag>
+          </CellCenter>
         );
       case 'status':
         return (
@@ -92,7 +88,9 @@ export default function PromptTable({
         return (
           <CellCenter>
             <span className="text-[12.5px] font-mono text-[var(--color-text-secondary)]">
-              {((row as unknown as { uses?: number }).uses ?? 0).toLocaleString()}
+              {(
+                (row as unknown as { uses?: number }).uses ?? 0
+              ).toLocaleString()}
             </span>
           </CellCenter>
         );

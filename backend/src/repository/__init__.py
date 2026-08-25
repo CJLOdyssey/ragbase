@@ -10,7 +10,7 @@ from repository.assets import (
     get_asset_for_user,
     increment_asset_usage,
     list_assets_by_user,
-    set_asset_indexed,
+    set_asset_index_result,
 )
 
 from repository.attachments import (
@@ -189,7 +189,7 @@ __all__ = [
     "revoke_all_user_tokens",
     "revoke_token_family",
     "save_message",
-    "set_asset_indexed",
+    "set_asset_index_result",
     "test_api_key_connection",
     "update_message_content",
     "update_api_key",

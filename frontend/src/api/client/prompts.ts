@@ -12,8 +12,18 @@ export interface PromptItem {
   created_at: string;
 }
 
+export interface PromptCategory {
+  value: string;
+  label: string;
+}
+
 export async function listPrompts(): Promise<PromptItem[]> {
   const { data } = await api.get('/prompts');
+  return data;
+}
+
+export async function listPromptCategories(): Promise<PromptCategory[]> {
+  const { data } = await api.get('/prompts/categories');
   return data;
 }
 

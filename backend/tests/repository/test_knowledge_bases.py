@@ -4,7 +4,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-from repository.assets import create_asset, get_asset, set_asset_indexed
+from repository.assets import create_asset, get_asset, set_asset_index_result
 from repository.knowledge_bases import (
     assign_asset_to_kb,
     change_embed_model,
@@ -162,7 +162,7 @@ class TestChangeEmbedModel:
             storage_path="/tmp/b.pdf",
         )
         for asset in (kept, other):
-            await set_asset_indexed(asset.id, True)
+            await set_asset_index_result(asset.id, True, None)
         await assign_asset_to_kb(kept.id, kb.id, "test_user")
 
         updated, affected = await change_embed_model(
@@ -189,7 +189,7 @@ class TestChangeEmbedModel:
             size_bytes=1,
             storage_path="/tmp/a.pdf",
         )
-        await set_asset_indexed(asset.id, True)
+        await set_asset_index_result(asset.id, True, None)
         await assign_asset_to_kb(asset.id, kb.id, "test_user")
 
         updated, affected = await change_embed_model(kb.id, "test_user", "bge-m3")
@@ -227,7 +227,7 @@ class TestChangeIndexingConfig:
             size_bytes=1,
             storage_path="/tmp/a.pdf",
         )
-        await set_asset_indexed(asset.id, True)
+        await set_asset_index_result(asset.id, True, None)
         await assign_asset_to_kb(asset.id, kb.id, "test_user")
 
         updated, affected = await change_indexing_config(
@@ -255,10 +255,73 @@ class TestChangeIndexingConfig:
             size_bytes=1,
             storage_path="/tmp/a.pdf",
         )
-        await set_asset_indexed(asset.id, True)
+        await set_asset_index_result(asset.id, True, None)
         await assign_asset_to_kb(asset.id, kb.id, "test_user")
 
         updated, affected = await change_indexing_config(
             kb.id, "test_user", parser_config=dict(cfg)
         )
         assert updated is not None and affected == []
+
+
+class TestAssignAssetsBatch:
+    """assign_assets_to_kb_batch — 单事务批量归属，逐项校验归属权。"""
+
+    async def test_assigns_all_owned_assets(self):
+        from repository.knowledge_bases import assign_assets_to_kb_batch
+
+        kb = await create_kb(
+            user_id="test_user", name="批量库", description="", embed_model="bge-m3"
+        )
+        ids = []
+        for i in range(3):
+            a = await create_asset(
+                user_id="test_user",
+                name=f"b{i}.pdf",
+                asset_type="document",
+                size_bytes=1,
+                storage_path=f"/tmp/b{i}.pdf",
+            )
+            ids.append(a.id)
+
+        result = await assign_assets_to_kb_batch(ids, kb.id, "test_user")
+        assert result["assigned"] == ids
+        assert result["skipped"] == []
+        for aid in ids:
+            refreshed = await get_asset(aid)
+            assert refreshed is not None
+            assert refreshed.knowledge_base_id == kb.id
+
+    async def test_skips_missing_and_foreign(self):
+        from repository.knowledge_bases import assign_assets_to_kb_batch
+
+        kb = await create_kb(
+            user_id="test_user", name="批量库2", description="", embed_model="bge-m3"
+        )
+        mine = await create_asset(
+            user_id="test_user",
+            name="mine.pdf",
+            asset_type="document",
+            size_bytes=1,
+            storage_path="/tmp/mine.pdf",
+        )
+        foreign = await create_asset(
+            user_id="other_user",
+            name="foreign.pdf",
+            asset_type="document",
+            size_bytes=1,
+            storage_path="/tmp/foreign.pdf",
+        )
+
+        result = await assign_assets_to_kb_batch(
+            [mine.id, foreign.id, "no-such-id"], kb.id, "test_user"
+        )
+        assert result["assigned"] == [mine.id]
+        assert set(result["skipped"]) == {foreign.id, "no-such-id"}
+
+    async def test_unknown_kb_raises_lookup_error(self):
+        import pytest as _pytest
+        from repository.knowledge_bases import assign_assets_to_kb_batch
+
+        with _pytest.raises(LookupError):
+            await assign_assets_to_kb_batch(["a-1"], "no-such-kb", "test_user")

@@ -13,11 +13,13 @@ import type { ReactNode } from 'react';
 export interface DataTableColumn {
   /** Unique key; also the value passed to onSort. */
   key: string;
-  /** Already-translated header text. */
-  header: string;
+  /** Already-translated header text — or a custom node (e.g. select-all checkbox). */
+  header: string | ReactNode;
   /** CSS grid track, e.g. '84px' | 'minmax(160px,1.5fr)'. Default '1fr'. */
   width?: string;
   sortable?: boolean;
+  /** Center the header cell (first column defaults to start-aligned). */
+  center?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -62,9 +64,7 @@ export default function DataTable<T>({
   onSort,
   emptyState,
 }: DataTableProps<T>) {
-  const gridTemplateColumns = columns
-    .map((c) => c.width ?? '1fr')
-    .join(' ');
+  const gridTemplateColumns = columns.map((c) => c.width ?? '1fr').join(' ');
 
   return (
     <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-visible">
@@ -78,7 +78,7 @@ export default function DataTable<T>({
             onClick={() => {
               if (col.sortable && onSort) onSort(col.key);
             }}
-            className={`text-[10.5px] font-semibold tracking-[0.07em] uppercase font-mono text-[var(--color-text-tertiary)] flex items-center ${i === 0 ? 'justify-start' : 'justify-center text-center'} ${col.sortable && onSort ? 'cursor-pointer hover:text-[var(--color-text-secondary)]' : ''}`}
+            className={`text-[10.5px] font-semibold tracking-[0.07em] uppercase font-mono text-[var(--color-text-tertiary)] flex items-center ${i === 0 && !col.center ? 'justify-start' : 'justify-center text-center'} ${col.sortable && onSort ? 'cursor-pointer hover:text-[var(--color-text-secondary)]' : ''}`}
           >
             {col.header}
             {col.sortable && onSort && (

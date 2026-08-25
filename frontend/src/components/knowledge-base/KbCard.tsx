@@ -19,7 +19,7 @@ export interface KbCardProps {
   indexedCount: number;
   indexRate: number;
   onTest: () => void;
-  onRename: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }
 
@@ -36,7 +36,7 @@ export default function KbCard({
   indexedCount,
   indexRate,
   onTest,
-  onRename,
+  onEdit,
   onDelete,
 }: KbCardProps) {
   const { t } = useTranslation();
@@ -100,10 +100,10 @@ export default function KbCard({
           </button>
           <button
             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-            onClick={onRename}
+            onClick={onEdit}
           >
             <Pencil size={12} />
-            {t('assets.list.rename')}
+            {t('kb.edit')}
           </button>
           <button
             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[var(--color-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)]"

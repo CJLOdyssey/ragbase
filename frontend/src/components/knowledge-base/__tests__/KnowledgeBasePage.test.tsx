@@ -8,6 +8,7 @@ import {
 import KnowledgeBasePage from '../KnowledgeBasePage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../api/client/knowledgeBases', () => ({
@@ -64,7 +65,9 @@ describe('KnowledgeBasePage', () => {
 
   const renderWithClient = (ui: React.ReactElement) => {
     return render(
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>{ui}</MemoryRouter>
+      </QueryClientProvider>,
     );
   };
 
@@ -187,7 +190,7 @@ describe('KnowledgeBasePage', () => {
     });
   });
 
-  it('renames a knowledge base via edit modal', async () => {
+  it('edits a knowledge base via edit modal', async () => {
     vi.mocked(listKnowledgeBases).mockResolvedValue([
       {
         id: 'kb-1',
@@ -214,7 +217,7 @@ describe('KnowledgeBasePage', () => {
     await waitFor(() => {
       expect(screen.getByText('测试知识库')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('assets.list.rename'));
+    fireEvent.click(screen.getByText('kb.edit'));
 
     await waitFor(() => {
       expect(screen.getByText('kb.editTitle')).toBeInTheDocument();
@@ -300,7 +303,7 @@ describe('KnowledgeBasePage', () => {
     });
   });
 
-  it('shows uncategorized assets section', async () => {
+  it('shows uncategorized assets banner with count', async () => {
     vi.mocked(listKnowledgeBases).mockResolvedValue([]);
     vi.mocked(listAssets).mockResolvedValue([
       {
@@ -311,12 +314,21 @@ describe('KnowledgeBasePage', () => {
         createdAt: '2024-01-01T00:00:00Z',
         knowledgeBaseId: null,
       },
+      {
+        id: 'asset-2',
+        name: '已分类文档.pdf',
+        type: 'pdf',
+        size: 1024,
+        createdAt: '2024-01-01T00:00:00Z',
+        knowledgeBaseId: 'kb-1',
+      },
     ]);
 
     renderWithClient(<KnowledgeBasePage />);
 
-    await waitFor(() => {
-      expect(screen.getByText('未分类文档.pdf')).toBeInTheDocument();
-    });
+    // mock t 恒等返回键名；banner 仅在 count>0 时渲染
+    const banner = await screen.findByTestId('kb-uncategorized-banner');
+    expect(banner).toHaveTextContent('kb.uncategorizedBanner');
+    expect(screen.queryByText('未分类文档.pdf')).not.toBeInTheDocument();
   });
 });

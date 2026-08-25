@@ -13,7 +13,7 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     from rag.rag_chunking import semantic_chunk
     from rag.rag_embedding import EmbeddingProvider
     from rag.rag_store import PgVectorStore
-    from repository.assets import get_asset, set_asset_indexed
+    from repository.assets import get_asset, set_asset_index_result
     from repository.index_progress import set_index_progress
     from repository.keys import get_embedding_config
     from repository.knowledge_bases import get_kb
@@ -35,13 +35,13 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     from rag.rag_guard import ALLOWED_INDEX_SOURCES, scan_document
     from rag.rag_parsing import extract_text
 
-    # OWASP LLM08 source whitelist: only known ingestion channels may index.
-    if asset.source not in ALLOWED_INDEX_SOURCES:
-        raise ValueError(
-            f"asset source {asset.source!r} not allowed for indexing"
-        )
-
     try:
+        # OWASP LLM08 source whitelist: only known ingestion channels may index.
+        if asset.source not in ALLOWED_INDEX_SOURCES:
+            raise ValueError(
+                f"asset source {asset.source!r} not allowed for indexing"
+            )
+
         text = extract_text(asset.storage_path)
         if not text.strip():
             raise ValueError("asset has no text content — cannot index")
@@ -117,10 +117,14 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
         store = PgVectorStore()
         await store.clear_asset(asset.id)  # idempotent reindex: no stale chunks
         await store.add(chunks, user_id=user_id)
-        await set_asset_indexed(asset.id, True)
+        await set_asset_index_result(asset.id, True, None)
 
         await set_index_progress(asset_id, "done", 100, "Indexing complete")
         return {"indexed": True, "chunks": len(chunks)}
     except Exception as exc:
+        # Persist the failure terminal state (Redis progress alone has a
+        # 10-min TTL — the UI must see "failed" after refresh, not a
+        # silent fallback to "unindexed").
+        await set_asset_index_result(asset_id, False, str(exc))
         await set_index_progress(asset_id, "failed", 0, str(exc))
         raise

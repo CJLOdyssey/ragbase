@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
 import { useQuery } from '@tanstack/react-query';
@@ -14,21 +13,15 @@ import {
 } from '../../api/client/knowledgeBases';
 import { listModels, type ModelInfo } from '../../api/client/models';
 import KbCardGrid from './KbCardGrid';
-import KbNewModal from './KbNewModal';
-import KbRecallModal from './KbRecallModal';
+import KbPageDialogs, { type KbFormState } from './KbPageDialogs';
 import { computePerKb, computeTotals } from './kbStats';
 import KbSummaryBar from './KbSummaryBar';
-import UncategorizedSection from './UncategorizedSection';
+import KbUncategorizedBanner from './KbUncategorizedBanner';
 import { useKbMutations } from './useKbMutations';
-
-interface FormState {
-  mode: 'create' | 'edit';
-  kb?: KnowledgeBase;
-}
 
 export default function KnowledgeBasePage() {
   const { t } = useTranslation();
-  const [form, setForm] = useState<FormState | null>(null);
+  const [form, setForm] = useState<KbFormState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeBase | null>(null);
   const [testTarget, setTestTarget] = useState<KnowledgeBase | null>(null);
 
@@ -52,8 +45,10 @@ export default function KnowledgeBasePage() {
     enabled: form !== null,
   });
 
-  const { createMutation, updateMutation, deleteMutation, assignMutation } =
-    useKbMutations({ closeForm, closeDelete });
+  const { createMutation, updateMutation, deleteMutation } = useKbMutations({
+    closeForm,
+    closeDelete,
+  });
 
   const perKb = useMemo(() => computePerKb(assets), [assets]);
   const { totalAssets, indexedRate } = useMemo(
@@ -61,7 +56,9 @@ export default function KnowledgeBasePage() {
     [kbs, perKb],
   );
 
-  const uncategorized = assets.filter((a: AssetItem) => !a.knowledgeBaseId);
+  const uncategorizedCount = assets.filter(
+    (a: AssetItem) => !a.knowledgeBaseId,
+  ).length;
 
   const handleSave = (
     name: string,
@@ -101,6 +98,10 @@ export default function KnowledgeBasePage() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="mb-4">
+          <KbUncategorizedBanner count={uncategorizedCount} />
+        </div>
+
         {isLoading ? (
           <LoadingState centered={true} />
         ) : kbs.length === 0 ? (
@@ -125,56 +126,26 @@ export default function KnowledgeBasePage() {
               perKb={perKb}
               onCreate={() => setForm({ mode: 'create' })}
               onTest={setTestTarget}
-              onRename={(kb) => setForm({ mode: 'edit', kb })}
+              onEdit={(kb) => setForm({ mode: 'edit', kb })}
               onDelete={setDeleteTarget}
             />
           </>
         )}
-
-        {uncategorized.length > 0 && (
-          <UncategorizedSection
-            assets={uncategorized}
-            kbs={kbs}
-            onAssign={(assetId, kbId) =>
-              assignMutation.mutate({ assetId, kbId })
-            }
-          />
-        )}
       </div>
 
-      {form && (
-        <KbNewModal
-          open={true}
-          mode={form.mode}
-          kb={form.kb ?? null}
-          indexedCount={
-            form.kb ? (perKb.get(form.kb.id)?.indexedCount ?? 0) : 0
-          }
-          models={models as ModelInfo[]}
-          saving={saving}
-          onClose={closeForm}
-          onSave={handleSave}
-        />
-      )}
-
-      {deleteTarget && (
-        <ConfirmDialog
-          title={t('confirm.delete')}
-          message={t('kb.deleteConfirm')}
-          danger
-          onConfirm={() => deleteMutation.mutate(deleteTarget.id)}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
-
-      {testTarget && (
-        <KbRecallModal
-          open={true}
-          knowledgeBaseId={testTarget.id}
-          knowledgeBaseName={testTarget.name}
-          onClose={() => setTestTarget(null)}
-        />
-      )}
+      <KbPageDialogs
+        form={form}
+        deleteTarget={deleteTarget}
+        testTarget={testTarget}
+        perKb={perKb}
+        models={models as ModelInfo[]}
+        saving={saving}
+        onCloseForm={closeForm}
+        onSave={handleSave}
+        onDeleteCancel={() => setDeleteTarget(null)}
+        onDeleteConfirm={() => deleteMutation.mutate(deleteTarget!.id)}
+        onTestClose={() => setTestTarget(null)}
+      />
     </div>
   );
 }

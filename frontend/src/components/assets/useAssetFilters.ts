@@ -8,6 +8,8 @@ export interface FilterOpts {
   timeTo: number | null;
   formats: string[];
   statuses: string[];
+  /** 'all'/缺省 → 不过滤；'unassigned' → 仅未归属任何知识库的素材；具体 id → 仅该库素材 */
+  kbFilter?: string;
   indexing: IndexingEntry[];
   progressMap: Record<string, IndexProgress>;
   getTime?: (a: AssetItem) => number;
@@ -69,12 +71,19 @@ function matchTime(
   return true;
 }
 
+function matchKb(a: AssetItem, kbFilter?: string): boolean {
+  if (!kbFilter || kbFilter === 'all') return true;
+  if (kbFilter === 'unassigned') return !a.knowledgeBaseId;
+  return a.knowledgeBaseId === kbFilter;
+}
+
 export function filterAssets(
   assets: AssetItem[],
   opts: FilterOpts,
 ): AssetItem[] {
   const q = opts.search.trim().toLowerCase();
   return assets.filter((a) => {
+    if (!matchKb(a, opts.kbFilter)) return false;
     if (!matchSearch(a, q, opts.getTime)) return false;
     if (!matchFormat(a, opts.formats)) return false;
     if (!matchStatus(a, opts.statuses, opts.indexing, opts.progressMap))

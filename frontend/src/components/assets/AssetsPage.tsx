@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent } from 'react';
-import ConfirmDialog from '../shared/ConfirmDialog';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,17 +12,20 @@ import {
   listAssets,
   type IndexProgress,
 } from '../../api/client/assets';
-import AssetChunksModal from './AssetChunksModal';
-import AssetPreviewDrawer from './AssetPreviewDrawer';
+import {
+  batchAssignAssetsToKb,
+  listKnowledgeBases,
+} from '../../api/client/knowledgeBases';
+import AssetsBulkBar from './AssetsBulkBar';
+import AssetsDialogs from './AssetsDialogs';
 import AssetsGrid from './AssetsGrid';
 import AssetsHeader, { type ViewMode } from './AssetsHeader';
-import AssetsRenameModal from './AssetsRenameModal';
 import AssetsStats from './AssetsStats';
 import AssetsTable from './AssetsTable';
 import AssetsToolbar from './AssetsToolbar';
-import AssetsUrlModal from './AssetsUrlModal';
+import AssetsUncategorizedBanner from './AssetsUncategorizedBanner';
 import { type IndexingEntry } from './assetUtils';
-import TagEditModal from './TagEditModal';
+import KbFilterChip from './KbFilterChip';
 import { useAssetActions } from './useAssetActions';
 import { useAssetBump } from './useAssetBump';
 import { useAssetSelection } from './useAssetSelection';
@@ -67,6 +69,12 @@ export default function AssetsPage() {
     },
   });
 
+  // 未分类面板的库选项 — 与知识库页共享同一缓存键
+  const { data: kbs = [] } = useQuery({
+    queryKey: ['knowledge-bases'],
+    queryFn: listKnowledgeBases,
+  });
+
   useEffect(() => {
     const liveIndexing = indexing.filter((i) => i.deadline > Date.now());
     if (liveIndexing.length === 0) return;
@@ -95,6 +103,7 @@ export default function AssetsPage() {
     deleteMutation,
     indexMutation,
     retryIndexMutation,
+    assignMutation,
     urlImportMutation,
     validateAndUpload,
   } = useAssetActions(
@@ -136,6 +145,8 @@ export default function AssetsPage() {
     setFormats,
     statuses,
     setStatuses,
+    kbFilter,
+    setKbFilter,
     timeRange,
     setTimeRange,
     customFrom,
@@ -148,7 +159,61 @@ export default function AssetsPage() {
     filteredAssets,
     sortedAssets,
     handleSort,
+    selectedIds,
+    setSelectedIds,
+    handleSelectAll,
+    handleSelectOne,
   } = useAssetSelection(assets, indexing, progressMap);
+
+  // 知识库筛选态：'all' | 'unassigned' | <kbId>（banner「立即处理」与工具栏下拉共用）
+  const uncategorizedCount = useMemo(
+    () => assets.filter((a) => !a.knowledgeBaseId).length,
+    [assets],
+  );
+
+  // ── 批量操作（分配知识库 / 建立索引）──────────────────────────────
+  const selectedList = useMemo(
+    () => assets.filter((a) => selectedIds.has(a.id)),
+    [assets, selectedIds],
+  );
+  const canBulkIndex = useMemo(
+    () => selectedList.some((a) => a.assetType === 'document' && !a.indexed),
+    [selectedList],
+  );
+
+  const bulkAssignMutation = useMutation({
+    mutationFn: (vars: { assetIds: string[]; kbId: string }) =>
+      batchAssignAssetsToKb(vars.assetIds, vars.kbId),
+    onSuccess: (result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['assets'] });
+      void queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] });
+      const kbName = kbs.find((k) => k.id === variables.kbId)?.name ?? '';
+      toast(
+        result.skippedCount > 0
+          ? t('assets.bulk.assignPartial', {
+              assigned: result.assignedCount,
+              skipped: result.skippedCount,
+            })
+          : t('assets.bulk.assignSuccess', {
+              count: result.assignedCount,
+              name: kbName,
+            }),
+        'success',
+      );
+      setSelectedIds(new Set());
+    },
+    onError: () => toast(t('toast.error'), 'error'),
+  });
+
+  const handleBulkIndex = () => {
+    const targets = selectedList.filter(
+      (a) => a.assetType === 'document' && !a.indexed,
+    );
+    if (targets.length === 0) return;
+    for (const a of targets) indexMutation.mutate(a.id);
+    toast(t('assets.bulk.indexQueued', { count: targets.length }), 'success');
+    setSelectedIds(new Set());
+  };
 
   const handleDownload = async (asset: AssetItem) => {
     try {
@@ -234,6 +299,22 @@ export default function AssetsPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-5">
+            <AssetsUncategorizedBanner
+              count={uncategorizedCount}
+              onHandle={() => {
+                setView('table');
+                setKbFilter('unassigned');
+              }}
+            />
+
+            {kbFilter !== 'all' && (
+              <KbFilterChip
+                kbFilter={kbFilter}
+                kbName={kbs.find((k) => k.id === kbFilter)?.name}
+                onClear={() => setKbFilter('all')}
+              />
+            )}
+
             <AssetsStats
               total={stats.total}
               indexed={stats.indexed}
@@ -250,6 +331,9 @@ export default function AssetsPage() {
               onFormatsChange={setFormats}
               statuses={statuses}
               onStatusesChange={setStatuses}
+              kbFilter={kbFilter}
+              onKbFilterChange={setKbFilter}
+              kbs={kbs}
               timeRange={timeRange}
               onTimeRangeChange={setTimeRange}
               customFrom={customFrom}
@@ -259,6 +343,24 @@ export default function AssetsPage() {
                 setCustomTo(to);
               }}
             />
+
+            {selectedIds.size > 0 && (
+              <AssetsBulkBar
+                count={selectedIds.size}
+                kbs={kbs}
+                assigning={bulkAssignMutation.isPending}
+                indexing={indexMutation.isPending}
+                canIndex={canBulkIndex}
+                onAssign={(kbId) =>
+                  bulkAssignMutation.mutate({
+                    assetIds: [...selectedIds],
+                    kbId,
+                  })
+                }
+                onIndex={handleBulkIndex}
+                onCancel={() => setSelectedIds(new Set())}
+              />
+            )}
 
             {showFilteredEmpty ? (
               <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-12 px-6 flex flex-col items-center justify-center text-center">
@@ -289,6 +391,14 @@ export default function AssetsPage() {
                 onDownload={handleDownloadWithBump}
                 onIndex={(id) => indexMutation.mutate(id)}
                 onRetry={(id) => retryIndexMutation.mutate(id)}
+                kbs={kbs}
+                onAssign={(assetId, kbId) =>
+                  assignMutation.mutate({ assetId, kbId })
+                }
+                selectable={true}
+                selectedIds={selectedIds}
+                onSelectOne={handleSelectOne}
+                onSelectAll={handleSelectAll}
               />
             ) : (
               <AssetsGrid
@@ -313,64 +423,40 @@ export default function AssetsPage() {
         )}
       </div>
 
-      {tagTarget && (
-        <TagEditModal
-          key={tagTarget.id}
-          asset={tagTarget}
-          saving={setTagsMutation.isPending}
-          onClose={() => setTagTarget(null)}
-          onSave={(id, tags) => setTagsMutation.mutate({ id, tags })}
-        />
-      )}
-
-      <AssetsRenameModal
-        target={renameTarget}
-        value={renameValue}
-        onValueChange={setRenameValue}
-        onClose={() => setRenameTarget(null)}
-        onConfirm={handleRenameConfirm}
-      />
-
-      {deleteTarget && (
-        <ConfirmDialog
-          title={t('assets.list.rename')}
-          message={t('assets.list.deleteConfirm', { name: deleteTarget.name })}
-          danger
-          onConfirm={() => deleteMutation.mutate(deleteTarget.id)}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
-
-      <AssetsUrlModal
-        open={urlImportOpen}
+      <AssetsDialogs
+        tagTarget={tagTarget}
+        onTagsClose={() => setTagTarget(null)}
+        onTagsSave={(id, tags) => setTagsMutation.mutate({ id, tags })}
+        tagsSaving={setTagsMutation.isPending}
+        renameTarget={renameTarget}
+        renameValue={renameValue}
+        onRenameValueChange={setRenameValue}
+        onRenameClose={() => setRenameTarget(null)}
+        onRenameConfirm={handleRenameConfirm}
+        deleteTarget={deleteTarget}
+        onDeleteConfirm={() =>
+          deleteTarget && deleteMutation.mutate(deleteTarget.id)
+        }
+        onDeleteCancel={() => setDeleteTarget(null)}
+        urlOpen={urlImportOpen}
         urlValue={urlValue}
         urlName={urlName}
         onUrlChange={setUrlValue}
-        onNameChange={setUrlName}
-        onClose={() => setUrlImportOpen(false)}
-        onSubmit={() => urlImportMutation.mutate()}
-        submitting={urlImportMutation.isPending}
+        onUrlNameChange={setUrlName}
+        onUrlClose={() => setUrlImportOpen(false)}
+        onUrlSubmit={() => urlImportMutation.mutate()}
+        urlSubmitting={urlImportMutation.isPending}
+        chunksTarget={chunksTarget}
+        onChunksClose={() => setChunksTarget(null)}
+        previewTarget={previewTarget}
+        indexing={indexing}
+        progressMap={progressMap}
+        onPreviewClose={() => setPreviewTarget(null)}
+        onPreviewChunks={(a) => {
+          setPreviewTarget(null);
+          setChunksTarget(a);
+        }}
       />
-
-      {chunksTarget && (
-        <AssetChunksModal
-          asset={chunksTarget}
-          onClose={() => setChunksTarget(null)}
-        />
-      )}
-
-      {previewTarget && (
-        <AssetPreviewDrawer
-          asset={previewTarget}
-          indexing={indexing}
-          progressMap={progressMap}
-          onClose={() => setPreviewTarget(null)}
-          onOpenChunks={(a) => {
-            setPreviewTarget(null);
-            setChunksTarget(a);
-          }}
-        />
-      )}
     </div>
   );
 }

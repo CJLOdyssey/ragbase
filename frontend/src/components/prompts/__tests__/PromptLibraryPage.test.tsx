@@ -21,6 +21,11 @@ vi.mock('../../../api/client/prompts', () => ({
   createPrompt: vi.fn(),
   updatePrompt: vi.fn(),
   deletePrompt: vi.fn(),
+  listPromptCategories: vi.fn().mockResolvedValue([
+    { value: 'system', label: '系统提示词' },
+    { value: 'user', label: '用户提示词' },
+    { value: 'meta', label: '元提示词' },
+  ]),
 }));
 
 vi.mock('../../../api/client/versions', () => ({
@@ -266,6 +271,42 @@ describe('PromptLibraryPage', () => {
     });
     const nameInput = screen.getByPlaceholderText('如：产品问答助手');
     expect(nameInput).toHaveValue('测试提示词');
+  });
+
+  it('edits a prompt preserving its category in the editor', async () => {
+    vi.mocked(listPrompts).mockResolvedValue([
+      { ...mockPrompt, category: 'system' },
+    ]);
+
+    renderWithClient(<PromptLibraryPage />);
+
+    const editButton = await screen.findByRole('button', {
+      name: 'prompts.list.edit',
+    });
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('prompts.editor.edit')).toBeInTheDocument();
+    });
+
+    // 编辑窗口回填原分类，不再被硬编码改写为 user
+    // （display value 为选项中文 label，value 才是 'system'）
+    const categorySelect = screen.getByDisplayValue(
+      '系统提示词',
+    ) as HTMLSelectElement;
+    expect(categorySelect.tagName).toBe('SELECT');
+    expect(categorySelect.value).toBe('system');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'prompts.editor.save' }),
+    );
+
+    await waitFor(() => {
+      expect(updatePrompt).toHaveBeenCalledWith(
+        'prompt-1',
+        expect.objectContaining({ category: 'system' }),
+      );
+    });
   });
 
   it('rolls back to a historical version from the history modal', async () => {

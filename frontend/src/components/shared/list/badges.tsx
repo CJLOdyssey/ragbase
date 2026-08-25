@@ -14,12 +14,21 @@ export interface StatusPillProps {
   /** Optional leading dot (admin variant) */
   dot?: boolean;
   testId?: string;
+  /** Optional native tooltip (e.g. failure reason on a "failed" pill) */
+  title?: string;
 }
 
-export function StatusPill({ label, color, dot, testId }: StatusPillProps) {
+export function StatusPill({
+  label,
+  color,
+  dot,
+  testId,
+  title,
+}: StatusPillProps) {
   return (
     <span
       data-testid={testId}
+      title={title}
       className="inline-flex items-center gap-1.5 justify-center h-7 px-2.5 rounded-full text-[11px] font-medium leading-none whitespace-nowrap"
       style={{
         color,
@@ -28,7 +37,10 @@ export function StatusPill({ label, color, dot, testId }: StatusPillProps) {
       }}
     >
       {dot && (
-        <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ background: color }}
+        />
       )}
       {label}
     </span>

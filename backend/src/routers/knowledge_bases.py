@@ -3,6 +3,7 @@
 from typing import Any
 
 from auth import get_user_id
+from core.audit import log_audit
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from fastapi import APIRouter, HTTPException, Request
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
 from repository.knowledge_bases import (
     assign_asset_to_kb,
+    assign_assets_to_kb_batch,
     change_indexing_config,
     count_assets_by_kb,
     create_kb,
@@ -62,6 +64,12 @@ class KBUpdateIn(BaseModel):
 class AssignKBIn(BaseModel):
     model_config = {"alias_generator": to_camel, "populate_by_name": True}
     knowledge_base_id: str | None
+
+
+class AssignKBBatchIn(BaseModel):
+    model_config = {"alias_generator": to_camel, "populate_by_name": True}
+    asset_ids: list[str] = Field(..., min_length=1, max_length=500)
+    knowledge_base_id: str
 
 
 def _to_item(kb: Any, asset_count: int = 0) -> KBItem:
@@ -199,3 +207,29 @@ async def assign_asset_kb(asset_id: str, req: AssignKBIn, request: Request) -> A
     if not success:
         raise HTTPException(status_code=404, detail="Asset or knowledge base not found")
     return {"assigned": True}
+
+
+@router.post("/api/assets/assign-kb/batch")
+async def assign_assets_kb_batch(req: AssignKBBatchIn, request: Request) -> Any:
+    """Assign many assets to one knowledge base in a single transaction.
+
+    Per-item ownership failures are skipped (not fatal) and reported.
+    """
+    user_id = get_user_id(request)
+    try:
+        result = await assign_assets_to_kb_batch(
+            req.asset_ids, req.knowledge_base_id, user_id
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await log_audit(
+        "update",
+        "asset",
+        f"batch:{req.knowledge_base_id}",
+        f"批量分配 {len(result['assigned'])} 个素材",
+    )
+    return {
+        "assignedCount": len(result["assigned"]),
+        "skippedCount": len(result["skipped"]),
+        "skippedIds": result["skipped"],
+    }

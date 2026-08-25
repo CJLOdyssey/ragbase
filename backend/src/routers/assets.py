@@ -56,6 +56,7 @@ class AssetItem(BaseModel):
     size_bytes: int
     usage_count: int
     indexed: bool
+    index_error: str | None = None
     knowledge_base_id: str | None = None
     source: str = "upload"
     source_ref: str | None = None
@@ -140,6 +141,7 @@ def _validate(content_type: str, size: int) -> str:
 def _to_item(asset: Any, chunk_count: int | None = None) -> AssetItem:
     kb_id = getattr(asset, "knowledge_base_id", None)
     updated = getattr(asset, "updated_at", None)
+    raw_index_error = getattr(asset, "index_error", None)
     return AssetItem(
         id=asset.id,
         name=asset.name,
@@ -147,6 +149,7 @@ def _to_item(asset: Any, chunk_count: int | None = None) -> AssetItem:
         size_bytes=asset.size_bytes,
         usage_count=asset.usage_count,
         indexed=asset.indexed,
+        index_error=raw_index_error if isinstance(raw_index_error, str) else None,
         knowledge_base_id=kb_id if isinstance(kb_id, str) else None,
         source=asset.source,
         source_ref=asset.source_ref,
@@ -753,10 +756,12 @@ async def retry_index_asset(asset_id: str, request: Request) -> Any:
     if asset.asset_type != "document":
         raise error_response(ErrorCode.INVALID_REQUEST, detail="仅文档类素材可索引")
 
-    from repository.assets import set_asset_indexed
+    from repository.assets import set_asset_index_result
     from tasks.registry import index_asset as index_asset_task
 
-    await set_asset_indexed(asset_id, False)
+    # Clear the stale failure reason up front: while the retry runs, the
+    # asset shows processing/pending — not the previous error.
+    await set_asset_index_result(asset_id, False, None)
     index_asset_task.delay(asset_id, user_id)
 
     logger.info("Asset re-index retry queued | user=%s | asset=%s", user_id, asset_id)

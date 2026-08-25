@@ -72,3 +72,20 @@ export async function assignAssetToKb(
 ): Promise<void> {
   await api.post(`/assets/${assetId}/assign-kb`, { knowledge_base_id: kbId });
 }
+
+export interface BatchAssignResult {
+  assignedCount: number;
+  skippedCount: number;
+  skippedIds: string[];
+}
+
+export async function batchAssignAssetsToKb(
+  assetIds: string[],
+  kbId: string,
+): Promise<BatchAssignResult> {
+  const { data } = await api.post('/assets/assign-kb/batch', {
+    asset_ids: assetIds,
+    knowledge_base_id: kbId,
+  });
+  return data;
+}

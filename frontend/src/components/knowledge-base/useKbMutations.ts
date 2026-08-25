@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
-  assignAssetToKb,
   createKnowledgeBase,
   deleteKnowledgeBase,
   updateKnowledgeBase,
@@ -74,16 +73,6 @@ export function useKbMutations({ closeForm, closeDelete }: Handlers) {
     onError: () => toast(t('toast.deleteFailed'), 'error'),
   });
 
-  const assignMutation = useMutation({
-    mutationFn: ({ assetId, kbId }: { assetId: string; kbId: string | null }) =>
-      assignAssetToKb(assetId, kbId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-      queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] });
-      toast(t('toast.saveSuccess'), 'success');
-    },
-    onError: () => toast(t('toast.error'), 'error'),
-  });
-
-  return { createMutation, updateMutation, deleteMutation, assignMutation };
+  // 素材归属动作（assign）归素材页管辖 — KB 页只读呈现统计结果
+  return { createMutation, updateMutation, deleteMutation };
 }

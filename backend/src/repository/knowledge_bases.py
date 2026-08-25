@@ -206,3 +206,43 @@ async def assign_asset_to_kb(asset_id: str, kb_id: str | None, user_id: str) -> 
         asset.knowledge_base_id = kb_id
         await session.commit()
         return True
+
+
+async def assign_assets_to_kb_batch(
+    asset_ids: list[str], kb_id: str, user_id: str
+) -> dict[str, Any]:
+    """Assign many assets to one KB in a single transaction.
+
+    Per-item ownership checks (asset.user_id, KB.user_id); items failing
+    them are skipped, not fatal — the caller reports assigned/skipped counts.
+    Returns {"assigned": [asset_id...], "skipped": [asset_id...]}.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        kb_result = await session.execute(
+            select(KnowledgeBaseDB.id).where(
+                KnowledgeBaseDB.id == kb_id,
+                KnowledgeBaseDB.user_id == user_id,
+            )
+        )
+        if kb_result.scalar_one_or_none() is None:
+            raise LookupError(f"knowledge base {kb_id} not found")
+
+        rows = await session.execute(
+            select(AssetDB).where(AssetDB.id.in_(asset_ids))
+        )
+        assets = {a.id: a for a in rows.scalars().all()}
+
+        assigned: list[str] = []
+        skipped: list[str] = []
+        for asset_id in asset_ids:
+            asset = assets.get(asset_id)
+            if asset is None or asset.user_id != user_id:
+                skipped.append(asset_id)
+                continue
+            asset.knowledge_base_id = kb_id
+            assigned.append(asset_id)
+
+        if assigned:
+            await session.commit()
+        return {"assigned": assigned, "skipped": skipped}

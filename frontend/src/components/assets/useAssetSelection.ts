@@ -60,6 +60,8 @@ export function useAssetSelection(
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [formats, setFormats] = useState<string[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
+  // 知识库筛选：'all' | 'unassigned' | <kbId>
+  const [kbFilter, setKbFilter] = useState('all');
   const [timeRange, setTimeRange] = useState<TimeRange>('all');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -93,6 +95,7 @@ export function useAssetSelection(
         timeTo: timeBounds.to,
         formats,
         statuses,
+        kbFilter,
         indexing,
         progressMap,
         getTime: getUpdatedTime,
@@ -103,6 +106,7 @@ export function useAssetSelection(
       timeBounds,
       formats,
       statuses,
+      kbFilter,
       indexing,
       progressMap,
     ],
@@ -173,6 +177,7 @@ export function useAssetSelection(
     setSearch('');
     setFormats([]);
     setStatuses([]);
+    setKbFilter('all');
     setTimeRange('all');
     setCustomFrom('');
     setCustomTo('');
@@ -187,6 +192,8 @@ export function useAssetSelection(
     setFormats,
     statuses,
     setStatuses,
+    kbFilter,
+    setKbFilter,
     timeRange,
     setTimeRange,
     customFrom,

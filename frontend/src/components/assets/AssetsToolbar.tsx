@@ -7,6 +7,11 @@ import {
   type TimeRange,
 } from './assetUtils';
 
+export interface KbOption {
+  id: string;
+  name: string;
+}
+
 export interface AssetsToolbarProps {
   search: string;
   onSearch: (v: string) => void;
@@ -14,6 +19,9 @@ export interface AssetsToolbarProps {
   onFormatsChange: (v: string[]) => void;
   statuses: string[];
   onStatusesChange: (v: string[]) => void;
+  kbFilter: string;
+  onKbFilterChange: (v: string) => void;
+  kbs: KbOption[];
   timeRange: TimeRange;
   onTimeRangeChange: (v: TimeRange) => void;
   customFrom: string;
@@ -28,6 +36,9 @@ export default function AssetsToolbar({
   onFormatsChange,
   statuses,
   onStatusesChange,
+  kbFilter,
+  onKbFilterChange,
+  kbs,
   timeRange,
   onTimeRangeChange,
   customFrom,
@@ -60,8 +71,32 @@ export default function AssetsToolbar({
         </div>
       </div>
 
-      {/* 筛选行：三下拉并列（居中） */}
+      {/* 筛选行：四下拉并列（居中） */}
       <div className="flex flex-wrap items-center justify-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-mono tracking-[0.06em] uppercase text-[var(--color-text-tertiary)]">
+            {t('assets.filter.kb', { defaultValue: '知识库' })}
+          </span>
+          <select
+            value={kbFilter}
+            onChange={(e) => onKbFilterChange(e.target.value)}
+            className="h-8 w-[130px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+            data-testid="filter-kb"
+          >
+            <option value="all">
+              {t('common.all', { defaultValue: '全部' })}
+            </option>
+            <option value="unassigned">
+              {t('assets.filter.unassigned', { defaultValue: '未分配' })}
+            </option>
+            {kbs.map((kb) => (
+              <option key={kb.id} value={kb.id}>
+                {kb.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] font-mono tracking-[0.06em] uppercase text-[var(--color-text-tertiary)]">
             {t('assets.filter.format', { defaultValue: '格式' })}

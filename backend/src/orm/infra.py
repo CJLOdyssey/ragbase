@@ -126,6 +126,11 @@ class AssetDB(Base):
     )
     usage_count: Mapped[int] = mapped_column(Integer, default=0)
     indexed: Mapped[bool] = mapped_column(Boolean, default=False)
+    index_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Last indexing failure reason (persisted terminal state); NULL = no failure",
+    )
     tags: Mapped[list[str]] = mapped_column(
         JSON().with_variant(JSONB(), "postgresql"),
         default=list,

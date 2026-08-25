@@ -29,6 +29,29 @@
       "retrySuccess": "已重新索引",
       "retryFailed": "重新索引失败"
     },
+    "uncategorized": {
+      "banner": "有 {{count}} 个素材未分类，无法被按库召回",
+      "handle": "立即处理",
+      "filterChip": "未分类",
+      "clearFilter": "清除筛选",
+      "assignAction": "分配知识库",
+      "back": "返回操作",
+      "assignSuccess": "已分配知识库"
+    },
+    "bulk": {
+      "selected": "已选 {{count}} 项",
+      "assignTo": "分配到知识库",
+      "noKbs": "先创建知识库",
+      "index": "建立索引",
+      "indexing": "索引中…",
+      "indexDisabledHint": "选中项中无未索引的文档",
+      "cancel": "取消选择",
+      "selectAll": "全选",
+      "select": "选择",
+      "assignSuccess": "已将 {{count}} 个素材分配到「{{name}}」",
+      "assignPartial": "已分配 {{assigned}} 个，跳过 {{skipped}} 个（无权限或不存在）",
+      "indexQueued": "已提交 {{count}} 个索引任务"
+    },
     "urlImport": {
       "button": "URL 导入",
       "title": "从 URL 导入",
@@ -72,6 +95,7 @@
     },
     "table": {
       "fileName": "文件名",
+      "kb": "知识库",
       "format": "格式",
       "size": "大小",
       "status": "状态",
@@ -119,6 +143,8 @@
       "clear": "清除"
     },
     "filter": {
+      "kb": "知识库",
+      "unassigned": "未分配",
       "format": "格式",
       "status": "索引状态",
       "time": "更新时间",

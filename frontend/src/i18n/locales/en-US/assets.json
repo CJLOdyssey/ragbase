@@ -29,6 +29,29 @@
       "retrySuccess": "Re-indexed successfully",
       "retryFailed": "Re-index failed"
     },
+    "uncategorized": {
+      "banner": "{{count}} assets are uncategorized and unreachable by per-KB retrieval",
+      "handle": "Handle now",
+      "filterChip": "Uncategorized",
+      "clearFilter": "Clear filter",
+      "assignAction": "Assign to knowledge base",
+      "back": "Back",
+      "assignSuccess": "Assigned to knowledge base"
+    },
+    "bulk": {
+      "selected": "{{count}} selected",
+      "assignTo": "Assign to knowledge base",
+      "noKbs": "Create a knowledge base first",
+      "index": "Index",
+      "indexing": "Indexing…",
+      "indexDisabledHint": "No unindexed documents in selection",
+      "cancel": "Clear selection",
+      "selectAll": "Select all",
+      "select": "Select",
+      "assignSuccess": "Assigned {{count}} assets to \"{{name}}\"",
+      "assignPartial": "Assigned {{assigned}}, skipped {{skipped}} (missing or not owned)",
+      "indexQueued": "Queued {{count}} indexing tasks"
+    },
     "urlImport": {
       "button": "Import URL",
       "title": "Import from URL",
@@ -72,6 +95,7 @@
     },
     "table": {
       "fileName": "File name",
+      "kb": "Knowledge base",
       "format": "Format",
       "size": "Size",
       "status": "Status",
@@ -119,6 +143,8 @@
       "clear": "Clear"
     },
     "filter": {
+      "kb": "Knowledge base",
+      "unassigned": "Unassigned",
       "format": "Format",
       "status": "Status",
       "time": "Updated",

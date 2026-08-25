@@ -33,7 +33,7 @@ def _patch_asset_env(tmp_path: Path, text: str = "## 节一\n内容 ABC-12345"):
 
     repo = {
         "get_asset": AsyncMock(return_value=asset),
-        "set_asset_indexed": AsyncMock(),
+        "set_asset_index_result": AsyncMock(),
         "get_embedding_config": AsyncMock(
             return_value={
                 "api_key": "sk-test",
@@ -67,7 +67,7 @@ class TestIndexAsset:
 
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
-            patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
+            patch("repository.assets.set_asset_index_result", repo["set_asset_index_result"]),
             patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
             patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
             patch("rag.rag_store.PgVectorStore", return_value=store),
@@ -107,7 +107,7 @@ class TestIndexAsset:
         )
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
-            patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
+            patch("repository.assets.set_asset_index_result", repo["set_asset_index_result"]),
             patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
             patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
             patch("rag.rag_store.PgVectorStore", return_value=store),
@@ -117,7 +117,10 @@ class TestIndexAsset:
 
         store.add.assert_not_awaited()
         store.clear_asset.assert_not_awaited()
-        repo["set_asset_indexed"].assert_not_awaited()
+        # Failure terminal state is persisted on the asset row.
+        repo["set_asset_index_result"].assert_awaited_once()
+        error_arg = repo["set_asset_index_result"].call_args.args[2]
+        assert "document guard" in error_arg
 
     @pytest.mark.asyncio
     async def test_disallowed_source_rejected(self, tmp_path):
@@ -126,7 +129,7 @@ class TestIndexAsset:
         asset.source = "sharepoint"
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
-            patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
+            patch("repository.assets.set_asset_index_result", repo["set_asset_index_result"]),
             patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
             patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
             patch("rag.rag_store.PgVectorStore", return_value=store),
@@ -135,7 +138,9 @@ class TestIndexAsset:
                 await _index_asset("a1", "u1")
 
         store.add.assert_not_awaited()
-        repo["set_asset_indexed"].assert_not_awaited()
+        repo["set_asset_index_result"].assert_awaited_once_with(
+            "a1", False, "asset source 'sharepoint' not allowed for indexing"
+        )
 
     @pytest.mark.asyncio
     async def test_no_api_key_raises(self, tmp_path):
@@ -143,10 +148,15 @@ class TestIndexAsset:
         repo["get_embedding_config"].return_value = None
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
+            patch("repository.assets.set_asset_index_result", repo["set_asset_index_result"]),
             patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
         ):
             with pytest.raises(RuntimeError, match="embedding API key"):
                 await _index_asset("a1", "u1")
+
+        repo["set_asset_index_result"].assert_awaited_once()
+        error_arg = repo["set_asset_index_result"].call_args.args[2]
+        assert "embedding API key" in error_arg
 
     @pytest.mark.asyncio
     async def test_clear_before_add_idempotent(self, tmp_path):
@@ -154,7 +164,7 @@ class TestIndexAsset:
         repo, provider_cls, store, asset = _patch_asset_env(tmp_path)
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
-            patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
+            patch("repository.assets.set_asset_index_result", repo["set_asset_index_result"]),
             patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
             patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
             patch("rag.rag_store.PgVectorStore", return_value=store),
@@ -167,7 +177,7 @@ class TestIndexAsset:
         store.add.assert_awaited_once()
         # Store receives the owning user, not a default.
         assert store.add.call_args.kwargs["user_id"] == "u1"
-        repo["set_asset_indexed"].assert_awaited_once_with("a1", True)
+        repo["set_asset_index_result"].assert_awaited_once_with("a1", True, None)
 
     @pytest.mark.asyncio
     async def test_chunks_carry_asset_provenance(self, tmp_path):
@@ -175,7 +185,7 @@ class TestIndexAsset:
         repo, provider_cls, store, asset = _patch_asset_env(tmp_path)
         with (
             patch("repository.assets.get_asset", repo["get_asset"]),
-            patch("repository.assets.set_asset_indexed", repo["set_asset_indexed"]),
+            patch("repository.assets.set_asset_index_result", repo["set_asset_index_result"]),
             patch("repository.keys.get_embedding_config", repo["get_embedding_config"]),
             patch("rag.rag_embedding.EmbeddingProvider", provider_cls),
             patch("rag.rag_store.PgVectorStore", return_value=store),

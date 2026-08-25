@@ -1,9 +1,11 @@
-import { useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DataTable, type DataTableColumn } from '../shared/list';
 import { useRowMenu } from '../shared/list/useRowMenu';
 import { STATUS_COLORS } from '../shared/statusColors';
 import {
+  ArrowLeft,
+  BookOpen,
   Braces,
   Download,
   FileImage,
@@ -19,6 +21,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import type { IndexProgress } from '../../api/client/assets';
+import type { KnowledgeBase } from '../../api/client/knowledgeBases';
 import { ActionButton, StatusPill } from './AssetBadges';
 import {
   extColorOf,
@@ -68,6 +71,14 @@ interface AssetsTableProps {
   onDownload?: (asset: AssetItem) => void;
   onIndex: (id: string) => void;
   onRetry: (id: string) => void;
+  /** 知识库清单 + 归属动作 — 行菜单「分配知识库」子模式使用 */
+  kbs?: KnowledgeBase[];
+  onAssign?: (assetId: string, kbId: string) => void;
+  /** 多选（批量操作）— 传入即渲染 checkbox 列 */
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onSelectOne?: (id: string, checked: boolean) => void;
+  onSelectAll?: (checked: boolean) => void;
 }
 
 function formatUpdatedAt(v?: string | null): string {
@@ -89,6 +100,37 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/** 知识库归属单元格 — 已分配显示库名，未分配显示警示色「未分类」。 */
+function KbCell({
+  kbId,
+  kbNameById,
+}: {
+  kbId?: string | null;
+  kbNameById: Map<string, string>;
+}) {
+  const { t } = useTranslation();
+  const kbName = kbId ? (kbNameById.get(kbId) ?? kbId) : null;
+  return (
+    <CellCenter>
+      {kbName ? (
+        <span
+          className="truncate text-[12px] text-[var(--color-text-secondary)]"
+          title={kbName}
+        >
+          {kbName}
+        </span>
+      ) : (
+        <span
+          className="text-[12px] text-[var(--color-warning)]"
+          title={t('assets.uncategorized.filterChip')}
+        >
+          {t('assets.uncategorized.filterChip')}
+        </span>
+      )}
+    </CellCenter>
+  );
 }
 
 /** Centered cell wrapper matching assets visual baseline. */
@@ -115,6 +157,12 @@ export default function AssetsTable({
   onDownload,
   onIndex,
   onRetry,
+  kbs = [],
+  onAssign,
+  selectable = false,
+  selectedIds,
+  onSelectOne,
+  onSelectAll,
 }: AssetsTableProps) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -123,12 +171,51 @@ export default function AssetsTable({
   const menu = useRowMenu({ menuRef });
   const openId = menu.openId;
 
-  const columns: DataTableColumn[] = [
+  // 行菜单子模式：actions（默认）| assign（列出可分配的知识库）。
+  // openId 切换即重置，不污染通用 useRowMenu。
+  const [assignModeId, setAssignModeId] = useState<string | null>(null);
+  const menuMode = openId && assignModeId === openId ? 'assign' : 'actions';
+  const resetMenuMode = () => setAssignModeId(null);
+
+  const kbNameById = useMemo(
+    () => new Map(kbs.map((k) => [k.id, k.name])),
+    [kbs],
+  );
+  const allSelected =
+    selectable && assets.length > 0 && selectedIds !== undefined
+      ? assets.every((a) => selectedIds.has(a.id))
+      : false;
+
+  const columns: DataTableColumn[] = [];
+  if (selectable) {
+    columns.push({
+      key: 'select',
+      header: (
+        <input
+          type="checkbox"
+          aria-label={t('assets.bulk.selectAll')}
+          checked={allSelected}
+          onChange={(e) => onSelectAll?.(e.target.checked)}
+          onClick={(e) => e.stopPropagation()}
+          data-testid="select-all"
+          className="h-3.5 w-3.5 cursor-pointer accent-[var(--color-accent)]"
+        />
+      ),
+      width: '36px',
+      center: true,
+    });
+  }
+  columns.push(
     {
       key: 'name',
       header: t('assets.table.fileName'),
       width: 'minmax(160px,1.5fr)',
       sortable: true,
+    },
+    {
+      key: 'kb',
+      header: t('assets.table.kb'),
+      width: '110px',
     },
     {
       key: 'format',
@@ -161,7 +248,7 @@ export default function AssetsTable({
       sortable: true,
     },
     { key: 'actions', header: t('assets.table.actions'), width: '112px' },
-  ];
+  );
 
   const renderActionsCell = (asset: AssetItem): React.ReactNode => {
     const status = getAssetStatus(asset, indexing, progressMap[asset.id]);
@@ -208,7 +295,10 @@ export default function AssetsTable({
           <ActionButton
             title="更多"
             hoverVar="--color-accent-soft"
-            onClick={() => menu.toggle(asset.id)}
+            onClick={() => {
+              resetMenuMode();
+              menu.toggle(asset.id);
+            }}
             data-testid={`more-${asset.id}`}
           >
             <MoreHorizontal size={12} />
@@ -223,53 +313,98 @@ export default function AssetsTable({
                   top: menu.pos.top,
                   right: menu.pos.right,
                 }}
-                className="z-50 min-w-[140px] rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] shadow-xl py-1"
+                className="z-50 min-w-[140px] max-h-[320px] overflow-y-auto rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] shadow-xl py-1"
                 onClick={(e) => e.stopPropagation()}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    menu.close();
-                    onRename(asset);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
-                  data-testid={`rename-${asset.id}`}
-                >
-                  <Pencil size={12} /> {t('assets.action.rename')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    menu.close();
-                    onDownload?.(asset);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
-                  data-testid={`download-${asset.id}`}
-                >
-                  <Download size={12} /> 下载
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    menu.close();
-                    onTags?.(asset);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
-                  data-testid={`tags-${asset.id}`}
-                >
-                  <Tags size={12} /> {t('assets.action.tags')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    menu.close();
-                    onDelete(asset);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-danger)] hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
-                  data-testid={`delete-${asset.id}`}
-                >
-                  <Trash2 size={12} /> {t('assets.action.delete')}
-                </button>
+                {menuMode === 'actions' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        menu.close();
+                        onRename(asset);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                      data-testid={`rename-${asset.id}`}
+                    >
+                      <Pencil size={12} /> {t('assets.action.rename')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        menu.close();
+                        onDownload?.(asset);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                      data-testid={`download-${asset.id}`}
+                    >
+                      <Download size={12} /> 下载
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        menu.close();
+                        onTags?.(asset);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                      data-testid={`tags-${asset.id}`}
+                    >
+                      <Tags size={12} /> {t('assets.action.tags')}
+                    </button>
+                    {onAssign && (
+                      <button
+                        type="button"
+                        disabled={kbs.length === 0}
+                        onClick={() => setAssignModeId(asset.id)}
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        data-testid={`assign-menu-${asset.id}`}
+                      >
+                        <BookOpen size={12} />{' '}
+                        {t('assets.uncategorized.assignAction')}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        menu.close();
+                        onDelete(asset);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-danger)] hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
+                      data-testid={`delete-${asset.id}`}
+                    >
+                      <Trash2 size={12} /> {t('assets.action.delete')}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={resetMenuMode}
+                      className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] flex items-center gap-2 border-b border-[var(--color-border-subtle)] mb-1"
+                    >
+                      <ArrowLeft size={12} /> {t('assets.uncategorized.back')}
+                    </button>
+                    {kbs.map((kb) => (
+                      <button
+                        key={kb.id}
+                        type="button"
+                        onClick={() => {
+                          menu.close();
+                          resetMenuMode();
+                          onAssign?.(asset.id, kb.id);
+                        }}
+                        data-testid={`assign-kb-${kb.id}`}
+                        className={`w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2 ${
+                          asset.knowledgeBaseId === kb.id
+                            ? 'text-[var(--color-accent)]'
+                            : ''
+                        }`}
+                      >
+                        <BookOpen size={12} /> {kb.name}
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>,
               document.body,
             )}
@@ -318,6 +453,20 @@ export default function AssetsTable({
   ): React.ReactNode => {
     const ext = getExt(asset.name);
     switch (col.key) {
+      case 'select':
+        return (
+          <CellCenter>
+            <input
+              type="checkbox"
+              aria-label={`${t('assets.bulk.select')} ${asset.name}`}
+              checked={selectedIds?.has(asset.id) ?? false}
+              onChange={(e) => onSelectOne?.(asset.id, e.target.checked)}
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`select-${asset.id}`}
+              className="h-3.5 w-3.5 cursor-pointer accent-[var(--color-accent)]"
+            />
+          </CellCenter>
+        );
       case 'name':
         return (
           <div className="flex items-center gap-2.5 min-w-0 pr-3">
@@ -330,6 +479,8 @@ export default function AssetsTable({
             </span>
           </div>
         );
+      case 'kb':
+        return <KbCell kbId={asset.knowledgeBaseId} kbNameById={kbNameById} />;
       case 'format':
         return (
           <CellCenter>
@@ -350,7 +501,14 @@ export default function AssetsTable({
         const status = getAssetStatus(asset, indexing, progressMap[asset.id]);
         return (
           <CellCenter>
-            <StatusPill status={status} />
+            <StatusPill
+              status={status}
+              title={
+                status === 'failed'
+                  ? (asset.indexError ?? undefined)
+                  : undefined
+              }
+            />
           </CellCenter>
         );
       }

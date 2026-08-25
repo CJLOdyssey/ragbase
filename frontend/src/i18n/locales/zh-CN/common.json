@@ -304,6 +304,7 @@
     "table": {
       "name": "名称",
       "desc": "描述",
+      "category": "类别",
       "status": "状态",
       "version": "版本",
       "uses": "调用数",

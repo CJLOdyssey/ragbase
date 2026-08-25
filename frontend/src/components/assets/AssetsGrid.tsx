@@ -138,7 +138,14 @@ export default function AssetsGrid({
           </div>
         ) : (
           <div className="mb-3">
-            <StatusPill status={status} />
+            <StatusPill
+              status={status}
+              title={
+                status === 'failed'
+                  ? (asset.indexError ?? undefined)
+                  : undefined
+              }
+            />
           </div>
         )}
 

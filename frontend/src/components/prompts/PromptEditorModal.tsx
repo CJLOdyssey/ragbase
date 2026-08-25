@@ -1,7 +1,11 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
-import type { PromptItem } from '../../api/client/prompts';
+import {
+  listPromptCategories,
+  type PromptItem,
+} from '../../api/client/prompts';
 
 interface Props {
   mode: 'new' | 'edit';
@@ -24,6 +28,13 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'published', label: '启用' },
 ];
 
+/** categories 接口失败时的兜底选项，与后端 /prompts/categories 保持一致。 */
+const FALLBACK_CATEGORIES = [
+  { value: 'system', label: '系统提示词' },
+  { value: 'user', label: '用户提示词' },
+  { value: 'meta', label: '元提示词' },
+];
+
 function statusToUi(status: string): string {
   if (status === 'published' || status === 'active') return 'published';
   if (status === 'draft' || status === 'inactive') return 'draft';
@@ -39,6 +50,7 @@ function getInitialState(initial: PromptItem | null) {
     return {
       name: initial.name,
       description: initial.description || '',
+      category: initial.category || 'user',
       status: statusToUi(initial.status),
       content: initial.content,
       version: initial.version || 'v1.0.0',
@@ -47,6 +59,7 @@ function getInitialState(initial: PromptItem | null) {
   return {
     name: '',
     description: '',
+    category: 'user',
     status: 'draft',
     content: '',
     version: 'v1.0.0',
@@ -65,8 +78,18 @@ export default function PromptEditorModal({
   const init = getInitialState(initial);
   const [name, setName] = useState(init.name);
   const [description, setDescription] = useState(init.description);
+  const [category, setCategory] = useState(init.category);
   const [statusUi, setStatusUi] = useState(init.status);
   const [content, setContent] = useState(init.content);
+
+  // 分类选项来自后端单一事实源；失败时回退到与后端一致的本地兜底
+  const { data: categories } = useQuery({
+    queryKey: ['prompt-categories'],
+    queryFn: listPromptCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+  const categoryOptions = categories ?? FALLBACK_CATEGORIES;
+
   // 版本由后端保存时递增，前端只读展示、不参与提交
   const version = init.version;
 
@@ -75,7 +98,7 @@ export default function PromptEditorModal({
     onSave({
       name: name.trim(),
       description: description.trim() || undefined,
-      category: 'user',
+      category,
       content,
       status: uiToStatus(statusUi),
     });
@@ -84,7 +107,18 @@ export default function PromptEditorModal({
   return (
     <AntdModal
       title={
-        mode === 'new' ? t('prompts.editor.new') : t('prompts.editor.edit')
+        <span className="flex items-center gap-2.5 min-w-0 pr-4">
+          <span className="truncate">
+            {mode === 'new'
+              ? t('prompts.editor.new')
+              : t('prompts.editor.edit')}
+          </span>
+          {mode === 'edit' && (
+            <span className="shrink-0 text-xs font-mono text-[var(--color-text-tertiary)]">
+              {version}
+            </span>
+          )}
+        </span>
       }
       open={true}
       onCancel={onClose}
@@ -158,7 +192,23 @@ export default function PromptEditorModal({
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-[var(--color-text-primary)]">
-              初始状态
+              {t('prompts.editor.category')}
+            </label>
+            <select
+              className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] cursor-pointer"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {categoryOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-primary)]">
+              {t('prompts.editor.status')}
             </label>
             <select
               className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] cursor-pointer"
@@ -171,14 +221,6 @@ export default function PromptEditorModal({
                 </option>
               ))}
             </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--color-text-primary)]">
-              版本（自动生成）
-            </label>
-            <div className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)] font-mono min-h-[38px] flex items-center select-none">
-              {version}
-            </div>
           </div>
         </div>
 

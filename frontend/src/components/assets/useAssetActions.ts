@@ -10,6 +10,7 @@ import {
   uploadAsset,
   type IndexProgress,
 } from '../../api/client/assets';
+import { assignAssetToKb } from '../../api/client/knowledgeBases';
 import type { IndexingEntry } from './assetUtils';
 import { useToast } from '../../utils/useToast';
 
@@ -115,6 +116,18 @@ export function useAssetActions(
     onError: () => toast(t('assets.list.retryFailed'), 'error'),
   });
 
+  // 归属 KB（不触发索引 — 顺序硬约束：先分配再索引，KB 决定向量空间）
+  const assignMutation = useMutation({
+    mutationFn: ({ assetId, kbId }: { assetId: string; kbId: string }) =>
+      assignAssetToKb(assetId, kbId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] });
+      toast(t('assets.uncategorized.assignSuccess'), 'success');
+    },
+    onError: () => toast(t('toast.error'), 'error'),
+  });
+
   const urlImportMutation = useMutation({
     mutationFn: () => importUrl(urlValue, urlName || undefined),
     onSuccess: () => {
@@ -178,6 +191,7 @@ export function useAssetActions(
     deleteMutation,
     indexMutation,
     retryIndexMutation,
+    assignMutation,
     urlImportMutation,
     validateAndUpload,
   };
