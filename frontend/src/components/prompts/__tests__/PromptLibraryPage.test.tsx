@@ -238,7 +238,7 @@ describe('PromptLibraryPage', () => {
     });
   });
 
-  it('opens detail modal on row click and opens editor via its edit button', async () => {
+  it('opens read-only detail on row click; editor opens from row action', async () => {
     vi.mocked(listPrompts).mockResolvedValue([mockPrompt]);
 
     renderWithClient(<PromptLibraryPage />);
@@ -252,10 +252,14 @@ describe('PromptLibraryPage', () => {
     expect(
       within(detailDialog).getByText('prompts.detail.basicInfo'),
     ).toBeInTheDocument();
+    // 详情纯只读：无 footer 操作按钮（编辑入口在列表行）
+    expect(
+      within(detailDialog).queryByRole('button', {
+        name: 'prompts.list.edit',
+      }),
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(
-      within(detailDialog).getByRole('button', { name: 'prompts.list.edit' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'prompts.list.edit' }));
 
     await waitFor(() => {
       expect(screen.getByText('prompts.editor.edit')).toBeInTheDocument();

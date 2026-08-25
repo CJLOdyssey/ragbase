@@ -90,11 +90,7 @@ export default function PromptLibraryPage() {
 
       {/* 弹窗按 DOM 顺序层叠（后者在上）：详情 < 历史 < DialogLayer(编辑等) */}
       {selectedPrompt && (
-        <PromptDetailModal
-          prompt={selectedPrompt}
-          onClose={closeDetail}
-          onEdit={() => setDialog({ type: 'edit', id: selectedPrompt.id })}
-        />
+        <PromptDetailModal prompt={selectedPrompt} onClose={closeDetail} />
       )}
 
       {historyPrompt && (
@@ -129,8 +125,7 @@ function EmptyCard({ tab }: { tab: string }) {
   const { t } = useTranslation();
   const isFiltered = tab !== 'all';
   if (isFiltered) {
-    const label =
-      tab === 'published' ? '启用' : tab === 'draft' ? '草稿' : tab;
+    const label = tab === 'published' ? '启用' : tab === 'draft' ? '草稿' : tab;
     return (
       <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-10 px-6 text-center text-[13px] text-[var(--color-text-muted)]">
         暂无{label}数据
@@ -174,8 +169,7 @@ function DialogLayer({
   if (!dialog) return null;
 
   if (dialog.type === 'new' || dialog.type === 'edit') {
-    const initial =
-      dialog.type === 'edit' ? resolvePrompt(dialog.id) : null;
+    const initial = dialog.type === 'edit' ? resolvePrompt(dialog.id) : null;
     if (dialog.type === 'edit' && !initial) return null;
     return (
       <PromptEditorModal

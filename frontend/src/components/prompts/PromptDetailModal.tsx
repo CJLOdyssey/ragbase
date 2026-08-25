@@ -8,11 +8,12 @@ import { useToast } from '../../utils/useToast';
 interface Props {
   prompt: PromptItem;
   onClose: () => void;
-  onEdit: () => void;
 }
 
-/** 只读详情弹窗：数据由父级从缓存派生传入，自身不持有任何行快照。 */
-export default function PromptDetailModal({ prompt, onClose, onEdit }: Props) {
+/** 只读详情弹窗：数据由父级从缓存派生传入，自身不持有任何行快照。
+ *  无 footer——只读视图无可取消/确认动作，右上 ✕ 即关闭；
+ *  编辑入口在列表行操作区（PromptTable/PromptGrid）。 */
+export default function PromptDetailModal({ prompt, onClose }: Props) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -58,31 +59,12 @@ export default function PromptDetailModal({ prompt, onClose, onEdit }: Props) {
       centered
       width={680}
       aria-label={prompt.name}
-      footer={
-        <>
-          <button
-            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-            onClick={onClose}
-          >
-            {t('confirm.cancel')}
-          </button>
-          <button
-            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90"
-            onClick={onEdit}
-          >
-            {t('prompts.list.edit')}
-          </button>
-        </>
-      }
+      footer={null}
     >
       <div className="p-6">
         <Section label={t('prompts.detail.basicInfo')}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
             <KVRow label={t('prompts.editor.name')} value={prompt.name} />
-            <KVRow
-              label={t('prompts.editor.category')}
-              value={prompt.category}
-            />
             <KVRow
               label={t('prompts.editor.description')}
               value={prompt.description || '—'}

@@ -67,7 +67,8 @@ export default function PromptEditorModal({
   const [description, setDescription] = useState(init.description);
   const [statusUi, setStatusUi] = useState(init.status);
   const [content, setContent] = useState(init.content);
-  const [version, setVersion] = useState(init.version);
+  // 版本由后端保存时递增，前端只读展示、不参与提交
+  const version = init.version;
 
   const handleSave = () => {
     if (!name.trim()) return;
@@ -173,14 +174,11 @@ export default function PromptEditorModal({
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-[var(--color-text-primary)]">
-              版本号
+              版本（自动生成）
             </label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] font-mono"
-              value={version}
-              onChange={(e) => setVersion(e.target.value)}
-            />
+            <div className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)] font-mono min-h-[38px] flex items-center select-none">
+              {version}
+            </div>
           </div>
         </div>
 
