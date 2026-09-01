@@ -67,7 +67,6 @@ export default function KbRecallModal({
       centered
       width={640}
       footer={null}
-      className="!top-[10vh]"
       styles={{
         body: { padding: '20px 24px', maxHeight: '70vh', overflowY: 'auto' },
       }}
