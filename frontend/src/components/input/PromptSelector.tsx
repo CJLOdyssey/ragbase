@@ -38,7 +38,8 @@ export default function PromptSelector() {
   });
 
   const actives = useMemo(
-    () => (promptsQuery.data ?? []).filter((p) => ACTIVE_STATUSES.has(p.status)),
+    () =>
+      (promptsQuery.data ?? []).filter((p) => ACTIVE_STATUSES.has(p.status)),
     [promptsQuery.data],
   );
 
@@ -121,7 +122,7 @@ export default function PromptSelector() {
         title={current?.name ?? t('promptSelect.label')}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className={`inline-flex items-center gap-1 px-2 h-[26px] min-w-[96px] max-w-[160px] border rounded-md bg-transparent text-xs font-[inherit] cursor-pointer transition-all duration-150 border-[var(--color-border)] ${
+        className={`inline-flex items-center justify-center gap-1 px-2 h-[26px] border rounded-md bg-transparent text-xs font-[inherit] cursor-pointer transition-all duration-150 border-[var(--color-border)] ${
           current
             ? 'text-[var(--color-accent)]'
             : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'

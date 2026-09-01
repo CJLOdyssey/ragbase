@@ -202,9 +202,9 @@
   --color-surface-sidebar: #f7f8fa;
 
   --color-text-primary: #1a1a2e;
-  --color-text-secondary: #495057;
-  --color-text-muted: #868e96;
-  --color-text-tertiary: #adb5bd;
+  --color-text-secondary: #81858c;
+  --color-text-muted: #81858c;
+  --color-text-tertiary: #81858c;
 
   --color-text-on-accent: #1a1a2e;
 
@@ -239,25 +239,24 @@ select option {
   }
 
   /* 消息列表区域：允许垂直滚动但阻止水平/缩放 */
-  [data-testid="messages-panel"],
+  [data-testid='messages-panel'],
   .messages-container {
     touch-action: pan-y;
   }
 
   /* 输入框区域：避免 300ms 点击延迟 */
   textarea,
-  input[type="text"],
-  input[type="search"],
-  input[type="email"],
-  input[type="password"] {
+  input[type='text'],
+  input[type='search'],
+  input[type='email'],
+  input[type='password'] {
     touch-action: manipulation;
   }
 
   /* 按钮和可点击元素：避免 300ms 点击延迟 */
   button,
   a,
-  [role="button"] {
+  [role='button'] {
     touch-action: manipulation;
   }
 }
-
