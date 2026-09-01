@@ -71,7 +71,7 @@ export default function KbRecallModal({
         body: { padding: '20px 24px', maxHeight: '70vh', overflowY: 'auto' },
       }}
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         {/* 召回范围提示 */}
         <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] px-3 py-2">
           <span className="text-xs text-[var(--color-text-muted)]">
@@ -97,12 +97,10 @@ export default function KbRecallModal({
           />
         </section>
 
-        {/* 配置参数区 */}
-        <section>
-          <h4 className="m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-            {t('ragTest.sectionParams')}
-          </h4>
-          <div className="flex flex-col gap-3">
+        {/* 参数配置区 */}
+        <section className="flex flex-col gap-3">
+          {/* 检索方式 + 标签过滤 */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[var(--color-text-secondary)]">
                 {t('ragTest.method')}
@@ -129,40 +127,40 @@ export default function KbRecallModal({
                 className="!rounded-lg"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[var(--color-text-secondary)]">
-                  Top K
-                </label>
-                <InputNumber
-                  min={1}
-                  max={50}
-                  value={topK}
-                  onChange={(v) => setTopK(typeof v === 'number' ? v : 5)}
-                  className="!w-full !rounded-lg"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[var(--color-text-secondary)]">
-                  {t('kb.similarityThreshold')}
-                </label>
-                <InputNumber
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={threshold}
-                  onChange={(v) =>
-                    setThreshold(typeof v === 'number' ? v : 0.75)
-                  }
-                  className="!w-full !rounded-lg"
-                />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
-              <Switch size="small" checked={rewrite} onChange={setRewrite} />
-              {t('ragTest.rewrite')}
-            </label>
           </div>
+          {/* Top K + 相似度阈值 */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                Top K
+              </label>
+              <InputNumber
+                min={1}
+                max={50}
+                value={topK}
+                onChange={(v) => setTopK(typeof v === 'number' ? v : 5)}
+                className="!w-full !rounded-lg"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                {t('kb.similarityThreshold')}
+              </label>
+              <InputNumber
+                min={0}
+                max={1}
+                step={0.05}
+                value={threshold}
+                onChange={(v) => setThreshold(typeof v === 'number' ? v : 0.75)}
+                className="!w-full !rounded-lg"
+              />
+            </div>
+          </div>
+          {/* 查询重写开关 */}
+          <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+            <Switch size="small" checked={rewrite} onChange={setRewrite} />
+            {t('ragTest.rewrite')}
+          </label>
         </section>
 
         {/* 执行按钮 */}
@@ -181,17 +179,6 @@ export default function KbRecallModal({
 
         {/* 结果展示区 */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="m-0 text-sm font-medium text-[var(--color-text-primary)]">
-              {t('kb.recallResults')}
-            </h4>
-            {shown.length > 0 && (
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {t('ragTest.hits', { count: shown.length })}
-              </span>
-            )}
-          </div>
-
           <RecallResults
             isPending={testMutation.isPending}
             isError={testMutation.isError}
