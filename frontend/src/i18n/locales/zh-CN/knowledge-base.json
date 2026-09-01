@@ -46,6 +46,9 @@
     "overlap": "重叠词数",
     "overlapHint": "相邻块的重叠词数（0–500）",
     "overlapRequired": "请输入重叠词数",
-    "overlapLessThanSize": "重叠必须小于分块大小"
+    "overlapLessThanSize": "重叠必须小于分块大小",
+    "sectionBasic": "基本信息",
+    "sectionEmbedModel": "嵌入模型",
+    "sectionChunking": "分块配置"
   }
 }

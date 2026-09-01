@@ -67,14 +67,22 @@ export default function KbRecallModal({
       centered
       width={640}
       footer={null}
-      styles={{ body: { padding: 20, maxHeight: '65vh', overflowY: 'auto' } }}
+      className="!top-[10vh]"
+      styles={{
+        body: { padding: '20px 24px', maxHeight: '70vh', overflowY: 'auto' },
+      }}
     >
-      <div className="flex flex-col gap-4">
-        <p className="m-0 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-text-muted)]">
-          {t('kb.recallScope', { count: indexedCount })}
-        </p>
+      <div className="flex flex-col gap-5">
+        {/* 召回范围提示 */}
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] px-3 py-2">
+          <span className="text-xs text-[var(--color-text-muted)]">
+            {t('kb.recallScope', { count: indexedCount })}
+          </span>
+        </div>
+
+        {/* 查询输入区 */}
         <section>
-          <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
+          <label className="mb-2 block text-sm font-medium text-[var(--color-text-primary)]">
             {t('ragTest.queryLabel')}
           </label>
           <Input.TextArea
@@ -86,76 +94,103 @@ export default function KbRecallModal({
             }}
             rows={3}
             placeholder={t('ragTest.queryPlaceholder')}
-            className="!bg-[var(--color-surface)] !border-[var(--color-border)] !text-[var(--color-text-primary)] resize-none"
+            className="!bg-[var(--color-surface)] !border-[var(--color-border)] !rounded-lg resize-none"
           />
-          <div className="mt-3 flex flex-col gap-1.5">
-            <label className="text-xs text-[var(--color-text-secondary)]">
-              {t('ragTest.method')}
-            </label>
-            <Select
-              value={method}
-              onChange={(v) => setMethod(v)}
-              options={[
-                { value: 'hybrid', label: t('ragTest.methodHybrid') },
-                { value: 'semantic', label: t('ragTest.methodSemantic') },
-                { value: 'lexical', label: t('ragTest.methodLexical') },
-              ]}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-[var(--color-text-secondary)]">
-              {t('ragTest.tagFilter')}
-            </label>
-            <Input
-              value={tagText}
-              onChange={(e) => setTagText(e.target.value)}
-              placeholder={t('ragTest.tagFilterPlaceholder')}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-[var(--color-text-secondary)]">
-                Top K
-              </label>
-              <InputNumber
-                min={1}
-                max={50}
-                value={topK}
-                onChange={(v) => setTopK(typeof v === 'number' ? v : 5)}
-                className="!w-full !bg-[var(--color-surface)] !border-[var(--color-border)]"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-[var(--color-text-secondary)]">
-                {t('kb.similarityThreshold')}
-              </label>
-              <InputNumber
-                min={0}
-                max={1}
-                step={0.05}
-                value={threshold}
-                onChange={(v) => setThreshold(typeof v === 'number' ? v : 0.75)}
-                className="!w-full !bg-[var(--color-surface)] !border-[var(--color-border)]"
-              />
-            </div>
-          </div>
-          <label className="mt-3 flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-            <Switch size="small" checked={rewrite} onChange={setRewrite} />
-            {t('ragTest.rewrite')}
-          </label>
-          <button
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-text-on-accent)] transition-opacity hover:opacity-90 disabled:opacity-60"
-            onClick={run}
-            disabled={!canRun}
-          >
-            <Search size={14} />
-            {testMutation.isPending ? t('ragTest.running') : t('ragTest.run')}
-          </button>
         </section>
 
+        {/* 配置参数区 */}
         <section>
-          <div className="mb-2 text-sm font-medium text-[var(--color-text-primary)]">
-            {t('kb.recallResults')}
+          <h4 className="m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            {t('ragTest.sectionParams')}
+          </h4>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                {t('ragTest.method')}
+              </label>
+              <Select
+                value={method}
+                onChange={(v) => setMethod(v)}
+                options={[
+                  { value: 'hybrid', label: t('ragTest.methodHybrid') },
+                  { value: 'semantic', label: t('ragTest.methodSemantic') },
+                  { value: 'lexical', label: t('ragTest.methodLexical') },
+                ]}
+                className="!rounded-lg"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                {t('ragTest.tagFilter')}
+              </label>
+              <Input
+                value={tagText}
+                onChange={(e) => setTagText(e.target.value)}
+                placeholder={t('ragTest.tagFilterPlaceholder')}
+                className="!rounded-lg"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                  Top K
+                </label>
+                <InputNumber
+                  min={1}
+                  max={50}
+                  value={topK}
+                  onChange={(v) => setTopK(typeof v === 'number' ? v : 5)}
+                  className="!w-full !rounded-lg"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                  {t('kb.similarityThreshold')}
+                </label>
+                <InputNumber
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={threshold}
+                  onChange={(v) =>
+                    setThreshold(typeof v === 'number' ? v : 0.75)
+                  }
+                  className="!w-full !rounded-lg"
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+              <Switch size="small" checked={rewrite} onChange={setRewrite} />
+              {t('ragTest.rewrite')}
+            </label>
+          </div>
+        </section>
+
+        {/* 执行按钮 */}
+        <button
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-[var(--color-text-on-accent)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
+          onClick={run}
+          disabled={!canRun}
+        >
+          {testMutation.isPending ? (
+            <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <Search size={14} />
+          )}
+          {testMutation.isPending ? t('ragTest.running') : t('ragTest.run')}
+        </button>
+
+        {/* 结果展示区 */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="m-0 text-sm font-medium text-[var(--color-text-primary)]">
+              {t('kb.recallResults')}
+            </h4>
+            {shown.length > 0 && (
+              <span className="text-xs text-[var(--color-text-muted)]">
+                {t('ragTest.hits', { count: shown.length })}
+              </span>
+            )}
           </div>
 
           <RecallResults
@@ -218,24 +253,28 @@ function RecallResults({
     );
   }
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-sm text-[var(--color-text-secondary)]">
-        {t('ragTest.hits', { count: shown.length })}
-      </div>
+    <div className="flex flex-col gap-2.5">
       {shown.map((s, i) => (
         <div
           key={`${s.assetId ?? 'chunk'}-${i}`}
-          className="flex flex-col gap-1 rounded-lg bg-[var(--color-surface)] p-3"
+          className="group relative flex flex-col gap-2 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-4 transition-all hover:border-[var(--color-border)] hover:shadow-sm"
         >
-          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-            <span className="font-medium text-[var(--color-accent)]">
-              {(s.similarity * 100).toFixed(0)}%
-            </span>
-            <span className="truncate">
-              {s.assetName ?? t('ragTest.source')}
+          {/* 头部：相似度 + 来源 */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center min-w-[48px] px-2 py-0.5 rounded-full text-xs font-semibold bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
+                {(s.similarity * 100).toFixed(0)}%
+              </span>
+              <span className="text-xs font-medium text-[var(--color-text-secondary)] truncate max-w-[200px]">
+                {s.assetName ?? t('ragTest.source')}
+              </span>
+            </div>
+            <span className="text-xs text-[var(--color-text-muted)]">
+              #{i + 1}
             </span>
           </div>
-          <p className="m-0 text-sm text-[var(--color-text-primary)] line-clamp-3">
+          {/* 内容 */}
+          <p className="m-0 text-sm leading-relaxed text-[var(--color-text-primary)] line-clamp-4">
             {s.text}
           </p>
         </div>

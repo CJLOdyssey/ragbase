@@ -22,6 +22,7 @@
   "confirm": {
     "cancel": "取消",
     "confirm": "确定",
+    "saving": "保存中...",
     "delete": "删除",
     "danger": "危险操作",
     "info": "确认操作",
@@ -454,8 +455,8 @@
     "queryPlaceholder": "输入一个检索测试问题…",
     "topK": "返回条数",
     "rewrite": "先改写查询",
-    "run": "测试",
-    "running": "测试中…",
+    "run": "开始测试",
+    "running": "测试中...",
     "hits": "命中 {{count}} 条",
     "noHits": "无命中",
     "embeddingNotConfigured": "未配置 Embedding，无法检索",
@@ -467,7 +468,8 @@
     "methodSemantic": "仅向量检索",
     "methodLexical": "仅关键词检索",
     "tagFilter": "标签过滤",
-    "tagFilterPlaceholder": "逗号分隔，如: api, 部署"
+    "tagFilterPlaceholder": "逗号分隔，如: api, 部署",
+    "sectionParams": "检索参数"
   },
   "feedback": {
     "feedbackNotice": "感谢反馈，这将帮助优化后续检索"

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
+import MobileModal from '../shared/MobileModal';
 import { Alert, Form, Input, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
-import MobileModal from '../shared/MobileModal';
 import type {
   KnowledgeBase,
   ParserConfigForm,
@@ -108,10 +108,19 @@ function EmbedModelFields({
   return (
     <Form.Item
       name="embedModel"
-      label={t('kb.embedModel')}
+      label={
+        <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+          {t('kb.embedModel')}
+        </span>
+      }
       required
-      extra={t('kb.embedModelHint')}
+      extra={
+        <span className="text-[11px] text-[var(--color-text-muted)]">
+          {t('kb.embedModelHint')}
+        </span>
+      }
       rules={[{ required: true, message: t('kb.embedModelRequired') }]}
+      className="!mb-0"
     >
       <Select
         loading={modelsLoading}
@@ -130,6 +139,7 @@ function EmbedModelFields({
           value: m.id,
           label: m.label || m.id,
         }))}
+        className="!rounded-lg"
       />
     </Form.Item>
   );
@@ -211,7 +221,7 @@ export default function KbNewModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer border border-[var(--color-border)] transition-colors duration-150 bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
           >
             {t('confirm.cancel')}
           </button>
@@ -219,47 +229,75 @@ export default function KbNewModal({
             type="button"
             onClick={handleOk}
             disabled={saving}
-            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer border-none transition-all duration-150 bg-[var(--color-accent)] text-white hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
           >
-            {saving ? '...' : t('confirm.confirm')}
+            {saving && (
+              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            )}
+            {saving ? t('confirm.saving') : t('confirm.confirm')}
           </button>
         </>
       }
     >
       <Form form={form} layout="vertical" requiredMark={false} className="pt-2">
-        <Form.Item
-          name="name"
-          label={t('kb.name')}
-          rules={[{ required: true, message: t('kb.nameRequired') }]}
-        >
-          <Input
-            placeholder={t('kb.namePlaceholder')}
-            className="!bg-[var(--color-surface)] !border-[var(--color-border)] !text-[var(--color-text-primary)]"
+        {/* 基本信息 */}
+        <div className="mb-4">
+          <h4 className="m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            {t('kb.sectionBasic')}
+          </h4>
+          <div className="flex flex-col gap-1">
+            <Form.Item
+              name="name"
+              label={t('kb.name')}
+              rules={[{ required: true, message: t('kb.nameRequired') }]}
+              className="!mb-0"
+            >
+              <Input
+                placeholder={t('kb.namePlaceholder')}
+                className="!bg-[var(--color-surface)] !border-[var(--color-border)] !rounded-lg"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="description"
+              label={t('kb.description')}
+              className="!mb-0"
+            >
+              <Input.TextArea
+                rows={2}
+                placeholder={t('kb.descriptionPlaceholder')}
+                className="!bg-[var(--color-surface)] !border-[var(--color-border)] !rounded-lg resize-none"
+              />
+            </Form.Item>
+          </div>
+        </div>
+
+        {/* 嵌入模型 */}
+        <div className="mb-4">
+          <h4 className="m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            {t('kb.sectionEmbedModel')}
+          </h4>
+          <EmbedModelFields
+            models={models}
+            modelsLoading={modelsLoading}
+            modelsError={modelsError}
           />
-        </Form.Item>
+        </div>
 
-        <Form.Item name="description" label={t('kb.description')}>
-          <Input.TextArea
-            rows={3}
-            placeholder={t('kb.descriptionPlaceholder')}
-            className="!bg-[var(--color-surface)] !border-[var(--color-border)] !text-[var(--color-text-primary)] resize-none"
-          />
-        </Form.Item>
-
-        <EmbedModelFields
-          models={models}
-          modelsLoading={modelsLoading}
-          modelsError={modelsError}
-        />
-
-        <ChunkingFields />
+        {/* 分块配置 */}
+        <div className="mb-2">
+          <h4 className="m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            {t('kb.sectionChunking')}
+          </h4>
+          <ChunkingFields />
+        </div>
 
         {willRebuild && (
           <Alert
             type="warning"
             showIcon
             message={t('kb.changeModelWarning', { count: indexedCount })}
-            className="!mb-2"
+            className="!mt-4 !rounded-lg"
           />
         )}
       </Form>
