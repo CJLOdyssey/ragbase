@@ -145,6 +145,7 @@ def _ws_user_id(websocket: WebSocket) -> str:
     ``routers/events.py:_ws_user_id``.
     """
     token = websocket.cookies.get("access_token") or ""
+    logger.warning("WS cookies: %s", dict(websocket.cookies))
     if not token:
         token = websocket.query_params.get("token", "")
     if not token:

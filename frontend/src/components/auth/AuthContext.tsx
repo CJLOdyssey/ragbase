@@ -217,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string, rememberMe?: boolean) => {
       const res = await apiLogin(email, password, rememberMe);
       sm.setUserId(res.user.id);
+      localStorage.setItem('ragbase-access-token', res.access_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -233,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, code: string, password: string) => {
       const res = await apiRegister(email, code, password);
       sm.setUserId(res.user.id);
+      localStorage.setItem('ragbase-access-token', res.access_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -248,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verify = useCallback(async (email: string, code: string) => {
     const res = await apiVerify(email, code);
     sm.setUserId(res.user.id);
+    localStorage.setItem('ragbase-access-token', res.access_token);
     setLoading(false);
     setUser({
       userId: res.user.id,
@@ -275,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // access_token may already be expired
     }
+    localStorage.removeItem('ragbase-access-token');
     setUser(null);
     sm.clearSession();
     useChatStore.getState().reset();

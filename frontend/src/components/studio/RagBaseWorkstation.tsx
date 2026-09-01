@@ -1,24 +1,28 @@
 import { lazy, Suspense, useCallback, useMemo, useRef } from 'react';
+import InputToolbar, { type InputToolbarHandle } from '../input/InputToolbar';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { type VirtuosoHandle } from 'react-virtuoso';
-import { useIsMobile } from '../../hooks/useMediaQuery';
-import InputToolbar, { type InputToolbarHandle } from '../input/InputToolbar';
 import HomeScreen from './HomeScreen';
 import MessagesPanel from './MessagesPanel';
 import Modals from './Modals';
 import RagBaseSidebar from './RagBaseSidebar';
-import WorkstationHeader from './WorkstationHeader';
 import { useAutoScroll } from './useAutoScroll';
 import { useDragAndDrop } from './useDragAndDrop';
 import { useHomeState } from './useHomeState';
 import { pathToView, viewToPath } from './viewRoutes';
+import WorkstationHeader from './WorkstationHeader';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 const PromptLibraryPage = lazy(() => import('../prompts/PromptLibraryPage'));
 const AssetsPage = lazy(() => import('../assets/AssetsPage'));
 const QualityMonitor = lazy(() => import('../monitoring/QualityMonitor'));
-const RetrievalLogPage = lazy(() => import('../retrieval-logs/RetrievalLogPage'));
+const RetrievalLogPage = lazy(
+  () => import('../retrieval-logs/RetrievalLogPage'),
+);
 const AdminUsersPage = lazy(() => import('../admin/AdminUsersPage'));
-const KnowledgeBasePage = lazy(() => import('../knowledge-base/KnowledgeBasePage'));
+const KnowledgeBasePage = lazy(
+  () => import('../knowledge-base/KnowledgeBasePage'),
+);
 
 export type ManageView =
   | 'chat'
@@ -36,7 +40,10 @@ export default function RagBaseWorkstation() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputToolbarRef = useRef<InputToolbarHandle>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
-  const activeView = useMemo(() => pathToView(location.pathname), [location.pathname]);
+  const activeView = useMemo(
+    () => pathToView(location.pathname),
+    [location.pathname],
+  );
   const isMobile = useIsMobile();
   const {
     isPageDragOver,
@@ -48,14 +55,6 @@ export default function RagBaseWorkstation() {
   const navigateToView = useCallback(
     (view: ManageView) => navigate(viewToPath(view), { replace: false }),
     [navigate],
-  );
-
-  // 会话选中 → 输入框回填标题（原实现传空函数导致选中态从不回填）。
-  const handleSetInputValue = useCallback(
-    (value: string) => {
-      inputToolbarRef.current?.setValue(value);
-    },
-    [inputToolbarRef],
   );
 
   useAutoScroll(virtuosoRef, s.displayMessages, s.activeConvId);
@@ -112,7 +111,6 @@ export default function RagBaseWorkstation() {
           setIsSettingsOpen={s.setIsSettingsOpen}
           setIsApiOpen={s.setIsApiOpen}
           setActiveConvId={handleSetActiveConvId}
-          setInputValue={handleSetInputValue}
           onDeleteConversation={s.handleDeleteConversation}
           onRenameConversation={s.handleRenameConversation}
           onPinConversation={s.handlePinConversation}

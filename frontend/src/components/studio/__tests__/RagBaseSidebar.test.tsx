@@ -36,7 +36,6 @@ const baseProps = {
   setIsSettingsOpen: vi.fn(),
   setIsApiOpen: vi.fn(),
   setActiveConvId: vi.fn(),
-  setInputValue: vi.fn(),
   onDeleteConversation: vi.fn(),
   onRenameConversation: vi.fn(),
   onPinConversation: vi.fn(),
@@ -82,11 +81,9 @@ describe('RagBaseSidebar', () => {
 
   it('selecting a conversation activates it', () => {
     const setActiveConvId = vi.fn();
-    const setInputValue = vi.fn();
-    renderSidebar({ setActiveConvId, setInputValue });
+    renderSidebar({ setActiveConvId });
     fireEvent.click(screen.getByText('会话一'));
     expect(setActiveConvId).toHaveBeenCalledWith('c1');
-    expect(setInputValue).toHaveBeenCalledWith('会话一');
   });
 
   it('delegates delete to onDeleteConversation via context menu', () => {

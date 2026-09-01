@@ -11,9 +11,10 @@ export interface ConnectOptions {
 
 const WS_BASE = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
-/** Build WS URL. Auth is cookie-based (httpOnly) — same-origin handshake carries it. */
+/** Build WS URL with access_token query parameter for authentication. */
 function buildWsUrl(runId: string): string {
-  return `${WS_BASE}/runs/${runId}`;
+  const token = localStorage.getItem('ragbase-access-token') || '';
+  return `${WS_BASE}/runs/${runId}?token=${encodeURIComponent(token)}`;
 }
 
 let maxRetries = 3;

@@ -196,7 +196,7 @@ def _set_access_token_cookie(response: Response, access_token: str, *, secure: b
         samesite="lax",
         secure=secure,
         max_age=ACCESS_TOKEN_TTL,
-        path="/api",
+        path="/",
     )
 
 
@@ -208,7 +208,7 @@ def _clear_access_token_cookie(response: Response) -> None:
         httponly=True,
         samesite="lax",
         max_age=0,
-        path="/api",
+        path="/",
     )
 
 
