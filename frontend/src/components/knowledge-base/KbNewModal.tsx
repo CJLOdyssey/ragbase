@@ -267,17 +267,11 @@ export default function KbNewModal({
 
         {/* 嵌入模型 */}
         <div className="mb-4">
-          <h4 className="m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-            {t('kb.sectionEmbedModel')}
-          </h4>
           <EmbedModelFields modelsState={modelsState} />
         </div>
 
         {/* 分块配置 */}
         <div className="mb-2">
-          <h4 className="m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-            {t('kb.sectionChunking')}
-          </h4>
           <ChunkingFields />
         </div>
 
