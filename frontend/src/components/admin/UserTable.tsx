@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import ActionSheet, { type ActionSheetItem } from '../shared/ActionSheet';
+import { DataTable, type DataTableColumn } from '../shared/list';
+import { StatusPill as SharedStatusPill } from '../shared/list/badges';
 import { STATUS_COLORS } from '../shared/statusColors';
 import { Avatar, Tag } from 'antd';
 import {
@@ -10,12 +13,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useIsMobile } from '../../hooks/useMediaQuery';
-import ActionSheet, { type ActionSheetItem } from '../shared/ActionSheet';
 import type { AdminUser } from '../../api/client/adminUsers';
-import type { DataTableColumn } from '../shared/list';
-import { DataTable } from '../shared/list';
-import { StatusPill as SharedStatusPill } from '../shared/list/badges';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export interface UserTableProps {
   users: AdminUser[];
@@ -136,12 +135,32 @@ export default function UserTable({
 
   const columns: DataTableColumn[] = [
     { key: 'user', header: t('admin.users.user'), width: '2.5fr' },
-    { key: 'role', header: t('admin.users.role'), width: '90px' },
-    { key: 'status', header: t('admin.users.status'), width: '80px' },
+    {
+      key: 'role',
+      header: t('admin.users.role'),
+      width: 'minmax(76px,1fr)',
+      center: true,
+    },
+    {
+      key: 'status',
+      header: t('admin.users.status'),
+      width: 'minmax(72px,1fr)',
+      center: true,
+    },
     // 后端仅返回 created_at（无 last_active 字段）——列名与数据语义对齐，
     // 避免「最近活跃」显示注册时间造成误导。
-    { key: 'lastActive', header: t('admin.users.createdAt'), width: '130px' },
-    { key: 'actions', header: t('admin.users.actions'), width: '80px' },
+    {
+      key: 'lastActive',
+      header: t('admin.users.createdAt'),
+      width: 'minmax(116px,1.1fr)',
+      center: true,
+    },
+    {
+      key: 'actions',
+      header: t('admin.users.actions'),
+      width: 'minmax(72px,1fr)',
+      center: true,
+    },
   ];
 
   const renderCell = (

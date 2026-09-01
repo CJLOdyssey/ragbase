@@ -215,39 +215,49 @@ export default function AssetsTable({
     {
       key: 'kb',
       header: t('assets.table.kb'),
-      width: '110px',
+      width: 'minmax(96px,1fr)',
+      center: true,
     },
     {
       key: 'format',
       header: t('assets.table.format'),
-      width: '84px',
+      width: 'minmax(72px,1fr)',
       sortable: true,
+      center: true,
     },
     {
       key: 'size',
       header: t('assets.table.size'),
-      width: '96px',
+      width: 'minmax(80px,1fr)',
       sortable: true,
+      center: true,
     },
     {
       key: 'status',
       header: t('assets.table.status'),
-      width: '110px',
+      width: 'minmax(96px,1fr)',
       sortable: true,
+      center: true,
     },
     {
       key: 'chunks',
       header: t('assets.table.chunks'),
-      width: '92px',
+      width: 'minmax(76px,1fr)',
       sortable: true,
+      center: true,
     },
     {
       key: 'updated',
       header: t('assets.table.updated'),
-      width: '148px',
+      width: 'minmax(132px,1.2fr)',
       sortable: true,
     },
-    { key: 'actions', header: t('assets.table.actions'), width: '112px' },
+    {
+      key: 'actions',
+      header: t('assets.table.actions'),
+      width: 'minmax(96px,1fr)',
+      center: true,
+    },
   );
 
   const renderActionsCell = (asset: AssetItem): React.ReactNode => {
