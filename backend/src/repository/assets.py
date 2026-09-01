@@ -33,12 +33,14 @@ async def create_asset(
     storage_path: str,
     source: str = "upload",
     source_ref: str | None = None,
+    format: str | None = None,
 ) -> AssetDB:
     """Create and persist an asset row; returns the created asset."""
     asset = AssetDB(
         user_id=user_id,
         name=name,
         asset_type=asset_type,
+        format=format,
         size_bytes=size_bytes,
         storage_path=storage_path,
         source=source,

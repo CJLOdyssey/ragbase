@@ -94,6 +94,9 @@ class AssetDB(Base):
     user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     asset_type: Mapped[str] = mapped_column(String(32), default="document")
+    format: Mapped[str | None] = mapped_column(
+        String(16), nullable=True, comment="File extension: pdf, docx, png, etc."
+    )
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     storage_path: Mapped[str] = mapped_column(String(512), nullable=False)
     source: Mapped[str] = mapped_column(

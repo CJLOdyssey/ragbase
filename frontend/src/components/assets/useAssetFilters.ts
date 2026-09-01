@@ -43,7 +43,9 @@ function matchSearch(
 
 function matchFormat(a: AssetItem, formats: string[]): boolean {
   if (formats.length === 0) return true;
-  return formats.includes(getExt(a.name));
+  // Use format field from backend if available, otherwise extract from filename
+  const fmt = a.format || getExt(a.name);
+  return formats.includes(fmt);
 }
 
 function matchStatus(

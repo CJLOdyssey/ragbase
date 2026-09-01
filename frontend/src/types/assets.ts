@@ -2,6 +2,7 @@ export interface AssetItem {
   id: string;
   name: string;
   assetType: string;
+  format?: string | null;
   sizeBytes: number;
   usageCount: number;
   indexed: boolean;
