@@ -13,15 +13,19 @@ export interface KbFormState {
   kb?: KnowledgeBase;
 }
 
+/** 模型查询状态 — 集中管理加载/错误状态 */
+interface ModelsState {
+  models: ModelInfo[];
+  loading: boolean;
+  error: boolean;
+}
+
 interface KbPageDialogsProps {
   form: KbFormState | null;
   deleteTarget: KnowledgeBase | null;
   testTarget: KnowledgeBase | null;
   perKb: Map<string, { indexedCount: number }>;
-  models: ModelInfo[];
-  /** 嵌入模型查询状态：加载中/失败不再静默（失败时 Select 给出错误占位） */
-  modelsLoading?: boolean;
-  modelsError?: boolean;
+  modelsState: ModelsState;
   saving: boolean;
   onCloseForm: () => void;
   onSave: (
@@ -41,9 +45,7 @@ export default function KbPageDialogs({
   deleteTarget,
   testTarget,
   perKb,
-  models,
-  modelsLoading = false,
-  modelsError = false,
+  modelsState,
   saving,
   onCloseForm,
   onSave,
@@ -62,9 +64,7 @@ export default function KbPageDialogs({
           indexedCount={
             form.kb ? (perKb.get(form.kb.id)?.indexedCount ?? 0) : 0
           }
-          models={models}
-          modelsLoading={modelsLoading}
-          modelsError={modelsError}
+          modelsState={modelsState}
           saving={saving}
           onClose={onCloseForm}
           onSave={onSave}

@@ -11,7 +11,7 @@ import {
   type KnowledgeBase,
   type ParserConfigForm,
 } from '../../api/client/knowledgeBases';
-import { listModels, type ModelInfo } from '../../api/client/models';
+import { listModels } from '../../api/client/models';
 import KbCardGrid from './KbCardGrid';
 import KbPageDialogs, { type KbFormState } from './KbPageDialogs';
 import { computePerKb, computeTotals } from './kbStats';
@@ -48,6 +48,16 @@ export default function KnowledgeBasePage() {
     // Only needed by the create/edit modal — skip the fetch entirely otherwise.
     enabled: form !== null,
   });
+
+  // 组合模型状态
+  const modelsState = useMemo(
+    () => ({
+      models,
+      loading: modelsLoading,
+      error: modelsError,
+    }),
+    [models, modelsLoading, modelsError],
+  );
 
   const { createMutation, updateMutation, deleteMutation } = useKbMutations({
     closeForm,
@@ -143,14 +153,16 @@ export default function KnowledgeBasePage() {
         deleteTarget={deleteTarget}
         testTarget={testTarget}
         perKb={perKb}
-        models={models as ModelInfo[]}
-        modelsLoading={modelsLoading}
-        modelsError={modelsError}
+        modelsState={modelsState}
         saving={saving}
         onCloseForm={closeForm}
         onSave={handleSave}
         onDeleteCancel={() => setDeleteTarget(null)}
-        onDeleteConfirm={() => deleteMutation.mutate(deleteTarget!.id)}
+        onDeleteConfirm={() => {
+          if (deleteTarget) {
+            deleteMutation.mutate(deleteTarget.id);
+          }
+        }}
         onTestClose={() => setTestTarget(null)}
       />
     </div>

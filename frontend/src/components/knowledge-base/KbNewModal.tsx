@@ -9,6 +9,13 @@ import type {
 import type { ModelInfo } from '../../api/client/models';
 import ChunkingFields from './ChunkingFields';
 
+/** 模型查询状态 — 集中管理加载/错误状态 */
+interface ModelsState {
+  models: ModelInfo[];
+  loading: boolean;
+  error: boolean;
+}
+
 export interface KbNewModalProps {
   open: boolean;
   mode: 'create' | 'edit';
@@ -16,10 +23,7 @@ export interface KbNewModalProps {
   kb?: KnowledgeBase | null;
   /** Indexed-asset count — drives the rebuild warning on config change. */
   indexedCount: number;
-  models: ModelInfo[];
-  modelsLoading?: boolean;
-  /** 嵌入模型查询失败：Select 显示错误占位而非误导性「无可用模型」 */
-  modelsError?: boolean;
+  modelsState: ModelsState;
   saving: boolean;
   onClose: () => void;
   onSave: (
@@ -91,19 +95,11 @@ function submitValues(
 }
 
 /** Embedding-model picker — only type==='embedding' models are bindable. */
-function EmbedModelFields({
-  models,
-  modelsLoading,
-  modelsError = false,
-}: {
-  models: ModelInfo[];
-  modelsLoading: boolean;
-  modelsError?: boolean;
-}) {
+function EmbedModelFields({ modelsState }: { modelsState: ModelsState }) {
   const { t } = useTranslation();
   const bindable = useMemo(
-    () => models.filter((m) => m.type === 'embedding'),
-    [models],
+    () => modelsState.models.filter((m) => m.type === 'embedding'),
+    [modelsState.models],
   );
   return (
     <Form.Item
@@ -123,17 +119,19 @@ function EmbedModelFields({
       className="!mb-0"
     >
       <Select
-        loading={modelsLoading}
+        loading={modelsState.loading}
         showSearch={false}
         placeholder={
-          modelsError
+          modelsState.error
             ? t('kb.embedModelsLoadFailed')
             : bindable.length === 0
               ? t('kb.noEmbedModels')
               : t('kb.embedModelPlaceholder')
         }
         notFoundContent={
-          modelsError ? t('kb.embedModelsLoadFailed') : t('kb.noEmbedModels')
+          modelsState.error
+            ? t('kb.embedModelsLoadFailed')
+            : t('kb.noEmbedModels')
         }
         options={bindable.map((m) => ({
           value: m.id,
@@ -150,9 +148,7 @@ export default function KbNewModal({
   mode,
   kb = null,
   indexedCount,
-  models,
-  modelsLoading = false,
-  modelsError = false,
+  modelsState,
   saving,
   onClose,
   onSave,
@@ -164,8 +160,10 @@ export default function KbNewModal({
   // Fill only EMPTY fields on open — idempotent across re-renders and
   // never clobbers user input; embedModel falls back to the first key model.
   const firstEmbeddingId = useMemo(
-    () => models.filter((m) => m.type === 'embedding').find(Boolean)?.id,
-    [models],
+    () =>
+      modelsState.models.filter((m) => m.type === 'embedding').find(Boolean)
+        ?.id,
+    [modelsState.models],
   );
 
   useEffect(() => {
@@ -277,11 +275,7 @@ export default function KbNewModal({
           <h4 className="m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
             {t('kb.sectionEmbedModel')}
           </h4>
-          <EmbedModelFields
-            models={models}
-            modelsLoading={modelsLoading}
-            modelsError={modelsError}
-          />
+          <EmbedModelFields modelsState={modelsState} />
         </div>
 
         {/* 分块配置 */}
