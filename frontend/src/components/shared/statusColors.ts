@@ -27,7 +27,7 @@ export function withAlpha(hex: string, alpha: number): string {
 const STATUS_COLOR_NAME: Record<string, StatusColorName> = {
   active: 'green',
   indexed: 'green',
-  published: 'green',
+  enabled: 'green',
   good: 'green',
   success: 'green',
   processing: 'amber',
@@ -40,7 +40,7 @@ const STATUS_COLOR_NAME: Record<string, StatusColorName> = {
   error: 'gray',
   failed: 'gray',
   archived: 'gray',
-  draft: 'red',
+  draft: 'amber',
   empty: 'red',
   critical: 'red',
 };

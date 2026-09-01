@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import {
   createPrompt,
   deletePrompt,
@@ -24,8 +24,10 @@ export type DialogState =
 
 const FILTER_STRATEGY: Record<PromptTab, (p: PromptItem) => boolean> = {
   all: () => true,
-  published: (p) => p.status === 'published' || p.status === 'active',
-  draft: (p) => p.status !== 'published' && p.status !== 'active',
+  published: (p) =>
+    p.status === 'enabled' || p.status === 'active' || p.status === 'published',
+  draft: (p) =>
+    p.status !== 'enabled' && p.status !== 'active' && p.status !== 'published',
 };
 
 export type PromptView = 'table' | 'grid';

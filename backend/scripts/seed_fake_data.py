@@ -84,7 +84,7 @@ async def main():
                 continue
             session.add(PromptDB(
                 name=p["name"], description=p["description"], category=p["category"],
-                content=p["content"], model=p["model"], status="active",
+                content=p["content"], model=p["model"], status="enabled",
                 version="v1.0.0", owner_id=admin_id,
             ))
             count += 1

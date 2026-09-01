@@ -1,7 +1,7 @@
 import { useState } from 'react';
+import MobileModal from '../shared/MobileModal';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import MobileModal from '../shared/MobileModal';
 import {
   listPromptCategories,
   type PromptItem,
@@ -25,7 +25,7 @@ interface Props {
 
 const STATUS_OPTIONS: Array<{ value: string; i18nKey: string }> = [
   { value: 'draft', i18nKey: 'prompts.statusDraft' },
-  { value: 'published', i18nKey: 'prompts.statusEnabled' },
+  { value: 'enabled', i18nKey: 'prompts.statusEnabled' },
 ];
 
 /** categories 接口失败时的兜底选项，与后端 /prompts/categories 保持一致。 */
@@ -36,13 +36,13 @@ const FALLBACK_CATEGORIES = [
 ];
 
 function statusToUi(status: string): string {
-  if (status === 'published' || status === 'active') return 'published';
-  if (status === 'draft' || status === 'inactive') return 'draft';
+  if (status === 'enabled' || status === 'active' || status === 'published')
+    return 'enabled';
   return 'draft';
 }
 
 function uiToStatus(ui: string): string {
-  return ui === 'published' ? 'published' : 'draft';
+  return ui === 'enabled' ? 'enabled' : 'draft';
 }
 
 function getInitialState(initial: PromptItem | null) {

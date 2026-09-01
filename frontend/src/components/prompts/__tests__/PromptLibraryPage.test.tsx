@@ -71,7 +71,7 @@ describe('PromptLibraryPage', () => {
     content: '内容',
     category: 'user',
     model: null,
-    status: 'active',
+    status: 'enabled',
     version: 'v1',
     created_at: '2024-01-01T00:00:00Z',
   };
@@ -105,7 +105,7 @@ describe('PromptLibraryPage', () => {
         content: '内容',
         category: 'user',
         model: null,
-        status: 'active',
+        status: 'enabled',
         version: 'v1',
         created_at: '2024-01-01T00:00:00Z',
       },
@@ -172,7 +172,7 @@ describe('PromptLibraryPage', () => {
       content: '内容',
       category: 'user',
       model: null,
-      status: 'active',
+      status: 'enabled',
       version: 'v1',
       created_at: '2024-01-01T00:00:00Z',
     });
@@ -227,7 +227,7 @@ describe('PromptLibraryPage', () => {
         content: '内容',
         category: 'user',
         model: null,
-        status: 'active',
+        status: 'enabled',
         version: 'v1',
         created_at: '2024-01-01T00:00:00Z',
       },
@@ -268,7 +268,9 @@ describe('PromptLibraryPage', () => {
     await waitFor(() => {
       expect(screen.getByText('prompts.editor.edit')).toBeInTheDocument();
     });
-    const nameInput = screen.getByPlaceholderText('prompts.editor.namePlaceholder');
+    const nameInput = screen.getByPlaceholderText(
+      'prompts.editor.namePlaceholder',
+    );
     expect(nameInput).toHaveValue('测试提示词');
   });
 
@@ -317,7 +319,7 @@ describe('PromptLibraryPage', () => {
         content: '当前内容',
         category: 'user',
         model: null,
-        status: 'active',
+        status: 'enabled',
         version: 'v2',
         created_at: '2024-01-01T00:00:00Z',
       },
@@ -344,7 +346,7 @@ describe('PromptLibraryPage', () => {
       content: '历史内容',
       category: 'system',
       model: null,
-      status: 'active',
+      status: 'enabled',
       version: 'v3',
       created_at: '2024-01-01T00:00:00Z',
     });

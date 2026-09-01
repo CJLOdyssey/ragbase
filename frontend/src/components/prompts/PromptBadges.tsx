@@ -5,15 +5,14 @@
  */
 import {
   MonoBadge as SharedMonoBadge,
-  Tag as SharedTag,
   StatusPill as SharedStatusPill,
+  Tag as SharedTag,
 } from '../shared/list/badges';
 import { useTranslation } from 'react-i18next';
 
 const STATUS_COLORS: Record<string, string> = {
-  published: '--color-success',
-  active: '--color-success',
   enabled: '--color-success',
+  draft: '--color-warning',
 };
 
 export function StatusBadge({ status }: { status: string }) {
@@ -29,11 +28,7 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function MonoBadge({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function MonoBadge({ children }: { children: React.ReactNode }) {
   return <SharedMonoBadge>{children}</SharedMonoBadge>;
 }
 
