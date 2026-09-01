@@ -34,10 +34,30 @@ export default function PromptTable({
   const columns: DataTableColumn[] = [
     { key: 'name', header: t('prompts.table.name'), width: '4fr' },
     { key: 'desc', header: t('prompts.table.desc'), width: '2.5fr' },
-    { key: 'category', header: t('prompts.table.category'), width: '90px' },
-    { key: 'status', header: t('prompts.table.status'), width: '80px' },
-    { key: 'version', header: t('prompts.table.version'), width: '110px' },
-    { key: 'actions', header: t('prompts.table.actions'), width: '110px' },
+    {
+      key: 'category',
+      header: t('prompts.table.category'),
+      width: 'minmax(80px,1fr)',
+      center: true,
+    },
+    {
+      key: 'status',
+      header: t('prompts.table.status'),
+      width: 'minmax(72px,1fr)',
+      center: true,
+    },
+    {
+      key: 'version',
+      header: t('prompts.table.version'),
+      width: 'minmax(88px,1fr)',
+      center: true,
+    },
+    {
+      key: 'actions',
+      header: t('prompts.table.actions'),
+      width: 'minmax(88px,1fr)',
+      center: true,
+    },
   ];
 
   const renderCell = (
