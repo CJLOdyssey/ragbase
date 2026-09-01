@@ -104,11 +104,6 @@ function EmbedModelFields({ modelsState }: { modelsState: ModelsState }) {
   return (
     <Form.Item
       name="embedModel"
-      label={
-        <span className="text-xs font-medium text-[var(--color-text-secondary)]">
-          {t('kb.embedModel')}
-        </span>
-      }
       required
       extra={
         <span className="text-[11px] text-[var(--color-text-muted)]">
