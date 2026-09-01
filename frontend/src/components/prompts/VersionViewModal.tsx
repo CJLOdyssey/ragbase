@@ -1,5 +1,5 @@
-import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 import type { VersionItem } from '../../api/client/versions';
 
 interface Props {
@@ -20,13 +20,13 @@ export default function VersionViewModal({
   const snapContent = snap.content ?? '';
 
   return (
-    <AntdModal
+    <MobileModal
+      open={true}
+      onClose={onClose}
+      mode="sheet"
       title={t('prompts.version.rollbackTitle', {
         version: `v${version.version_num}`,
       })}
-      open={true}
-      onCancel={onClose}
-      centered
       width={560}
       footer={
         <>
@@ -76,6 +76,6 @@ export default function VersionViewModal({
           </pre>
         </div>
       </div>
-    </AntdModal>
+    </MobileModal>
   );
 }

@@ -24,8 +24,9 @@ class FakeWebSocket {
   close() {
     this._closed = true;
     this.readyState = FakeWebSocket.CLOSED;
+    // 与真实浏览器一致：onclose 异步派发（避免掩盖重连时序 bug）
     if (this.onclose) {
-      this.onclose(new CloseEvent('close'));
+      Promise.resolve().then(() => this.onclose?.(new CloseEvent('close')));
     }
   }
 
@@ -55,10 +56,19 @@ function mockOpts(cb = vi.fn()) {
 }
 
 describe('WebSocket Module', { tags: ['unit'] }, () => {
-  it('setMaxRetries 更改重试次数', async () => {
+  it('setMaxRetries(1) 限制只重连一次后放弃', async () => {
     const ws = await getWs();
-    ws.setMaxRetries(5);
-    expect(true).toBe(true);
+    ws.setMaxRetries(1);
+    const runId = 'max-retries-1';
+    const unsub = ws.connectRun(runId, mockOpts());
+    // maxRetries=1 → 断线 1 次后重连，第 2 次断线放弃（共 2 个实例）
+    fakeWsInstances[0].close();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fakeWsInstances.length).toBe(2);
+    fakeWsInstances[1].close();
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(fakeWsInstances.length).toBe(2);
+    unsub();
   });
 
   it('connectRun 创建连接并返回取消函数', async () => {
@@ -149,6 +159,45 @@ describe('WebSocket Module', { tags: ['unit'] }, () => {
       data: '{invalid json',
     } as MessageEvent);
     expect(cb).not.toHaveBeenCalled();
+    unsub();
+  });
+
+  it('断线后按退避重连，成功建连后重连计数归零', async () => {
+    const ws = await getWs();
+    const runId = 'rc-reset-run';
+    const unsub = ws.connectRun(runId, mockOpts());
+    const first = fakeWsInstances[0];
+
+    // 第一次断线 → 1s 后重连（async close）
+    first.close();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fakeWsInstances.length).toBe(2);
+
+    // 重连成功（onopen）→ 计数归零
+    fakeWsInstances[1].onopen?.(new Event('open'));
+
+    // 再次断线 → 若计数未归零，退避应为 2000ms；归零后仍是 1000ms
+    fakeWsInstances[1].close();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fakeWsInstances.length).toBe(3);
+    unsub();
+  });
+
+  it('连续失败达到上限后放弃重连', async () => {
+    const ws = await getWs();
+    // 第一个用例 setMaxRetries(1) 污染了模块级状态，这里显式复位契约。
+    ws.setMaxRetries(3);
+    const runId = 'rc-giveup-run';
+    const unsub = ws.connectRun(runId, mockOpts());
+    // maxRetries=3 → 可重连 3 次（共 4 个连接实例）
+    for (let i = 0; i < 4; i++) {
+      fakeWsInstances[i].close();
+      await vi.advanceTimersByTimeAsync(8000);
+    }
+    expect(fakeWsInstances.length).toBe(4);
+    // 第 4 次断线后不再新建连接，且连接已从注册表移除
+    const last = fakeWsInstances[3];
+    expect(last.readyState).toBe(FakeWebSocket.CLOSED);
     unsub();
   });
 });

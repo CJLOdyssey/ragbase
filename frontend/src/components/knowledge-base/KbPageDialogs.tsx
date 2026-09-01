@@ -19,6 +19,9 @@ interface KbPageDialogsProps {
   testTarget: KnowledgeBase | null;
   perKb: Map<string, { indexedCount: number }>;
   models: ModelInfo[];
+  /** 嵌入模型查询状态：加载中/失败不再静默（失败时 Select 给出错误占位） */
+  modelsLoading?: boolean;
+  modelsError?: boolean;
   saving: boolean;
   onCloseForm: () => void;
   onSave: (
@@ -39,6 +42,8 @@ export default function KbPageDialogs({
   testTarget,
   perKb,
   models,
+  modelsLoading = false,
+  modelsError = false,
   saving,
   onCloseForm,
   onSave,
@@ -58,6 +63,8 @@ export default function KbPageDialogs({
             form.kb ? (perKb.get(form.kb.id)?.indexedCount ?? 0) : 0
           }
           models={models}
+          modelsLoading={modelsLoading}
+          modelsError={modelsError}
           saving={saving}
           onClose={onCloseForm}
           onSave={onSave}

@@ -19,6 +19,10 @@ from sqlalchemy.orm import InstrumentedAttribute
 # very large windows — alerting percentiles stay stable beyond this).
 LATENCY_SAMPLE_LIMIT = 10000
 
+# Single source of truth for bad-feedback root causes: consumed by
+# feedback_review (validation set) and monitoring (aggregation columns).
+ROOT_CAUSES = ("retrieval_miss", "wrong_answer", "bad_format", "other")
+
 
 def window_since(window_hours: int) -> datetime | None:
     """Window lower bound; None means "all time" (window_hours <= 0)."""

@@ -32,7 +32,8 @@ def upgrade() -> None:
     if 'parser_config' not in kb_cols:
         op.add_column(
             'knowledge_bases',
-            sa.Column('parser_config', JSONB(), nullable=True),
+            sa.Column('parser_config', JSONB().with_variant(sa.JSON(), 'sqlite'),
+                      nullable=True),
         )
 
     has_vector_chunks = inspector.has_table('vector_chunks')

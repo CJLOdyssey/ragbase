@@ -300,7 +300,7 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
       key: 'Enter',
       shiftKey: false,
     });
-    expect(paletteMock.selectCommand).toHaveBeenCalledWith(0);
+    expect(paletteMock.selectCommand).toHaveBeenCalledWith(0, '');
     expect(mockComposerSetValue).toHaveBeenCalledWith('/Cmd2 ');
   });
 

@@ -51,7 +51,10 @@ class TestApiEndpoints:
         assert "openai" in data
 
     def test_versions_list(self, client):
+        # resource_type 白名单（A5-04）：仅注册过的类型可查；agent 未注册 → 400
         resp = client.get("/api/versions/agent/test-nonexistent")
+        assert resp.status_code == 400
+        resp = client.get("/api/versions/prompt/test-nonexistent")
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 

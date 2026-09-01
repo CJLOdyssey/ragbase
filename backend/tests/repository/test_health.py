@@ -22,11 +22,11 @@ class TestCheckRedis:
     async def test_returns_ok_on_success(self):
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock(return_value=True)
-        with patch("broker.get_redis", return_value=mock_redis):
+        with patch("repository.health.get_redis", return_value=mock_redis):
             result = await check_redis()
             assert result == "ok"
 
     async def test_returns_error_message_on_failure(self):
-        with patch("broker.get_redis", side_effect=ConnectionError("Redis unreachable")):
+        with patch("repository.health.get_redis", side_effect=ConnectionError("Redis unreachable")):
             result = await check_redis()
             assert "Redis unreachable" in result

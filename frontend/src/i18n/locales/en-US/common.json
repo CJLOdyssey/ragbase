@@ -156,6 +156,7 @@
   "teamMessage": {
     "copy": "Copy",
     "copied": "Copied",
+    "copyFailed": "Copy failed, please retry",
     "edit": "Edit",
     "continue": "Continue",
     "continuing": "Continuing…",
@@ -271,6 +272,7 @@
     "download": "Download file",
     "previewLoadFailed": "Failed to load preview",
     "unsupportedType": "Preview not supported for this type",
+    "emptyPreview": "File is empty or no previewable content",
     "failed": "Failed",
     "countSelected": "{{count}} files selected"
   },
@@ -297,9 +299,16 @@
   },
   "prompts": {
     "title": "Prompts",
+    "subtitle": "Manage and version-control your AI prompt templates",
+    "searchPlaceholder": "Search prompts…",
+    "noDescription": "No description",
+    "noData": "No {{label}} data",
+    "statusEnabled": "Enabled",
+    "statusDraft": "Draft",
+    "tabAll": "All",
     "tab": {
       "list": "List",
-      "version": "Versions"
+      "version": "Version"
     },
     "table": {
       "name": "Name",
@@ -318,14 +327,17 @@
       "delete": "Delete",
       "history": "History"
     },
-    "editor": {
-      "new": "New Prompt",
-      "edit": "Edit Prompt",
+"editor": {
+      "new": "New prompt",
+      "edit": "Edit prompt",
       "name": "Name",
       "description": "Description",
       "category": "Category",
       "status": "Status",
       "content": "Content",
+      "namePlaceholder": "e.g. Product Q&A assistant",
+      "descPlaceholder": "Briefly describe the purpose of this prompt",
+      "contentPlaceholder": "You are a…{{context}}…{{question}}",
       "updatedAt": "Updated At",
       "actions": "Actions",
       "saveHint": "Saving creates a new version",
@@ -389,6 +401,8 @@
     "time": "Time",
     "noLogs": "No Retrieval Logs",
     "noLogsDesc": "Records will appear here after retrieval",
+    "loadFailed": "Failed to load retrieval logs",
+    "loadFailedDesc": "Network or service issue, please retry later",
     "sourceDetail": "Source details",
     "detail": "Log Details",
     "timeRange": "Time range",

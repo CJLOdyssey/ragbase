@@ -415,7 +415,15 @@ async def _validate_public_host(hostname: str) -> None:
             host_ip = ipaddress.ip_address(await _resolve_host(hostname))
         except Exception:
             raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="无法解析链接域名") from None
-    if host_ip.is_private or host_ip.is_loopback or host_ip.is_link_local or host_ip.is_reserved:
+    # 私网/回环/链路本地/保留/未指定(0.0.0.0)/组播地址一律拒绝 —— 任何一跳都不放过
+    if (
+        host_ip.is_private
+        or host_ip.is_loopback
+        or host_ip.is_link_local
+        or host_ip.is_reserved
+        or host_ip.is_unspecified
+        or host_ip.is_multicast
+    ):
         raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="不允许导入内网地址")
 
 
@@ -457,7 +465,6 @@ async def _fetch_public(url: str, timeout: Any) -> tuple[bytes, str]:
                 content_type = "application/pdf"
         return resp.content, content_type
     raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="重定向次数过多")
-    raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="下载失败")
 
 
 @router.put("/api/assets/{asset_id}", response_model=AssetItem)

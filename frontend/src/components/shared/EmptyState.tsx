@@ -1,12 +1,12 @@
-import type * as React from 'react';
+import type { ReactNode } from 'react';
 import { Inbox } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface EmptyStateProps {
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   title?: string;
   description?: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
   centered?: boolean;
 }
 

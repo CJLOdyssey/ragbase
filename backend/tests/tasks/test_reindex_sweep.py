@@ -8,6 +8,13 @@ import pytest
 from tasks.reindex_sweep import _reindex_sweep
 
 
+@pytest.fixture(autouse=True)
+def _no_inflight():
+    """Keep the in-flight guard offline by default (no Redis in unit tests)."""
+    with patch("tasks.reindex_sweep.is_index_in_flight", new=AsyncMock(return_value=False)):
+        yield
+
+
 def _asset(asset_id: str, user_id: str, path: str, indexed: bool, updated_at: datetime):
     a = MagicMock()
     a.id = asset_id
@@ -20,6 +27,24 @@ def _asset(asset_id: str, user_id: str, path: str, indexed: bool, updated_at: da
 
 
 class TestReindexSweep:
+    @pytest.mark.asyncio
+    async def test_skips_inflight_asset(self, tmp_path):
+        """并发防重：索引任务在飞的资产不入队（手动触发与 sweep 竞争时）。"""
+        f = tmp_path / "doc.md"
+        f.write_text("v1", encoding="utf-8")
+        asset = _asset("a1", "u1", str(f), indexed=False, updated_at=datetime.now(UTC))
+
+        session = _session_with_assets([asset])
+        with (
+            patch("core.infra.database.get_session_factory", return_value=lambda: _SessionCtx(session)),
+            patch("tasks.registry.index_asset") as task,
+            patch("tasks.reindex_sweep.is_index_in_flight", new=AsyncMock(return_value=True)),
+        ):
+            result = await _reindex_sweep()
+
+        assert result == {"queued": 0}
+        task.delay.assert_not_called()
+
     @pytest.mark.asyncio
     async def test_reindexes_changed_file(self, tmp_path):
         """File mtime newer than updated_at → queued."""
@@ -121,11 +146,13 @@ class TestReindexSweep:
 
 
 def _session_with_assets(assets):
-    """Session whose execute -> scalars().all() chain returns assets synchronously."""
-    scalars_mock = MagicMock()
-    scalars_mock.all.return_value = assets
+    """Session whose execute -> .all() chain returns projected rows synchronously.
+
+    The sweep selects explicit columns, so rows come back as Row-like objects;
+    MagicMock assets stand in for them (attribute access only).
+    """
     result_mock = MagicMock()
-    result_mock.scalars.return_value = scalars_mock
+    result_mock.all.return_value = assets
     session = AsyncMock()
     session.execute.return_value = result_mock
     return session

@@ -1,8 +1,17 @@
-"""Index progress tracking — Redis-backed progress store for asset indexing."""
+"""Index progress tracking — Redis-backed progress store for asset indexing.
+
+Usage::
+
+    from repository.index_progress import set_index_progress, get_index_progress
+
+    await set_index_progress(asset_id, "embedding", 60, "Embedding chunks...")
+    progress = await get_index_progress(asset_id)  # {stage, percentage, message}
+"""
 
 import json
 from typing import Any
 
+from broker import get_redis
 from core.infra.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -23,8 +32,6 @@ async def set_index_progress(
         message: Human-readable status message.
     """
     try:
-        from broker import get_redis
-
         r = get_redis()
         key = f"{PROGRESS_KEY_PREFIX}{asset_id}"
         value = json.dumps(
@@ -43,8 +50,6 @@ async def get_index_progress(asset_id: str) -> dict[str, Any] | None:
         Dict with stage, percentage, message — or None if no progress data.
     """
     try:
-        from broker import get_redis
-
         r = get_redis()
         key = f"{PROGRESS_KEY_PREFIX}{asset_id}"
         raw = await r.get(key)

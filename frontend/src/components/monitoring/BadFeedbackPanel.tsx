@@ -13,6 +13,7 @@ import type {
   TimeRangeQuery,
 } from '../../types/monitoring';
 import EmptyState from '../shared/EmptyState';
+import { useToast } from '../../utils/useToast';
 
 const CAUSES: Array<{ value: ReviewRootCause; key: string }> = [
   { value: 'retrieval_miss', key: 'causeRetrievalMiss' },
@@ -38,6 +39,7 @@ export default function BadFeedbackPanel({
   timeQuery: TimeRangeQuery;
 }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | 'all'>(
     'pending',
@@ -70,6 +72,8 @@ export default function BadFeedbackPanel({
     }) => reviewBadFeedback(feedbackId, { status, root_cause: rootCause }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['bad-feedback'] }),
+    // 审查失败不静默：无 onError 时用户以为标记成功但状态未变。
+    onError: () => toast(t('toast.error'), 'error'),
   });
 
   const items = data?.items ?? [];

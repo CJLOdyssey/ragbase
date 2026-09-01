@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { STATUS_COLORS } from '../shared/statusColors';
-import { Avatar, Dropdown, Tag, type MenuProps } from 'antd';
+import { Avatar, Tag } from 'antd';
 import {
   Eye,
   KeyRound,
@@ -9,6 +10,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useIsMobile } from '../../hooks/useMediaQuery';
+import ActionSheet, { type ActionSheetItem } from '../shared/ActionSheet';
 import type { AdminUser } from '../../api/client/adminUsers';
 import type { DataTableColumn } from '../shared/list';
 import { DataTable } from '../shared/list';
@@ -90,47 +93,54 @@ export default function UserTable({
   onDelete,
 }: UserTableProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const [actionUser, setActionUser] = useState<AdminUser | null>(null);
 
-  const menuItemsFor = (user: AdminUser): MenuProps['items'] => [
-    {
-      key: 'edit',
-      icon: <Pencil size={13} />,
-      label: t('admin.users.role'),
-      onClick: () => onEditRole(user),
-    },
-    {
-      key: 'toggle',
-      icon: <Power size={13} />,
-      label: user.isActive ? t('admin.users.disable') : t('admin.users.enable'),
-      onClick: () => onToggleStatus(user),
-    },
-    {
-      key: 'reset',
-      icon: <KeyRound size={13} />,
-      label: t('admin.users.resetPassword'),
-      onClick: () => onResetPassword(user),
-    },
-    {
-      key: 'view',
-      icon: <Eye size={13} />,
-      label: t('admin.users.viewDetails'),
-      onClick: () => onView(user),
-    },
-    { type: 'divider' },
-    {
-      key: 'delete',
-      icon: <Trash2 size={13} />,
-      label: t('admin.users.delete'),
-      danger: true,
-      onClick: () => onDelete(user),
-    },
-  ];
+  const actionItems: ActionSheetItem[] = actionUser
+    ? [
+        {
+          key: 'edit',
+          icon: <Pencil size={16} />,
+          label: t('admin.users.role'),
+          onClick: () => onEditRole(actionUser),
+        },
+        {
+          key: 'toggle',
+          icon: <Power size={16} />,
+          label: actionUser.isActive
+            ? t('admin.users.disable')
+            : t('admin.users.enable'),
+          onClick: () => onToggleStatus(actionUser),
+        },
+        {
+          key: 'reset',
+          icon: <KeyRound size={16} />,
+          label: t('admin.users.resetPassword'),
+          onClick: () => onResetPassword(actionUser),
+        },
+        {
+          key: 'view',
+          icon: <Eye size={16} />,
+          label: t('admin.users.viewDetails'),
+          onClick: () => onView(actionUser),
+        },
+        {
+          key: 'delete',
+          icon: <Trash2 size={16} />,
+          label: t('admin.users.delete'),
+          danger: true,
+          onClick: () => onDelete(actionUser),
+        },
+      ]
+    : [];
 
   const columns: DataTableColumn[] = [
     { key: 'user', header: t('admin.users.user'), width: '2.5fr' },
     { key: 'role', header: t('admin.users.role'), width: '90px' },
     { key: 'status', header: t('admin.users.status'), width: '80px' },
-    { key: 'lastActive', header: t('admin.users.lastActive'), width: '130px' },
+    // 后端仅返回 created_at（无 last_active 字段）——列名与数据语义对齐，
+    // 避免「最近活跃」显示注册时间造成误导。
+    { key: 'lastActive', header: t('admin.users.createdAt'), width: '130px' },
     { key: 'actions', header: t('admin.users.actions'), width: '80px' },
   ];
 
@@ -191,18 +201,30 @@ export default function UserTable({
       case 'actions':
         return (
           <div className="flex justify-center">
-            <Dropdown
-              menu={{ items: menuItemsFor(user) }}
-              trigger={['click']}
-              placement="bottomRight"
-            >
+            {isMobile ? (
+              <>
+                <button
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] bg-transparent text-[var(--color-text-muted)] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+                  aria-label={t('admin.users.moreActions')}
+                  onClick={() => setActionUser(user)}
+                >
+                  <MoreHorizontal size={15} />
+                </button>
+                <ActionSheet
+                  open={actionUser?.userId === user.userId}
+                  onClose={() => setActionUser(null)}
+                  items={actionItems}
+                />
+              </>
+            ) : (
               <button
                 className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] bg-transparent text-[var(--color-text-muted)] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
                 aria-label={t('admin.users.moreActions')}
+                onClick={() => setActionUser(user)}
               >
                 <MoreHorizontal size={15} />
               </button>
-            </Dropdown>
+            )}
           </div>
         );
       default:

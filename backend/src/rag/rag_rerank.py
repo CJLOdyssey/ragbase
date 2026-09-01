@@ -9,6 +9,8 @@ import json
 import urllib.request
 from typing import Any
 
+from domain.ssrf import validate_public_url
+
 RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 
 
@@ -34,7 +36,10 @@ class RerankProvider:
         body = json.dumps(
             {"model": self.model, "query": query, "documents": documents, "top_n": top_n}
         ).encode("utf-8")
-        req = urllib.request.Request(f"{self.base_url}/rerank", data=body, method="POST")
+        url = f"{self.base_url}/rerank"
+        # SSRF guard: base_url is user-influenced — must be public.
+        validate_public_url(url)
+        req = urllib.request.Request(url, data=body, method="POST")
         req.add_header("Authorization", f"Bearer {self.api_key}")
         req.add_header("Content-Type", "application/json")
 

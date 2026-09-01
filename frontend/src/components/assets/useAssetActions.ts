@@ -3,14 +3,19 @@ import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import {
   deleteAsset,
+  downloadAssetFile,
   importUrl,
   indexAsset,
   renameAsset,
   retryIndexAsset,
+  setAssetTags,
   uploadAsset,
   type IndexProgress,
 } from '../../api/client/assets';
-import { assignAssetToKb } from '../../api/client/knowledgeBases';
+import {
+  assignAssetToKb,
+  batchAssignAssetsToKb,
+} from '../../api/client/knowledgeBases';
 import type { IndexingEntry } from './assetUtils';
 import { useToast } from '../../utils/useToast';
 
@@ -50,6 +55,10 @@ export function useAssetActions(
   setUrlName: (v: string) => void,
   urlValue: string,
   urlName: string,
+  /** 批量分配成功后的回调（清空选中集） */
+  onBulkAssignDone?: (assignedCount: number, skippedCount: number) => void,
+  /** 批量分配目标库名解析 */
+  getKbName?: (kbId: string) => string,
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -129,7 +138,21 @@ export function useAssetActions(
   });
 
   const urlImportMutation = useMutation({
-    mutationFn: () => importUrl(urlValue, urlName || undefined),
+    // 提交前统一 trim 并在 hook 侧校验 URL 格式（input type=url 未包在
+    // form 中，浏览器校验不触发）；失败给结构化提示而非静默。
+    mutationFn: () => {
+      const trimmed = urlValue.trim();
+      let parsed: URL;
+      try {
+        parsed = new URL(trimmed);
+      } catch {
+        throw new Error(t('assets.urlImport.invalidUrl'));
+      }
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new Error(t('assets.urlImport.invalidUrl'));
+      }
+      return importUrl(trimmed, urlName.trim() || undefined);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       setUrlImportOpen(false);
@@ -156,6 +179,8 @@ export function useAssetActions(
     let mime = file.type;
     if (!mime || mime === 'application/octet-stream') {
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      // 图片扩展名兜底：MIME 缺失/octet-stream 的合法图片此前被误拒
+      // （DOC_TYPES/IMAGE_TYPES 都允许图片，但 fallback 表漏了图片）。
       const fallback: Record<string, string> = {
         csv: 'text/csv',
         html: 'text/html',
@@ -169,6 +194,12 @@ export function useAssetActions(
         pdf: 'application/pdf',
         docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        webp: 'image/webp',
+        gif: 'image/gif',
+        bmp: 'image/bmp',
       };
       mime = fallback[ext] || mime;
     }
@@ -185,6 +216,52 @@ export function useAssetActions(
     uploadMutation.mutate(file);
   };
 
+  // 批量分配/标签/下载：请求逻辑收敛到 hook（SoC——页面只做编排）。
+  const bulkAssignMutation = useMutation({
+    mutationFn: (vars: { assetIds: string[]; kbId: string }) =>
+      batchAssignAssetsToKb(vars.assetIds, vars.kbId),
+    onSuccess: (result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] });
+      const kbName = getKbName?.(variables.kbId) ?? '';
+      toast(
+        result.skippedCount > 0
+          ? t('assets.bulk.assignPartial', {
+              assigned: result.assignedCount,
+              skipped: result.skippedCount,
+            })
+          : t('assets.bulk.assignSuccess', {
+              count: result.assignedCount,
+              name: kbName,
+            }),
+        'success',
+      );
+      onBulkAssignDone?.(result.assignedCount, result.skippedCount);
+    },
+    onError: () => toast(t('toast.error'), 'error'),
+  });
+
+  const setTagsMutation = useMutation({
+    mutationFn: (vars: { id: string; tags: string[] }) =>
+      setAssetTags(vars.id, vars.tags),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+    },
+    onError: () => toast(t('toast.error'), 'error'),
+  });
+
+  const handleDownload = async (asset: AssetItem): Promise<void> => {
+    try {
+      await downloadAssetFile(asset.id, asset.name);
+      toast(
+        t('common.downloadSuccess', { defaultValue: '下载已开始' }),
+        'success',
+      );
+    } catch {
+      toast(t('common.downloadFailed', { defaultValue: '下载失败' }), 'error');
+    }
+  };
+
   return {
     uploadMutation,
     renameMutation,
@@ -193,6 +270,9 @@ export function useAssetActions(
     retryIndexMutation,
     assignMutation,
     urlImportMutation,
+    bulkAssignMutation,
+    setTagsMutation,
+    handleDownload,
     validateAndUpload,
   };
 }

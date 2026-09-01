@@ -1,16 +1,6 @@
 """Unit tests for backend/repository/auth.py — direct repo function tests."""
 
-import os
-
 import pytest
-
-os.environ.setdefault("KEY_VAULT_SECRET", "0123456789abcdef0123456789abcdef")
-os.environ["AUTH_MODE"] = "legacy"
-os.environ["AUTH_ENABLED"] = "0"
-os.environ["RATE_LIMIT"] = "9999"
-os.environ["CHECKPOINTER_BACKEND"] = "memory"
-os.environ["DATABASE_POOL_SIZE"] = "0"
-
 from core.seed import seed_default_roles_and_admin  # noqa: E402
 
 
@@ -294,48 +284,52 @@ async def test_consume_refresh_token_no_user(db_engine):
 @pytest.mark.asyncio
 async def test_revoke_all_user_tokens(db_engine):
     from repository.auth import (
+        consume_refresh_token,
         create_refresh_token,
         create_user,
         revoke_all_user_tokens,
     )
 
     user = await create_user("test@example.com", "hash")
-    await create_refresh_token(user.id)
+    old_token, _ = await create_refresh_token(user.id)
     await revoke_all_user_tokens(user.id)
 
-    from repository.auth import create_refresh_token
+    # 旧 token 全部失效
+    consumed_user, _ = await consume_refresh_token(old_token)
+    assert consumed_user is None
+
+    # 撤销后新建的 token 不受影响
     token, _ = await create_refresh_token(user.id)
-    from repository.auth import consume_refresh_token
     found_user, _ = await consume_refresh_token(token)
     assert found_user is not None
 
 
 @pytest.mark.asyncio
 async def test_revoke_token_family(db_engine):
+    """Family 撤销后同族全部 token 消费失败。"""
     from repository.auth import (
+        consume_refresh_token,
         create_refresh_token,
         create_user,
+        revoke_token_family,
     )
 
     user = await create_user("test@example.com", "hash")
-    token, _ = await create_refresh_token(user.id)
-    from repository.auth import (
-        consume_refresh_token,
-    )
-
-    first_user, _ = await consume_refresh_token(token)
+    token1, _ = await create_refresh_token(user.id)
+    # 消费一次拿到真 family_id（create_refresh_token 第二返回值是 token_hash）
+    first_user, family_id = await consume_refresh_token(token1)
     assert first_user is not None
+    assert family_id is not None
 
-    from repository.auth import (
-        consume_refresh_token as crt,
-    )
-    from repository.auth import (
-        create_refresh_token as crt2,
-    )
+    token2, _ = await create_refresh_token(user.id, family_id=family_id)
+    token3, _ = await create_refresh_token(user.id, family_id=family_id)
 
-    token2, _ = await crt2(user.id)
-    second_user, _ = await crt(token2)
-    assert second_user is not None
+    await revoke_token_family(family_id)
+
+    for token in (token2, token3):
+        consumed_user, new_token = await consume_refresh_token(token)
+        assert consumed_user is None
+        assert new_token is None
 
 
 @pytest.mark.asyncio

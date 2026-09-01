@@ -4,10 +4,12 @@ Split from rag_store.py to honor the 400-line file budget; mixed into
 PgVectorStore so callers keep a single entry-point object.
 """
 
+import hashlib
 import json
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
     from typing import Protocol
@@ -20,10 +22,13 @@ else:
     _Host = object
 
 
+def _vector_literal(embedding: list[float]) -> str:
+    """Format a vector as the pgvector array literal used by CAST(... AS vector)."""
+    return "[" + ",".join(str(v) for v in embedding) + "]"
+
+
 def _hash_chunk_id(chunk_text: str, salt: str | None = None) -> str:
     """Deterministic content-hash id for curated chunks (dedup by text)."""
-    import hashlib
-
     raw = chunk_text if salt is None else f"{salt}:{chunk_text}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
@@ -36,7 +41,7 @@ class CurationMixin(_Host):
     """
 
     async def _chunk_owner_ok(
-        self, session: Any, chunk_id: str, asset_id: str, user_id: str
+        self, session: AsyncSession, chunk_id: str, asset_id: str, user_id: str
     ) -> bool:
         """Ownership gate: the chunk must belong to the caller's asset."""
         row = await session.execute(
@@ -63,6 +68,9 @@ class CurationMixin(_Host):
 
         The embedding must be produced by the KB's current binding so the
         chunk stays inside its cohort; embed_model is recorded in metadata.
+        The new id is salted with the asset id — the same scheme as
+        ``add_manual_chunk`` — so an edit can never collide with a message
+        chunk (unsalted) or another asset's chunk of identical text.
         """
         await self._ensure_table()
         from core.infra.database import get_session_factory
@@ -71,9 +79,9 @@ class CurationMixin(_Host):
         async with factory() as session:
             if not await self._chunk_owner_ok(session, chunk_id, asset_id, user_id):
                 return None
-            emb_str = "[" + ",".join(str(v) for v in embedding) + "]"
+            emb_str = _vector_literal(embedding)
             # Content-hash id keeps re-edits idempotent per text.
-            new_id = _hash_chunk_id(chunk_text)
+            new_id = _hash_chunk_id(chunk_text, asset_id)
             await session.execute(
                 text(
                     """
@@ -122,7 +130,7 @@ class CurationMixin(_Host):
         from core.infra.database import get_session_factory
 
         chunk_id = _hash_chunk_id(chunk_text, asset_id)
-        emb_str = "[" + ",".join(str(v) for v in embedding) + "]"
+        emb_str = _vector_literal(embedding)
         metadata = {
             "asset_id": asset_id,
             **({"asset_name": asset_name} if asset_name else {}),

@@ -7,12 +7,13 @@ signed URL (typically valid ~1h).
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 import httpx
+from core.infra.logging_config import get_logger
+from domain.ssrf import validate_public_url
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_IMAGE_SIZE = "1024x1024"
 REQUEST_TIMEOUT = httpx.Timeout(180.0, connect=15.0)
@@ -46,6 +47,8 @@ async def generate_image(
     """
     base = (base_url or "https://api.siliconflow.cn/v1").rstrip("/")
     url = f"{base}/images/generations"
+    # SSRF guard: custom base_url is user-influenced — must be public.
+    validate_public_url(url)
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     body: dict[str, Any] = {
         "model": model,
@@ -67,7 +70,13 @@ async def generate_image(
         logger.error("Image generation rejected | status=%d body=%s", response.status_code, detail)
         raise ImageGenerationError(f"图片生成被拒绝 (HTTP {response.status_code})")
 
-    payload = response.json()
+    try:
+        payload = response.json()
+    except ValueError:
+        # Non-JSON success body: treat as provider contract violation instead
+        # of leaking a raw JSONDecodeError up the run pipeline.
+        logger.error("Image generation returned non-JSON body | url=%s", url, exc_info=True)
+        raise ImageGenerationError("图片生成返回格式错误") from None
     images = payload.get("images") or []
     if not images:
         raise ImageGenerationError("图片生成返回为空")

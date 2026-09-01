@@ -1,8 +1,15 @@
-"""API keys repository — re-exports from keys_crud and keys_connectivity submodules."""
+"""API keys repository — re-exports from keys_crud and keys_connectivity submodules.
 
-# Re-export all functions from split modules
+Usage::
+
+    from repository.keys import create_api_key, get_api_keys, fetch_models_for_provider
+
+    keys = await get_api_keys(user_id)  # masked, never plaintext
+    result = await fetch_models_for_provider(provider, api_key, base_url)
+"""
+
 from repository.keys_connectivity import (  # noqa: F401
-    _test_connection_sync,
+    fetch_models_for_provider,
     test_api_key_connection,
 )
 from repository.keys_crud import (  # noqa: F401
@@ -22,9 +29,9 @@ from repository.keys_crud import (  # noqa: F401
 )
 
 __all__ = [
-    "_test_connection_sync",
     "create_api_key",
     "delete_api_key",
+    "fetch_models_for_provider",
     "get_api_key_for_model",
     "get_api_key_for_use",
     "get_api_keys",

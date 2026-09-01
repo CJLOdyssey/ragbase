@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import FilePreview from '../shared/FilePreview';
-import { X } from 'lucide-react';
+import MobileModal from '../shared/MobileModal';
 import type { AttachedFile } from '../../types/input';
 
 interface Props {
@@ -25,8 +25,6 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
   const isText = TEXT_EXT.test(ext);
   const url = `/api/attachments/${file.attachmentId}`;
 
-  const dialogRef = useRef<HTMLDivElement>(null);
-
   const [fetchState, setFetchState] = useState(() => ({
     url,
     text: null as string | null,
@@ -35,12 +33,6 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
   }));
 
   const [imgFailed, setImgFailed] = useState(false);
-
-  useEffect(() => {
-    const prevFocused = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
-    return () => prevFocused?.focus();
-  }, []);
 
   useEffect(() => {
     if (!isText || !file.attachmentId) return;
@@ -77,55 +69,25 @@ export default function AttachmentPreviewModal({ file, onClose }: Props) {
       : { url, text: null, loading: isText, failed: false };
   const { text, loading, failed } = current;
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   return (
-    <div
-      ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Preview ${file.name}`}
-      tabIndex={-1}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6 outline-none"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <MobileModal
+      open={true}
+      onClose={onClose}
+      mode="fullscreen"
+      title={file.name}
+      footer={null}
     >
-      <div className="max-w-3xl w-full max-h-[80vh] flex flex-col rounded-2xl bg-[var(--color-surface-raised)] border border-[var(--color-border)] shadow-2xl overflow-hidden">
-        <header className="flex items-center justify-between gap-4 px-5 py-3 border-b border-[var(--color-border)]">
-          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
-            {file.name}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close preview"
-            className="p-1.5 bg-transparent border-none rounded-lg text-[var(--color-text-muted)] cursor-pointer hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-          >
-            <X size={16} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-auto p-5 flex flex-col">
-          <FilePreview
-            url={url}
-            fileName={file.name}
-            isImage={isImage}
-            isText={isText}
-            text={text}
-            loading={loading}
-            failed={failed}
-            imgFailed={imgFailed}
-            onImgError={() => setImgFailed(true)}
-          />
-        </div>
-      </div>
-    </div>
+      <FilePreview
+        url={url}
+        fileName={file.name}
+        isImage={isImage}
+        isText={isText}
+        text={text}
+        loading={loading}
+        failed={failed}
+        imgFailed={imgFailed}
+        onImgError={() => setImgFailed(true)}
+      />
+    </MobileModal>
   );
 }

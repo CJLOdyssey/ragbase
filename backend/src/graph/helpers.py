@@ -1,10 +1,10 @@
-"""Graph helpers — context-guard template loading, balance detection, tool adapter."""
+"""Graph helpers — context-guard template loading, balance detection."""
 
 import contextlib
 from typing import Any
 
-from core._interfaces import ToolDescriptor, ToolExecutor
 from core.infra.logging_config import get_logger
+from core.llm_balance import is_balance_error
 
 logger = get_logger(__name__)
 
@@ -25,11 +25,14 @@ NO_RAG_HITS_PROMPT = (
     "不得编造或猜测来源；若为通用知识、闲聊或无需检索即可回答的问题，正常回答。"
 )
 
-# Balance/quota error keywords used to detect API billing failures
-_BALANCE_ERROR_KEYWORDS = [
-    "insufficient_quota", "insufficient_balance", "insufficient balance", "余额不足",
-    "billing limit", "quota exceeded", "payment required", "account balance", "402",
-]
+# Balance/quota error detection lives in core.llm_balance (shared with the
+# task pipeline); this alias keeps the graph's call site unchanged.
+_EMPTY_ERROR = ""
+
+
+def _is_balance_error(error_body: str) -> bool:
+    """Check if an API error body indicates insufficient balance/quota."""
+    return is_balance_error(error_body or _EMPTY_ERROR)
 
 
 async def _load_context_guard_template() -> str | None:
@@ -66,34 +69,6 @@ async def load_active_user_prompt(prompt_id: str) -> str:
         )
         return ""
     return prompt.content or ""
-
-
-def _is_balance_error(error_body: str) -> bool:
-    """Check if the API error response indicates insufficient balance/quota."""
-    body_lower = error_body.lower()
-    return any(kw in body_lower for kw in _BALANCE_ERROR_KEYWORDS)
-
-
-class _InlineToolExecutor(ToolExecutor):
-    """Adapter that runs a ToolDescriptor through the tools node."""
-
-    def __init__(self, tc: ToolDescriptor) -> None:
-        self._tc = tc
-        self.name = tc.name
-        self.description = tc.description
-
-    async def invoke(self, args: dict[str, Any]) -> str:
-        execute = getattr(self._tc, "execute", None)
-        if execute is None:
-            return f"Unknown tool: {self.name}"
-        result = await execute(args)
-        return str(result)
-
-    def set_llm(self, llm: Any) -> None:
-        pass
-
-    def set_run_id(self, run_id: str) -> None:
-        pass
 
 
 async def _emit_balance_warning(stream_cb: Any) -> None:

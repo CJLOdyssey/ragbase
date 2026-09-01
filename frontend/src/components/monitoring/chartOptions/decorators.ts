@@ -2,6 +2,23 @@ import type { MonitoringPoint } from '../../../types/monitoring';
 import type { EChartsOption } from '../../shared/EChart';
 import { DANGER, hexA } from './shared';
 
+/**
+ * ECharts option.series 的运行时契约：官方 TS 类型不暴露 name/data/markArea/markLine，
+ * 这里定义最小必要子集，消除 4 处 `as unknown as` 逃生舱（总纲 ISP + 高内聚）。
+ */
+interface EChartsSeries {
+  name?: string;
+  data?: unknown[];
+  markArea?: Record<string, unknown>;
+  markLine?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/** 安全提取 series 列表（非数组时返回空）。 */
+function getSeriesList(option: EChartsOption): EChartsSeries[] {
+  return Array.isArray(option.series) ? (option.series as EChartsSeries[]) : [];
+}
+
 // ── 阈值越线的本体编码（Grafana thresholdsStyle "series"/area 模式）────────
 
 export interface BreachTintSpec {
@@ -22,12 +39,8 @@ export function withBreachTint(
   points: MonitoringPoint[],
   spec: BreachTintSpec,
 ): EChartsOption {
-  if (!Array.isArray(option.series)) return option;
-
-  const seriesList = option.series as unknown as Array<
-    Record<string, unknown> | undefined
-  >;
-  const target = seriesList.find((s) => s?.name === spec.targetSeriesName);
+  const seriesList = getSeriesList(option);
+  const target = seriesList.find((s) => s.name === spec.targetSeriesName);
   if (!target || !Array.isArray(target.data)) return option;
 
   const breachedTs = new Set(
@@ -37,7 +50,7 @@ export function withBreachTint(
   );
   if (breachedTs.size === 0) return option;
 
-  target.data = (target.data as unknown[]).map((item) => {
+  target.data = target.data.map((item) => {
     const ts = Array.isArray(item) ? item[0] : null;
     if (typeof ts !== 'string' || !breachedTs.has(ts)) return item;
     return { value: item, itemStyle: { color: spec.color } };
@@ -73,15 +86,13 @@ export function withBreachRegions(
     }
   }
   if (start !== null && last !== null) runs.push([start, last]);
-  if (runs.length === 0 || !Array.isArray(option.series)) return option;
+  if (runs.length === 0) return option;
 
-  const seriesList = option.series as unknown as Array<
-    Record<string, unknown> | undefined
-  >;
-  const target = seriesList.find((s) => s?.name === targetSeriesName);
+  const seriesList = getSeriesList(option);
+  const target = seriesList.find((s) => s.name === targetSeriesName);
   if (!target) return option;
 
-  const prev = (target.markArea ?? {}) as Record<string, unknown>;
+  const prev = target.markArea ?? {};
   const prevData = Array.isArray(prev.data) ? prev.data : [];
   target.markArea = {
     ...prev,
@@ -109,15 +120,11 @@ export function withThresholdLine(
   targetSeriesName: string,
   spec: ThresholdLineSpec,
 ): EChartsOption {
-  if (!Array.isArray(option.series)) return option;
-
-  const seriesList = option.series as unknown as Array<
-    Record<string, unknown> | undefined
-  >;
-  const target = seriesList.find((s) => s?.name === targetSeriesName);
+  const seriesList = getSeriesList(option);
+  const target = seriesList.find((s) => s.name === targetSeriesName);
   if (!target) return option;
 
-  const prev = (target.markLine ?? {}) as Record<string, unknown>;
+  const prev = target.markLine ?? {};
   const prevData = Array.isArray(prev.data) ? prev.data : [];
   target.markLine = {
     ...prev,

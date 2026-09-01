@@ -20,8 +20,24 @@ class TestEnforceTokenBudget:
             "repository.keys_crud.sum_user_tokens_since",
             new_callable=AsyncMock,
             return_value=500,
-        ):
+        ) as mock_sum:
             assert await _enforce_token_budget("u1", "r1") is True
+        mock_sum.assert_awaited_once()
+
+    async def test_at_budget_denies(self, monkeypatch):
+        """used == budget 即拒绝（源码 used < budget 才放行）。"""
+        monkeypatch.setenv("USER_DAILY_TOKEN_BUDGET", "1000")
+        with (
+            patch(
+                "repository.keys_crud.sum_user_tokens_since",
+                new_callable=AsyncMock,
+                return_value=1000,
+            ),
+            patch("tasks.agent_pipeline.update_run_status", new_callable=AsyncMock),
+            patch("tasks.agent_pipeline.publish_run_message", new_callable=AsyncMock) as pub,
+        ):
+            assert await _enforce_token_budget("u1", "r1") is False
+        pub.assert_awaited_once()
 
     async def test_over_budget_fails_loud(self, monkeypatch):
         monkeypatch.setenv("USER_DAILY_TOKEN_BUDGET", "1000")

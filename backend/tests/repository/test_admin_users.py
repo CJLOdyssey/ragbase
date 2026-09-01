@@ -1,4 +1,9 @@
-"""Admin users router tests."""
+"""Admin 前置依赖的仓储函数测试。
+
+本文件覆盖 admin 用户管理路由依赖的 repository.auth 基础函数
+（create_user/get_user_by_id）；管理员特有操作（用户列表、角色变更）
+由 routers 层 admin 路由测试覆盖（B4 阶段）。
+"""
 
 import pytest
 

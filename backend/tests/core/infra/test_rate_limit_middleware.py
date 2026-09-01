@@ -55,7 +55,8 @@ class TestIPExtraction:
     async def test_x_forwarded_for(self):
         from core.infra.rate_limit import RateLimitMiddleware
         mw = RateLimitMiddleware(AsyncMock(), rate=1000)
-        with patch.object(mw.limiter, "is_allowed") as m:
+        with patch("core.infra.asgi._TRUST_PROXY_HEADERS", True), \
+             patch.object(mw.limiter, "is_allowed") as m:
             m.return_value = True
             scope = {"type": "http", "path": "/x", "headers": [(b"x-forwarded-for", b"1.1.1.1,2.2.2.2")]}
             await mw(scope, AsyncMock(), AsyncMock())
@@ -65,7 +66,8 @@ class TestIPExtraction:
     async def test_x_real_ip(self):
         from core.infra.rate_limit import RateLimitMiddleware
         mw = RateLimitMiddleware(AsyncMock(), rate=1000)
-        with patch.object(mw.limiter, "is_allowed") as m:
+        with patch("core.infra.asgi._TRUST_PROXY_HEADERS", True), \
+             patch.object(mw.limiter, "is_allowed") as m:
             m.return_value = True
             scope = {"type": "http", "path": "/x", "headers": [(b"x-real-ip", b"5.6.7.8")]}
             await mw(scope, AsyncMock(), AsyncMock())
@@ -95,8 +97,23 @@ class TestIPExtraction:
     async def test_xff_priority_over_xri(self):
         from core.infra.rate_limit import RateLimitMiddleware
         mw = RateLimitMiddleware(AsyncMock(), rate=1000)
-        with patch.object(mw.limiter, "is_allowed") as m:
+        with patch("core.infra.asgi._TRUST_PROXY_HEADERS", True), \
+             patch.object(mw.limiter, "is_allowed") as m:
             m.return_value = True
             scope = {"type": "http", "path": "/x", "headers": [(b"x-forwarded-for", b"a.a.a.a"), (b"x-real-ip", b"b.b.b.b")]}
             await mw(scope, AsyncMock(), AsyncMock())
             m.assert_called_with("ip:a.a.a.a")
+
+    @pytest.mark.asyncio
+    async def test_xff_ignored_without_trust(self):
+        """Security: X-Forwarded-For must NOT be trusted by default —
+        direct exposure deployments must key rate limits on the peer address
+        (OWASP A07 — spoofed XFF bypasses IP rate limiting)."""
+        from core.infra.rate_limit import RateLimitMiddleware
+        mw = RateLimitMiddleware(AsyncMock(), rate=1000)
+        with patch("core.infra.asgi._TRUST_PROXY_HEADERS", False), \
+             patch.object(mw.limiter, "is_allowed") as m:
+            m.return_value = True
+            scope = {"type": "http", "path": "/x", "headers": [(b"x-forwarded-for", b"1.1.1.1")], "client": ("9.9.9.9", 1)}
+            await mw(scope, AsyncMock(), AsyncMock())
+            m.assert_called_with("ip:9.9.9.9")

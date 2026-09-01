@@ -1,23 +1,22 @@
 import { RefObject, useCallback } from 'react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import type { Message } from '../../types/studio';
-import { createFeedback } from '../../api/client/feedback';
 import {
   continueGeneration,
   editAndRegenerate,
   regenerateMessage,
 } from '../../stores/chatActions';
 import { useChatStore } from '../../stores/chatStore';
+import { useMessageFeedback } from '../../hooks/useMessageFeedback';
 import BrowserFrame from './BrowserFrame';
 import TeamMessage from './TeamMessage';
-import Logger from '../../utils/logger';
-import { useToast } from '../../utils/useToast';
-import i18n from '../../i18n';
 
 interface Props {
   hasMessages: boolean;
   displayMessages: Message[];
   messagesEndRef: RefObject<HTMLDivElement>;
   onSwitchBranch: (runId: string) => void;
+  virtuosoRef?: RefObject<VirtuosoHandle>;
 }
 
 export default function MessagesPanel({
@@ -25,11 +24,12 @@ export default function MessagesPanel({
   displayMessages,
   messagesEndRef,
   onSwitchBranch,
+  virtuosoRef,
 }: Props) {
   const interruptedMessageId = useChatStore((s) => s.interruptedMessageId);
   const continuingId = useChatStore((s) => s.continuingId);
-  const setThumbsFeedback = useChatStore((s) => s.setThumbsFeedback);
-  const { toast } = useToast();
+  // 反馈提交（store 更新 + 后端请求 + 提示）收敛到 hook，组件不直接发请求。
+  const handleThumbsFeedback = useMessageFeedback();
   const handleEditMessage = useCallback((msgId: string, newContent: string) => {
     // Edit → save content + regenerate the following answer (merged into its versions).
     void editAndRegenerate(msgId, newContent);
@@ -71,52 +71,44 @@ export default function MessagesPanel({
     [onSwitchBranch],
   );
 
-  const handleThumbsFeedback = useCallback(
-    (msgId: string, value: 'up' | 'down' | null) => {
-      setThumbsFeedback(msgId, value);
-      if (value) {
-        const msg = useChatStore
-          .getState()
-          .messages.find((m) => m.id === msgId);
-        const runId = msg?.runId;
-        if (runId) {
-          const rating = value === 'up' ? 'good' : 'bad';
-          createFeedback(runId, rating)
-            .then(() => {
-              toast(i18n.t('feedback.feedbackNotice'), 'success');
-            })
-            .catch((err) =>
-              Logger.warn('[feedback] failed to submit: %s', err),
-            );
-        }
-      }
-    },
-    [setThumbsFeedback, toast],
-  );
-
   if (hasMessages) {
     return (
-      <div
-        className="max-w-[min(900px,85vw)] mx-auto w-full flex flex-col gap-6 px-6 py-6 pb-12"
-        aria-live="polite"
-      >
-        {displayMessages.map((msg) => (
-          <div key={msg.id}>
-            <TeamMessage
-              msg={msg}
-              onEditMessage={handleEditMessage}
-              onRegenerate={handleRegenerate}
-              showContinue={msg.id === interruptedMessageId}
-              onContinue={continueGeneration}
-              onSwitchUserVersion={handleSwitchUserVersion}
-              onSwitchAnswer={handleSwitchAnswerVersion}
-              isContinuing={msg.id === continuingId}
-              onThumbsFeedback={handleThumbsFeedback}
-            />
-          </div>
-        ))}
-        <BrowserFrame />
-        <div ref={messagesEndRef} />
+        <div
+          className="max-w-[min(900px,100vw)] mx-auto w-full flex flex-col px-4 py-5 pb-8 md:px-6 md:py-6 md:pb-12"
+          aria-live="polite"
+        >
+        <Virtuoso
+          ref={virtuosoRef}
+          style={{ flex: 1 }}
+          totalCount={displayMessages.length + 2} // +2 for BrowserFrame and scroll anchor
+          itemContent={(index) => {
+            // Last item: BrowserFrame + scroll anchor
+            if (index >= displayMessages.length) {
+              return (
+                <>
+                  <BrowserFrame />
+                  <div ref={messagesEndRef} />
+                </>
+              );
+            }
+            const msg = displayMessages[index];
+            return (
+              <div className="mb-4 md:mb-6">
+                <TeamMessage
+                  msg={msg}
+                  onEditMessage={handleEditMessage}
+                  onRegenerate={handleRegenerate}
+                  showContinue={msg.id === interruptedMessageId}
+                  onContinue={continueGeneration}
+                  onSwitchUserVersion={handleSwitchUserVersion}
+                  onSwitchAnswer={handleSwitchAnswerVersion}
+                  isContinuing={msg.id === continuingId}
+                  onThumbsFeedback={handleThumbsFeedback}
+                />
+              </div>
+            );
+          }}
+        />
       </div>
     );
   }

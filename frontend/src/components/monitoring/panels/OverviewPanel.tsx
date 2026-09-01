@@ -80,7 +80,7 @@ export default function OverviewPanel({ timeQuery }: Props) {
       {data && ts ? (
         <div className="flex flex-col gap-3">
           <div
-            className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_minmax(0,1fr)] gap-3"
+            className="grid grid-cols-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)_minmax(0,1fr)]"
             data-testid="retrieval-section"
           >
             <div className="lg:row-span-2">
@@ -102,7 +102,7 @@ export default function OverviewPanel({ timeQuery }: Props) {
             >
               <EChart
                 option={volumeChartOption}
-                height={240}
+                height={200}
                 ariaLabel={t('monitoring.chartVolumeTitle')}
                 testId="chart-volume-canvas"
               />
@@ -123,7 +123,7 @@ export default function OverviewPanel({ timeQuery }: Props) {
             >
               <EChart
                 option={emptyRecallChartOption}
-                height={240}
+                height={200}
                 ariaLabel={t('monitoring.chartEmptyRecallTitle')}
                 testId="chart-emptyrecall"
               />
@@ -139,7 +139,7 @@ export default function OverviewPanel({ timeQuery }: Props) {
             >
               <EChart
                 option={goodRateChartOption}
-                height={240}
+                height={200}
                 ariaLabel={t('monitoring.chartGoodRateTitle')}
                 testId="chart-goodrate"
               />
@@ -160,7 +160,7 @@ export default function OverviewPanel({ timeQuery }: Props) {
             >
               <EChart
                 option={latencyChartOption}
-                height={240}
+                height={200}
                 ariaLabel={t('monitoring.chartLatencyTitle')}
                 testId="chart-latency"
               />

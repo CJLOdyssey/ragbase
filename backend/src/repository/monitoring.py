@@ -17,18 +17,19 @@ from core.infra.database import (
     SessionDB,
     get_session_factory,
 )
-from sqlalchemy import func, select
+from core.infra.logging_config import get_logger
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.sql.functions import FunctionElement
 
 from repository.monitoring_shared import (
     LATENCY_SAMPLE_LIMIT,
+    ROOT_CAUSES,
     percentile_nearest_rank,
     resolve_window_lower,
     window_conds,
 )
 
-# 与 feedback_reviews.root_cause 的枚举一致（单一事实来源在 ORM 迁移注释）。
-_ROOT_CAUSES = ("retrieval_miss", "wrong_answer", "bad_format", "other")
+logger = get_logger(__name__)
 
 
 async def retrieval_summary(
@@ -94,7 +95,8 @@ async def retrieval_summary(
         "empty_recall_count": empty_recall,
         "empty_recall_rate": (empty_recall / total) if total else 0.0,
         "slow_count": slow_count,
-        # 错误预算视角：超 SLO 请求占比（p95 阈值的等价事件化表述）。
+        # Error-budget view: the share of requests above the SLO boundary,
+        # the event-level equivalent of the p95 threshold.
         "slow_rate": (slow_count / total) if total else 0.0,
         "avg_hit_count": avg_hits,
         "latency_p50_ms": percentile_nearest_rank(latencies, 50),
@@ -135,26 +137,27 @@ async def feedback_summary(
         total = int(row.total)
         good = int(row.good)
 
-        # 覆盖率分母：窗口内成功完成的回答数（好评率的可信度取决于此）。
+        # Coverage denominator: successfully answered runs in the window —
+        # the good ratio is only trustworthy when backed by enough answers.
         answered = 0
         try:
-            async with factory() as session:
-                conds = [ProjectRun.status == "converged"]
-                if lower is not None:
-                    conds.append(ProjectRun.created_at >= lower)
-                if until is not None:
-                    conds.append(ProjectRun.created_at <= until)
-                answered_stmt = (
-                    select(func.count())
-                    .select_from(ProjectRun)
-                    .join(SessionDB, ProjectRun.session_id == SessionDB.id)
-                    .where(SessionDB.user_id == user_id, *conds)
-                )
-                answered = int(
-                    (await session.execute(answered_stmt)).scalar() or 0
-                )
+            conds = [ProjectRun.status == "converged"]
+            if lower is not None:
+                conds.append(ProjectRun.created_at >= lower)
+            if until is not None:
+                conds.append(ProjectRun.created_at <= until)
+            answered_stmt = (
+                select(func.count())
+                .select_from(ProjectRun)
+                .join(SessionDB, ProjectRun.session_id == SessionDB.id)
+                .where(SessionDB.user_id == user_id, *conds)
+            )
+            answered = int((await session.execute(answered_stmt)).scalar() or 0)
         except Exception:
-            # 分母缺失只降级展示，不阻塞 summary。
+            # A missing denominator degrades the summary, never blocks it.
+            logger.warning(
+                "answered-runs count failed for user %s", user_id, exc_info=True
+            )
             answered = 0
 
     return {
@@ -221,8 +224,8 @@ async def root_cause_breakdown(
         )
         conds.append(FeedbackLog.rating == "bad")
 
-        cols: list[Any] = [func.count().label("total")]
-        for cause in _ROOT_CAUSES:
+        cols: list[ColumnElement[Any]] = [func.count().label("total")]
+        for cause in ROOT_CAUSES:
             cols.append(
                 func.count()
                 .filter(FeedbackReviewDB.root_cause == cause)
@@ -252,13 +255,14 @@ async def root_cause_breakdown(
     return {
         "window_hours": window_hours,
         "total_bad": total,
-        # 未审查的差评视同 pending（review 为 NULL 时两个状态计数都不命中）。
+        # Unreviewed bad feedback counts as pending (a NULL review row hits
+        # neither status filter).
         "pending": total - resolved - dismissed,
         "resolved": resolved,
         "dismissed": dismissed,
         "causes": [
             {"cause": cause, "count": int(getattr(row, f"c_{cause}"))}
-            for cause in _ROOT_CAUSES
+            for cause in ROOT_CAUSES
         ],
     }
 

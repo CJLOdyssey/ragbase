@@ -127,6 +127,9 @@ def client():
         # patcher 自动还原：init_db 覆写不得泄漏给同 worker 后续测试
         patch.object(lifespan_mod, "init_db", _init_db),
         patch("broker.get_redis", return_value=mock_redis),
+        # repository.health 在模块顶部 from broker import get_redis 绑定命名，
+        # 打 broker.get_redis 不生效；须打其自身命名空间（QA 遗留 #9）
+        patch("repository.health.get_redis", return_value=mock_redis),
         patch("core.app_lifespan.get_redis", return_value=mock_redis),
         patch("routers.auth.login.get_redis", return_value=mock_redis),
         patch("routers.auth.register.get_redis", return_value=mock_redis),

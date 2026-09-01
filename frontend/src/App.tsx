@@ -1,4 +1,3 @@
-import { lazy, Suspense } from 'react';
 import type * as React from 'react';
 import { StyleProvider } from '@ant-design/cssinjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,30 +13,6 @@ import { palette } from './theme/palette';
 import { useResolvedIsDark } from './theme/useResolvedTheme';
 import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
-
-const AssetsPage = lazy(() => import('./components/assets/AssetsPage'));
-const PromptLibraryPage = lazy(
-  () => import('./components/prompts/PromptLibraryPage'),
-);
-const QualityMonitor = lazy(
-  () => import('./components/monitoring/QualityMonitor'),
-);
-const RetrievalLogPage = lazy(
-  () => import('./components/retrieval-logs/RetrievalLogPage'),
-);
-const AdminUsersPage = lazy(() => import('./components/admin/AdminUsersPage'));
-const KnowledgeBasePage = lazy(
-  () => import('./components/knowledge-base/KnowledgeBasePage'),
-);
-
-function PageLoading() {
-  const { t } = useTranslation();
-  return (
-    <div className="h-screen flex items-center justify-center text-sm text-[var(--color-text-muted)]">
-      {t('common.loading')}
-    </div>
-  );
-}
 
 const CSS_VARS = {
   accent: '--color-accent',
@@ -58,7 +33,7 @@ function Fallback({ error, resetErrorBoundary }: FallbackProps) {
 
   return (
     <div
-      className="flex flex-col items-center justify-center h-screen gap-4 p-8 text-center text-[var(--color-text-muted)]"
+      className="flex flex-col items-center justify-center h-dvh gap-4 p-8 text-center text-[var(--color-text-muted)]"
       role="alert"
     >
       <h2>{t('common.appError')}</h2>
@@ -110,8 +85,16 @@ function ThemedApp() {
   const colors = palette[isDark ? 'dark' : 'light'];
   const accentColor = getCssVar(CSS_VARS.accent) || '#6366f1';
 
-  return (
-    <StyleProvider layer={{ name: 'antd' } as unknown as boolean}>
+  // cssinjs 运行时支持 { name, dependencies } 对象（useStyleRegister 读取
+// layer.name 包 @layer），但当前安装版本 .d.ts 声明滞后为 boolean——
+// 用本地接口对齐运行时契约，避免 `as unknown as` 双跳转逃生舱。
+interface AntdLayer {
+  name: string;
+}
+const antdLayer: AntdLayer = { name: 'antd' };
+
+return (
+    <StyleProvider layer={antdLayer as unknown as boolean}>
       <ConfigProvider
         theme={{
           algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
@@ -173,54 +156,6 @@ function ThemedApp() {
                   <Route
                     path="/chat/:sessionId"
                     element={<RagBaseWorkstation />}
-                  />
-                  <Route
-                    path="/prompts"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <PromptLibraryPage />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/assets"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <AssetsPage />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/monitoring"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <QualityMonitor />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/retrieval-logs"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <RetrievalLogPage />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/admin-users"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <AdminUsersPage />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/knowledge-bases"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <KnowledgeBasePage />
-                      </Suspense>
-                    }
                   />
                   <Route
                     path="*"

@@ -7,10 +7,9 @@ Architecture:
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from typing import Any, cast
 
-from core._interfaces import ToolDescriptor, ToolExecutor
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables.config import RunnableConfig
 from langchain_openai import ChatOpenAI
@@ -18,14 +17,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from graph.graph_state import AgentState  # noqa: F401  # re-exported for backward compat
-from graph.helpers import (
-    CONTEXT_GUARD_PROMPT,  # noqa: F401  # re-exported for backward compat
-    _emit_balance_warning,  # noqa: F401  # re-exported for backward compat
-    _InlineToolExecutor,
-    _is_balance_error,  # noqa: F401  # re-exported for backward compat
-    _load_context_guard_template,  # noqa: F401  # re-exported for backward compat
-)
+from graph.graph_state import AgentState
 from graph.nodes import GraphNodesMixin
 
 
@@ -62,8 +54,6 @@ class SingleAgentGraph(GraphNodesMixin):
             llm_kwargs["base_url"] = base_url
         self.llm = ChatOpenAI(**llm_kwargs)
 
-        self._tools: list[Any] = []
-        self._tool_map: dict[str, ToolExecutor] = {}
         self._tool_definitions: list[dict[str, Any]] = []
         if checkpointer is not None:
             self.checkpointer = checkpointer
@@ -90,33 +80,10 @@ class SingleAgentGraph(GraphNodesMixin):
         """Set the callback for streaming events."""
         self._stream_cb = cb
 
-    def bind_tools(self, tools: Sequence[ToolDescriptor]) -> None:
-        """Register tool definitions and executors with the graph."""
-        for tc in tools:
-            definition = {
-                "type": "function",
-                "function": {
-                    "name": tc.name,
-                    "description": tc.description,
-                    "parameters": tc.parameters or {"type": "object", "properties": {}},
-                },
-            }
-            self._tool_definitions.append(definition)
-            self._tool_map[tc.name] = self._wrap_tool(tc)
-
-    @staticmethod
-    def _wrap_tool(tc: ToolDescriptor) -> ToolExecutor:
-        """Wrap a ToolDescriptor into a ToolExecutor for the tools node."""
-        return _InlineToolExecutor(tc)
-
     @property
     def graph(self) -> CompiledStateGraph[Any]:
         """Return the compiled LangGraph state graph."""
         return self._graph
-
-    def with_config(self, **kwargs: Any) -> SingleAgentGraph:
-        """Return self (config passthrough for interface compatibility)."""
-        return self
 
     async def run(
         self,
@@ -129,9 +96,6 @@ class SingleAgentGraph(GraphNodesMixin):
         no_rag_hits: bool = False,
     ) -> dict[str, Any]:
         """Run the agent graph with the given requirement and return results."""
-        if run_id:
-            for wrapper in self._tool_map.values():
-                wrapper.set_run_id(run_id)
         config = cast(
             RunnableConfig,
             {
@@ -157,19 +121,3 @@ class SingleAgentGraph(GraphNodesMixin):
             "output_tokens": usage.get("output_tokens", 0),
             "model": self.model,
         }
-
-    async def arun(
-        self, message: str, system_prompt: str = "", session_context: str = "", no_rag_hits: bool = False
-    ) -> str:
-        """Run one turn synchronously and return the response text."""
-        config = cast(RunnableConfig, {"configurable": {"thread_id": str(id(self))}, "recursion_limit": 25})
-        result = await self._graph.ainvoke(
-            {
-                "messages": [HumanMessage(content=message)],
-                "system_prompt": system_prompt,
-                "session_context": session_context,
-                "no_rag_hits": no_rag_hits,
-            },
-            config,
-        )
-        return result["messages"][-1].content if result.get("messages") else ""

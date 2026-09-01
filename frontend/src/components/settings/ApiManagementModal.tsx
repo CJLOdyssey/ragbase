@@ -59,11 +59,11 @@ export default function ApiManagementModal({ onClose }: Props) {
       centered
       width={970}
       footer={null}
-      className="api-modal"
+      className="api-modal mobile-fullscreen"
       styles={{ body: { padding: 12 } }}
     >
-      <div className="flex h-full min-h-0 overflow-hidden">
-        <div className="w-[160px] px-4 py-5 flex flex-col gap-1 overflow-hidden min-h-0">
+      <div className="flex min-h-0 flex-col overflow-hidden md:flex-row">
+        <div className="flex flex-row gap-1 overflow-x-auto border-b border-[var(--color-border)] px-2 py-2 md:w-[160px] md:flex-col md:border-b-0 md:border-r md:border-r-[var(--color-border-subtle)] md:px-4 md:py-5 md:overflow-x-hidden">
           {TABS.map((tab) => {
             const Icon = TAB_ICONS[tab];
             const label =

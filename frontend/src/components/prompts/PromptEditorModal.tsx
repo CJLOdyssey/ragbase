@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 import {
   listPromptCategories,
   type PromptItem,
@@ -23,9 +23,9 @@ interface Props {
   error: string | null;
 }
 
-const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'draft', label: '草稿' },
-  { value: 'published', label: '启用' },
+const STATUS_OPTIONS: Array<{ value: string; i18nKey: string }> = [
+  { value: 'draft', i18nKey: 'prompts.statusDraft' },
+  { value: 'published', i18nKey: 'prompts.statusEnabled' },
 ];
 
 /** categories 接口失败时的兜底选项，与后端 /prompts/categories 保持一致。 */
@@ -105,7 +105,10 @@ export default function PromptEditorModal({
   };
 
   return (
-    <AntdModal
+    <MobileModal
+      open={true}
+      onClose={onClose}
+      mode="fullscreen"
       title={
         <span className="flex items-center gap-2.5 min-w-0 pr-4">
           <span className="truncate">
@@ -120,9 +123,6 @@ export default function PromptEditorModal({
           )}
         </span>
       }
-      open={true}
-      onCancel={onClose}
-      centered
       width={520}
       footer={
         <>
@@ -152,11 +152,11 @@ export default function PromptEditorModal({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-[var(--color-text-primary)]">
-            名称
+            {t('prompts.editor.name')}
           </label>
           <input
             type="text"
-            placeholder="如：产品问答助手"
+            placeholder={t('prompts.editor.namePlaceholder')}
             className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -165,11 +165,11 @@ export default function PromptEditorModal({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-[var(--color-text-primary)]">
-            描述
+            {t('prompts.editor.description')}
           </label>
           <input
             type="text"
-            placeholder="简短描述此提示词的用途"
+            placeholder={t('prompts.editor.descPlaceholder')}
             className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -178,10 +178,10 @@ export default function PromptEditorModal({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-[var(--color-text-primary)]">
-            提示词模板
+            {t('prompts.editor.content')}
           </label>
           <textarea
-            placeholder="你是一位…{{context}}…{{question}}"
+            placeholder={t('prompts.editor.contentPlaceholder')}
             rows={6}
             className="w-full px-3 py-2 rounded-md text-sm bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)] resize-y min-h-[140px] font-mono leading-[1.6]"
             value={content}
@@ -217,7 +217,7 @@ export default function PromptEditorModal({
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {t(o.i18nKey)}
                 </option>
               ))}
             </select>
@@ -228,6 +228,6 @@ export default function PromptEditorModal({
           {t('prompts.editor.saveHint')}
         </p>
       </div>
-    </AntdModal>
+    </MobileModal>
   );
 }

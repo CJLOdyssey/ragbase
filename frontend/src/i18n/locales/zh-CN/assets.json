@@ -6,6 +6,14 @@
     "viewGrid": "卡片视图",
     "dropHint": "拖拽文件到此处上传",
     "dropFormats": "支持 .txt .md .pdf .docx .xlsx .csv .html .doc .xls .ppt .pptx，单文件不超过 20 MB",
+    "noMatch": "无匹配素材",
+    "noMatchDesc": "调整搜索或筛选条件",
+    "more": "更多",
+    "filterCount": "筛选 {{filteredCount}} / {{total}}",
+    "prevPage": "上一页",
+    "nextPage": "下一页",
+    "pageIndicator": "· 第 {{current}} / {{total}} 页",
+    "download": "下载",
     "upload": {
       "button": "上传素材",
       "selectFile": "选择文件",
@@ -60,6 +68,7 @@
       "namePlaceholder": "自动从 URL 推断",
       "submit": "导入",
       "importing": "导入中…",
+      "invalidUrl": "请输入合法的 http/https 链接",
       "failed": "导入失败，请检查链接是否可访问"
     },
     "chunks": {

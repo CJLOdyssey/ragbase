@@ -30,5 +30,15 @@ def upgrade() -> None:
 def downgrade() -> None:
     conn = op.get_bind()
     inspector = __import__("sqlalchemy").inspect(conn)
-    if "agent_checkpoints" in inspector.get_table_names():
+    tables = inspector.get_table_names()
+    # Restore the pre-rename layout: exactly one ``checkpoints`` table.
+    # 8347788032e5.downgrade restores BOTH runtime artifacts (LangGraph's
+    # ``checkpoints`` and the legacy ``agent_checkpoints``); the rename-back
+    # can only keep one — drop the leftover duplicate rather than collide
+    # (both are runtime-owned; neither is created by the migration chain).
+    if "agent_checkpoints" not in tables:
+        return
+    if "checkpoints" in tables:
+        op.drop_table("agent_checkpoints")
+    else:
         op.rename_table("agent_checkpoints", "checkpoints")

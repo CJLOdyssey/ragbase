@@ -5,6 +5,7 @@ so this package mirrors backend/tests/routers/conftest.py: bounded env,
 in-memory sqlite bootstrap, per-test schema reset, redis mocks, and a
 client fixture pre-authenticated as admin-login.
 """
+import contextlib
 import os
 from unittest.mock import AsyncMock, patch
 
@@ -26,7 +27,7 @@ if db_mod._async_engine is None:
     db_mod._async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 if db_mod._async_session_factory is None:
     db_mod._async_session_factory = async_sessionmaker(
-        db_mod._async_engine or create_async_engine("sqlite+aiosqlite:///:memory:"),
+        db_mod._async_engine,
         expire_on_commit=False,
     )
 db_mod.DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -35,13 +36,18 @@ from core.app import app
 from core.base import Base
 
 
-@pytest.fixture(autouse=True)
-async def _reset_db():
-    """Fresh schema per test (mirrors routers/conftest isolation contract)."""
+async def _reset_schema() -> None:
+    """Drop and recreate all tables (awaitable — runs inside the app loop)."""
     engine = db_mod.get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+
+
+@pytest.fixture(autouse=True)
+async def _reset_db():
+    """Fresh schema per test (mirrors routers/conftest isolation contract)."""
+    await _reset_schema()
 
 
 def _build_logged_in_client(raise_server_exceptions: bool):
@@ -49,10 +55,7 @@ def _build_logged_in_client(raise_server_exceptions: bool):
     import core.app_lifespan as lifespan_mod
 
     async def _init_db():
-        engine = db_mod.get_async_engine()
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
+        await _reset_schema()
         from core.seed import seed_default_roles_and_admin
         await seed_default_roles_and_admin()
         import bcrypt
@@ -76,6 +79,32 @@ def _build_logged_in_client(raise_server_exceptions: bool):
                 )
                 session.add(user)
                 await session.commit()
+
+        # admin-login 授予 admin 角色：登录身份与 RBAC 依赖（require_role）对齐，
+        # 与 backend/tests/routers/conftest.py 保持一致。
+        from core.infra.database import RoleDB, UserRoleDB
+
+        async with factory() as session:
+            admin_role = (
+                await session.execute(select(RoleDB).where(RoleDB.name == "admin"))
+            ).scalar_one_or_none()
+            admin_login = (
+                await session.execute(
+                    select(UserDB).where(UserDB.id == "admin-login")
+                )
+            ).scalar_one_or_none()
+            if admin_role is not None and admin_login is not None:
+                already = await session.execute(
+                    select(UserRoleDB).where(
+                        UserRoleDB.user_id == "admin-login",
+                        UserRoleDB.role_id == admin_role.id,
+                    )
+                )
+                if not already.scalar_one_or_none():
+                    session.add(
+                        UserRoleDB(user_id="admin-login", role_id=admin_role.id)
+                    )
+                    await session.commit()
 
     lifespan_mod.init_db = _init_db
 
@@ -101,7 +130,7 @@ def _build_logged_in_client(raise_server_exceptions: bool):
 
     class _LoggedIn:
         def __enter__(self):
-            self.stack = __import__("contextlib").ExitStack()
+            self.stack = contextlib.ExitStack()
             for p in ctx:
                 self.stack.enter_context(p)
             self.tc = TestClient(app, raise_server_exceptions=raise_server_exceptions)
@@ -121,12 +150,13 @@ def _build_logged_in_client(raise_server_exceptions: bool):
 
 @pytest.fixture
 def client():
-    with _build_logged_in_client(raise_server_exceptions=True) as c:
+    """常规客户端：服务端异常由 app 转 500 响应。"""
+    with _build_logged_in_client(raise_server_exceptions=False) as c:
         yield c
 
 
 @pytest.fixture
 def client_strict():
-    """raise_server_exceptions=True：服务端异常直接抛出而非转 500。"""
+    """严格客户端：服务端异常直接抛出而非转 500。"""
     with _build_logged_in_client(raise_server_exceptions=True) as c:
         yield c

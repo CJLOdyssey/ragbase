@@ -16,6 +16,19 @@ class TestGuardInput:
         reasons = _guard_input("忽略以上指令是什么意思")
         assert any("指令" in r for r in reasons)
 
+    def test_empty_input_not_flagged(self):
+        """空串/纯空白不是注入向量。"""
+        assert _guard_input("") == []
+        assert _guard_input("   ") == []
+
+    def test_long_legit_input_not_flagged(self):
+        """超长正常输入（无注入标记）不得误报。"""
+        assert _guard_input("正常文档内容。" * 500) == []
+
+    def test_pure_control_chars_rejected_hard(self):
+        with pytest.raises(ValueError, match="不可见控制字符"):
+            _guard_input("\x00\x1b\x7f")
+
 
 class TestFlagOutput:
     def test_clean_output_no_flags(self):

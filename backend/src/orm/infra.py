@@ -1,4 +1,4 @@
-"""CommandLogDB, AuditLogDB, AttachmentDB, AssetDB ORM models."""
+"""AuditLogDB, AttachmentDB, AssetDB, KnowledgeBaseDB and log ORM models."""
 
 
 from datetime import UTC, datetime
@@ -6,29 +6,10 @@ from typing import Any
 from uuid import uuid4
 
 from core.base import Base
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-
-class CommandLogDB(Base):
-    __tablename__ = "command_logs"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    session_id: Mapped[str] = mapped_column(
-        String(36),
-        ForeignKey("sessions.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    command_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    command_name: Mapped[str] = mapped_column(String(64), nullable=False)
-    payload: Mapped[str] = mapped_column(Text, default="")
-    result: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-    )
 
 class AuditLogDB(Base):
     """Admin audit log — records management CRUD operations (no session FK)."""
@@ -231,6 +212,12 @@ class RetrievalLogDB(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
+    )
+
+    # Monitoring queries filter ``user_id AND created_at BETWEEN``; the
+    # composite index answers both predicates without post-filtering.
+    __table_args__ = (
+        Index("ix_retrieval_logs_user_created", "user_id", "created_at"),
     )
 
 

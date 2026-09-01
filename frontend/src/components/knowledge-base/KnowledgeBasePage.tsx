@@ -35,10 +35,10 @@ export default function KnowledgeBasePage() {
 
   const { data: assets = [] } = useQuery({
     queryKey: ['assets'],
-    queryFn: listAssets,
+    queryFn: () => listAssets(),
   });
 
-  const { data: models = [] } = useQuery({
+  const { data: models = [], isLoading: modelsLoading, isError: modelsError } = useQuery({
     queryKey: ['models'],
     queryFn: listModels,
     // Only needed by the create/edit modal — skip the fetch entirely otherwise.
@@ -84,12 +84,17 @@ export default function KnowledgeBasePage() {
 
   return (
     <div className="flex h-full flex-col bg-[var(--color-surface)]">
-      <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
+      {/* Row 1: 标题 */}
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 sm:px-6 py-4">
         <h1 className="m-0 text-lg font-semibold text-[var(--color-text-primary)]">
           {t('kb.title')}
         </h1>
+      </div>
+
+      {/* Row 2: 创建按钮 */}
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 sm:px-6 py-3">
         <button
-          className="inline-flex cursor-pointer items-center gap-2 rounded-md border-none bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-text-on-accent)] hover:opacity-90"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-full border-none bg-[linear-gradient(135deg,var(--color-accent),var(--color-accent-hover))] px-4 py-2 min-h-[44px] text-sm font-medium text-white hover:opacity-90 transition-all"
           onClick={() => setForm({ mode: 'create' })}
         >
           <Plus size={16} />
@@ -97,7 +102,7 @@ export default function KnowledgeBasePage() {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="mb-4">
           <KbUncategorizedBanner count={uncategorizedCount} />
         </div>
@@ -139,6 +144,8 @@ export default function KnowledgeBasePage() {
         testTarget={testTarget}
         perKb={perKb}
         models={models as ModelInfo[]}
+        modelsLoading={modelsLoading}
+        modelsError={modelsError}
         saving={saving}
         onCloseForm={closeForm}
         onSave={handleSave}

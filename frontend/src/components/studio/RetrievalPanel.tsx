@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { FileText, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { RagSource } from '../../types';
@@ -36,6 +36,16 @@ const RetrievalPanel = memo(function RetrievalPanel({
   onClose,
 }: Props) {
   const { t } = useTranslation();
+
+  // 与 antd Modal 一致的弹层体验：Escape 关闭。
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   const sortedSources = useMemo(() => {
     return [...sources].sort((a, b) => {

@@ -6,6 +6,14 @@
     "viewGrid": "Card view",
     "dropHint": "Drag files here to upload",
     "dropFormats": "Supports .txt .md .pdf .docx .xlsx .csv .html .doc .xls .ppt .pptx, up to 20 MB each",
+    "noMatch": "No matching assets",
+    "noMatchDesc": "Adjust your search or filters",
+    "more": "More",
+    "filterCount": "{{filteredCount}} / {{total}} filtered",
+    "prevPage": "Prev",
+    "nextPage": "Next",
+    "pageIndicator": "· Page {{current}} / {{total}}",
+    "download": "Download",
     "upload": {
       "button": "Upload Asset",
       "selectFile": "Select File",
@@ -60,6 +68,7 @@
       "namePlaceholder": "Inferred from URL",
       "submit": "Import",
       "importing": "Importing…",
+      "invalidUrl": "Please enter a valid http/https URL",
       "failed": "Import failed. Check if the URL is accessible."
     },
     "chunks": {

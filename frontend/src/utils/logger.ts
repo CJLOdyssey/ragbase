@@ -27,8 +27,9 @@ const log = (
       console.info(`[INFO] ${message}`, ...optionalParams);
       break;
     case LogLevel.WARN:
+      // WARN 仅本地 console：常规恢复路径（WS 重连、加载失败回退等）
+      // 的 WARN 是预期噪声，全部上报 Sentry 会淹没真实错误信号。
       console.warn(`[WARN] ${message}`, ...optionalParams);
-      Sentry.captureMessage(message, 'warning');
       break;
     case LogLevel.ERROR:
       console.error(`[ERROR] ${message}`, ...optionalParams);

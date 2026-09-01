@@ -44,8 +44,9 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    vi.mocked(authApi.getAuthConfig).mockReturnValue(new Promise(() => {}));
-    vi.mocked(authApi.getMe).mockResolvedValue(undefined as never);
+    // getMe 模拟 401 无 session 场景：reject 而非 resolve undefined
+    // （真实 getMe 返回 UserResponse，不会 resolve undefined）
+    vi.mocked(authApi.getMe).mockRejectedValue(new Error('Unauthorized'));
     vi.mocked(authApi.sendRegisterCode).mockResolvedValue({
       email_hint: 'a***@b.com',
     });

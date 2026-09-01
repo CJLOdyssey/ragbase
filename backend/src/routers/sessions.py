@@ -16,6 +16,7 @@ from repository import (
     delete_memory_entry,
     delete_session,
     delete_vector_chunks_by_session,
+    get_memory_entry,
     get_runs_by_session_ids,
     get_session,
     get_session_memories,
@@ -58,7 +59,6 @@ class SessionPinRequest(BaseModel):
 @router.get("/api/sessions", response_model=list[SessionSummary])
 async def list_sessions(request: Request, limit: int = 50) -> Any:
     """List sessions for the current user."""
-    user_id = get_user_id(request)
     try:
         user_id = get_user_id(request)
         sessions = await get_sessions(limit=min(limit, 100), user_id=user_id)
@@ -299,9 +299,16 @@ async def list_session_memories(request: Request, session_id: str) -> Any:
 
 
 @router.delete("/api/memories/{memory_id}")
-async def delete_session_memory(memory_id: str) -> Any:
-    """Delete a single memory entry."""
+async def delete_session_memory(memory_id: str, request: Request) -> Any:
+    """Delete a single memory entry (owner-scoped via its session)."""
     try:
+        user_id = get_user_id(request)
+        memory = await get_memory_entry(memory_id)
+        if memory is None:
+            raise error_response(ErrorCode.MEMORY_NOT_FOUND, detail="未找到该记忆")
+        sess = await get_session(memory.session_id)
+        if sess is None or sess.user_id != user_id:
+            raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权删除该记忆")
         deleted = await delete_memory_entry(memory_id)
         if not deleted:
             raise error_response(ErrorCode.MEMORY_NOT_FOUND, detail="未找到该记忆")

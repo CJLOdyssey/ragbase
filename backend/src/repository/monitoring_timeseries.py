@@ -93,7 +93,8 @@ async def quality_timeseries(
     """
     factory = get_session_factory()
 
-    # 粒度与点数只取决于当前窗口长度（不含上期），保证与单窗行为一致。
+    # Granularity and point count depend only on the current window length
+    # (not the previous period), keeping behavior identical to single-window.
     upper = until if until is not None else datetime.now(UTC)
     lower_eff = resolve_window_lower(window_hours, since)
     async with factory() as session:
@@ -102,7 +103,8 @@ async def quality_timeseries(
         bucket = bucket_hours(span_h)
         n_points = min(max(-(-span_h // bucket), 1), MAX_BUCKETS)
 
-        # 上期序列仅在预设窗口下提供（自定义范围没有规范的"上一期"）。
+        # The previous period only exists for preset windows; a custom range
+        # has no canonical "previous" counterpart.
         periods = (
             2
             if include_previous and window_hours > 0 and since is None and until is None
@@ -119,33 +121,27 @@ async def quality_timeseries(
             upper,
         )
         rows = (
-            (
-                await session.execute(
-                    select(
-                        RetrievalLogDB.created_at,
-                        RetrievalLogDB.hit_count,
-                        RetrievalLogDB.latency_ms,
-                    ).where(*retrieval_conds)
-                )
+            await session.execute(
+                select(
+                    RetrievalLogDB.created_at,
+                    RetrievalLogDB.hit_count,
+                    RetrievalLogDB.latency_ms,
+                ).where(*retrieval_conds)
             )
-            .all()
-        )
+        ).all()
         feedback_rows = (
-            (
-                await session.execute(
-                    select(FeedbackLog.created_at, FeedbackLog.rating).where(
-                        *window_conds(
-                            FeedbackLog.user_id,
-                            FeedbackLog.created_at,
-                            user_id,
-                            start,
-                            upper,
-                        )
+            await session.execute(
+                select(FeedbackLog.created_at, FeedbackLog.rating).where(
+                    *window_conds(
+                        FeedbackLog.user_id,
+                        FeedbackLog.created_at,
+                        user_id,
+                        start,
+                        upper,
                     )
                 )
             )
-            .all()
-        )
+        ).all()
 
     # Align both sources onto one grid: point i covers (start + i*bucket, …].
     grid: list[dict[str, Any]] = [
@@ -192,7 +188,7 @@ async def quality_timeseries(
             "avg_latency_ms": (
                 round(sum(p["latencies"]) / len(p["latencies"])) if p["latencies"] else None
             ),
-            # 桶级分位数：驱动监控页的延迟分位数带图。
+            # Per-bucket percentiles drive the latency band chart on the page.
             "latency_p50_ms": percentile_nearest_rank(p["latencies"], 50),
             "latency_p95_ms": percentile_nearest_rank(p["latencies"], 95),
             "latency_p99_ms": percentile_nearest_rank(p["latencies"], 99),

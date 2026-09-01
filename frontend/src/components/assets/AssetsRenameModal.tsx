@@ -1,5 +1,5 @@
-import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 import type { AssetItem } from '../../types/assets';
 
 interface AssetsRenameModalProps {
@@ -30,11 +30,11 @@ export default function AssetsRenameModal({
   const { ext } = splitName(target.name);
 
   return (
-    <AntdModal
-      title={t('assets.list.rename')}
+    <MobileModal
       open={true}
-      onCancel={onClose}
-      centered
+      onClose={onClose}
+      mode="sheet"
+      title={t('assets.list.rename')}
       width={420}
       footer={
         <>
@@ -72,6 +72,6 @@ export default function AssetsRenameModal({
           </span>
         )}
       </div>
-    </AntdModal>
+    </MobileModal>
   );
 }

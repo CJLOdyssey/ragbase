@@ -57,6 +57,34 @@ class TestCancelRun:
         assert result == {"run_id": "done-1", "status": "converged", "cancelled": False}
 
     @pytest.mark.asyncio
+    async def test_cancel_run_requires_ownership(self):
+        """user_id 传参时非本人 run → not_found，绝不取消他人任务 (BOLA 防护)."""
+        service = RunService()
+        with patch("services.run_service.get_run_for_user", new_callable=AsyncMock) as mock_for_user:
+            mock_for_user.return_value = None
+            result = await service.cancel_run("run-other", user_id="user-1")
+
+        assert result == {"run_id": "run-other", "status": "not_found", "cancelled": False}
+
+    @pytest.mark.asyncio
+    async def test_cancel_run_owner_cancels_task(self):
+        """归属校验通过后正常取消自己名下的 in-flight run."""
+        service = RunService()
+        task = MagicMock(done=MagicMock(return_value=False))
+        service._tasks["run-mine"] = task
+
+        with (
+            patch("services.run_service.get_run_for_user", new_callable=AsyncMock) as mock_for_user,
+            patch("services.run_service.update_run_status", new_callable=AsyncMock) as mock_update,
+        ):
+            mock_for_user.return_value = MagicMock(status="pending")
+            result = await service.cancel_run("run-mine", user_id="user-1")
+
+        task.cancel.assert_called_once()
+        mock_update.assert_awaited_once_with("run-mine", "cancelled")
+        assert result == {"run_id": "run-mine", "status": "cancelled", "cancelled": True}
+
+    @pytest.mark.asyncio
     async def test_celery_mode_revokes(self):
         service = RunService()
 

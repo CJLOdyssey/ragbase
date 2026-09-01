@@ -11,6 +11,8 @@ import time
 from enum import Enum
 from typing import Any
 
+from core.env import env_float, env_int
+
 
 class State(Enum):
     CLOSED = "closed"          # Normal operation
@@ -25,12 +27,13 @@ class CircuitBreakerOpenError(Exception):
 class CircuitBreaker:
     """Async circuit breaker with configurable thresholds.
 
-    Usage::
+    Usage (decorator)::
 
         llm_cb = CircuitBreaker(name="llm_api", maxfail=5, reset_timeout=30)
 
-        async with llm_cb:
-            result = await call_llm_api()
+        @llm_cb
+        async def call_llm(prompt: str) -> str:
+            return await api.chat(prompt)
 
     The circuit opens after `maxfail` consecutive failures.
     After `reset_timeout` seconds in OPEN, transitions to HALF_OPEN.
@@ -94,6 +97,10 @@ class CircuitBreaker:
             elif self._state == State.CLOSED:
                 self._failures = 0
 
+    async def record_success(self) -> None:
+        """Public entry point to record a successful call (see ``_on_success``)."""
+        await self._on_success()
+
     async def _on_failure(self) -> None:
         """Record a failed call."""
         async with self._lock:
@@ -101,9 +108,15 @@ class CircuitBreaker:
             self._failures += 1
             self._last_failure = now
 
-            if self._state == State.HALF_OPEN or self._state == State.CLOSED and self._failures >= self.maxfail:
+            if self._state == State.HALF_OPEN or (
+                self._state == State.CLOSED and self._failures >= self.maxfail
+            ):
                 self._state = State.OPEN
                 self._opened_at = now
+
+    async def record_failure(self) -> None:
+        """Public entry point to record a failed call (see ``_on_failure``)."""
+        await self._on_failure()
 
     async def _acquire(self) -> None:
         """Try to acquire permission to make a call. Raises CircuitBreakerOpenError if denied."""
@@ -121,6 +134,10 @@ class CircuitBreaker:
             if self._state == State.HALF_OPEN:
                 self._half_open_calls += 1
 
+    async def acquire(self) -> None:
+        """Public entry point to acquire a call slot (see ``_acquire``)."""
+        await self._acquire()
+
     def __call__(self, func: Any) -> Any:
         """Decorator to wrap an async callable with circuit breaker protection.
 
@@ -136,16 +153,16 @@ class CircuitBreaker:
             CircuitBreakerOpenError: when the circuit is open and the call is rejected.
         """
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            await self._acquire()
+            await self.acquire()
             try:
                 result = await func(*args, **kwargs)
             except CircuitBreakerOpenError:
                 raise
             except Exception:
-                await self._on_failure()
+                await self.record_failure()
                 raise
             else:
-                await self._on_success()
+                await self.record_success()
             return result
 
         return wrapper
@@ -162,18 +179,10 @@ class CircuitBreaker:
         }
 
 
-# ── Shared circuit breakers ──────────────────────────────────────────────────
-
-# LLM API circuit breaker — protects against cascading failures when
-# the LLM provider is down or returning errors. Shared by all graph engines.
-# Configurable via env vars: LLM_CB_MAXFAIL (default 5), LLM_CB_RESET (default 60s).
-import os as _os
-
-_llm_maxfail = int(_os.environ.get("LLM_CB_MAXFAIL", "5"))
-_llm_reset = float(_os.environ.get("LLM_CB_RESET", "60"))
-
+# Shared LLM circuit breaker — protects against cascading failures when the
+# LLM provider is down. Shared by all graph engines.
 llm_circuit = CircuitBreaker(
     name="llm_api",
-    maxfail=_llm_maxfail,
-    reset_timeout=_llm_reset,
+    maxfail=env_int("LLM_CB_MAXFAIL", 5),
+    reset_timeout=env_float("LLM_CB_RESET", 60),
 )

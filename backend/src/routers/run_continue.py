@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from services.run_service import run_service
 
+from routers.run_limits import run_limiter
 from routers.runs import RunResponse
 
 logger = get_logger(__name__)
@@ -16,6 +17,8 @@ router = APIRouter(tags=["runs"])
 
 
 class CompleteRunRequest(BaseModel):
+    # content = 被中断消息的正文全文，长度不受控（10MB 请求体中间件兜底），
+    # 与 thinking 一致不设上限 —— 设上限会打断长回答的续写。
     content: str = Field(default="")
     session_id: str | None = None
     thinking: str | None = None
@@ -33,6 +36,11 @@ async def create_complete_run(req: CompleteRunRequest, request: Request) -> Any:
     """
     content = (req.content or "").strip()
     user_id = get_user_id(request)
+
+    if not run_limiter.allow(user_id):
+        raise error_response(
+            ErrorCode.RATE_LIMITED, detail="请求过于频繁，请稍后再试"
+        )
 
     try:
         result = await run_service.continue_run(

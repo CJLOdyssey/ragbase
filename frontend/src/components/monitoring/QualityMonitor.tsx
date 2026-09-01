@@ -66,17 +66,13 @@ export default function QualityMonitor() {
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-surface)]">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
-        <div>
-          <h1 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
-            {t('monitoring.title')}
-          </h1>
-          <p className="m-0 mt-0.5 text-xs text-[var(--color-text-muted)]">
-            {t('monitoring.subtitle')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 px-4 py-4 border-b border-[var(--color-border)] sm:px-6">
+        <h1 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
+          {t('monitoring.title')}
+        </h1>
+        <div className="flex flex-wrap items-center gap-2">
           <DatePicker.RangePicker
+            popupClassName="mobile-picker"
             showTime={{ format: 'HH:mm' }}
             format="YYYY-MM-DD HH:mm"
             value={range}
@@ -93,11 +89,12 @@ export default function QualityMonitor() {
             ]}
             data-testid="custom-range"
           />
-          <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-1">
+          <div className="hidden md:block flex-1" />
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-1 shrink-0">
             {WINDOWS.map((w) => (
               <button
                 key={w.hours}
-                className={`px-3 py-1.5 rounded-md text-sm cursor-pointer border-none transition-colors duration-150 ${
+                className={`px-2 py-1.5 rounded-md text-xs cursor-pointer border-none transition-colors duration-150 sm:px-3 sm:text-sm ${
                   !range && windowHours === w.hours
                     ? 'bg-[var(--color-accent)] text-[var(--color-text-on-accent)]'
                     : 'bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -115,7 +112,7 @@ export default function QualityMonitor() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 p-6">
+      <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6">
         <div className="flex flex-col gap-4">
           <MonitoringTabs tab={tab} onChange={setTab} />
           <ActivePanel timeQuery={timeQuery} />

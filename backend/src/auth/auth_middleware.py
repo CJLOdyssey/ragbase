@@ -1,6 +1,7 @@
 """FastAPI middleware that validates JWT tokens on protected routes."""
 
 from typing import Any, cast
+from urllib.parse import parse_qs
 
 from core.infra.logging_config import get_logger
 from fastapi import Request
@@ -28,11 +29,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         token = ""
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
-        elif "?" in str(request.url) and "token=" in str(request.url):
+        elif "token=" in request.url.query:
             # Also support query param for WebSocket
-            from urllib.parse import parse_qs
-
-            token = parse_qs(str(request.url.query)).get("token", [""])[0]
+            token = parse_qs(request.url.query).get("token", [""])[0]
         else:
             token = request.cookies.get("access_token", "")
 
@@ -75,6 +74,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
                 user = await get_user_by_id(user_id)
             except Exception:
+                logger.warning(
+                    "Auth user lookup failed | user_id=%s | client=%s",
+                    user_id, client_ip,
+                    exc_info=True,
+                )
                 user = None
             if user is None:
                 logger.warning(

@@ -194,7 +194,7 @@ export default function AssetsGrid({
             )}
             <div ref={(el) => menu.registerTrigger(asset.id, el)}>
               <ActionButton
-                title="更多"
+                title={t('assets.more')}
                 hoverVar="--color-accent-soft"
                 onClick={() => menu.toggle(asset.id)}
                 data-testid={`more-${asset.id}`}
@@ -234,7 +234,7 @@ export default function AssetsGrid({
                       className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
                       data-testid={`download-${asset.id}`}
                     >
-                      <Download size={12} /> 下载
+                      <Download size={12} /> {t('assets.download')}
                     </button>
                     {onTags && (
                       <button

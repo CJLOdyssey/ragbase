@@ -171,7 +171,10 @@ export function getAssetStatus(
   }
   // 后端持久化的失败终态（Redis progress 10 分钟 TTL 过期后仍可见）
   if (asset.indexError) return 'failed';
-  if (progress) return 'failed';
+  // 仅显式 failed 阶段才算失败：120s 轮询 deadline 过期后 progressMap
+  // 残留条目不代表失败（后端可能仍在索引），误标 failed 会永久红色 +
+  // 误导重试；真实失败由后端 index_error 持久化兜底。
+  if (progress?.stage === 'failed') return 'failed';
   return 'pending';
 }
 

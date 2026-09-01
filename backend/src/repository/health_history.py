@@ -8,10 +8,10 @@ monitoring page reads back a bounded ascending series.
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from core.infra.database import HealthScoreSnapshotDB, get_session_factory
-from sqlalchemy import delete, select
+from sqlalchemy import CursorResult, delete, select
 
 
 async def record_health_snapshot(
@@ -45,19 +45,16 @@ async def list_health_snapshots(user_id: str, hours: int = 168) -> list[dict[str
                 >= datetime.now(UTC) - timedelta(hours=hours)
             )
         rows = (
-            (
-                await session.execute(
-                    select(
-                        HealthScoreSnapshotDB.created_at,
-                        HealthScoreSnapshotDB.score,
-                        HealthScoreSnapshotDB.factors,
-                    )
-                    .where(*conds)
-                    .order_by(HealthScoreSnapshotDB.created_at.asc())
+            await session.execute(
+                select(
+                    HealthScoreSnapshotDB.created_at,
+                    HealthScoreSnapshotDB.score,
+                    HealthScoreSnapshotDB.factors,
                 )
+                .where(*conds)
+                .order_by(HealthScoreSnapshotDB.created_at.asc())
             )
-            .all()
-        )
+        ).all()
     return [
         {
             "ts": r.created_at.isoformat() if r.created_at else None,
@@ -73,10 +70,13 @@ async def prune_health_snapshots(keep_days: int = 90) -> int:
     cutoff = datetime.now(UTC) - timedelta(days=keep_days)
     factory = get_session_factory()
     async with factory() as session:
-        result: Any = await session.execute(
-            delete(HealthScoreSnapshotDB).where(
-                HealthScoreSnapshotDB.created_at < cutoff
-            )
+        result = cast(
+            CursorResult[Any],
+            await session.execute(
+                delete(HealthScoreSnapshotDB).where(
+                    HealthScoreSnapshotDB.created_at < cutoff
+                )
+            ),
         )
         await session.commit()
-        return int(getattr(result, "rowcount", 0) or 0)
+        return int(result.rowcount or 0)

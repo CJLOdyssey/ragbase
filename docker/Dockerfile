@@ -24,7 +24,7 @@ ARG PIP_TRUSTED_HOST
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 # pg_isready for entrypoint DB wait
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client \
+    && apt-get install -y --no-install-recommends postgresql-client psmisc \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r appgroup -g 1000 && useradd -r -g appgroup -u 1000 -m appuser
 WORKDIR /app

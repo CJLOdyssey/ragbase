@@ -8,9 +8,9 @@ interface LoadingStateProps {
 export default function LoadingState({ message, centered = false }: LoadingStateProps) {
   const { t } = useTranslation();
   return (
-    <div className={`flex items-center justify-center ${centered ? 'h-full' : 'py-12'}`}>
+    <div role="status" aria-live="polite" className={`flex items-center justify-center ${centered ? 'h-full' : 'py-12'}`}>
       <p className="text-sm text-[var(--color-text-muted)]">
-        {message || t('common.loading')}
+        {message ?? t('common.loading')}
       </p>
     </div>
   );

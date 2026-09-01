@@ -16,10 +16,6 @@ const api = axios.create({
   withCredentials: true,
 });
 
-export function getAccessToken(): string | null {
-  return null;
-}
-
 interface RetryConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
@@ -58,7 +54,9 @@ if (api.interceptors?.response) {
           await refreshAccessToken();
           return api.request(originalRequest);
         } catch (refreshError) {
-          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+          // 401/403 登出事件由 errors.ts normalizeError 单点派发
+          // （/auth/refresh 的 401 已在内部拦截器归一化时派发过），
+          // 此处不得重复派发；网络类失败本就不该触发登出。
           return Promise.reject(normalizeError(refreshError));
         }
       }

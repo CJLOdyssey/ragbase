@@ -1,21 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import EmptyState from '../shared/EmptyState';
 import LoadingState from '../shared/LoadingState';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AssetItem } from '../../types/assets';
 import {
-  setAssetTags as apiSetAssetTags,
-  downloadAssetFile,
   getIndexProgress,
   listAssets,
   type IndexProgress,
 } from '../../api/client/assets';
-import {
-  batchAssignAssetsToKb,
-  listKnowledgeBases,
-} from '../../api/client/knowledgeBases';
+import { listKnowledgeBases } from '../../api/client/knowledgeBases';
 import AssetsBulkBar from './AssetsBulkBar';
 import AssetsDialogs from './AssetsDialogs';
 import AssetsGrid from './AssetsGrid';
@@ -35,7 +30,6 @@ const INDEX_POLL_MS = 3000;
 
 export default function AssetsPage() {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -56,7 +50,7 @@ export default function AssetsPage() {
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['assets'],
-    queryFn: listAssets,
+    queryFn: () => listAssets(),
     refetchInterval: (query) => {
       const now = Date.now();
       const live = indexing.filter((i) => i.deadline > now);
@@ -105,6 +99,9 @@ export default function AssetsPage() {
     retryIndexMutation,
     assignMutation,
     urlImportMutation,
+    bulkAssignMutation,
+    setTagsMutation,
+    handleDownload: handleDownloadAsset,
     validateAndUpload,
   } = useAssetActions(
     setIndexing,
@@ -116,6 +113,12 @@ export default function AssetsPage() {
     setUrlName,
     urlValue,
     urlName,
+    (assignedCount, skippedCount) => {
+      void assignedCount;
+      void skippedCount;
+      setSelectedIds(new Set());
+    },
+    (kbId) => kbs.find((k) => k.id === kbId)?.name ?? '',
   );
 
   const handleDrop = (e: DragEvent) => {
@@ -181,30 +184,6 @@ export default function AssetsPage() {
     [selectedList],
   );
 
-  const bulkAssignMutation = useMutation({
-    mutationFn: (vars: { assetIds: string[]; kbId: string }) =>
-      batchAssignAssetsToKb(vars.assetIds, vars.kbId),
-    onSuccess: (result, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['assets'] });
-      void queryClient.invalidateQueries({ queryKey: ['knowledge-bases'] });
-      const kbName = kbs.find((k) => k.id === variables.kbId)?.name ?? '';
-      toast(
-        result.skippedCount > 0
-          ? t('assets.bulk.assignPartial', {
-              assigned: result.assignedCount,
-              skipped: result.skippedCount,
-            })
-          : t('assets.bulk.assignSuccess', {
-              count: result.assignedCount,
-              name: kbName,
-            }),
-        'success',
-      );
-      setSelectedIds(new Set());
-    },
-    onError: () => toast(t('toast.error'), 'error'),
-  });
-
   const handleBulkIndex = () => {
     const targets = selectedList.filter(
       (a) => a.assetType === 'document' && !a.indexed,
@@ -216,15 +195,8 @@ export default function AssetsPage() {
   };
 
   const handleDownload = async (asset: AssetItem) => {
-    try {
-      await downloadAssetFile(asset.id, asset.name);
-      toast(
-        t('common.downloadSuccess', { defaultValue: '下载已开始' }),
-        'success',
-      );
-    } catch {
-      toast(t('common.downloadFailed', { defaultValue: '下载失败' }), 'error');
-    }
+    // 下载逻辑收敛到 useAssetActions（SoC）
+    await handleDownloadAsset(asset);
   };
 
   const { bump } = useAssetBump(scrollRef);
@@ -235,14 +207,14 @@ export default function AssetsPage() {
   };
 
   const [tagTarget, setTagTarget] = useState<AssetItem | null>(null);
-  const setTagsMutation = useMutation({
-    mutationFn: (vars: { id: string; tags: string[] }) =>
-      apiSetAssetTags(vars.id, vars.tags),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['assets'] });
-      setTagTarget(null);
-    },
-  });
+  // setTagsMutation 收敛到 useAssetActions；关闭弹窗是页面编排职责，
+  // 通过 mutate(vars, { onSuccess }) 注入而非复制请求逻辑。
+  const handleTagsSave = (id: string, tags: string[]) => {
+    setTagsMutation.mutate(
+      { id, tags },
+      { onSuccess: () => setTagTarget(null) },
+    );
+  };
 
   const handleChunks = (asset: AssetItem) => {
     setChunksTarget(asset);
@@ -271,7 +243,7 @@ export default function AssetsPage() {
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-8 py-6 min-h-0 relative"
+        className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 min-h-0 relative"
         onDragOver={(e) => {
           e.preventDefault();
           setDragging(true);
@@ -289,12 +261,11 @@ export default function AssetsPage() {
         {isLoading ? (
           <LoadingState centered />
         ) : showEmpty ? (
-          <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-14 px-6 flex flex-col items-center justify-center text-center">
+          <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] min-h-[50vh] px-6 flex flex-col items-center justify-center text-center">
             <EmptyState
               icon={<FileText size={24} />}
               title={t('assets.list.empty')}
               description={t('assets.list.emptyDesc')}
-              centered
             />
           </div>
         ) : (
@@ -363,12 +334,11 @@ export default function AssetsPage() {
             )}
 
             {showFilteredEmpty ? (
-              <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-12 px-6 flex flex-col items-center justify-center text-center">
+              <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] min-h-[50vh] px-6 flex flex-col items-center justify-center text-center">
                 <EmptyState
                   icon={<FileText size={24} />}
-                  title="无匹配素材"
-                  description="调整搜索或筛选条件"
-                  centered
+                  title={t('assets.noMatch')}
+                  description={t('assets.noMatchDesc')}
                 />
               </div>
             ) : view === 'table' ? (
@@ -426,7 +396,7 @@ export default function AssetsPage() {
       <AssetsDialogs
         tagTarget={tagTarget}
         onTagsClose={() => setTagTarget(null)}
-        onTagsSave={(id, tags) => setTagsMutation.mutate({ id, tags })}
+        onTagsSave={handleTagsSave}
         tagsSaving={setTagsMutation.isPending}
         renameTarget={renameTarget}
         renameValue={renameValue}

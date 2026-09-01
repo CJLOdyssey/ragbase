@@ -1,22 +1,13 @@
 import type { AssetIndexResult, AssetItem } from '../../types/assets';
 import api from './instance';
 
-export async function listAssets(params?: unknown): Promise<AssetItem[]> {
-  // 兼容 react-query 直接传入 queryFn 场景：仅当显式传入 {sort_by,order} 才透传
-  let clean: Record<string, string> | undefined;
-  if (
-    params &&
-    typeof params === 'object' &&
-    !Array.isArray(params) &&
-    ('sort_by' in (params as Record<string, unknown>) ||
-      'order' in (params as Record<string, unknown>))
-  ) {
-    const p = params as Record<string, unknown>;
-    clean = {};
-    if (typeof p.sort_by === 'string') clean.sort_by = p.sort_by;
-    if (typeof p.order === 'string') clean.order = p.order;
-  }
-  const { data } = await api.get('/assets', { params: clean });
+export interface AssetListParams {
+  sort_by?: 'name' | 'created_at';
+  order?: 'asc' | 'desc';
+}
+
+export async function listAssets(params?: AssetListParams): Promise<AssetItem[]> {
+  const { data } = await api.get('/assets', { params });
   return data;
 }
 
@@ -163,7 +154,15 @@ export async function downloadAssetFile(
     const m =
       /filename="([^"]+)"/.exec(disposition) ||
       /filename=([^;]+)/.exec(disposition);
-    if (m?.[1]) outName = decodeURIComponent(m[1].replace(/"/g, '').trim());
+    if (m?.[1]) {
+      try {
+        outName = decodeURIComponent(m[1].replace(/"/g, '').trim());
+      } catch {
+        // 文件名含非法转义序列（如 "100%.md" 中的裸 %）时
+        // decodeURIComponent 抛 URIError——回退到传入的 fileName。
+        outName = fileName;
+      }
+    }
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

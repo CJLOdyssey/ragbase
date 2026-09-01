@@ -128,27 +128,6 @@ describe('API Client', { tags: ['unit'] }, () => {
     });
   });
 
-  describe('Run API', () => {
-    it('getRun GET /api/runs/:id', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { id: 'run-1', requirement: '需求' },
-      });
-      const { getRun } = await import('../client');
-      const result = await getRun('run-1');
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/runs/run-1');
-      expect(result.requirement).toBe('需求');
-    });
-
-    it('listRuns GET /api/runs', async () => {
-      mockAxiosInstance.get.mockResolvedValue({ data: [{ id: '1' }] });
-      const { listRuns } = await import('../client');
-      await listRuns(20);
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/runs', {
-        params: { limit: 20 },
-      });
-    });
-  });
-
   describe('Health API', () => {
     it('healthCheck GET /api/health', async () => {
       mockAxiosInstance.get.mockResolvedValue({ data: { status: 'ok' } });

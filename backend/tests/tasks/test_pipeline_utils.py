@@ -4,6 +4,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+
+def _run_coro(coro):
+    """Execute a coroutine synchronously (stands in for _run_async in tests)."""
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 # =============================================================================
 # log_memory_diff
 # =============================================================================
@@ -196,21 +206,45 @@ class TestIsBalanceError:
 
 class TestReportRunError:
 
-    @patch("tasks.pipeline_utils._run_async")
-    @patch("tasks.pipeline_utils._is_balance_error", return_value=True)
-    def test_balance_error_publishes_warning(self, mock_bal, mock_run_async):
-        from tasks.pipeline_utils import _report_run_error
-        mock_run_async.return_value = None
-        _report_run_error("run-1", Exception("insufficient balance"))
-        assert mock_run_async.call_count >= 3
+    def _start_mocks(self, is_balance: bool):
+        """真实执行 _run_async 的 coroutine；publish/status 打桩避免 Redis/DB 副作用。"""
+        patchers = [
+            patch("tasks.pipeline_utils._run_async", new=_run_coro),
+            patch("tasks.pipeline_utils._is_balance_error", return_value=is_balance),
+            patch("tasks.pipeline_utils.publish_run_message", new=AsyncMock()),
+            patch("tasks.pipeline_utils.update_run_status", new=AsyncMock()),
+        ]
+        mocks = {}
+        for p in patchers:
+            p.start()
+            mocks[p.attribute] = p.new
+        return patchers, mocks
 
-    @patch("tasks.pipeline_utils._run_async")
-    @patch("tasks.pipeline_utils._is_balance_error", return_value=False)
-    def test_non_balance_error(self, mock_bal, mock_run_async):
+    def test_balance_error_publishes_warning(self):
         from tasks.pipeline_utils import _report_run_error
-        mock_run_async.return_value = None
-        _report_run_error("run-2", Exception("something else"))
-        assert mock_run_async.call_count >= 2
+        patchers, mocks = self._start_mocks(is_balance=True)
+        try:
+            _report_run_error("run-1", Exception("insufficient balance"))
+            # balance_warning + status(error) + status(error-with-message)
+            payloads = [c[0][1] for c in mocks["publish_run_message"].await_args_list]
+            assert any(p["type"] == "balance_warning" for p in payloads)
+            assert any(p["type"] == "status" and p["status"] == "error" for p in payloads)
+            mocks["update_run_status"].assert_awaited_once_with("run-1", "error")
+        finally:
+            for p in patchers:
+                p.stop()
+
+    def test_non_balance_error(self):
+        from tasks.pipeline_utils import _report_run_error
+        patchers, mocks = self._start_mocks(is_balance=False)
+        try:
+            _report_run_error("run-2", Exception("something else"))
+            # 非余额错误：无 balance_warning，仅 error 状态两条。
+            payloads = [c[0][1] for c in mocks["publish_run_message"].await_args_list]
+            assert all(p["type"] == "status" for p in payloads)
+        finally:
+            for p in patchers:
+                p.stop()
 
     @patch("tasks.pipeline_utils._run_async", side_effect=Exception("publish fail"))
     def test_report_run_error_exception_is_swallowed(self, mock_run_async):
@@ -224,73 +258,88 @@ class TestReportRunError:
 
 class TestTryMockFallback:
 
-    @patch("tasks.pipeline_utils._run_async")
-    @patch("tasks.pipeline_utils.run_mock", new_callable=AsyncMock)
-    def test_success_with_session(self, mock_run_mock, mock_run_async):
+    def _start_fallback_deps(self):
+        """Mock the persist/publish/memory side-effects and run every coroutine
+        handed to _run_async (contract: fallback must persist + publish + save
+        memories, not just return a dict)."""
+        deps = {
+            "run_mock": AsyncMock(),
+            "update_run_result": AsyncMock(),
+            "publish_run_message": AsyncMock(),
+            "_save_output_memories": AsyncMock(),
+            "create_memory_entry": AsyncMock(),
+            # 失败路径会经 _report_run_error 上报：打桩避免真实 DB/Redis 访问。
+            "_report_run_error": AsyncMock(),
+        }
+        patchers = [
+            patch(f"tasks.pipeline_utils.{name}", new=mock)
+            for name, mock in deps.items()
+        ]
+        patchers.append(patch("tasks.pipeline_utils._run_async", new=_run_coro))
+        for p in patchers:
+            p.start()
+        return patchers, deps
+
+    def test_success_with_session(self):
         from tasks.pipeline_utils import _try_mock_fallback
-        mock_output = MagicMock()
-        mock_output.response = "mock response"
-        mock_run_mock.return_value = mock_output
+        patchers, mocks = self._start_fallback_deps()
+        try:
+            mock_output = MagicMock()
+            mock_output.response = "mock response"
+            mocks["run_mock"].return_value = mock_output
 
-        # _run_async is called multiple times; return the right value each time
-        call_count = [0]
-        def side_effect(coro):
-            call_count[0] += 1
-            if call_count[0] == 1:
-                # First call: run_mock — need to actually run it
-                loop = asyncio.new_event_loop()
-                try:
-                    return loop.run_until_complete(coro)
-                finally:
-                    loop.close()
-            return None
-        mock_run_async.side_effect = side_effect
+            result = _try_mock_fallback("req", "run-1", "sess-1", Exception("orig"))
 
-        result = _try_mock_fallback("req", "run-1", "sess-1", Exception("orig"))
-        assert result is not None
-        assert result["run_id"] == "run-1"
-        assert result["fallback"] is True
+            assert result is not None
+            assert result["run_id"] == "run-1"
+            assert result["fallback"] is True
+            mocks["update_run_result"].assert_awaited_once()
+            mocks["publish_run_message"].assert_awaited_once()
+            mocks["_save_output_memories"].assert_awaited_once_with("sess-1", "run-1", "mock response", {})
+        finally:
+            for p in patchers:
+                p.stop()
 
-    @patch("tasks.pipeline_utils._run_async")
-    @patch("tasks.pipeline_utils.run_mock", new_callable=AsyncMock)
-    def test_success_without_session(self, mock_run_mock, mock_run_async):
+    def test_success_without_session(self):
         from tasks.pipeline_utils import _try_mock_fallback
-        mock_output = MagicMock()
-        mock_output.response = "mock response"
-        mock_run_mock.return_value = mock_output
+        patchers, mocks = self._start_fallback_deps()
+        try:
+            mock_output = MagicMock()
+            mock_output.response = "mock response"
+            mocks["run_mock"].return_value = mock_output
 
-        call_count = [0]
-        def side_effect(coro):
-            call_count[0] += 1
-            if call_count[0] == 1:
-                loop = asyncio.new_event_loop()
-                try:
-                    return loop.run_until_complete(coro)
-                finally:
-                    loop.close()
-            return None
-        mock_run_async.side_effect = side_effect
+            result = _try_mock_fallback("req", "run-1", None, Exception("orig"))
 
-        result = _try_mock_fallback("req", "run-1", None, Exception("orig"))
-        assert result is not None
-        assert result["run_id"] == "run-1"
+            assert result is not None
+            assert result["run_id"] == "run-1"
+            # 无 session：不保存记忆。
+            mocks["_save_output_memories"].assert_not_awaited()
+        finally:
+            for p in patchers:
+                p.stop()
 
-    @patch("tasks.pipeline_utils._run_async", side_effect=Exception("mock also failed"))
-    @patch("tasks.pipeline_utils.run_mock", new_callable=AsyncMock)
-    def test_mock_fallback_failure(self, mock_run_mock, mock_run_async):
+    def test_mock_fallback_failure(self):
         from tasks.pipeline_utils import _try_mock_fallback
-        with pytest.raises(Exception, match="mock also failed"):
-            _try_mock_fallback("req", "run-1", None, Exception("orig"))
+        patchers, mocks = self._start_fallback_deps()
+        try:
+            mocks["run_mock"].side_effect = Exception("mock also failed")
+            with pytest.raises(Exception, match="mock also failed"):
+                _try_mock_fallback("req", "run-1", None, Exception("orig"))
+        finally:
+            for p in patchers:
+                p.stop()
 
 
 # =============================================================================
-# _discover_mcp_tools
+# _get_rag_context
 # =============================================================================
 
 class TestGetRagContext:
 
-    async def test_get_rag_context_success(self):
+    async def test_get_rag_context_success(self, monkeypatch):
         from tasks.pipeline_utils import _get_rag_context
+        # 避免环境设置了 RAG_SHADOW_VARIANTS 时触发影子检索二次调用。
+        monkeypatch.delenv("RAG_SHADOW_VARIANTS", raising=False)
         mock_cfg = AsyncMock(
             return_value={
                 "api_key": "key-1",
@@ -303,15 +352,19 @@ class TestGetRagContext:
         mock_sources = AsyncMock(
             return_value=[{"asset_id": "a1", "asset_name": "手册", "text": "…", "similarity": 0.9}]
         )
+        mock_log = AsyncMock()
 
         with patch("rag.rag_pipeline.ensure_embedding_provider", mock_ensure), \
              patch("rag.rag_pipeline.retrieve_context", mock_retrieve), \
              patch("rag.rag_pipeline.retrieve_sources", mock_sources), \
-             patch("repository.keys.get_embedding_config", mock_cfg):
+             patch("repository.keys.get_embedding_config", mock_cfg), \
+             patch("repository.retrieval_logs.create_retrieval_log", mock_log):
             context, sources = await _get_rag_context("query", "sess-1")
 
         assert context == "rag result"
         assert sources[0]["asset_id"] == "a1"
+        # 检索活动落审计日志（OWASP LLM08 追加式记录）。
+        mock_log.assert_awaited_once()
         mock_ensure.assert_called_once_with(
             "key-1", model="BAAI/bge-m3", base_url="https://api.siliconflow.cn/v1"
         )

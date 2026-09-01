@@ -293,7 +293,7 @@ export default function AssetsTable({
         )}
         <div ref={(el) => menu.registerTrigger(asset.id, el)}>
           <ActionButton
-            title="更多"
+            title={t('assets.more')}
             hoverVar="--color-accent-soft"
             onClick={() => {
               resetMenuMode();
@@ -338,7 +338,7 @@ export default function AssetsTable({
                       className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
                       data-testid={`download-${asset.id}`}
                     >
-                      <Download size={12} /> 下载
+                      <Download size={12} /> {t('assets.download')}
                     </button>
                     <button
                       type="button"

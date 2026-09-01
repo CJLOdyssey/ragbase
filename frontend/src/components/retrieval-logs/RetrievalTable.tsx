@@ -43,73 +43,75 @@ export default function RetrievalTable({
   const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-hidden">
-      <div
-        className={`${GRID} px-[18px] h-[44px] border-b border-[var(--color-border)] text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-muted)]`}
-      >
-        <span>{t('retrievalLogs.query')}</span>
-        <span>{t('retrievalLogs.knowledgeBase')}</span>
-        <span>{t('retrievalLogs.hitCount')}</span>
-        <span>{t('retrievalLogs.latency')}</span>
-        <span>{t('retrievalLogs.time')}</span>
-        <span />
-      </div>
-      {items.map((item) => {
-        const expanded = expandedId === item.id;
-        const kb = knowledgeBase(item);
-        const hitColor = item.hitCount === 0 ? LATENCY_RED : LATENCY_GREEN;
-        return (
-          <div
-            key={item.id}
-            className="border-b border-[var(--color-border)] last:border-b-0"
-          >
+      <div className="overflow-x-auto">
+        <div
+          className={`${GRID} px-[18px] h-[44px] border-b border-[var(--color-border)] text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-muted)]`}
+        >
+          <span>{t('retrievalLogs.query')}</span>
+          <span>{t('retrievalLogs.knowledgeBase')}</span>
+          <span>{t('retrievalLogs.hitCount')}</span>
+          <span>{t('retrievalLogs.latency')}</span>
+          <span>{t('retrievalLogs.time')}</span>
+          <span />
+        </div>
+        {items.map((item) => {
+          const expanded = expandedId === item.id;
+          const kb = knowledgeBase(item);
+          const hitColor = item.hitCount === 0 ? LATENCY_RED : LATENCY_GREEN;
+          return (
             <div
-              onClick={() => onToggle(item.id)}
-              className={`${GRID} px-[18px] h-[50px] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)] ${expanded ? 'bg-[var(--color-surface-hover)]' : ''}`}
+              key={item.id}
+              className="border-b border-[var(--color-border)] last:border-b-0"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                {item.hitCount === 0 && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ background: LATENCY_AMBER }}
-                  />
-                )}
-                <span className="truncate text-[13px] text-[var(--color-text-primary)]">
-                  {item.query}
+              <div
+                onClick={() => onToggle(item.id)}
+                className={`${GRID} px-[18px] h-[50px] cursor-pointer transition-colors hover:bg-[var(--color-surface-hover)] ${expanded ? 'bg-[var(--color-surface-hover)]' : ''}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {item.hitCount === 0 && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ background: LATENCY_AMBER }}
+                    />
+                  )}
+                  <span className="truncate text-[13px] text-[var(--color-text-primary)]">
+                    {item.query}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-xs text-[var(--color-text-secondary)]">
+                    {kb}
+                  </div>
+                  {item.sources && item.sources.length > 0 && (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      {item.sources.length} sources
+                    </span>
+                  )}
+                </div>
+                <Tag style={pillStyle(hitColor)}>
+                  {t('retrievalLogs.hitCountTag', { count: item.hitCount })}
+                </Tag>
+                <Tag style={pillStyle(latencyColor(item.latencyMs))}>
+                  {item.latencyMs}ms
+                </Tag>
+                <span className="text-xs text-[var(--color-text-muted)] font-mono">
+                  {formatTime(item.createdAt)}
+                </span>
+                <span
+                  className="flex justify-center text-[var(--color-text-muted)]"
+                  style={{
+                    transform: expanded ? 'rotate(180deg)' : 'none',
+                    transition: 'transform .15s',
+                  }}
+                >
+                  <ChevronDown size={16} />
                 </span>
               </div>
-              <div className="min-w-0">
-                <div className="truncate text-xs text-[var(--color-text-secondary)]">
-                  {kb}
-                </div>
-                {item.sources && item.sources.length > 0 && (
-                  <span className="text-xs text-[var(--color-text-muted)]">
-                    {item.sources.length} sources
-                  </span>
-                )}
-              </div>
-              <Tag style={pillStyle(hitColor)}>
-                {t('retrievalLogs.hitCountTag', { count: item.hitCount })}
-              </Tag>
-              <Tag style={pillStyle(latencyColor(item.latencyMs))}>
-                {item.latencyMs}ms
-              </Tag>
-              <span className="text-xs text-[var(--color-text-muted)] font-mono">
-                {formatTime(item.createdAt)}
-              </span>
-              <span
-                className="flex justify-center text-[var(--color-text-muted)]"
-                style={{
-                  transform: expanded ? 'rotate(180deg)' : 'none',
-                  transition: 'transform .15s',
-                }}
-              >
-                <ChevronDown size={16} />
-              </span>
+              {expanded && <ExpandedDetail item={item} kb={kb} />}
             </div>
-            {expanded && <ExpandedDetail item={item} kb={kb} />}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

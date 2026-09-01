@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type * as React from 'react';
 import { Send, Square } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
@@ -26,6 +26,8 @@ import { useSettings } from '../../contexts/SettingsContext';
 
 export interface InputToolbarHandle {
   addFiles: (files: File[]) => void;
+  /** 外部注入输入框内容（会话选中填充标题等场景） */
+  setValue: (v: string) => void;
 }
 
 interface InputToolbarProps {
@@ -69,6 +71,7 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
     const [files, setFiles] = useState<AttachedFile[]>([]);
     const [previewFile, setPreviewFile] = useState<AttachedFile | null>(null);
     const { settings } = useSettings();
+    const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
     const composer = useMessageComposer({
       onSend: (text) => {
@@ -96,6 +99,15 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
 
     // ── Slash-command palette ──
 
+    // 清理未完成的上传 AbortController（组件卸载时取消所有进行中的请求）
+    useEffect(() => {
+      const controllers = abortControllersRef.current;
+      return () => {
+        controllers.forEach((ctrl) => ctrl.abort());
+        controllers.clear();
+      };
+    }, []);
+
     const palette = useCommandPalette(commands);
 
     const handleCommandSelect = useCallback(
@@ -107,7 +119,7 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
           onExecuteCommand(cmd.id);
           return;
         }
-        const replacement = palette.selectCommand(index);
+        const replacement = palette.selectCommand(index, composer.value);
         if (replacement) composer.setValue(replacement);
       },
       [palette, composer, onExecuteCommand],
@@ -161,12 +173,23 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
         setFiles((prev) => [...prev, ...toKeep]);
         for (const m of toKeep) {
           if (!m.file) continue;
-          uploadAttachment(m.file, undefined, undefined, (pct) => {
-            setFiles((prev) =>
-              prev.map((x) => (x.id === m.id ? { ...x, progress: pct } : x)),
-            );
-          })
+          const controller = new AbortController();
+          abortControllersRef.current.set(m.id, controller);
+          uploadAttachment(
+            m.file,
+            undefined,
+            undefined,
+            (pct) => {
+              setFiles((prev) =>
+                prev.map((x) =>
+                  x.id === m.id ? { ...x, progress: pct } : x,
+                ),
+              );
+            },
+            controller.signal,
+          )
             .then((att) => {
+              abortControllersRef.current.delete(m.id);
               setFiles((prev) =>
                 prev.map((x) =>
                   x.id === m.id
@@ -175,7 +198,11 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
                 ),
               );
             })
-            .catch(() => {
+            .catch((err) => {
+              abortControllersRef.current.delete(m.id);
+              // 忽略 AbortError（组件卸载时取消的请求）
+              if (err?.name === 'CanceledError' || err?.name === 'AbortError')
+                return;
               setFiles((prev) =>
                 prev.map((x) =>
                   x.id === m.id ? { ...x, status: 'error' } : x,
@@ -188,6 +215,12 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
     );
 
     const removeFile = useCallback((id: string) => {
+      // 取消进行中的上传请求
+      const controller = abortControllersRef.current.get(id);
+      if (controller) {
+        controller.abort();
+        abortControllersRef.current.delete(id);
+      }
       setFiles((prev) => {
         const target = prev.find((f) => f.id === id);
         if (target?.attachmentId) {
@@ -199,7 +232,17 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
       });
     }, []);
 
-    useImperativeHandle(ref, () => ({ addFiles }), [addFiles]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        addFiles,
+        setValue: (v: string) => {
+          composer.setValue(v);
+          palette.updateFromValue(v);
+        },
+      }),
+      [addFiles, composer, palette],
+    );
 
     const handleReject = useCallback(
       (rejections: FileRejection[]) => {
@@ -226,7 +269,7 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
 
     return (
       <motion.div
-        className="px-6 py-4 pb-5 max-w-[900px] mx-auto w-full"
+        className="box-border shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 max-w-[900px] mx-auto w-full md:px-6 md:pb-5 md:pt-4"
         initial={reduce ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
@@ -259,7 +302,7 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
           )}
 
           <textarea
-            className="w-full bg-transparent border-none px-6 py-5 min-h-[var(--da-input-height)] max-h-[200px] resize-none text-lg font-normal text-[var(--color-text-primary)] leading-[1.5] box-border scrollbar-thin scrollbar-thumb-transparent hover:scrollbar-thumb-[var(--color-border)] placeholder:text-[var(--color-text-muted)] placeholder:font-normal"
+            className="w-full bg-transparent border-none px-4 py-4 md:px-6 md:py-5 min-h-[var(--da-input-height)] max-h-[200px] resize-none text-base md:text-lg font-normal text-[var(--color-text-primary)] leading-[1.5] box-border scrollbar-thin scrollbar-thumb-transparent hover:scrollbar-thumb-[var(--color-border)] placeholder:text-[var(--color-text-muted)] placeholder:font-normal"
             style={{ outline: 'none' }}
             placeholder={placeholder ?? t('home.placeholder')}
             value={composer.value}
@@ -270,8 +313,8 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
             onPaste={handlePaste}
           />
 
-          <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-surface-raised)] border-t-0 min-h-[var(--da-toolbar-height)] rounded-b-[var(--da-input-radius)]">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-1 py-2 px-2 sm:px-4 sm:py-3 bg-[var(--color-surface-raised)] border-t-0 min-h-[var(--da-toolbar-height)] rounded-b-[var(--da-input-radius)]">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
               <ModelSelector
                 models={models}
                 selectedModel={selectedModel}
@@ -286,30 +329,32 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
               />
             </div>
 
-            {isRunning ? (
-              <button
-                onClick={onStop}
-                className="flex items-center justify-center gap-2 px-6 py-2 rounded-xl border-none text-base font-semibold cursor-pointer transition-all duration-150 min-h-10 bg-red-500/20 text-[var(--color-danger)] shadow-sm hover:bg-red-500/30 hover:-translate-y-px hover:shadow-md active:translate-y-0 active:shadow-sm"
-                aria-label={t('home.stop')}
-              >
-                <Square size={14} fill="currentColor" />
-                <span>{t('home.stop')}</span>
-              </button>
-            ) : (
-              <button
-                onClick={composer.submit}
-                disabled={!composer.hasContent}
-                className={`flex items-center justify-center gap-2 px-6 py-2 rounded-xl border-none text-base font-semibold cursor-pointer transition-all duration-150 min-h-10 ${
-                  composer.hasContent
-                    ? 'bg-[var(--color-accent)] text-[var(--color-text-on-accent)] shadow-sm hover:brightness-115 hover:-translate-y-px hover:shadow-md active:translate-y-0 active:shadow-sm'
-                    : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed opacity-70'
-                }`}
-                aria-label={t('home.send')}
-              >
-                <span>{t('home.send')}</span>
-                <Send size={14} />
-              </button>
-            )}
+            <div className="shrink-0">
+              {isRunning ? (
+                <button
+                  onClick={onStop}
+                  className="flex items-center justify-center gap-2 px-3 sm:px-4 md:px-6 py-2 rounded-xl border-none text-sm sm:text-base font-semibold cursor-pointer transition-all duration-150 min-h-10 bg-red-500/20 text-[var(--color-danger)] shadow-sm hover:bg-red-500/30 hover:-translate-y-px hover:shadow-md active:translate-y-0 active:shadow-sm"
+                  aria-label={t('home.stop')}
+                >
+                  <Square size={14} fill="currentColor" />
+                  <span className="hidden sm:inline">{t('home.stop')}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={composer.submit}
+                  disabled={!composer.hasContent}
+                  className={`flex items-center justify-center gap-2 px-3 sm:px-4 md:px-6 py-2 rounded-xl border-none text-sm sm:text-base font-semibold cursor-pointer transition-all duration-150 min-h-10 ${
+                    composer.hasContent
+                      ? 'bg-[var(--color-accent)] text-[var(--color-text-on-accent)] shadow-sm hover:brightness-115 hover:-translate-y-px hover:shadow-md active:translate-y-0 active:shadow-sm'
+                      : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed opacity-70'
+                  }`}
+                  aria-label={t('home.send')}
+                >
+                  <span className="hidden md:inline">{t('home.send')}</span>
+                  <Send size={14} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
         {previewFile && (

@@ -40,6 +40,12 @@ def _derive_fernet_key(secret: str) -> bytes:
     return key
 
 
+# Memoize derived Fernet instances — PBKDF2 (600k iterations) takes ~0.6s,
+# and encrypt/decrypt run per request. Keyed by the raw secrets so rotation
+# and test env changes still produce a fresh instance.
+_fernet_cache: dict[tuple[str, str], Fernet | MultiFernet] = {}
+
+
 def _get_fernet() -> Fernet | MultiFernet:
     """Get the Fernet instance for the current master secret.
 
@@ -49,6 +55,10 @@ def _get_fernet() -> Fernet | MultiFernet:
     """
     primary_secret = os.environ.get("KEY_VAULT_SECRET", "")
     rotated_secret = os.environ.get("KEY_VAULT_SECRET_ROTATED", "")
+
+    cache_key = (primary_secret, rotated_secret)
+    if cache_key in _fernet_cache:
+        return _fernet_cache[cache_key]
 
     if not primary_secret:
         # Fallback: derive from a machine fingerprint (NOT for multi-instance deploys)
@@ -62,9 +72,12 @@ def _get_fernet() -> Fernet | MultiFernet:
 
     if rotated_secret:
         rotated_key = _derive_fernet_key(rotated_secret)
-        return MultiFernet([Fernet(primary_key), Fernet(rotated_key)])
+        fernet: Fernet | MultiFernet = MultiFernet([Fernet(primary_key), Fernet(rotated_key)])
+    else:
+        fernet = Fernet(primary_key)
 
-    return Fernet(primary_key)
+    _fernet_cache[cache_key] = fernet
+    return fernet
 
 
 def _machine_fingerprint() -> str:

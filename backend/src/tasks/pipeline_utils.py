@@ -3,12 +3,13 @@ import asyncio
 import contextlib
 import json
 import os
-import threading
+import time
 import tracemalloc
 from typing import Any
 
 from broker import publish_run_message
 from core.infra.logging_config import get_logger
+from core.llm_balance import is_balance_error
 from core.mock_fallback import run_mock
 from repository import (
     create_memory_entry,
@@ -19,20 +20,25 @@ from repository import (
 logger = get_logger(__name__)
 
 # ── Shared memory diagnostics ─────────────────────────────────────────────
-_run_counter = 0
 _baseline_snapshot: tracemalloc.Snapshot | None = None
+
+
+def _read_rss_kb() -> int | None:
+    """Current process RSS in KB (Linux /proc), or None when unavailable."""
+    try:
+        pid = os.getpid()
+        with open(f"/proc/{pid}/status") as f:
+            return int(f.read().split("VmRSS:")[1].split()[0])
+    except Exception:
+        return None
 
 
 def log_memory_diff() -> None:
     """Log current RSS and optional tracemalloc diff for leak detection."""
     global _baseline_snapshot
-    try:
-        pid = os.getpid()
-        with open(f"/proc/{pid}/status") as f:
-            rss_kb = int(f.read().split("VmRSS:")[1].split()[0])
-        logger.info("[MEM] run=#%s pid=%s rss=%dKB", _run_counter, pid, rss_kb)
-    except Exception:
-        pass
+    rss_kb = _read_rss_kb()
+    if rss_kb is not None:
+        logger.info("[MEM] pid=%s rss=%dKB", os.getpid(), rss_kb)
     if not tracemalloc.is_tracing():
         return
     current = tracemalloc.take_snapshot()
@@ -46,32 +52,18 @@ def log_memory_diff() -> None:
     _baseline_snapshot = current
 
 
-# Thread-local event loop for celery threads-pool workers.
-#
-# WHY: asyncio.run() creates a fresh loop per task, but SQLAlchemy's async
-# engine (QueuePool) and broker Redis pools are cached per-loop (or module-level).
-# A fresh loop per task reuses connections created under a *closed* loop and
-# blows up with "Future attached to a different loop" (or hangs on half-dead
-# connections). Celery threads-pool runs tasks serially per thread, so caching
-# one loop per thread is safe and lets pools stay valid across tasks.
-_loop_local = threading.local()
-
-
+# Every pipeline entry drives its coroutines with a fresh asyncio.run()
+# event loop. That is safe because async resources are loop-scoped by key,
+# never thread-scoped: broker.get_redis() keeps one Redis pool per event
+# loop (keyed by the loop object, stale pools evicted), so a fresh loop
+# per call can never reuse connections bound to a closed loop.
 def _run_async(coro: Any) -> Any:
     return asyncio.run(coro)
 
 
-BALANCE_ERROR_KEYWORDS = [
-    "insufficient_quota", "insufficient_balance", "insufficient balance", "余额不足",
-    "billing limit", "quota exceeded", "payment required",
-    "account balance", "402",
-]
-
-
 def _is_balance_error(exc: Exception) -> bool:
     """Check if the exception is caused by insufficient model balance/quota."""
-    msg = str(exc).lower()
-    return any(kw in msg for kw in BALANCE_ERROR_KEYWORDS)
+    return is_balance_error(str(exc))
 
 
 def _report_run_error(run_id: str, exc: Exception) -> None:
@@ -160,8 +152,6 @@ async def _get_rag_context(
     never break the chat.
     """
     try:
-        import time
-
         from rag.rag_pipeline import ensure_embedding_provider, retrieve_context, retrieve_sources
         from repository.keys import get_embedding_config
 
@@ -230,8 +220,6 @@ async def _run_shadow_retrieval(
             kwargs["min_score"] = float(value)
     if not kwargs:
         return
-
-    import time
 
     from rag.rag_pipeline import retrieve_sources
     from repository.shadow_retrieval import create_shadow_log

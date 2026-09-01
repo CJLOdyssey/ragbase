@@ -1,4 +1,4 @@
-"""Shared time-range parsing for monitoring read endpoints.
+"""Shared time-range parsing/validation for monitoring + logs read endpoints.
 
 Legacy callers pass ``window_hours`` (sliding window ending now). Custom
 range callers pass ``since``/``until`` ISO datetimes, which override the
@@ -27,15 +27,26 @@ class WindowBounds(NamedTuple):
     """Upper bound; None = now."""
 
 
-def bounded_window(
-    window_hours: int = Query(24, ge=0, le=24 * 30),
-    since: datetime | None = Query(None),
-    until: datetime | None = Query(None),
-) -> WindowBounds:
-    """FastAPI dependency resolving and validating the common time range."""
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
-    def _aware(dt: datetime) -> datetime:
-        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+def validate_since_until(
+    since: datetime | None,
+    until: datetime | None,
+) -> tuple[datetime | None, datetime | None]:
+    """Validate an absolute ``since``/``until`` pair and return aware values.
+
+    Shared contract for monitoring and retrieval-logs range pickers:
+      - ``until`` in the future (beyond a 5-minute tolerance) → rejected
+      - ``since >= effective upper bound`` (inverted/empty range) → rejected
+      - span longer than 90 days → rejected (keeps aggregates bounded)
+
+    Raises ``HTTPException(422)`` on violation; returns ``(since, until)``
+    with timezone-aware datetimes (naive input is assumed to be UTC).
+    """
+    if since is None and until is None:
+        return None, None
 
     now = datetime.now(UTC)
     upper = _aware(until) if until is not None else None
@@ -52,6 +63,16 @@ def bounded_window(
                 status_code=422, detail="自定义时间范围不能超过 90 天"
             )
 
+    return lower, upper
+
+
+def bounded_window(
+    window_hours: int = Query(24, ge=0, le=24 * 30),
+    since: datetime | None = Query(None),
+    until: datetime | None = Query(None),
+) -> WindowBounds:
+    """FastAPI dependency resolving and validating the common time range."""
+    lower, upper = validate_since_until(since, until)
     return WindowBounds(
         window_hours=window_hours, since=lower, until=upper
     )

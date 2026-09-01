@@ -84,7 +84,7 @@
     "chartThreshold": "Threshold",
     "chartVolumeTitle": "Retrieval volume trend",
     "chartHitsTitle": "Avg. hits trend",
-    "chartGoodRateTitle": "Good-rate trend",
+    "chartGoodRateTitle": "Positive share (rated samples)",
     "chartEmptyRecallTitle": "Empty-recall trend",
     "prevPeriod": "Previous period",
     "chartQualityTitle": "Retrieval quality trend",
@@ -122,6 +122,7 @@
     "chartCompositionDesc": "Shows composition trends after retrievals and ratings are logged",
     "chartHeatmapTitle": "Latency distribution heatmap",
     "chartHeatmapDesc": "Darker = more retrievals in that time-bucket × latency bin",
+    "times": "times",
     "chartScatterTitle": "Latency vs hits",
     "chartScatterDesc": "Each point is a retrieval; red line = 8s SLO, red points exceed SLO",
     "scatter": {

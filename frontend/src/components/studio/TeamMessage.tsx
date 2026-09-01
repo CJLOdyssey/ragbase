@@ -94,6 +94,9 @@ function PlanCard({
   const [isExpanded, setIsExpanded] = useState(true);
   const toggle = () => setIsExpanded(!isExpanded);
   if (!msg.plan) return null;
+  // 每个消息的步骤区独立 id：多 plan 消息并存时 aria-controls 不能指向
+  // 重复的 id（可访问性：重复 id 导致引用错乱）。
+  const planId = `process-steps-${msg.id}`;
 
   return (
     <div className="bg-[var(--color-surface-raised)] rounded-lg overflow-hidden mt-1">
@@ -103,7 +106,7 @@ function PlanCard({
         role="button"
         tabIndex={0}
         aria-expanded={isExpanded}
-        aria-controls="process-steps"
+        aria-controls={planId}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -119,7 +122,7 @@ function PlanCard({
       </div>
 
       {isExpanded && (
-        <div className="p-3 flex flex-col gap-2" id="process-steps">
+        <div className="p-3 flex flex-col gap-2" id={planId}>
           {msg.plan.map((step) => (
             <div
               key={step.step}
@@ -159,7 +162,7 @@ function ThumbButton({
     value === 'up' ? t('teamMessage.thumbsUp') : t('teamMessage.thumbsDown');
   return (
     <button
-      className={`flex items-center justify-center min-w-[24px] min-h-[24px] bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-0 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]${active ? ' bg-[var(--color-accent)] !text-[var(--color-text-on-accent)] !border-[var(--color-accent)]' : ''}`}
+      className={`flex items-center justify-center min-w-[32px] min-h-[32px] bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-1 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]${active ? ' bg-[var(--color-accent)] !text-[var(--color-text-on-accent)] !border-[var(--color-accent)]' : ''}`}
       onClick={() => onThumbsFeedback?.(msg.id, active ? null : value)}
       title={active ? t('teamMessage.removeFeedback') : baseLabel}
       aria-label={active ? t('teamMessage.removeFeedback') : baseLabel}

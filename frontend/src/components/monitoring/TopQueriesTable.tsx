@@ -38,9 +38,16 @@ export default function TopQueriesTable({ timeQuery }: Props) {
   });
 
   // 下钻契约：预设窗口带 hours 过滤；自定义范围不带（检索记录页暂无区间参数）。
+  // 拼参必须按 base 是否已含 '?' 决定分隔符，否则 & 落入路径段 → 404。
   const drillBase = timeQuery.since
     ? '/retrieval-logs'
     : `/retrieval-logs?hours=${timeQuery.window_hours}`;
+  const drillHref = (kind: TopQueryKind) =>
+    kind === 'empty'
+      ? drillBase.includes('?')
+        ? `${drillBase}&empty=1`
+        : `${drillBase}?empty=1`
+      : drillBase;
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-5">
@@ -106,7 +113,7 @@ export default function TopQueriesTable({ timeQuery }: Props) {
           {data.items.map((item, idx) => (
             <Link
               key={`${item.query}-${idx}`}
-              to={kind === 'empty' ? `${drillBase}&empty=1` : drillBase}
+              to={drillHref(kind)}
               className="flex items-center gap-3 px-2 py-2 rounded-md no-underline hover:bg-[var(--color-surface-hover)] transition-colors duration-150"
               data-testid={`topq-row-${idx}`}
             >

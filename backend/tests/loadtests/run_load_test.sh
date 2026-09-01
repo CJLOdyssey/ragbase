@@ -5,7 +5,7 @@
 # ──────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-HOST="${LOCUST_HOST:-http://localhost:8080}"
+HOST="${LOCUST_HOST:-http://localhost:8081}"
 USERS="${LOCUST_USERS:-100}"
 SPAWN_RATE="${LOCUST_SPAWN_RATE:-10}"
 RUN_TIME="${LOCUST_RUN_TIME:-5m}"

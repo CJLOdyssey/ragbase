@@ -1,5 +1,5 @@
-import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 
 interface AssetsUrlModalProps {
   open: boolean;
@@ -26,11 +26,11 @@ export default function AssetsUrlModal({
   if (!open) return null;
 
   return (
-    <AntdModal
-      title={t('assets.urlImport.title')}
+    <MobileModal
       open={true}
-      onCancel={onClose}
-      centered
+      onClose={onClose}
+      mode="sheet"
+      title={t('assets.urlImport.title')}
       width={480}
       footer={
         <>
@@ -78,6 +78,6 @@ export default function AssetsUrlModal({
           />
         </div>
       </div>
-    </AntdModal>
+    </MobileModal>
   );
 }

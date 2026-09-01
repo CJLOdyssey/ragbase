@@ -1,4 +1,5 @@
 import type { EChartsOption } from '../../shared/EChart';
+import i18n from '../../../i18n';
 import {
   ACCENT,
   DANGER,
@@ -56,7 +57,7 @@ export function latencyHeatmapOption(spec: LatencyHeatmapSpec): EChartsOption {
       formatter: (params: unknown) => {
         const p = params as { value: [number, number, number] };
         const [x, y, count] = p.value;
-        return `<div style="font-weight:600">${tsLabels[x]}</div><div style="margin-top:4px">${binLabels[y]}：<b>${count} 次</b></div>`;
+        return `<div style="font-weight:600">${tsLabels[x]}</div><div style="margin-top:4px">${binLabels[y]}：<b>${count} ${i18n.t('monitoring.times')}</b></div>`;
       },
     },
     xAxis: {

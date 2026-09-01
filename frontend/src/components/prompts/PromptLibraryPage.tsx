@@ -60,7 +60,7 @@ export default function PromptLibraryPage() {
         onNew={() => setDialog({ type: 'new' })}
       />
 
-      <div className="flex-1 overflow-y-auto px-8 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
         <PromptTabs tab={tab} onChange={setTab} counts={counts} />
 
         {isLoading ? (
@@ -100,8 +100,9 @@ export default function PromptLibraryPage() {
           onClose={() => setHistoryPrompt(null)}
           onView={(v) => setDialog({ type: 'version-view', version: v })}
           onRollback={(v) => {
+            // 回滚是异步保存：弹窗在 onSuccess 后关闭（usePromptLibrary
+            // 统一处理），立即关闭会在失败时无反馈且时序上抢跑列表刷新。
             handleRollback(v);
-            setHistoryPrompt(null);
           }}
         />
       )}
@@ -125,20 +126,24 @@ function EmptyCard({ tab }: { tab: string }) {
   const { t } = useTranslation();
   const isFiltered = tab !== 'all';
   if (isFiltered) {
-    const label = tab === 'published' ? '启用' : tab === 'draft' ? '草稿' : tab;
+    const label =
+      tab === 'published'
+        ? t('prompts.statusEnabled')
+        : tab === 'draft'
+          ? t('prompts.statusDraft')
+          : tab;
     return (
       <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-10 px-6 text-center text-[13px] text-[var(--color-text-muted)]">
-        暂无{label}数据
+        {t('prompts.noData', { label })}
       </div>
     );
   }
   return (
-    <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-14 px-6 flex flex-col items-center justify-center text-center">
+    <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] min-h-[50vh] px-6 flex flex-col items-center justify-center text-center">
       <EmptyState
         icon={<FileText size={24} />}
         title={t('prompts.list.empty')}
         description={t('prompts.list.emptyDesc')}
-        centered
       />
     </div>
   );

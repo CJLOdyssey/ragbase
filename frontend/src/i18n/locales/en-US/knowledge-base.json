@@ -33,6 +33,7 @@
     "embedModelPlaceholder": "Select embedding model",
     "embedModelRequired": "Please select an embedding model",
     "noEmbedModels": "Configure an embedding model in API Management first",
+    "embedModelsLoadFailed": "Failed to load embedding models, please retry",
     "embedModelHint": "Determines how vectors are generated; changing it rebuilds the index automatically",
     "changeModelWarning": "Changing the embedding model will purge vectors of {{count}} indexed assets and re-index them automatically — retrieval in this KB returns nothing until done",
     "autoModel": "Auto",

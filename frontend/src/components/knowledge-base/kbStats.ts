@@ -33,8 +33,12 @@ export function computeTotals(
     total += kb.assetCount ?? s.assetCount;
     indexed += s.indexedCount;
   }
+  // indexed 来自前端 assets 列表、total 可能来自后端 kb.assetCount，
+  // 两 query 刷新时机不同（upload 只失效 ['assets']）——混算可能瞬时 >100%，
+  // 收敛到 100 并保底 0（口径说明：刷新后一致即回落真实值）。
+  const rate = total > 0 ? Math.round((indexed / total) * 100) : 0;
   return {
     totalAssets: total,
-    indexedRate: total > 0 ? Math.round((indexed / total) * 100) : 0,
+    indexedRate: Math.min(100, Math.max(0, rate)),
   };
 }

@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "RagBase - 企业级 RAG 知识库问答平台",
+  "short_name": "RagBase",
+  "description": "企业级 RAG 知识库问答平台，支持文档上传、语义检索、智能问答",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": ["any", "maskable"]
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "zh-CN",
+  "dir": "ltr"
+}

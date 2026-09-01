@@ -1,12 +1,22 @@
-"""Bad-feedback review queue — human triage storage (read/write)."""
+"""Bad-feedback review queue — human triage storage (read/write).
 
-from datetime import UTC, datetime
+Usage::
+
+    from repository.feedback_review import list_bad_feedback, upsert_review
+
+    items, total = await list_bad_feedback(user_id, status="pending", page=1, page_size=20)
+    review = await upsert_review(user_id=u, feedback_id=f, status="resolved", root_cause="wrong_answer")
+"""
+
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.infra.database import FeedbackLog, FeedbackReviewDB, get_session_factory
 from sqlalchemy import func, or_, select
 
-ALLOWED_CAUSES = {"retrieval_miss", "wrong_answer", "bad_format", "other"}
+from repository.monitoring_shared import ROOT_CAUSES
+
+ALLOWED_CAUSES = set(ROOT_CAUSES)
 ALLOWED_STATUSES = {"pending", "resolved", "dismissed"}
 
 
@@ -24,8 +34,6 @@ async def list_bad_feedback(
 
     Returns rows of {feedback fields..., review: {...}|None}, newest first.
     """
-    from datetime import timedelta
-
     factory = get_session_factory()
     async with factory() as session:
         conds = [
@@ -69,15 +77,12 @@ async def list_bad_feedback(
         total = int((await session.execute(count_q)).scalar() or 0)
 
         rows = (
-            (
-                await session.execute(
-                    base.order_by(FeedbackLog.created_at.desc())
-                    .offset((page - 1) * page_size)
-                    .limit(page_size)
-                )
+            await session.execute(
+                base.order_by(FeedbackLog.created_at.desc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
             )
-            .all()
-        )
+        ).all()
 
     items = []
     for fb, review in rows:

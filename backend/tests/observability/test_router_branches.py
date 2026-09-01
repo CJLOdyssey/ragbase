@@ -13,7 +13,7 @@ def mock_store():
     store.recent_errors.return_value = [{"error_type": "TypeError"}]
     store.slow_events.return_value = [{"duration_ms": 5000}]
     store.stats.return_value = {"by_level": {"INFO": 1}, "errors": 0}
-    store._query.return_value = [{"cnt": 1}]
+    store.count.return_value = 1
     store.self_check.return_value = {
         "queue_size": 0, "write_errors": 0, "disk_errors": 0,
         "disk_free_mb": 100, "disk_min_free_mb": 100, "writer_alive": True,
@@ -51,6 +51,14 @@ class TestListEventsBranches:
         assert resp.status_code == 200
         mock_store.slow_events.assert_called_once()
 
+    @patch("observability.router.get_store")
+    def test_plain_recent_fallback(self, mock_get_store, mock_store, client):
+        """无任何过滤参数 → 走 store.recent 默认路径。"""
+        mock_get_store.return_value = mock_store
+        resp = client.get("/api/debug/events")
+        assert resp.status_code == 200
+        mock_store.recent.assert_called_once()
+
 
 class TestTraceDetail:
     @patch("observability.router.analyze_trace")
@@ -64,10 +72,10 @@ class TestTraceDetail:
 
 class TestHealthException:
     @patch("observability.router.get_store")
-    def test_health_returns_500_on_query_failure(self, mock_get_store, mock_store, client_strict):
-        """Lines 83-84: exception inside the try block returns 500 JSONResponse."""
+    def test_health_returns_500_on_count_failure(self, mock_get_store, client_strict):
+        """store.count 抛异常 → 500 JSONResponse（write_errors=-1）。"""
         store = MagicMock()
-        store._query.side_effect = RuntimeError("query failed")
+        store.count.side_effect = RuntimeError("query failed")
         mock_get_store.return_value = store
         resp = client_strict.get("/api/debug/health")
         assert resp.status_code == 500
@@ -76,9 +84,9 @@ class TestHealthException:
         assert data["write_errors"] == -1
 
     @patch("observability.router.get_store")
-    def test_health_returns_500_on_self_check_failure(self, mock_get_store, mock_store, client_strict):
+    def test_health_returns_500_on_self_check_failure(self, mock_get_store, client_strict):
         store = MagicMock()
-        store._query.return_value = [{"cnt": 1}]
+        store.count.return_value = 1
         store.self_check.side_effect = RuntimeError("self_check failed")
         mock_get_store.return_value = store
         resp = client_strict.get("/api/debug/health")
@@ -92,7 +100,7 @@ class TestHealthDegraded:
     @patch("observability.router.guard_health", return_value={"crashed": True})
     def test_health_degraded_when_crashed(self, mock_guard, mock_get_store, client):
         store = MagicMock()
-        store._query.return_value = [{"cnt": 5}]
+        store.count.return_value = 5
         store.self_check.return_value = {
             "queue_size": 0, "write_errors": 0, "disk_errors": 0,
             "disk_free_mb": 100, "disk_min_free_mb": 100, "writer_alive": True,
@@ -108,7 +116,7 @@ class TestHealthDegraded:
     @patch("observability.router.guard_health", return_value={"status": "ok"})
     def test_health_degraded_when_write_errors(self, mock_guard, mock_get_store, client):
         store = MagicMock()
-        store._query.return_value = [{"cnt": 5}]
+        store.count.return_value = 5
         store.self_check.return_value = {
             "queue_size": 0, "write_errors": 5, "disk_errors": 0,
             "disk_free_mb": 100, "disk_min_free_mb": 100, "writer_alive": True,
@@ -124,7 +132,7 @@ class TestHealthDegraded:
     @patch("observability.router.guard_health", return_value={"status": "ok"})
     def test_health_degraded_when_disk_errors(self, mock_guard, mock_get_store, client):
         store = MagicMock()
-        store._query.return_value = [{"cnt": 5}]
+        store.count.return_value = 5
         store.self_check.return_value = {
             "queue_size": 0, "write_errors": 0, "disk_errors": 3,
             "disk_free_mb": 100, "disk_min_free_mb": 100, "writer_alive": True,
@@ -140,7 +148,7 @@ class TestHealthDegraded:
     @patch("observability.router.guard_health", return_value={"status": "ok"})
     def test_health_degraded_when_large_queue(self, mock_guard, mock_get_store, client):
         store = MagicMock()
-        store._query.return_value = [{"cnt": 5}]
+        store.count.return_value = 5
         store.self_check.return_value = {
             "queue_size": 200, "write_errors": 0, "disk_errors": 0,
             "disk_free_mb": 100, "disk_min_free_mb": 100, "writer_alive": True,

@@ -26,6 +26,11 @@ type GetFn = () => ChatState;
 
 const _activeStreamMsgIds = new Set<string>();
 
+/** 释放已结束/被取消 run 的流式消息 id 记录（result/error 之外的清理入口）。 */
+export function releaseActiveStreamMsgIds(runId: string): void {
+  if (runId) _activeStreamMsgIds.delete(runId);
+}
+
 export function createStreamHandler(set: SetFn, get: GetFn) {
   return (data: unknown) => {
     const msg = data as WsEvent;

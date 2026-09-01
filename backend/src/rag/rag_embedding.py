@@ -7,6 +7,7 @@ import urllib.request
 from typing import Any
 
 from core.infra.logging_config import get_logger
+from domain.ssrf import validate_public_url
 
 logger = get_logger(__name__)
 
@@ -57,6 +58,8 @@ class EmbeddingProvider:
             )
         if self.base_url:
             url = f"{self.base_url.rstrip('/')}/embeddings"
+            # SSRF guard: custom base_url is user-influenced — must be public.
+            validate_public_url(url)
             body: dict[str, Any] = {"model": self.model, "input": texts}
             response_key = "data"
         else:

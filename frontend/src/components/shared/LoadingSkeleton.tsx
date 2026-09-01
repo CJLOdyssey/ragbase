@@ -1,6 +1,6 @@
 interface LoadingSkeletonProps {
   rows?: number;
-  type?: 'table' | 'card' | 'text';
+  type?: 'table' | 'card';
 }
 
 export default function LoadingSkeleton({
@@ -9,7 +9,7 @@ export default function LoadingSkeleton({
 }: LoadingSkeletonProps) {
   if (type === 'table') {
     return (
-      <div className="flex flex-col gap-1">
+      <div role="status" aria-live="polite" className="flex flex-col gap-1">
         {Array.from({ length: rows }).map((_, i) => (
           <div
             key={i}
@@ -29,7 +29,7 @@ export default function LoadingSkeleton({
     );
   }
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div role="status" aria-live="polite" className="flex flex-col gap-3 p-4">
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}

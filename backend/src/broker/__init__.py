@@ -213,7 +213,6 @@ async def subscribe_user_events(user_id: str) -> AsyncIterator[dict[str, Any]]:
 
 _buffers: dict[str, list[dict[str, Any]]] = {}
 _buffer_tasks: dict[str, asyncio.Task[Any]] = {}
-_lock: asyncio.Lock = asyncio.Lock()
 
 
 async def buffer_run_messages(run_id: str) -> None:
@@ -225,7 +224,6 @@ async def buffer_run_messages(run_id: str) -> None:
     """
     buf: list[dict[str, Any]] = []
     _buffers[run_id] = buf
-    logger = get_logger(__name__)
 
     try:
         r = get_redis()

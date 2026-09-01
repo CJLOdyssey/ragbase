@@ -1,4 +1,5 @@
 import type { EChartsOption } from '../../shared/EChart';
+import i18n from '../../../i18n';
 import {
   ACCENT,
   compact,
@@ -48,7 +49,7 @@ export function latencyScatterOption(spec: LatencyScatterSpec): EChartsOption {
       formatter: (params: unknown) => {
         const p = params as { seriesName: string; value: [number, number] };
         const [hits, latency] = p.value;
-        return `<div style="font-weight:600">${p.seriesName}</div><div style="margin-top:4px">命中数：<b>${hits}</b></div><div>延迟：<b>${Math.round(latency)}ms</b></div>`;
+        return `<div style="font-weight:600">${p.seriesName}</div><div style="margin-top:4px">${i18n.t('monitoring.scatter.hits')}：<b>${hits}</b></div><div>${i18n.t('monitoring.scatter.latency')}：<b>${Math.round(latency)}ms</b></div>`;
       },
     },
     xAxis: {

@@ -96,7 +96,7 @@ class MemoryEntry(Base):
         nullable=False,
         index=True,
     )
-    run_id: Mapped[str] = mapped_column(
+    run_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("project_runs.id", ondelete="SET NULL"),
         nullable=True,

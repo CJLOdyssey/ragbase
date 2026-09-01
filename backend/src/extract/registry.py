@@ -1,7 +1,7 @@
 """上传格式注册表——白名单/魔数/解析器类型的单一来源。
 
 加一种格式：在 ``FORMAT_REGISTRY`` 注册一项。解析器 ``kind`` 引用
-``extractors.py`` 的分派函数（text/pdf/docx/xlsx/image/none）。
+``extractors.py`` 的分派函数（text/pdf/docx/image/none）。
 """
 
 from dataclasses import dataclass

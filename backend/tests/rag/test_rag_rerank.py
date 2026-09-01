@@ -31,7 +31,7 @@ class TestRerankProvider:
         assert body["top_n"] == 1
 
     def test_rerank_missing_results_raises(self):
-        p = RerankProvider(api_key="sk", base_url="https://x/v1")
+        p = RerankProvider(api_key="sk", base_url="https://api.siliconflow.cn/v1")
         resp = _mock_response({"results": []})
         with patch("rag.rag_rerank.urllib.request.urlopen", return_value=resp):
             with pytest.raises(RuntimeError, match="missing results"):
@@ -39,8 +39,14 @@ class TestRerankProvider:
 
     @pytest.mark.asyncio
     async def test_rerank_empty_documents_noop(self):
-        p = RerankProvider(api_key="sk", base_url="https://x/v1")
+        p = RerankProvider(api_key="sk", base_url="https://api.siliconflow.cn/v1")
         assert await p.rerank("q", [], 5) == []
+
+    @pytest.mark.asyncio
+    async def test_rerank_top_n_zero_keeps_order(self):
+        """top_n <= 0：不重排，按原序返回（不触发网络调用）。"""
+        p = RerankProvider(api_key="sk", base_url="https://api.siliconflow.cn/v1")
+        assert await p.rerank("q", ["a", "b"], top_n=0) == [0, 1]
 
 
 class TestPipelineRerank:
@@ -74,3 +80,22 @@ class TestPipelineRerank:
         with patch("repository.keys.get_rerank_config", AsyncMock(return_value=None)):
             out = await _rerank_results("q", results, top_k=1)
         assert [r["text"] for r in out] == ["a", "b"]
+
+    @pytest.mark.asyncio
+    async def test_rerank_out_of_range_indices_dropped(self):
+        """提供商返回越界索引：防御性过滤，不崩溃只收窄列表。"""
+        from rag.rag_pipeline import _rerank_results
+
+        results = [{"text": "a"}, {"text": "b"}]
+        cfg = {
+            "api_key": "sk",
+            "base_url": "https://api.siliconflow.cn/v1",
+            "model": "m",
+        }
+        with (
+            patch("repository.keys.get_rerank_config", AsyncMock(return_value=cfg)),
+            patch("rag.rag_rerank.RerankProvider") as provider_cls,
+        ):
+            provider_cls.return_value.rerank = AsyncMock(return_value=[5, -1, 1, 99])
+            out = await _rerank_results("q", results, top_k=4)
+        assert [r["text"] for r in out] == ["b"]

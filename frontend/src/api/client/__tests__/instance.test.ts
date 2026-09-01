@@ -124,13 +124,6 @@ describe('instance', { tags: ['unit'] }, () => {
     localStorage.clear();
   });
 
-  describe('getAccessToken', () => {
-    it('returns null (access token is httpOnly cookie)', async () => {
-      const { getAccessToken } = await import('../instance');
-      expect(getAccessToken()).toBeNull();
-    });
-  });
-
   describe('request interceptor', () => {
     it('does not add Authorization header (access token is httpOnly cookie)', async () => {
       const handlers = captureHandlers();
@@ -207,7 +200,7 @@ describe('instance', { tags: ['unit'] }, () => {
       expect(mockRefresh.refreshTokens).toHaveBeenCalledWith();
     });
 
-    it('dispatches auth:unauthorized when refresh fails', async () => {
+    it('does not dispatch auth:unauthorized on refresh failure (errors.ts owns it)', async () => {
       const mockRefresh = await import('../auth');
       (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Refresh failed'),
@@ -218,7 +211,9 @@ describe('instance', { tags: ['unit'] }, () => {
       await import('../instance');
       const axiosErr = await make401('/private');
       await expect(handlers.onRejected!(axiosErr)).rejects.toBeDefined();
-      expect(authSpy).toHaveBeenCalled();
+      // 401/403 的登出派发由 errors.ts normalizeError 单点负责；
+      // instance 只做刷新编排，不重复派发（避免双发 auth:unauthorized）。
+      expect(authSpy).not.toHaveBeenCalled();
       window.removeEventListener('auth:unauthorized', authSpy);
     });
 

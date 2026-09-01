@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Modal as AntdModal, Switch, Tabs } from 'antd';
+import { Switch, Tabs } from 'antd';
 import { FileText, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 import type { AssetItem } from '../../types/assets';
 import {
   addAssetChunk,
@@ -81,14 +82,20 @@ export default function AssetChunksModal({
 
   const all = chunks ?? [];
   const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
-  const pageChunks = all.slice((page - 1) * pageSize, page * pageSize);
+  // 删除分块后列表收缩：page 可能越界（如第 2/2 页删空）——派生钳制到末页，
+  // 避免「第 2 / 1 页」空列表死区。
+  const safePage = Math.min(page, totalPages);
+  const pageChunks = all.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize,
+  );
 
   return (
-    <AntdModal
-      title={`${t('assets.chunks.title')} · ${asset.name}`}
+    <MobileModal
       open={true}
-      onCancel={onClose}
-      centered
+      onClose={onClose}
+      mode="fullscreen"
+      title={`${t('assets.chunks.title')} · ${asset.name}`}
       width={680}
       footer={
         <button
@@ -98,7 +105,6 @@ export default function AssetChunksModal({
           {t('common.close')}
         </button>
       }
-      styles={{ body: { maxHeight: '65vh', overflowY: 'auto' } }}
     >
       <Tabs
         activeKey={activeTab}
@@ -132,7 +138,7 @@ export default function AssetChunksModal({
             {all.length >= 200
               ? t('assets.chunks.truncated', { count: 200 })
               : t('assets.chunks.count', { count: all.length })}
-            {all.length > pageSize ? ` · 第 ${page} / ${totalPages} 页` : ''}
+            {all.length > pageSize ? ` ${t('assets.pageIndicator', { current: safePage, total: totalPages })}` : ''}
           </p>
 
           {all.length === 0 && (
@@ -260,8 +266,8 @@ export default function AssetChunksModal({
           {all.length > pageSize && (
             <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border-subtle)]">
               <span className="text-[11px] font-mono text-[var(--color-text-tertiary)]">
-                {page * pageSize - pageSize + 1}-
-                {Math.min(page * pageSize, all.length)} / {all.length}
+                {safePage * pageSize - pageSize + 1}-
+                {Math.min(safePage * pageSize, all.length)} / {all.length}
               </span>
               <div className="flex gap-1.5">
                 <button
@@ -271,7 +277,7 @@ export default function AssetChunksModal({
                   className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] disabled:opacity-50"
                 >
                   <RotateCcw size={11} />
-                  上一页
+                  {t('assets.prevPage')}
                 </button>
                 <button
                   type="button"
@@ -279,7 +285,7 @@ export default function AssetChunksModal({
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   className="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] disabled:opacity-50"
                 >
-                  下一页
+                  {t('assets.nextPage')}
                 </button>
               </div>
             </div>
@@ -324,6 +330,6 @@ export default function AssetChunksModal({
           onCancel={() => setDeleteTarget(null)}
         />
       )}
-    </AntdModal>
+    </MobileModal>
   );
 }

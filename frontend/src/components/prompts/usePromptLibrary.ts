@@ -112,6 +112,8 @@ export function usePromptLibrary() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       setDialog(null);
+      // 回滚/编辑成功后统一关闭对应弹窗；失败时弹窗保留，用户可见错误。
+      setHistoryPrompt(null);
       toast(t('toast.saveSuccess'), 'success');
     },
     onError: () => toast(t('prompts.editor.saveFailed'), 'error'),

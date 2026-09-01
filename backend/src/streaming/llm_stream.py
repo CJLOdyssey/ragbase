@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import contextlib
 import json
-import logging
 import os
 import time
 from typing import Any
@@ -77,7 +76,7 @@ async def stream_llm_response(
 
     # Circuit breaker guard — rejects the call if LLM API is in failure state
     try:
-        await llm_circuit._acquire()
+        await llm_circuit.acquire()
     except CircuitBreakerOpenError:
         logger.error("Circuit breaker open — rejecting LLM call (%s failures)", llm_circuit.failures)
         raise
@@ -173,12 +172,12 @@ async def stream_llm_response(
                             tool_calls_map[idx]["id"] = tc["id"]
 
     except httpx.HTTPError:
-        logging.getLogger(__name__).error("Raw LLM stream failed", exc_info=True)
+        logger.error("Raw LLM stream failed", exc_info=True)
         llm_requests_total.labels(model=_model_name, status="error").inc()
-        await llm_circuit._on_failure()
+        await llm_circuit.record_failure()
         raise
     else:
-        await llm_circuit._on_success()
+        await llm_circuit.record_success()
 
     if _pending_content and not _tool_calls_seen and tool_definitions:
         for chunk in _pending_content:

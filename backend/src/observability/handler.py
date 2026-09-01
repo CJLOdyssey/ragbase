@@ -27,6 +27,9 @@ class ObservabilityHandler(logging.Handler):
             )
             get_store().write(evt)
         except Exception:
+            # A logging handler must never raise (it would recurse into the
+            # logging system and break the caller); observability is
+            # best-effort by contract.
             pass
 
     def _error_type(self, record: logging.LogRecord) -> str | None:

@@ -62,7 +62,7 @@ class TestEmbeddingProvider:
         assert len(result[0]) == EMBEDDING_DIM
 
     def test_embed_sync_openai_compat_missing_data_raises(self):
-        p = EmbeddingProvider(api_key="sk", model="test-model", base_url="https://x/v1")
+        p = EmbeddingProvider(api_key="sk", model="test-model", base_url="https://api.siliconflow.cn/v1")
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({"data": []}).encode("utf-8")
         mock_response.__enter__ = MagicMock(return_value=mock_response)

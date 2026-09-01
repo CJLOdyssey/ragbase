@@ -77,7 +77,7 @@ describe('MemoryPanel', () => {
     renderWithClient(<MemoryPanel sessionId={mockSessionId} onClose={mockOnClose} />);
     
     await waitFor(() => {
-      const closeButton = screen.getByTitle('confirm.close');
+      const closeButton = screen.getByTitle('common.close');
       expect(closeButton).toBeInTheDocument();
     });
   });
@@ -88,7 +88,7 @@ describe('MemoryPanel', () => {
     renderWithClient(<MemoryPanel sessionId={mockSessionId} onClose={mockOnClose} />);
     
     await waitFor(() => {
-      const closeButton = screen.getByTitle('confirm.close');
+      const closeButton = screen.getByTitle('common.close');
       fireEvent.click(closeButton);
     });
 

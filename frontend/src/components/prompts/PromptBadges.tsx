@@ -8,23 +8,23 @@ import {
   Tag as SharedTag,
   StatusPill as SharedStatusPill,
 } from '../shared/list/badges';
+import { useTranslation } from 'react-i18next';
 
-const STATUS_MAP: Record<string, { colorVar: string; label: string }> = {
-  published: { colorVar: '--color-success', label: '启用' },
-  active: { colorVar: '--color-success', label: '启用' },
-  enabled: { colorVar: '--color-success', label: '启用' },
+const STATUS_COLORS: Record<string, string> = {
+  published: '--color-success',
+  active: '--color-success',
+  enabled: '--color-success',
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const entry = STATUS_MAP[status] ?? {
-    colorVar: '--color-warning',
-    label: '草稿',
-  };
+  const { t } = useTranslation();
+  const colorVar = STATUS_COLORS[status] ?? '--color-warning';
+  const isEnabled = !!STATUS_COLORS[status];
   return (
     <SharedStatusPill
-      label={entry.label}
+      label={isEnabled ? t('prompts.statusEnabled') : t('prompts.statusDraft')}
       // CSS var() composes fine inside color-mix at the primitive.
-      color={`var(${entry.colorVar})`}
+      color={`var(${colorVar})`}
     />
   );
 }

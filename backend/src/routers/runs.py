@@ -2,34 +2,28 @@
 
 import contextlib
 import json
-import os
 import time
 from typing import Any
 
 from auth import get_user_id
+from auth.auth_jwt import AUTH_SECRET, decode_jwt
 from broker import drain_buffer, stop_buffer, subscribe_run
 from core.config import load_config
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from core.models import RunDetail, RunSummary
-from core.rate_limit import SlidingWindowLimiter
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
-from repository import get_messages, get_run
+from repository import get_messages, get_run_for_user
 from services.run_service import run_service
+
+from routers.run_limits import run_limiter
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["runs"])
 
 _MAX_REQUIREMENT_LENGTH = 2000
-
-# OWASP LLM10 unbounded-consumption guard: per-user run rate limit.
-# In-process window; multi-instance deployments need a shared store.
-_run_limiter = SlidingWindowLimiter(
-    max_calls=int(os.environ.get("RUN_RATE_LIMIT_PER_MIN", "6")),
-    window_seconds=60,
-)
 
 
 def _parse_sources(raw: str | None) -> list[dict[str, Any]]:
@@ -78,7 +72,7 @@ async def create_run(req: RunRequest, request: Request) -> Any:
         raise error_response(ErrorCode.INVALID_REQUEST, detail="需求不能为空")
 
     user_id = get_user_id(request)
-    if not _run_limiter.allow(user_id):
+    if not run_limiter.allow(user_id):
         raise error_response(
             ErrorCode.RATE_LIMITED, detail="请求过于频繁，请稍后再试"
         )
@@ -104,10 +98,10 @@ async def create_run(req: RunRequest, request: Request) -> Any:
 
 
 @router.get("/api/runs/{run_id}", response_model=RunDetail)
-async def get_run_detail(run_id: str) -> Any:
-    """Get detailed information for a specific run."""
+async def get_run_detail(run_id: str, request: Request) -> Any:
+    """Get detailed information for a specific run (owner-scoped)."""
     try:
-        result = await run_service.get_run(run_id)
+        result = await run_service.get_run(run_id, get_user_id(request))
         if result is None:
             raise error_response(ErrorCode.RUN_NOT_FOUND, detail="未找到该次讨论")
         return result
@@ -119,10 +113,10 @@ async def get_run_detail(run_id: str) -> Any:
 
 
 @router.get("/api/runs", response_model=list[RunSummary])
-async def list_runs(limit: int = 20) -> Any:
-    """List recent runs with a configurable limit."""
+async def list_runs(request: Request, limit: int = 20) -> Any:
+    """List the current user's recent runs with a configurable limit."""
     try:
-        return await run_service.list_runs(limit=limit)
+        return await run_service.list_runs(limit=limit, user_id=get_user_id(request))
     except Exception as e:
         logger.error("Error listing runs: %s", e, exc_info=True)
         raise error_response(ErrorCode.INTERNAL_ERROR) from e
@@ -130,15 +124,45 @@ async def list_runs(limit: int = 20) -> Any:
 
 @router.post("/api/runs/{run_id}/cancel", response_model=RunResponse)
 async def cancel_run(run_id: str, request: Request) -> Any:
-    """Cancel an in-flight run: propagate cancellation to the LLM stream."""
+    """Cancel an in-flight run (owner-scoped): propagate cancellation to the LLM stream."""
     try:
-        result = await run_service.cancel_run(run_id)
+        result = await run_service.cancel_run(run_id, get_user_id(request))
+        if result.get("status") == "not_found":
+            raise error_response(ErrorCode.RUN_NOT_FOUND, detail="未找到该次讨论")
         return RunResponse(**result)
     except HTTPException:
         raise
     except Exception as e:
         logger.error("Error cancelling run %s: %s", run_id, e, exc_info=True)
         raise error_response(ErrorCode.INTERNAL_ERROR) from e
+
+
+def _ws_user_id(websocket: WebSocket) -> str:
+    """Resolve user identity from the WS handshake (cookie, then ?token=).
+
+    AuthMiddleware exempts the ``/ws/`` prefix (WebSockets can't set headers
+    cross-origin), so this endpoint must authenticate itself — mirror of
+    ``routers/events.py:_ws_user_id``.
+    """
+    token = websocket.cookies.get("access_token") or ""
+    if not token:
+        token = websocket.query_params.get("token", "")
+    if not token:
+        return ""
+    payload = decode_jwt(token, AUTH_SECRET)
+    if payload:
+        uid = payload.get("sub")
+        if isinstance(uid, str) and uid:
+            return uid
+    return ""
+
+
+async def _reject(websocket: WebSocket, message: str) -> None:
+    """Send a terminal error status and close the socket (auth/ownership fail)."""
+    with contextlib.suppress(Exception):
+        await websocket.send_json({"type": "status", "status": "error", "error": message})
+    with contextlib.suppress(Exception):
+        await websocket.close(code=1008)
 
 
 @router.websocket("/ws/runs/{run_id}")
@@ -151,13 +175,26 @@ async def run_websocket(websocket: WebSocket, run_id: str) -> Any:
         run_id, client_host,
     )
     _ws_t0 = time.monotonic()
+
+    # AuthMiddleware exempts /ws/*; authenticate + authorize here or the
+    # stream leaks any run's content to unauthenticated callers.
+    user_id = _ws_user_id(websocket)
+    if not user_id:
+        logger.warning("WS rejected (unauthenticated) | run_id=%s | client=%s", run_id, client_host)
+        await _reject(websocket, "未登录")
+        return
+    run = await get_run_for_user(run_id, user_id)
+    if run is None:
+        logger.warning("WS rejected (not owner) | run_id=%s | client=%s", run_id, client_host)
+        await _reject(websocket, "无权访问该运行")
+        return
+
     try:
         await websocket.send_json({"type": "status", "status": "connected"})
 
         # Check if run already completed (race condition: task finished before WS connected)
         try:
-            run = await get_run(run_id)
-            if run and run.status in ("converged", "error"):
+            if run.status in ("converged", "error"):
                 await stop_buffer(run_id)
                 messages = await get_messages(run_id)
                 for m in messages:

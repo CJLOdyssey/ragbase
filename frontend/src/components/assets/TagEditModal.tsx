@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Modal as AntdModal, Select } from 'antd';
+import { Select } from 'antd';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 import type { AssetItem } from '../../types/assets';
 
 interface TagEditModalProps {
@@ -24,17 +25,32 @@ export default function TagEditModal({
   const [tags, setTags] = useState<string[]>(asset.tags ?? []);
 
   return (
-    <AntdModal
-      title={`${t('assets.tags.title')} · ${asset.name}`}
+    <MobileModal
       open={true}
-      onCancel={onClose}
-      centered
+      onClose={onClose}
+      mode="sheet"
+      title={`${t('assets.tags.title')} · ${asset.name}`}
       width={460}
-      okText={t('confirm.confirm')}
-      cancelText={t('confirm.cancel')}
-      confirmLoading={saving}
-      onOk={() => onSave(asset.id, tags)}
-      okButtonProps={{ disabled: tags.length > 20 }}
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+          >
+            {t('confirm.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(asset.id, tags)}
+            disabled={saving || tags.length > 20}
+            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {saving ? '...' : t('confirm.confirm')}
+          </button>
+        </>
+      }
     >
       <div className="flex flex-col gap-2 py-1">
         <Select
@@ -54,6 +70,6 @@ export default function TagEditModal({
           {t('assets.tags.hint')}
         </p>
       </div>
-    </AntdModal>
+    </MobileModal>
   );
 }

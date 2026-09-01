@@ -8,7 +8,7 @@ _KNOWN_ERRORS: dict[str, str] = {
     "UndefinedTable": "数据库表未创建，请运行 `alembic upgrade head`",
     "ProgrammingError": "SQL 执行错误，通常是表结构不匹配或权限问题",
     "InterfaceError": "数据库连接断开",
-    " OperationalError": "数据库操作失败，检查连接和表状态",
+    "OperationalError": "数据库操作失败，检查连接和表状态",
     "TimeoutError": "操作超时，检查依赖服务（Redis/DB）状态",
     "ConnectionRefusedError": "连接被拒绝，目标服务未启动",
     "KeyError": "键不存在，通常是数据格式不匹配",
@@ -65,7 +65,7 @@ def analyze_trace(trace_id: str) -> dict[str, Any]:
             }
             for e in slow_events[:10]
         ],
-        "suggestion": list(suggestions)[0] if suggestions else None,
+        "suggestion": sorted(suggestions)[0] if suggestions else None,
     }
 
 

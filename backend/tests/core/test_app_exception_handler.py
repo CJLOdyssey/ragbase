@@ -111,3 +111,28 @@ class TestExceptionHandler:
         # FastAPI returns 404 for unknown routes
         # The exception handler catches unhandled exceptions only
         assert resp.status_code == 404
+
+
+class TestGlobalExceptionHandler:
+    def test_uncaught_exception_returns_500_json(self, caplog):
+        """未捕获异常 → 500 + 结构化 JSON detail，且错误带堆栈落日志。"""
+        import json
+        import logging
+
+        from core.app import global_exception_handler
+        from starlette.requests import Request
+
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/boom",
+            "query_string": b"",
+            "headers": [],
+        }
+        request = Request(scope)
+        with caplog.at_level(logging.ERROR):
+            resp = global_exception_handler(request, RuntimeError("boom"))
+        assert resp.status_code == 500
+        body = json.loads(bytes(resp.body).decode("utf-8"))
+        assert body["detail"] == "服务器内部错误，请查看日志了解详情"
+        assert "boom" in caplog.text

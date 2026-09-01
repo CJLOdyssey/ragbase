@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal as AntdModal } from 'antd';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 import type { PromptItem } from '../../api/client/prompts';
 import { StatusBadge } from './PromptBadges';
 import { useToast } from '../../utils/useToast';
@@ -19,9 +19,6 @@ export default function PromptDetailModal({ prompt, onClose }: Props) {
   const [copied, setCopied] = useState(false);
 
   const content = prompt.content?.trim() ? prompt.content : '';
-  const uses = (
-    (prompt as unknown as { uses?: number }).uses ?? 0
-  ).toLocaleString();
 
   useEffect(() => {
     if (!copied) return;
@@ -40,7 +37,10 @@ export default function PromptDetailModal({ prompt, onClose }: Props) {
   };
 
   return (
-    <AntdModal
+    <MobileModal
+      open={true}
+      onClose={onClose}
+      mode="sheet"
       title={
         <span className="flex items-center gap-2.5 min-w-0 pr-4">
           <span className="text-lg font-semibold text-[var(--color-text-primary)] truncate">
@@ -54,9 +54,6 @@ export default function PromptDetailModal({ prompt, onClose }: Props) {
           </span>
         </span>
       }
-      open={true}
-      onCancel={onClose}
-      centered
       width={680}
       aria-label={prompt.name}
       footer={null}
@@ -69,7 +66,6 @@ export default function PromptDetailModal({ prompt, onClose }: Props) {
               label={t('prompts.editor.description')}
               value={prompt.description || '—'}
             />
-            <KVRow label={t('prompts.detail.uses')} value={uses} />
             <KVRow
               label={t('prompts.editor.updatedAt')}
               value={new Date(prompt.created_at).toLocaleString('zh-CN')}
@@ -100,7 +96,7 @@ export default function PromptDetailModal({ prompt, onClose }: Props) {
           </pre>
         </div>
       </div>
-    </AntdModal>
+    </MobileModal>
   );
 }
 

@@ -32,11 +32,13 @@ import {
 } from '../../utils/branchTurns';
 import Logger from '../../utils/logger';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export function useHomeState() {
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
   const isDarkMode = useResolvedIsDark(settings.theme);
+  const isMobile = useIsMobile();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const messages = useChatStore((s) => s.messages);
@@ -44,7 +46,15 @@ export function useHomeState() {
   const cancelRun = useChatStore((s) => s.cancelRun);
   const apiStatus = useChatStore((s) => s.status);
   const apiError = useChatStore((s) => s.error);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // 移动端侧边栏为覆盖抽屉，默认收起（桌面保持展开）
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isMobile);
+
+  // 视口跨 md 断点时强制同步侧边栏状态：桌面 → 移动端时若抽屉处于打开态，
+  // 会以「展开抽屉」姿态压在消息区上（占屏 70%+、主区被挤压成细条）。
+  // 移动端一律收起（由汉堡按钮打开），切回桌面时恢复展开。
+  useEffect(() => {
+    setIsSidebarOpen(!isMobile);
+  }, [isMobile]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isApiOpen, setIsApiOpen] = useState(false);
@@ -227,6 +237,14 @@ export function useHomeState() {
         userMsgId: m.userMsgId,
         runId: m.runId,
         attachments: m.attachments,
+        // 保留渲染所需元数据：RAG 引用、点赞态、时间戳、中断标记——
+        // 裁剪会导致 TeamMessage/UserMessage 拿到 undefined 而永久不显示。
+        sources: m.sources,
+        thumbsFeedback: m.thumbsFeedback,
+        timestamp: m.created_at
+          ? new Date(m.created_at).getTime()
+          : undefined,
+        interrupted: m.interrupted,
       })),
     [messages],
   );
@@ -245,6 +263,10 @@ export function useHomeState() {
       files?: import('../../types/input').AttachedFile[],
     ) => {
       if (!text.trim()) return;
+      // 并发防护：loading/running 期间锁定发送入口，避免两次提交产生
+      // 两个 run 经共享 streamHandler 交错污染同一流消息。
+      const status = useChatStore.getState().status;
+      if (status === 'loading' || status === 'running') return;
       // 模型选择的单一事实源：UI 生效模型（selectedModel 或 recent 回退）在
       // 提交前同步到 localStorage，否则 chatActions.resolveKey 读到 null →
       // 默认 key（历史上"一直走 deepseek"的根因之一）。
@@ -332,6 +354,9 @@ export function useHomeState() {
       );
     } catch (err) {
       Logger.warn('[useHomeState] failed to load conversation', err);
+      // 加载失败（401 未登录 / 404 会话不存在 / 网络错）不卡在空面板：
+      // 回首页（会话列表权威兜底同样会清除无效 URL）。
+      if (seq === loadSeqRef.current) navigate('/');
     }
     if (seq === loadSeqRef.current) {
       setRestoring(false);
@@ -353,15 +378,8 @@ export function useHomeState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConvId]);
 
-  // 直达主页（无 URL 会话）时恢复上次会话：localStorage fallback 后
-  // 以 URL 形式重建（replace，不堆历史）。
-  useEffect(() => {
-    const stored = readActiveConvId();
-    if (!sessionId && stored) {
-      navigate(`/chat/${stored}`, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 企业级行为：/ 不自动恢复上次会话，由用户主动选择。
+  // 消费级的 localStorage 自动恢复已移除。
 
   // 分支语义：切版本 = 切分支，视图整体切到目标 run 所在分支的全部消息
   // （父链 + 子孙链，后续轮次跟随目标分支；不在该分支的轮次仅视图隐藏，DB 留存）。

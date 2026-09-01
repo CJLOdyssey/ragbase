@@ -19,7 +19,7 @@
 ### 方式一：全容器（Docker Compose）
 
 ```bash
-docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
+docker compose --env-file .env -f docker/compose.base.yml -f docker/compose.local.yml up -d
 ```
 
 前端 `http://localhost:5173`，后端 `http://localhost:8080`。
@@ -27,7 +27,7 @@ docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
 ### 方式二：混合模式（开发推荐）
 
 ```bash
-docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
+docker compose --env-file .env -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
 DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5433/ragbase" make dev-backend
 cd frontend && npm run dev
 ```

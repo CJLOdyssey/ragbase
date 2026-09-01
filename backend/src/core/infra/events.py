@@ -39,17 +39,21 @@ class EventBus:
     def off(self, event: str, handler: EventHandler) -> None:
         """Unsubscribe a handler from an event."""
         self._handlers[event] = [h for h in self._handlers[event] if h is not handler]
+        if not self._handlers[event]:
+            del self._handlers[event]
 
     async def emit(self, event: str, **data: Any) -> None:
         """Emit an event, calling all registered handlers with ``**data``."""
         for handler in self._handlers.get(event, []):
             try:
-                if asyncio.iscoroutinefunction(handler):
-                    await handler(**data)
-                else:
-                    handler(**data)
+                # Call first, then await if needed — this also covers handlers
+                # wrapped in functools.partial, which iscoroutinefunction misses.
+                result = handler(**data)
+                if asyncio.iscoroutine(result):
+                    await result
             except Exception:
-                logger.exception("Event handler %r failed for %s", handler.__name__, event)
+                name = getattr(handler, "__name__", repr(handler))
+                logger.exception("Event handler %r failed for %s", name, event)
 
     def clear(self) -> None:
         """Remove all handlers (useful in tests)."""

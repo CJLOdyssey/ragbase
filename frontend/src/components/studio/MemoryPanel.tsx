@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import EmptyState from '../shared/EmptyState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -23,6 +23,15 @@ export default function MemoryPanel({ sessionId, onClose }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<MemoryItem | null>(null);
+
+  // 覆盖层与 antd Modal 一致的键盘体验：Escape 关闭。
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const { data: memories = [], isLoading } = useQuery({
     queryKey: ['memories', sessionId],
@@ -73,7 +82,7 @@ export default function MemoryPanel({ sessionId, onClose }: Props) {
           <button
             className="p-1.5 rounded bg-transparent border-none cursor-pointer text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors duration-150"
             onClick={onClose}
-            title={t('confirm.close')}
+            title={t('common.close')}
           >
             ✕
           </button>

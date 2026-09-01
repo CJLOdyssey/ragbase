@@ -51,9 +51,9 @@ describe('ChangePasswordForm', () => {
   });
 
   it('enables submit button when all fields are filled', async () => {
-    render(<ChangePasswordForm />);
+    const { container } = render(<ChangePasswordForm />);
 
-    const allInputs = document.querySelectorAll('input[type="password"]');
+    const allInputs = container.querySelectorAll('input[type="password"]');
     const oldPasswordInput = allInputs[0];
     const newPasswordInput = allInputs[1];
     const confirmPasswordInput = allInputs[2];
@@ -71,9 +71,9 @@ describe('ChangePasswordForm', () => {
   it('calls changePassword with correct values', async () => {
     vi.mocked(changePassword).mockResolvedValue(undefined);
 
-    render(<ChangePasswordForm />);
+    const { container } = render(<ChangePasswordForm />);
 
-    const allInputs = document.querySelectorAll('input[type="password"]');
+    const allInputs = container.querySelectorAll('input[type="password"]');
     const oldPasswordInput = allInputs[0];
     const newPasswordInput = allInputs[1];
     const confirmPasswordInput = allInputs[2];
@@ -93,9 +93,9 @@ describe('ChangePasswordForm', () => {
   it('clears fields after successful password change', async () => {
     vi.mocked(changePassword).mockResolvedValue(undefined);
 
-    render(<ChangePasswordForm />);
+    const { container } = render(<ChangePasswordForm />);
 
-    const allInputs = document.querySelectorAll('input[type="password"]');
+    const allInputs = container.querySelectorAll('input[type="password"]');
     const oldPasswordInput = allInputs[0];
     const newPasswordInput = allInputs[1];
     const confirmPasswordInput = allInputs[2];
@@ -115,9 +115,9 @@ describe('ChangePasswordForm', () => {
   });
 
   it('shows error toast when passwords do not match', async () => {
-    render(<ChangePasswordForm />);
+    const { container } = render(<ChangePasswordForm />);
 
-    const allInputs = document.querySelectorAll('input[type="password"]');
+    const allInputs = container.querySelectorAll('input[type="password"]');
     const oldPasswordInput = allInputs[0];
     const newPasswordInput = allInputs[1];
     const confirmPasswordInput = allInputs[2];
@@ -136,9 +136,9 @@ describe('ChangePasswordForm', () => {
   it('shows error toast when changePassword fails', async () => {
     vi.mocked(changePassword).mockRejectedValue(new Error('Failed'));
 
-    render(<ChangePasswordForm />);
+    const { container } = render(<ChangePasswordForm />);
 
-    const allInputs = document.querySelectorAll('input[type="password"]');
+    const allInputs = container.querySelectorAll('input[type="password"]');
     const oldPasswordInput = allInputs[0];
     const newPasswordInput = allInputs[1];
     const confirmPasswordInput = allInputs[2];
@@ -160,9 +160,9 @@ describe('ChangePasswordForm', () => {
       () => new Promise((resolve) => setTimeout(resolve, 100))
     );
 
-    render(<ChangePasswordForm />);
+    const { container } = render(<ChangePasswordForm />);
 
-    const allInputs = document.querySelectorAll('input[type="password"]');
+    const allInputs = container.querySelectorAll('input[type="password"]');
     const oldPasswordInput = allInputs[0];
     const newPasswordInput = allInputs[1];
     const confirmPasswordInput = allInputs[2];

@@ -97,6 +97,34 @@ class TestRuns:
         resp = client.get("/api/runs/r-error")
         assert resp.status_code == 500
 
+    @patch("routers.runs.run_service", new_callable=MagicMock)
+    def test_get_run_detail_scoped_to_caller(self, mock_service, client):
+        """GET /runs/{id} 必须携带调用者身份 → 服务层归属校验 (BOLA 防护)。"""
+        mock_service.get_run = AsyncMock(return_value={
+            "id": "r-1", "requirement": "test", "status": "converged",
+            "session_id": "s-1", "messages": [],
+        })
+        resp = client.get("/api/runs/r-1")
+        assert resp.status_code == 200
+        assert mock_service.get_run.await_args.args[1] == "admin-login"
+
+    @patch("routers.runs.run_service", new_callable=MagicMock)
+    def test_list_runs_scoped_to_caller(self, mock_service, client):
+        """GET /runs 列表必须按调用者归属过滤，不再返回全局 runs。"""
+        mock_service.list_runs = AsyncMock(return_value=[])
+        resp = client.get("/api/runs")
+        assert resp.status_code == 200
+        assert mock_service.list_runs.await_args.kwargs["user_id"] == "admin-login"
+
+    @patch("routers.runs.run_service", new_callable=MagicMock)
+    def test_cancel_run_not_owner_returns_404(self, mock_service, client):
+        """非本人 run 取消 → 服务层回 not_found → 404（不泄露存在性）。"""
+        mock_service.cancel_run = AsyncMock(return_value={
+            "run_id": "r-other", "status": "not_found", "cancelled": False,
+        })
+        resp = client.post("/api/runs/r-other/cancel")
+        assert resp.status_code == 404
+
     # ── List runs ────────────────────────────────────────────────────────
 
     @patch("routers.runs.run_service", new_callable=MagicMock)

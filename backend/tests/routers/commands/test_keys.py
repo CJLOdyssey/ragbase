@@ -176,8 +176,8 @@ class TestKeys:
             assert resp.json()["success"] is False
 
     def test_fetch_models_from_provider_success(self, client):
-        with patch("repository.keys._test_connection_sync") as mock_sync:
-            mock_sync.return_value = {"success": True, "models": ["gpt-4"]}
+        with patch("routers.keys.fetch_models_for_provider", new_callable=AsyncMock) as mock_fetch:
+            mock_fetch.return_value = {"success": True, "models": ["gpt-4"]}
             resp = client.post("/api/keys/fetch-models", json={
                 "api_key": "sk-test", "provider": "openai",
             })
@@ -185,8 +185,8 @@ class TestKeys:
             assert resp.json()["models"] == ["gpt-4"]
 
     def test_fetch_models_from_provider_failure(self, client):
-        with patch("repository.keys._test_connection_sync") as mock_sync:
-            mock_sync.return_value = {"success": False, "message": "Connection refused"}
+        with patch("routers.keys.fetch_models_for_provider", new_callable=AsyncMock) as mock_fetch:
+            mock_fetch.return_value = {"success": False, "message": "Connection refused"}
             resp = client.post("/api/keys/fetch-models", json={
                 "api_key": "sk-test", "provider": "openai",
             })

@@ -8,6 +8,24 @@ otherwise orphan old rows).
 
 from typing import Any
 
+# Stages written while an indexing task is actively working on an asset.
+# "done"/"failed" are terminal and must not count as in-flight (a failed
+# index must remain retryable by the sweep).
+_ACTIVE_INDEX_STAGES = frozenset({"parsing", "chunking", "embedding", "storing"})
+
+
+async def is_index_in_flight(asset_id: str) -> bool:
+    """True when another indexing task for this asset appears to be running.
+
+    Progress markers carry a 10-minute TTL, so a crashed worker releases its
+    marker on its own; until then duplicate indexing (manual trigger racing
+    the periodic sweep) is detected instead of double-embedding.
+    """
+    from repository.index_progress import get_index_progress
+
+    progress = await get_index_progress(asset_id)
+    return progress is not None and progress.get("stage") in _ACTIVE_INDEX_STAGES
+
 
 async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     from rag.rag_chunking import semantic_chunk
@@ -22,12 +40,19 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     if asset is None or asset.user_id != user_id:
         raise ValueError(f"asset {asset_id} not found or not owned by user")
 
+    # Concurrency dedup: a manual trigger racing the reindex sweep (or a beat
+    # overlap) would clear+rewrite chunks twice. The in-flight run owns the
+    # asset — skip quietly; the caller's UI keeps tracking that run's progress.
+    if await is_index_in_flight(asset_id):
+        return {"indexed": False, "skipped": "in-flight"}
+
     # Per-KB binding: vectors in one KB share a single embedding space, so the
     # owning KB's bound model (when set) wins over the global heuristic.
+    kb_id = asset.knowledge_base_id
     kb_embed_model: str | None = None
     kb_parser_config: dict[str, Any] | None = None
-    if asset.knowledge_base_id:
-        kb = await get_kb(asset.knowledge_base_id, user_id)
+    if kb_id:
+        kb = await get_kb(kb_id, user_id)
         if kb is not None:
             kb_embed_model = getattr(kb, "embed_model", None)
             kb_parser_config = getattr(kb, "parser_config", None) or None
@@ -41,6 +66,10 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
             raise ValueError(
                 f"asset source {asset.source!r} not allowed for indexing"
             )
+
+        # In-flight marker BEFORE the slow parse: closes the guard window so a
+        # concurrent trigger sees this task instead of double-indexing.
+        await set_index_progress(asset_id, "parsing", 10, "Extracting text...")
 
         text = extract_text(asset.storage_path)
         if not text.strip():
@@ -103,14 +132,20 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
                 "embed_model": provider.model,
             }
 
-        # Race guard against a concurrent rebind: if the KB's binding changed
-        # while we were embedding, these vectors belong to the old space —
-        # abort (fail-loud) and let the reindex sweep redo it with the new one.
-        if kb_embed_model is not None and provider.model != kb_embed_model:
-            raise RuntimeError(
-                f"KB embed model changed to {kb_embed_model!r} mid-indexing; "
-                "discarding stale-space vectors"
-            )
+        # Race guard against a concurrent rebind: the KB binding may have
+        # changed during the slow embed step, so these vectors could belong
+        # to the old space. Comparing against the START-of-task snapshot
+        # would never see the change — re-read the LIVE binding instead.
+        # Abort (fail-loud): the failed terminal state makes the sweep retry
+        # with the new model, so the asset always converges to one space.
+        if kb_id is not None and kb_embed_model is not None:
+            kb_now = await get_kb(kb_id, user_id)
+            live_model = getattr(kb_now, "embed_model", None) if kb_now else None
+            if live_model is not None and live_model != provider.model:
+                raise RuntimeError(
+                    f"KB embed model changed to {live_model!r} mid-indexing; "
+                    "discarding stale-space vectors"
+                )
 
         await set_index_progress(asset_id, "storing", 80, "Storing vectors...")
 

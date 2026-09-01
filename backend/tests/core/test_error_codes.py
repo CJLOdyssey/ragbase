@@ -1,4 +1,4 @@
-"""Unit tests for """
+"""Unit tests for core.error_codes (ErrorCode enum + error_response mapping)."""
 
 from unittest.mock import patch
 
@@ -81,10 +81,5 @@ class TestErrorResponse:
         with patch.dict(_STATUS_MAP, clear=True):
             exc = error_response(code)
         assert exc.status_code == 500
-
-
-# ─────────────────────────────────────────────────────────────────────
-# 7. backend/checkpoint/factory.py — Checkpointer factory
-# ─────────────────────────────────────────────────────────────────────
 
 

@@ -3,10 +3,8 @@ import {
   deleteMemory,
   deleteSession,
   exportSessionMemories,
-  getRun,
   getSessionDetail,
   healthCheck,
-  listRuns,
   listSessions,
   renameSession,
 } from '../sessions';
@@ -115,39 +113,6 @@ describe('exportSessionMemories', { tags: ['unit'] }, () => {
     expect(mockApi.get).toHaveBeenCalledWith('/sessions/s1/memories/export', {
       params: { format: 'md' },
       responseType: 'blob',
-    });
-  });
-});
-
-describe('getRun', { tags: ['unit'] }, () => {
-  it('calls GET /runs/:id', async () => {
-    mockApi.get.mockResolvedValue({ data: { id: 'r1', status: 'completed' } });
-
-    const result = await getRun('r1');
-
-    expect(mockApi.get).toHaveBeenCalledWith('/runs/r1');
-    expect(result).toEqual({ id: 'r1', status: 'completed' });
-  });
-});
-
-describe('listRuns', { tags: ['unit'] }, () => {
-  it('calls GET /runs with default params', async () => {
-    mockApi.get.mockResolvedValue({ data: [] });
-
-    await listRuns();
-
-    expect(mockApi.get).toHaveBeenCalledWith('/runs', {
-      params: { limit: 20 },
-    });
-  });
-
-  it('passes custom limit and offset', async () => {
-    mockApi.get.mockResolvedValue({ data: [] });
-
-    await listRuns(10, 5);
-
-    expect(mockApi.get).toHaveBeenCalledWith('/runs', {
-      params: { limit: 10, offset: 5 },
     });
   });
 });

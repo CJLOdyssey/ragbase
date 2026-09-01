@@ -16,13 +16,14 @@ import json
 import os
 from typing import Any
 
+from core.env import env_int
 from core.infra.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 CACHE_PREFIX = os.environ.get("REDIS_CACHE_PREFIX", "cache:")
 CACHE_ENABLED = os.environ.get("REDIS_CACHE_ENABLED", "1") == "1"
-DEFAULT_TTL = int(os.environ.get("REDIS_CACHE_TTL", "300"))
+DEFAULT_TTL = env_int("REDIS_CACHE_TTL", 300)
 
 
 class Cache:

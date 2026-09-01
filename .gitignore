@@ -138,3 +138,6 @@ RUNBOOK.md
 celerybeat-schedule*
 backups/
 tls/
+
+# QA checklists (working docs, never commit)
+qa/

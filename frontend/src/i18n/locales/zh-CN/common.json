@@ -156,6 +156,7 @@
   "teamMessage": {
     "copy": "复制",
     "copied": "已复制",
+    "copyFailed": "复制失败，请重试",
     "edit": "编辑",
     "continue": "继续",
     "continuing": "继续生成中…",
@@ -271,6 +272,7 @@
     "download": "下载文件",
     "previewLoadFailed": "预览加载失败",
     "unsupportedType": "暂不支持预览该类型",
+    "emptyPreview": "文件为空或无可预览内容",
     "failed": "失败",
     "countSelected": "{{count}} 个文件已选择"
   },
@@ -297,6 +299,13 @@
   },
   "prompts": {
     "title": "提示词",
+    "subtitle": "管理和版本控制你的 AI 提示词模板",
+    "searchPlaceholder": "搜索提示词…",
+    "noDescription": "暂无描述",
+    "noData": "暂无{{label}}数据",
+    "statusEnabled": "启用",
+    "statusDraft": "草稿",
+    "tabAll": "全部",
     "tab": {
       "list": "列表",
       "version": "版本"
@@ -326,6 +335,9 @@
       "category": "类别",
       "status": "状态",
       "content": "内容",
+      "namePlaceholder": "如：产品问答助手",
+      "descPlaceholder": "简短描述此提示词的用途",
+      "contentPlaceholder": "你是一位…{{context}}…{{question}}",
       "updatedAt": "更新时间",
       "actions": "操作",
       "saveHint": "保存即自动记录新版本",
@@ -389,6 +401,8 @@
     "time": "时间",
     "noLogs": "暂无检索日志",
     "noLogsDesc": "发起检索后将在此显示记录",
+    "loadFailed": "检索日志加载失败",
+    "loadFailedDesc": "网络或服务异常，请稍后重试",
     "sourceDetail": "来源详情",
     "detail": "日志详情",
     "timeRange": "时间范围",

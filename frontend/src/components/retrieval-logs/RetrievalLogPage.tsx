@@ -49,8 +49,9 @@ function TimeControls({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <DatePicker.RangePicker
+        popupClassName="mobile-picker"
         showTime={{ format: 'HH:mm' }}
         format="YYYY-MM-DD HH:mm"
         value={range}
@@ -71,11 +72,12 @@ function TimeControls({
         placeholder={[t('monitoring.rangeStart'), t('monitoring.rangeEnd')]}
         data-testid="logs-custom-range"
       />
-      <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-1">
+      <div className="hidden md:block flex-1" />
+      <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-1 shrink-0">
         {HOUR_OPTIONS.map((w) => (
           <button
             key={w.hours}
-            className={`px-3 py-1.5 rounded-md text-sm cursor-pointer border-none transition-colors duration-150 ${
+            className={`px-2 py-1.5 rounded-md text-xs cursor-pointer border-none transition-colors duration-150 sm:px-3 sm:text-sm ${
               !range && sinceHours === w.hours
                 ? 'bg-[var(--color-accent)] text-[var(--color-text-on-accent)]'
                 : 'bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -144,35 +146,37 @@ function LogsToolbar({
   };
 
   return (
-    <div className="flex items-center gap-4 mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5">
-      <Checkbox
-        checked={emptyOnly}
-        onChange={(e) => {
-          writeParams((next) => {
-            if (e.target.checked) next.set('empty', '1');
-            else next.delete('empty');
-          });
-        }}
-      >
-        {t('retrievalLogs.emptyOnly')}
-      </Checkbox>
-      <div className="w-px h-4 bg-[var(--color-border)]" />
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-[var(--color-text-secondary)]">
-          {t('retrievalLogs.maxLatency')}
-        </span>
-        <InputNumber
-          value={latencyDraft ? Number(latencyDraft) : null}
-          placeholder="0"
-          min={0}
-          onChange={handleLatencyChange}
-          className="w-24"
-        />
-        <span className="text-xs text-[var(--color-text-muted)] font-mono">
-          ms
-        </span>
+    <div className="flex flex-col gap-2 mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-2.5 sm:flex-row sm:items-center sm:gap-4">
+    <div className="flex items-center justify-between gap-2">
+        <Checkbox
+          checked={emptyOnly}
+          onChange={(e) => {
+            writeParams((next) => {
+              if (e.target.checked) next.set('empty', '1');
+              else next.delete('empty');
+            });
+          }}
+        >
+          {t('retrievalLogs.emptyOnly')}
+        </Checkbox>
+        <div className="w-px h-4 bg-[var(--color-border)]" />
+    <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-[var(--color-text-secondary)]">
+            {t('retrievalLogs.maxLatency')}
+          </span>
+          <InputNumber
+            value={latencyDraft ? Number(latencyDraft) : null}
+            placeholder="0"
+            min={0}
+            onChange={handleLatencyChange}
+            className="w-24"
+          />
+          <span className="text-xs text-[var(--color-text-muted)] font-mono">
+            ms
+          </span>
+        </div>
       </div>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="flex items-center gap-2 sm:ml-auto">
         {maxLatency && (
           <Tag color="blue" style={{ marginInlineEnd: 0 }}>
             {t('retrievalLogs.latencyFilterTag', { maxLatency })}
@@ -192,8 +196,16 @@ function resolveTimeWindow(searchParams: URLSearchParams): {
 } {
   const sinceParam = searchParams.get('since');
   const untilParam = searchParams.get('until');
-  const range: [Dayjs, Dayjs] | null =
-    sinceParam && untilParam ? [dayjs(sinceParam), dayjs(untilParam)] : null;
+  // URL 可被手动编辑/分享篡改：非法时间参数视为无自定义范围，
+  // 否则 dayjs(Invalid).toISOString() 抛 RangeError 整页崩溃。
+  let range: [Dayjs, Dayjs] | null = null;
+  if (sinceParam && untilParam) {
+    const since = dayjs(sinceParam);
+    const until = dayjs(untilParam);
+    if (since.isValid() && until.isValid()) {
+      range = [since, until];
+    }
+  }
   const sinceHours = Number(searchParams.get('hours')) || 0;
   const apiWindow = range
     ? { since: range[0].toISOString(), until: range[1].toISOString() }
@@ -241,7 +253,7 @@ export default function RetrievalLogPage() {
   }
 
   // placeholderData：换筛选时保留旧内容渲染，工具栏不卸载、输入焦点不丢。
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['retrieval-logs', page, emptyOnly, maxLatency, timeKey],
     queryFn: () =>
       listRetrievalLogs({
@@ -275,24 +287,27 @@ export default function RetrievalLogPage() {
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-surface)]">
-      <div className="flex items-center justify-between gap-4 px-8 py-5 border-b border-[var(--color-border)]">
-        <div>
-          <h1 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
-            {t('retrievalLogs.title')}
-          </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1 m-0">
-            {t('retrievalLogs.subtitle')}
-          </p>
-        </div>
+      <div className="flex flex-col gap-2 px-4 py-4 border-b border-[var(--color-border)] sm:px-6 lg:px-8">
+        <h1 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
+          {t('retrievalLogs.title')}
+        </h1>
         <TimeControls sinceHours={sinceHours} range={range} />
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 px-8 py-6">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-6 sm:px-6 lg:px-8">
         {!isLoading && (
           <LogsToolbar emptyOnly={emptyOnly} maxLatency={maxLatency} />
         )}
         {isLoading ? (
           <LoadingState centered />
+        ) : isError ? (
+          // 查询失败（网络/500）与「无日志」区分：空态误导用户以为没问题。
+          <EmptyState
+            icon={<FileSearch size={24} />}
+            title={t('retrievalLogs.loadFailed')}
+            description={t('retrievalLogs.loadFailedDesc')}
+            centered
+          />
         ) : items.length === 0 ? (
           <EmptyState
             icon={<FileSearch size={24} />}

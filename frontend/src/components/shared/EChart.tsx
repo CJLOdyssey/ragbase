@@ -119,7 +119,7 @@ export default function EChart({
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height, userSelect: 'none' }}
+      style={{ width: '100%', height, userSelect: 'none', touchAction: 'manipulation' }}
       className={className}
       role="img"
       aria-label={ariaLabel}

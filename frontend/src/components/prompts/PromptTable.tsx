@@ -37,7 +37,6 @@ export default function PromptTable({
     { key: 'category', header: t('prompts.table.category'), width: '90px' },
     { key: 'status', header: t('prompts.table.status'), width: '80px' },
     { key: 'version', header: t('prompts.table.version'), width: '110px' },
-    { key: 'uses', header: t('prompts.table.uses'), width: '90px' },
     { key: 'actions', header: t('prompts.table.actions'), width: '110px' },
   ];
 
@@ -82,16 +81,6 @@ export default function PromptTable({
         return (
           <CellCenter>
             <MonoBadge>{row.version}</MonoBadge>
-          </CellCenter>
-        );
-      case 'uses':
-        return (
-          <CellCenter>
-            <span className="text-[12.5px] font-mono text-[var(--color-text-secondary)]">
-              {(
-                (row as unknown as { uses?: number }).uses ?? 0
-              ).toLocaleString()}
-            </span>
           </CellCenter>
         );
       case 'actions':

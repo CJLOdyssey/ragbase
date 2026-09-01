@@ -28,14 +28,15 @@ from repository.monitoring_timeseries import (
     resolve_grid_anchor,
 )
 
-# 固定延迟区间边界（ms）：对齐 p95 SLO 默认阈值 8000，>8s 单列成桶。
-# 单一事实源：前端 bin 标签由返回的 edges 推导，不各自硬编码。
+# Fixed latency-bin edges (ms): aligned with the p95 SLO default of 8000;
+# everything above the last edge forms its own open-ended bin. Single source
+# of truth — the frontend derives bin labels from the returned edges.
 LATENCY_BIN_EDGES_MS = (500, 1000, 2000, 4000, 8000)
 BIN_COUNT = len(LATENCY_BIN_EDGES_MS) + 1
 
 
 def _bin_index(latency_ms: int) -> int:
-    """右闭分桶：[0,500)→0 … [4000,8000)→4, ≥8000→5。"""
+    """Right-closed binning: [0,500)→0 … [4000,8000)→4, ≥8000→5."""
     return bisect_right(LATENCY_BIN_EDGES_MS, latency_ms)
 
 
@@ -66,21 +67,18 @@ async def latency_heatmap(
         start = upper - timedelta(hours=bucket * n_points)
 
         rows = (
-            (
-                await session.execute(
-                    select(RetrievalLogDB.created_at, RetrievalLogDB.latency_ms).where(
-                        *window_conds(
-                            RetrievalLogDB.user_id,
-                            RetrievalLogDB.created_at,
-                            user_id,
-                            start,
-                            upper,
-                        )
+            await session.execute(
+                select(RetrievalLogDB.created_at, RetrievalLogDB.latency_ms).where(
+                    *window_conds(
+                        RetrievalLogDB.user_id,
+                        RetrievalLogDB.created_at,
+                        user_id,
+                        start,
+                        upper,
                     )
                 )
             )
-            .all()
-        )
+        ).all()
 
     grid: list[dict[str, Any]] = [
         {
@@ -133,22 +131,20 @@ async def latency_scatter(
                 )
             ).scalar_one()
         )
-        # Newest-first cap：散点只做相关性观察，超限时保留最近的流量形态。
+        # Newest-first cap: the scatter only serves correlation inspection,
+        # so over-limit traffic keeps its most recent shape.
         rows = (
-            (
-                await session.execute(
-                    select(
-                        RetrievalLogDB.created_at,
-                        RetrievalLogDB.hit_count,
-                        RetrievalLogDB.latency_ms,
-                    )
-                    .where(*conds)
-                    .order_by(RetrievalLogDB.created_at.desc())
-                    .limit(limit)
+            await session.execute(
+                select(
+                    RetrievalLogDB.created_at,
+                    RetrievalLogDB.hit_count,
+                    RetrievalLogDB.latency_ms,
                 )
+                .where(*conds)
+                .order_by(RetrievalLogDB.created_at.desc())
+                .limit(limit)
             )
-            .all()
-        )
+        ).all()
 
     items = [
         {

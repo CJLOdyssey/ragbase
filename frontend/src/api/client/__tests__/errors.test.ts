@@ -8,7 +8,7 @@ import { AxiosError, AxiosHeaders } from 'axios';
 import { describe, expect, it } from 'vitest';
 
 describe('ApiError', { tags: ['unit'] }, () => {
-  it('constructs with name Apierror', () => {
+  it('constructs with name ApiError', () => {
     const err = new ApiError('msg', 400, 'BAD_REQUEST', { detail: 'x' });
     expect(err.name).toBe('ApiError');
     expect(err.message).toBe('msg');
@@ -59,14 +59,60 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'UNAUTHORIZED', status: 401 }),
+    );
+  });
+
+  it('dispatches auth:unauthorized for non-credential 401', () => {
+    const dispatched: CustomEvent[] = [];
+    const listener = (e: Event) => dispatched.push(e as CustomEvent);
+    window.addEventListener('auth:unauthorized', listener);
     try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      const apiErr = e as ApiError;
-      expect(apiErr.code).toBe('UNAUTHORIZED');
-      expect(apiErr.status).toBe(401);
+      const axiosErr = new AxiosError(
+        'Unauthorized',
+        'ERR_BAD_RESPONSE',
+        { url: '/sessions' } as never,
+        undefined,
+        {
+          status: 401,
+          data: { detail: 'Expired' },
+          headers: {},
+          statusText: 'Unauthorized',
+          config: { headers: new AxiosHeaders() },
+        },
+      );
+      expect(() => normalizeError(axiosErr)).toThrow(ApiError);
+    } finally {
+      window.removeEventListener('auth:unauthorized', listener);
     }
+    expect(dispatched.length).toBe(1);
+    expect((dispatched[0].detail as { status: number }).status).toBe(401);
+  });
+
+  it('does not dispatch auth:unauthorized for credential-endpoint 401', () => {
+    const dispatched: CustomEvent[] = [];
+    const listener = (e: Event) => dispatched.push(e as CustomEvent);
+    window.addEventListener('auth:unauthorized', listener);
+    try {
+      const axiosErr = new AxiosError(
+        'Unauthorized',
+        'ERR_BAD_RESPONSE',
+        { url: '/auth/login' } as never,
+        undefined,
+        {
+          status: 401,
+          data: { detail: '邮箱或密码错误' },
+          headers: {},
+          statusText: 'Unauthorized',
+          config: { headers: new AxiosHeaders() },
+        },
+      );
+      expect(() => normalizeError(axiosErr)).toThrow(ApiError);
+    } finally {
+      window.removeEventListener('auth:unauthorized', listener);
+    }
+    expect(dispatched.length).toBe(0);
   });
 
   it('throws ApiError with FORBIDDEN for 403', () => {
@@ -83,13 +129,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      const apiErr = e as ApiError;
-      expect(apiErr.code).toBe('FORBIDDEN');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'FORBIDDEN' }),
+    );
   });
 
   it('throws ApiError with NOT_FOUND for 404', () => {
@@ -106,13 +148,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      const apiErr = e as ApiError;
-      expect(apiErr.code).toBe('NOT_FOUND');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'NOT_FOUND' }),
+    );
   });
 
   it('throws ApiError with VALIDATION_ERROR for 422', () => {
@@ -129,13 +167,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      const apiErr = e as ApiError;
-      expect(apiErr.code).toBe('VALIDATION_ERROR');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+    );
   });
 
   it('throws ApiError with RATE_LIMITED for 429', () => {
@@ -154,13 +188,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      const apiErr = e as ApiError;
-      expect(apiErr.code).toBe('RATE_LIMITED');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'RATE_LIMITED' }),
+    );
   });
 
   it('throws ApiError with SERVER_ERROR for 500', () => {
@@ -177,13 +207,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      const apiErr = e as ApiError;
-      expect(apiErr.code).toBe('SERVER_ERROR');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'SERVER_ERROR', status: 500 }),
+    );
   });
 
   it('throws ApiError with SERVER_ERROR for 502', () => {
@@ -200,12 +226,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      expect((e as ApiError).code).toBe('SERVER_ERROR');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'SERVER_ERROR', status: 502 }),
+    );
   });
 
   it('throws ApiError with SERVER_ERROR for 503', () => {
@@ -222,12 +245,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      expect((e as ApiError).code).toBe('SERVER_ERROR');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'SERVER_ERROR', status: 503 }),
+    );
   });
 
   it('throws ApiError with SERVER_ERROR for 504', () => {
@@ -244,12 +264,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      expect((e as ApiError).code).toBe('SERVER_ERROR');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'SERVER_ERROR', status: 504 }),
+    );
   });
 
   it('throws ApiError with UNKNOWN for unhandled status', () => {
@@ -266,12 +283,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    expect(() => normalizeError(axiosErr)).toThrow(ApiError);
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      expect((e as ApiError).code).toBe('UNKNOWN');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ code: 'UNKNOWN', status: 418 }),
+    );
   });
 
   it('re-throws non-AxiosError errors', () => {
@@ -298,11 +312,9 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      expect((e as ApiError).message).toBe('custom detail');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ message: 'custom detail' }),
+    );
   });
 
   it('falls back to axios error message when no response data', () => {
@@ -319,10 +331,8 @@ describe('normalizeError', { tags: ['unit'] }, () => {
         config: { headers: new AxiosHeaders() },
       },
     );
-    try {
-      normalizeError(axiosErr);
-    } catch (e) {
-      expect((e as ApiError).message).toBe('fallback msg');
-    }
+    expect(() => normalizeError(axiosErr)).toThrow(
+      expect.objectContaining({ message: 'fallback msg' }),
+    );
   });
 });

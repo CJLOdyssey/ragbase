@@ -1,4 +1,4 @@
-"""Unit tests for """
+"""密钥模型/加密工具测试：请求校验、Fernet 加解密、掩码、ORM 默认值。"""
 
 from unittest.mock import patch
 
@@ -224,58 +224,65 @@ def test_add_key_rejects_unknown_model_type_value(client):
     )
     assert resp.status_code == 422
 
-    def test_encrypt_decrypt_roundtrip(self):
-        from core.infra.key_vault import decrypt_api_key, encrypt_api_key
 
-        with patch.dict("os.environ", {"KEY_VAULT_SECRET": "a" * 32}):
-            plaintext = "sk-my-secret-api-key-12345"
-            encrypted = encrypt_api_key(plaintext)
-            assert encrypted != plaintext
-            decrypted = decrypt_api_key(encrypted)
-            assert decrypted == plaintext
+def test_encrypt_decrypt_roundtrip():
+    from core.infra.key_vault import decrypt_api_key, encrypt_api_key
 
-    def test_mask_api_key(self):
-        from core.infra.key_vault import mask_api_key
+    with patch.dict("os.environ", {"KEY_VAULT_SECRET": "a" * 32}):
+        plaintext = "sk-my-secret-api-key-12345"
+        encrypted = encrypt_api_key(plaintext)
+        assert encrypted != plaintext
+        decrypted = decrypt_api_key(encrypted)
+        assert decrypted == plaintext
 
-        masked = mask_api_key("sk-my-secret-key-xyz")
-        assert masked == "sk-...-xyz"
 
-    def test_mask_short_key(self):
-        from core.infra.key_vault import mask_api_key
+def test_mask_api_key():
+    from core.infra.key_vault import mask_api_key
 
-        masked = mask_api_key("abc")
-        assert masked == "ab***"
+    masked = mask_api_key("sk-my-secret-key-xyz")
+    assert masked == "sk-...-xyz"
 
-    def test_encrypt_empty_key_raises(self):
-        from core.infra.key_vault import encrypt_api_key
 
-        with pytest.raises(ValueError, match="must not be empty"):
-            encrypt_api_key("")
+def test_mask_short_key():
+    from core.infra.key_vault import mask_api_key
 
-    def test_decrypt_empty_key_raises(self):
-        from core.infra.key_vault import decrypt_api_key
+    masked = mask_api_key("abc")
+    assert masked == "ab***"
 
-        with pytest.raises(ValueError, match="must not be empty"):
-            decrypt_api_key("")
 
-    def test_user_api_key_model_columns(self):
-        from core.infra.database import UserApiKey
+def test_encrypt_empty_key_raises():
+    from core.infra.key_vault import encrypt_api_key
 
-        cols = {c.name for c in UserApiKey.__table__.columns}
-        assert "encrypted_key" in cols
-        assert "provider" in cols
-        assert "capabilities" in cols
-        assert "is_default" in cols
-        assert "is_active" in cols
+    with pytest.raises(ValueError, match="must not be empty"):
+        encrypt_api_key("")
 
-    def test_user_api_key_defaults(self):
-        from core.infra.database import UserApiKey
 
-        c_map = {c.name: c for c in UserApiKey.__table__.columns}
-        caps_default = c_map["capabilities"].default.arg
-        assert callable(caps_default) and caps_default(None) == []
-        assert c_map["is_active"].default.arg is True
-        assert c_map["is_default"].default.arg is False
+def test_decrypt_empty_key_raises():
+    from core.infra.key_vault import decrypt_api_key
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        decrypt_api_key("")
+
+
+def test_user_api_key_model_columns():
+    from core.infra.database import UserApiKey
+
+    cols = {c.name for c in UserApiKey.__table__.columns}
+    assert "encrypted_key" in cols
+    assert "provider" in cols
+    assert "capabilities" in cols
+    assert "is_default" in cols
+    assert "is_active" in cols
+
+
+def test_user_api_key_defaults():
+    from core.infra.database import UserApiKey
+
+    c_map = {c.name: c for c in UserApiKey.__table__.columns}
+    caps_default = c_map["capabilities"].default.arg
+    assert callable(caps_default) and caps_default(None) == []
+    assert c_map["is_active"].default.arg is True
+    assert c_map["is_default"].default.arg is False
 
 
 # ─────────────────────────────────────────────────────────────────────

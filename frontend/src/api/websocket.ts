@@ -53,6 +53,9 @@ function connect(runId: string, options: ConnectOptions): ConnState {
   notifyStatus(state, 'connecting');
 
   ws.onopen = () => {
+    // 成功建连说明此前断线已恢复——按「连续失败」计数而非累计，
+    // 避免长会话中几次间隔很远的瞬时断线后永久放弃重连。
+    state.reconnectCount = 0;
     notifyStatus(state, 'connected');
     Logger.info('[ws] run %s connected', runId);
   };

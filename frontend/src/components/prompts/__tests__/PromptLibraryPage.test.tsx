@@ -118,7 +118,6 @@ describe('PromptLibraryPage', () => {
       expect(screen.getByText('prompts.table.desc')).toBeInTheDocument();
       expect(screen.getByText('prompts.table.status')).toBeInTheDocument();
       expect(screen.getByText('prompts.table.version')).toBeInTheDocument();
-      expect(screen.getByText('prompts.table.uses')).toBeInTheDocument();
       expect(screen.getByText('prompts.table.actions')).toBeInTheDocument();
     });
   });
@@ -269,7 +268,7 @@ describe('PromptLibraryPage', () => {
     await waitFor(() => {
       expect(screen.getByText('prompts.editor.edit')).toBeInTheDocument();
     });
-    const nameInput = screen.getByPlaceholderText('如：产品问答助手');
+    const nameInput = screen.getByPlaceholderText('prompts.editor.namePlaceholder');
     expect(nameInput).toHaveValue('测试提示词');
   });
 

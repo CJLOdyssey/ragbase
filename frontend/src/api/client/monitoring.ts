@@ -1,4 +1,5 @@
 import type {
+  BadFeedbackReview,
   BadFeedbackResponse,
   HealthScoreHistoryResponse,
   LatencyHeatmapResponse,
@@ -76,8 +77,8 @@ export async function reviewBadFeedback(
     root_cause?: ReviewRootCause;
     note?: string;
   },
-): Promise<unknown> {
-  const { data } = await api.post(
+): Promise<BadFeedbackReview> {
+  const { data } = await api.post<BadFeedbackReview>(
     `/monitoring/bad-feedback/${feedbackId}/review`,
     body,
   );

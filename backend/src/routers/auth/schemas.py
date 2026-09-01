@@ -1,6 +1,7 @@
 """Shared Pydantic schemas and helpers for the auth sub-package."""
 
 import logging
+import os
 import secrets
 from typing import TYPE_CHECKING, Any
 
@@ -119,9 +120,13 @@ def _mask_email(email: str) -> str:
 
 
 def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # Only trust proxy headers when deployed behind a trusted reverse proxy
+    # (TRUST_PROXY_HEADERS=1). Direct exposure must use the peer address —
+    # otherwise attackers spoof X-Forwarded-For to bypass IP rate limits.
+    if os.environ.get("TRUST_PROXY_HEADERS", "0") in ("1", "true", "yes"):
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
 

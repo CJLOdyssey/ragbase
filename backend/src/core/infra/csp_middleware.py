@@ -31,9 +31,10 @@ class CSPMiddleware:
         async def _send(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers", []))
-                headers.append(
-                    (b"content-security-policy", policy.encode("ascii"))
-                )
+                if not any(k == b"content-security-policy" for k, _ in headers):
+                    headers.append(
+                        (b"content-security-policy", policy.encode("ascii"))
+                    )
                 message["headers"] = headers
             await send(message)
 

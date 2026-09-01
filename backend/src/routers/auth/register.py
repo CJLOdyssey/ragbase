@@ -1,5 +1,6 @@
 """Registration, email verification, and resend endpoints."""
 
+import hmac
 from typing import Any
 
 import bcrypt
@@ -94,7 +95,7 @@ async def register(body: RegisterRequest, request: Request, response: Response) 
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码已过期，请重新获取验证码")
 
     stored_code = stored.decode() if isinstance(stored, bytes) else stored
-    if stored_code != code:
+    if not hmac.compare_digest(stored_code, code):
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码错误")
 
     pwd_error = validate_password(password)
@@ -143,7 +144,7 @@ async def verify(body: VerifyRequest, request: Request, response: Response) -> A
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码已过期，请重新获取")
 
     stored_code = stored.decode() if isinstance(stored, bytes) else stored
-    if stored_code != code:
+    if not hmac.compare_digest(stored_code, code):
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码错误")
 
     await r.delete(_verify_key(email))

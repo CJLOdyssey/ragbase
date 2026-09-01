@@ -18,7 +18,7 @@ from sqlalchemy import text
 
 from rag.rag_chunking import Chunk
 from rag.rag_embedding import EMBEDDING_DIM
-from rag.rag_store_curation import CurationMixin
+from rag.rag_store_curation import CurationMixin, _vector_literal
 
 logger = get_logger(__name__)
 
@@ -89,7 +89,13 @@ class PgVectorStore(CurationMixin):
         self._initialized = True
 
     async def add(self, chunks: list[Chunk], user_id: str) -> None:
-        """Insert chunks with embeddings, tagged with their owning user."""
+        """Insert chunks with embeddings, tagged with their owning user.
+
+        Chunk ids are content hashes (session-independent), so the same text
+        re-ingested in a different session hits ON CONFLICT: session_id and
+        run_id must follow the newest insert, or ``clear_session`` would leave
+        an orphan row bound to a stale session.
+        """
         if not chunks:
             return
         await self._ensure_table()
@@ -101,7 +107,7 @@ class PgVectorStore(CurationMixin):
             for chunk in chunks:
                 if not chunk.embedding:
                     continue
-                emb_str = "[" + ",".join(str(v) for v in chunk.embedding) + "]"
+                emb_str = _vector_literal(chunk.embedding)
                 metadata = chunk.metadata or {}
                 await session.execute(
                     text(
@@ -112,7 +118,9 @@ class PgVectorStore(CurationMixin):
                         VALUES (:id, :sid, :rid, :text, :tags,
                                 CAST(:emb AS vector), :uid, :aid, CAST(:meta AS jsonb))
                         ON CONFLICT (id) DO UPDATE
-                        SET text = EXCLUDED.text,
+                        SET session_id = EXCLUDED.session_id,
+                            run_id = EXCLUDED.run_id,
+                            text = EXCLUDED.text,
                             tags = EXCLUDED.tags,
                             embedding = EXCLUDED.embedding,
                             user_id = EXCLUDED.user_id,
@@ -194,7 +202,7 @@ class PgVectorStore(CurationMixin):
 
             where_sql = " AND ".join(where_clauses)
 
-            emb_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
+            emb_str = _vector_literal(query_embedding)
 
             legs: list[list[dict[str, Any]]] = []
 

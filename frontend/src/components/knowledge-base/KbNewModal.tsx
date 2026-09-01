@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
-import { Alert, Form, Input, Modal, Select } from 'antd';
+import { Alert, Form, Input, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 import type {
   KnowledgeBase,
   ParserConfigForm,
@@ -17,6 +18,8 @@ export interface KbNewModalProps {
   indexedCount: number;
   models: ModelInfo[];
   modelsLoading?: boolean;
+  /** 嵌入模型查询失败：Select 显示错误占位而非误导性「无可用模型」 */
+  modelsError?: boolean;
   saving: boolean;
   onClose: () => void;
   onSave: (
@@ -91,9 +94,11 @@ function submitValues(
 function EmbedModelFields({
   models,
   modelsLoading,
+  modelsError = false,
 }: {
   models: ModelInfo[];
   modelsLoading: boolean;
+  modelsError?: boolean;
 }) {
   const { t } = useTranslation();
   const bindable = useMemo(
@@ -112,11 +117,15 @@ function EmbedModelFields({
         loading={modelsLoading}
         showSearch={false}
         placeholder={
-          bindable.length === 0
-            ? t('kb.noEmbedModels')
-            : t('kb.embedModelPlaceholder')
+          modelsError
+            ? t('kb.embedModelsLoadFailed')
+            : bindable.length === 0
+              ? t('kb.noEmbedModels')
+              : t('kb.embedModelPlaceholder')
         }
-        notFoundContent={t('kb.noEmbedModels')}
+        notFoundContent={
+          modelsError ? t('kb.embedModelsLoadFailed') : t('kb.noEmbedModels')
+        }
         options={bindable.map((m) => ({
           value: m.id,
           label: m.label || m.id,
@@ -133,6 +142,7 @@ export default function KbNewModal({
   indexedCount,
   models,
   modelsLoading = false,
+  modelsError = false,
   saving,
   onClose,
   onSave,
@@ -189,24 +199,32 @@ export default function KbNewModal({
   );
 
   return (
-    <Modal
-      title={mode === 'create' ? t('kb.createTitle') : t('kb.editTitle')}
+    <MobileModal
       open={open}
-      onCancel={onClose}
-      centered
-      okText={t('confirm.confirm')}
-      cancelText={t('confirm.cancel')}
-      confirmLoading={saving}
-      onOk={handleOk}
-      okButtonProps={{
-        className:
-          '!bg-[var(--color-accent)] !border-none !text-[var(--color-text-on-accent)]',
-      }}
-      cancelButtonProps={{
-        className:
-          '!bg-[var(--color-surface-raised)] !border-none !text-[var(--color-text-secondary)]',
-      }}
+      onClose={onClose}
+      mode="sheet"
+      title={mode === 'create' ? t('kb.createTitle') : t('kb.editTitle')}
       width={480}
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+          >
+            {t('confirm.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={handleOk}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer border-none transition-colors duration-150 bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {saving ? '...' : t('confirm.confirm')}
+          </button>
+        </>
+      }
     >
       <Form form={form} layout="vertical" requiredMark={false} className="pt-2">
         <Form.Item
@@ -228,7 +246,11 @@ export default function KbNewModal({
           />
         </Form.Item>
 
-        <EmbedModelFields models={models} modelsLoading={modelsLoading} />
+        <EmbedModelFields
+          models={models}
+          modelsLoading={modelsLoading}
+          modelsError={modelsError}
+        />
 
         <ChunkingFields />
 
@@ -241,7 +263,7 @@ export default function KbNewModal({
           />
         )}
       </Form>
-    </Modal>
+    </MobileModal>
   );
 }
 

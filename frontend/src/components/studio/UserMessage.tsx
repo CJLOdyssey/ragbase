@@ -95,11 +95,14 @@ export default function UserMessage({
 
   return (
     <div className="flex gap-3 flex-row-reverse">
-      <div className="flex flex-col gap-1 items-end max-w-[80%]">
+      <div className="flex flex-col gap-1 items-end max-w-[85%] md:max-w-[80%]">
         <div className="flex flex-col items-end w-fit max-w-full">
-          <div className="px-4 py-3 rounded-[12px_12px_4px_12px] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]">
-            {sanitizeHtml(msg.content)}
-          </div>
+          <div
+            className="px-4 py-3 rounded-[12px_12px_4px_12px] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
+            // sanitize 白名单过滤后按 HTML 渲染；React 字符串渲染会转义，
+            // 导致 <b>/<img> 等以字面量显示（XSS 由 DOMPurify 白名单兜底）。
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.content) }}
+          ></div>
           {msg.attachments && msg.attachments.length > 0 && (
             <MessageAttachments attachments={msg.attachments} />
           )}

@@ -33,6 +33,7 @@
     "embedModelPlaceholder": "选择嵌入模型",
     "embedModelRequired": "请选择嵌入模型",
     "noEmbedModels": "先在「API 管理」中配置嵌入模型",
+    "embedModelsLoadFailed": "嵌入模型加载失败，请重试",
     "embedModelHint": "决定该库向量的生成方式；更换将自动重建索引",
     "changeModelWarning": "更换嵌入模型将清除本库 {{count}} 个已索引资产的向量并自动重新索引，期间该库检索暂无结果",
     "autoModel": "自动",

@@ -325,16 +325,30 @@ class TestOnClientAction:
                 {"type": "client_action", "agent_name": "Agent", "action": {"type": "scroll"}},
             )
 
+    @pytest.mark.asyncio
+    async def test_publish_failure_does_not_break_callback_chain(self):
+        """副作用事件失败必须被吞——流式回调链不能被 publish 异常打断。"""
+        from streaming.emitter import StreamEmitter
+
+        emitter = StreamEmitter("run-25b")
+        with patch(
+            "streaming.emitter.publish_run_message", side_effect=Exception("Redis down")
+        ):
+            # 不应抛：后续 on_custom_token 事件仍正常处理。
+            await emitter({"event": "on_client_action", "data": {"action": {"type": "scroll"}}})
+            await emitter({"event": "on_custom_token", "data": {"content": "hi"}})
+        assert emitter._stream_buffer == ["hi"]
+
 
 @pytest.mark.requirement("REQ-RUN-002")
 class TestOnToolResults:
     """Tests for on_tool_results event."""
 
     @pytest.mark.asyncio
-    async def test_valid_tool_results(self):
+    async def test_on_tool_results_with_valid_data(self):
         from streaming.emitter import StreamEmitter
 
-        emitter = StreamEmitter("run-26")
+        emitter = StreamEmitter("run-27")
         with patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub:
             await emitter({
                 "event": "on_tool_results",
@@ -345,6 +359,23 @@ class TestOnToolResults:
                 },
             })
             mock_pub.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_publish_failure_swallowed(self):
+        from streaming.emitter import StreamEmitter
+
+        emitter = StreamEmitter("run-27b")
+        with patch(
+            "streaming.emitter.publish_run_message", side_effect=Exception("Redis down")
+        ):
+            await emitter({
+                "event": "on_tool_results",
+                "data": {
+                    "tool_name": "search",
+                    "tool_call_id": "call-1",
+                    "references": [{"id": "r1"}],
+                },
+            })
 
     @pytest.mark.asyncio
     async def test_empty_refs_skips(self):
@@ -395,23 +426,28 @@ class TestOnToolStart:
             assert emitter._message_index == 0
 
     @pytest.mark.asyncio
-    async def test_long_input_truncated(self):
+    async def test_buffer_overflow_drops_oldest(self):
         from streaming.emitter import StreamEmitter
 
-        emitter = StreamEmitter("run-30")
-        long_input = "x" * 300
-        with (
-            patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub,
-            patch("streaming.emitter.save_message", new_callable=AsyncMock),
-        ):
-            await emitter({
-                "event": "on_custom_thinking",
-                "data": {"content": f"tool({long_input})"},
-            })
-            payload = mock_pub.await_args[0][1]
-            assert payload["type"] == "thinking_stream"
-            # Buffer overflows drop oldest chunks but the latest stays intact.
-            assert payload["content"].endswith(")")
+        # 30-char chunks × 10 = 300 chars against a 100-char cap forces the
+        # overflow path (default cap is 20000, unreachable in a unit test).
+        with patch.dict("os.environ", {"STREAM_MAX_BUFFER_SIZE": "100"}):
+            emitter = StreamEmitter("run-30")
+            with (
+                patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub,
+                patch("streaming.emitter.save_message", new_callable=AsyncMock),
+            ):
+                for i in range(10):
+                    await emitter({
+                        "event": "on_custom_thinking",
+                        "data": {"content": f"chunk-{i}-" + "x" * 24},
+                    })
+                payload = mock_pub.await_args[0][1]
+                assert payload["type"] == "thinking_stream"
+                # Oldest chunks are dropped from the buffer; newest stays intact.
+                buffered = "".join(emitter._thinking_buffer)
+                assert "chunk-0-" not in buffered
+                assert "chunk-9-" in buffered
 
 
 @pytest.mark.requirement("REQ-RUN-002")
@@ -437,7 +473,7 @@ class TestOnToolEnd:
             assert emitter._message_index == 0
 
     @pytest.mark.asyncio
-    async def test_long_output_truncated(self):
+    async def test_long_output_streamed_verbatim(self):
         from streaming.emitter import StreamEmitter
 
         emitter = StreamEmitter("run-32")
@@ -482,6 +518,17 @@ class TestEmitBalanceWarning:
             await emitter.emit_balance_warning("custom warning")
             payload = mock_pub.await_args[0][1]
             assert payload["content"] == "custom warning"
+
+    @pytest.mark.asyncio
+    async def test_publish_failure_swallowed(self):
+        """余额告警是建议性事件：Redis 失败不得冒泡中断生成。"""
+        from streaming.emitter import StreamEmitter
+
+        emitter = StreamEmitter("run-34b")
+        with patch(
+            "streaming.emitter.publish_run_message", side_effect=Exception("Redis down")
+        ):
+            await emitter.emit_balance_warning()
 
 
 @pytest.mark.requirement("REQ-RUN-002")
@@ -576,11 +623,11 @@ class TestFlushBuffers:
             emitter._stream_buffer = ["content"]
             emitter._thinking_buffer = ["thought"]
             await emitter._flush_buffers()
-            # Two publish calls: message + thinking_done
+            # Two publish calls: message before thinking_done (strict order —
+            # the frontend renders the final message before closing thinking).
             assert mock_pub.await_count == 2
             types = [c[0][1]["type"] for c in mock_pub.await_args_list]
-            assert "message" in types
-            assert "thinking_done" in types
+            assert types == ["message", "thinking_done"]
 
     @pytest.mark.asyncio
     async def test_thinking_done_with_pending_nodes(self):
@@ -696,6 +743,66 @@ class TestFlushBuffers:
 
 
 @pytest.mark.requirement("REQ-RUN-002")
+class TestPersistPartial:
+    """B7-03: 取消路径——半截正文/思考落库（persist_partial）。"""
+
+    @pytest.mark.asyncio
+    async def test_persists_partial_content_and_thinking(self):
+        from streaming.emitter import StreamEmitter
+
+        emitter = StreamEmitter("run-cancel-1")
+        emitter._stream_buffer = ["半截正文"]
+        emitter._thinking_buffer = ["部分推理"]
+        with patch("streaming.emitter.save_message", new_callable=AsyncMock) as mock_save:
+            await emitter.persist_partial()
+
+        mock_save.assert_awaited_once()
+        kwargs = mock_save.await_args.kwargs
+        assert kwargs["run_id"] == "run-cancel-1"
+        assert kwargs["content"] == "半截正文"
+        assert kwargs["thinking"] == "部分推理"
+        # 落库后缓冲清空，索引推进。
+        assert emitter._stream_buffer == []
+        assert emitter._thinking_buffer == []
+        assert emitter._message_index == 1
+
+    @pytest.mark.asyncio
+    async def test_persist_empty_buffers_returns_early(self):
+        from streaming.emitter import StreamEmitter
+
+        emitter = StreamEmitter("run-cancel-2")
+        with patch("streaming.emitter.save_message", new_callable=AsyncMock) as mock_save:
+            await emitter.persist_partial()
+
+        mock_save.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_persist_partial_save_failure_swallowed(self):
+        from streaming.emitter import StreamEmitter
+
+        emitter = StreamEmitter("run-cancel-3")
+        emitter._stream_buffer = ["content"]
+        with patch(
+            "streaming.emitter.save_message", side_effect=Exception("db down")
+        ):
+            # 落库失败不抛：取消路径必须优先保证不中断。
+            await emitter.persist_partial()
+
+    @pytest.mark.asyncio
+    async def test_whitespace_thinking_not_persisted_as_empty(self):
+        """思考缓冲全空白 → thinking=None（strip 后为空）。"""
+        from streaming.emitter import StreamEmitter
+
+        emitter = StreamEmitter("run-cancel-4")
+        emitter._stream_buffer = ["正文"]
+        emitter._thinking_buffer = ["  ", "\t"]
+        with patch("streaming.emitter.save_message", new_callable=AsyncMock) as mock_save:
+            await emitter.persist_partial()
+
+        assert mock_save.await_args.kwargs["thinking"] is None
+
+
+@pytest.mark.requirement("REQ-RUN-002")
 class TestEmitMethod:
     """Tests for _emit internal method."""
 
@@ -708,7 +815,7 @@ class TestEmitMethod:
             patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub,
             patch("streaming.emitter.save_message", new_callable=AsyncMock) as mock_save,
         ):
-            await emitter._emit("Agent", "tool output")
+            await emitter.emit_message("Agent", "tool output")
             assert emitter._message_index == 1
             payload = mock_pub.await_args[0][1]
             assert payload["type"] == "message"
@@ -725,7 +832,7 @@ class TestEmitMethod:
             patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub,
             patch("streaming.emitter.save_message", new_callable=AsyncMock),
         ):
-            await emitter._emit("Agent", "output", thinking="my thinking")
+            await emitter.emit_message("Agent", "output", thinking="my thinking")
             payload = mock_pub.await_args[0][1]
             assert payload["thinking"] == "my thinking"
 
@@ -739,7 +846,7 @@ class TestEmitMethod:
             patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub,
             patch("streaming.emitter.save_message", new_callable=AsyncMock),
         ):
-            await emitter._emit("Agent", "output")
+            await emitter.emit_message("Agent", "output")
             payload = mock_pub.await_args[0][1]
             assert payload["thinking"] == "stored thinking"
             assert emitter._pending_thinking is None
@@ -754,7 +861,7 @@ class TestEmitMethod:
             patch("streaming.emitter.publish_run_message", new_callable=AsyncMock) as mock_pub,
             patch("streaming.emitter.save_message", new_callable=AsyncMock),
         ):
-            await emitter._emit("Agent", "output", thinking="explicit")
+            await emitter.emit_message("Agent", "output", thinking="explicit")
             payload = mock_pub.await_args[0][1]
             assert payload["thinking"] == "explicit"
             assert emitter._pending_thinking == "pending"
@@ -768,18 +875,20 @@ class TestEmitMethod:
             patch("streaming.emitter.publish_run_message", new_callable=AsyncMock),
             patch("streaming.emitter.save_message", new_callable=AsyncMock) as mock_save,
         ):
-            await emitter._emit("Agent", "output", msg_type="stream")
+            await emitter.emit_message("Agent", "output", msg_type="stream")
             mock_save.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_publish_failure_handled(self):
+    async def test_publish_failure_keeps_save_independent(self):
+        """Publish and save are decoupled: a failed publish must not drop the
+        message from history — same contract as _flush_buffers."""
         from streaming.emitter import StreamEmitter
 
         emitter = StreamEmitter("run-53")
         with patch("streaming.emitter.publish_run_message", side_effect=Exception("fail")):
             with patch("streaming.emitter.save_message", new_callable=AsyncMock) as mock_save:
-                await emitter._emit("Agent", "output")
-                mock_save.assert_not_awaited()
+                await emitter.emit_message("Agent", "output")
+                mock_save.assert_awaited_once()
 
 
 @pytest.mark.requirement("REQ-RUN-002")

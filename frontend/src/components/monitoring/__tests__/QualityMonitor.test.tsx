@@ -331,7 +331,7 @@ describe('QualityMonitor', { tags: ['unit'] }, () => {
     // 总览四张核心趋势：一图一量纲（好评率与空召回极性相反，分图呈现）。
     expect(await screen.findByText('检索次数趋势')).toBeTruthy();
     expect(screen.getByText('空召回率趋势')).toBeTruthy();
-    expect(screen.getByText('好评率趋势')).toBeTruthy();
+    expect(screen.getByText('好评占比趋势（已评价样本）')).toBeTruthy();
     expect(screen.getByText('响应延迟趋势')).toBeTruthy();
   });
 

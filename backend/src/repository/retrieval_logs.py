@@ -2,15 +2,24 @@
 
 Immutability by construction: no update/delete exists; rows are only ever
 inserted at the retrieval boundary, once per user question.
+
+Usage::
+
+    from repository.retrieval_logs import create_retrieval_log, list_retrieval_logs
+
+    await create_retrieval_log(user_id=u, query=q, latency_ms=120, hit_count=3)
+    items, total = await list_retrieval_logs(user_id, page=1, page_size=20)
 """
 
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.infra.database import get_session_factory
 from orm import RetrievalLogDB
-from sqlalchemy import case, func, select
+from sqlalchemy import ColumnElement, case, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @dataclass
@@ -21,6 +30,28 @@ class RetrievalStats:
     hit_rate: dict[str, Any] = field(default_factory=dict)
     volume_trend: list[dict[str, Any]] = field(default_factory=list)
     daily_activity: list[dict[str, Any]] = field(default_factory=list)
+
+
+def sources_to_json(sources: list[dict[str, Any]] | None) -> str | None:
+    """Serialize RAG citation sources into the JSON column format.
+
+    Shared with shadow_retrieval so both append-only logs store citations
+    with the exact same projection (asset_id, asset_name, similarity, text).
+    """
+    if not sources:
+        return None
+    return json.dumps(
+        [
+            {
+                "asset_id": s.get("asset_id"),
+                "asset_name": s.get("asset_name"),
+                "similarity": s.get("similarity"),
+                "text": s.get("text"),
+            }
+            for s in sources
+        ],
+        ensure_ascii=False,
+    )
 
 
 async def create_retrieval_log(
@@ -47,7 +78,7 @@ async def create_retrieval_log(
         min_score=min_score,
         latency_ms=latency_ms,
         hit_count=hit_count,
-        sources=_sources_json(sources),
+        sources=sources_to_json(sources),
     )
     factory = get_session_factory()
     async with factory() as session:
@@ -55,37 +86,18 @@ async def create_retrieval_log(
         await session.commit()
 
 
-def _sources_json(sources: list[dict[str, Any]] | None) -> str | None:
-    import json
-
-    if not sources:
-        return None
-    return json.dumps(
-        [
-            {
-                "asset_id": s.get("asset_id"),
-                "asset_name": s.get("asset_name"),
-                "similarity": s.get("similarity"),
-                "text": s.get("text"),
-            }
-            for s in sources
-        ],
-        ensure_ascii=False,
-    )
-
-
 def _time_conds(
     since_hours: int | None,
     since: datetime | None,
     until: datetime | None,
-) -> list[Any]:
+) -> list[ColumnElement[bool]]:
     """Build created_at window conditions.
 
     Custom absolute range (since/until) takes precedence over the trailing
     ``since_hours`` preset — powers both the drill-down link and the
     header RangePicker on the logs page.
     """
-    conds: list[Any] = []
+    conds: list[ColumnElement[bool]] = []
     if since is not None:
         conds.append(RetrievalLogDB.created_at >= since)
     elif since_hours is not None and since_hours > 0:
@@ -109,8 +121,8 @@ def _bucket_seconds(span: timedelta) -> int:
 
 
 async def _trend_window(
-    session: Any,
-    base_conds: list[Any],
+    session: AsyncSession,
+    base_conds: list[ColumnElement[bool]],
     since_hours: int | None,
     since: datetime | None,
     until: datetime | None,
@@ -152,7 +164,7 @@ async def list_retrieval_logs(
     """
     factory = get_session_factory()
     async with factory() as session:
-        conds = [RetrievalLogDB.user_id == user_id]
+        conds: list[ColumnElement[bool]] = [RetrievalLogDB.user_id == user_id]
         if min_hit_count is not None:
             conds.append(RetrievalLogDB.hit_count >= min_hit_count)
         if max_latency_ms is not None:
@@ -198,7 +210,7 @@ async def get_retrieval_stats(
     """
     factory = get_session_factory()
     async with factory() as session:
-        base_conds: list[Any] = [RetrievalLogDB.user_id == user_id]
+        base_conds: list[ColumnElement[bool]] = [RetrievalLogDB.user_id == user_id]
         base_conds.extend(_time_conds(since_hours, since, until))
 
         subset_conds = list(base_conds)

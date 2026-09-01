@@ -1,4 +1,4 @@
-"""Application lifespan — startup tasks, database init, seed tools, and graceful shutdown."""
+"""Application lifespan — startup tasks, DB/Redis init, and graceful shutdown."""
 
 from __future__ import annotations
 
@@ -8,12 +8,13 @@ import gc
 import os
 import platform
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
 from broker import BROKER_URL, REDIS_URL, close_redis, get_redis
 from observability.startup_guard import mark_started, mark_stopped, record_crash
 
 from core.config import load_config
+from core.env import env_int
 from core.infra.database import DATABASE_URL, get_session_factory, init_db
 from core.infra.events import Events, bus
 from core.infra.logging_config import get_logger
@@ -24,11 +25,11 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-# ── Helpers ─────────────────────────────────────────────────────────
+# Helpers
 
 
 def _mask_url(url: str) -> str:
-    """Mask credentials in a connection URL."""
+    """Mask credentials in a connection URL for safe logging."""
     if "@" in url:
         userinfo, rest = url.split("@", 1)
         return f"{userinfo.split(':')[0]}:***@{rest}"
@@ -43,7 +44,7 @@ def _add(lines: list[str], fmt: str, *args: object) -> None:
     lines.append("[LIFECYCLE] " + (fmt % args))
 
 
-# ── Startup report ──────────────────────────────────────────────────
+# Startup report
 
 
 def _startup_report() -> list[str]:
@@ -57,21 +58,32 @@ def _startup_report() -> list[str]:
         os.getpid(),
     )
     _add(lines, "auth: mode=rbac | enabled=true")
-    _user_rate = _env("RATE_LIMIT_USER", "none")
     _add(
-        lines, "rate_limit: %s req/%ss | user=%s",
-        _env("RATE_LIMIT", "60"), _env("RATE_LIMIT_WINDOW", "60"), _user_rate,
+        lines, "rate_limit: %s req/%ss",
+        _env("RATE_LIMIT", "60"), _env("RATE_LIMIT_WINDOW", "60"),
     )
     _add(lines, "cors_origin: %s", _env("CORS_ORIGIN", "not set (dev defaults)"))
     _add(
-        lines, "model: %s | base_url: %s", _env("OPENAI_MODEL", "deepseek-v4-flash"), _env("OPENAI_BASE_URL", "not set")
+        lines,
+        "model: %s | base_url: %s",
+        _env("OPENAI_MODEL", "deepseek-v4-flash"),
+        _env("OPENAI_BASE_URL", "not set"),
     )
     _add(lines, "database_url: %s", _mask_url(DATABASE_URL))
     _add(lines, "redis_url: %s", _mask_url(REDIS_URL))
     _add(lines, "celery_broker: %s", _mask_url(BROKER_URL))
-    _add(lines, "email: backend=%s | from=%s", _env("EMAIL_BACKEND", "log"), _env("EMAIL_FROM", "not set"))
-    _add(lines, "upload_dir: %s", _env("UPLOAD_DIR", str(Path(__file__).resolve().parents[1] / "uploads")))
-    _add(lines, "logging: format=%s | level=%s", _env("LOG_FORMAT", "text"), _env("LOG_LEVEL", "INFO"))
+    _add(
+        lines, "email: backend=%s | from=%s",
+        _env("EMAIL_BACKEND", "log"), _env("EMAIL_FROM", "not set"),
+    )
+    _add(
+        lines, "upload_dir: %s",
+        _env("UPLOAD_DIR", str(Path(__file__).resolve().parents[1] / "uploads")),
+    )
+    _add(
+        lines, "logging: format=%s | level=%s",
+        _env("LOG_FORMAT", "text"), _env("LOG_LEVEL", "INFO"),
+    )
     has_deepseek = bool(_env("DEEPSEEK_API_KEY"))
     has_openai = bool(_env("OPENAI_API_KEY"))
     if has_deepseek or has_openai:
@@ -82,7 +94,7 @@ def _startup_report() -> list[str]:
     return lines
 
 
-# ── Database init ───────────────────────────────────────────────────
+# Database init
 
 
 async def _do_init_db() -> None:
@@ -91,8 +103,7 @@ async def _do_init_db() -> None:
 
     factory = get_session_factory()
     async with factory() as session:
-        result = await session.execute(text("SELECT 1"))
-        result.scalar()
+        await session.execute(text("SELECT 1"))
         logger.info("[LIFECYCLE] database connection verified")
 
 
@@ -108,18 +119,28 @@ async def _check_redis() -> None:
     logger.info("[LIFECYCLE] verifying Redis connection...")
     try:
         r = get_redis()
-        pong: bool = bool(await cast(Any, r.ping()))
+        pong = bool(await r.ping())
         logger.info("[LIFECYCLE] redis ping=%s", pong)
     except Exception as e:
         logger.warning("[LIFECYCLE] redis unavailable (pub/sub will fail): %s", e)
 
 
-# ── Lifespan ────────────────────────────────────────────────────────
+# Lifespan
 
 
 async def startup(app: FastAPI) -> None:
     """Run on application startup — config, GC, DB, Redis."""
     load_config()
+
+    # Fail loud on missing/weak auth secret — an empty AUTH_SECRET silently
+    # disables all token issuance (500s on login) instead of failing early.
+    from auth.auth_jwt import AUTH_SECRET
+
+    if len(AUTH_SECRET) < 32:
+        raise RuntimeError(
+            "AUTH_SECRET must be set to at least 32 characters — refusing to "
+            "start with a missing/weak JWT signing secret (CWE-798 / OWASP A07)."
+        )
 
     # NOTE: PR_SET_PDEATHSIG was removed because it kills the backend when
     # the parent shell exits (after `nohup uvicorn ... &` or Makefile targets).
@@ -130,7 +151,7 @@ async def startup(app: FastAPI) -> None:
     for line in startup_log:
         logger.info("%s", line)
 
-    # Event bus observability — log every event at DEBUG level
+    # Event bus observability — log every event at DEBUG level.
     def _log_event(event: str, **kw: object) -> None:
         logger.debug("[EVENT] %s %s", event, kw)
 
@@ -143,7 +164,7 @@ async def startup(app: FastAPI) -> None:
     async def _periodic_gc() -> None:
         while True:
             try:
-                await asyncio.sleep(int(_env("GC_INTERVAL", "60")))
+                await asyncio.sleep(env_int("GC_INTERVAL", 60))
                 collected = gc.collect()
                 if collected:
                     logger.info("GC collected %d objects", collected)
@@ -155,10 +176,11 @@ async def startup(app: FastAPI) -> None:
     app.state.gc_task = asyncio.create_task(_periodic_gc())
 
     # Periodic observability event retention cleanup
-    _retention_days = int(_env("OBSERVABILITY_RETENTION_DAYS", "30"))
+    _retention_days = env_int("OBSERVABILITY_RETENTION_DAYS", 30)
 
     async def _periodic_retention() -> None:
         from observability.store import get_store
+
         while True:
             try:
                 await asyncio.sleep(3600)  # Run every hour

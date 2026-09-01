@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 from repository.retrieval_logs import get_retrieval_stats, list_retrieval_logs
 
+from routers.window_range import validate_since_until
+
 logger = get_logger(__name__)
 router = APIRouter(tags=["retrieval_logs"])
 
@@ -67,6 +69,7 @@ async def get_retrieval_logs(
     preset — powers the header RangePicker custom range.
     """
     user_id = get_user_id(request)
+    since, until = validate_since_until(since, until)
 
     items, total = await list_retrieval_logs(
         user_id=user_id,
@@ -164,6 +167,7 @@ async def get_retrieval_logs_stats(
     filter on their own dimension cannot collapse them into tautologies.
     """
     user_id = get_user_id(request)
+    since, until = validate_since_until(since, until)
 
     stats = await get_retrieval_stats(
         user_id=user_id,

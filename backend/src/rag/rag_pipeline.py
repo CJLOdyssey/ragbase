@@ -1,5 +1,3 @@
-from typing import Any
-
 """RAG pipeline: analysis → chunking → embedding → vector store → retrieval.
 
 Pipeline stages:
@@ -15,6 +13,8 @@ Production stack:
   - Embedding: Alibaba DashScope (text-embedding-v3)
   - Vector DB: PostgreSQL + pgvector extension
 """
+
+from typing import Any
 
 from core.infra.logging_config import get_logger
 
@@ -225,23 +225,33 @@ async def _search_results(
 
         merged: list[dict[str, Any]] = []
         for model in groups:
-            cfg = await get_embedding_config(preferred_model=model)
-            if cfg is None or cfg["api_key"] is None:
-                logger.warning("no embedding config for cohort %r — skipped", model)
-                continue
-            provider = EmbeddingProvider(
-                api_key=cfg["api_key"],
-                model=cfg["model"] or "text-embedding-v3",
-                base_url=cfg["base_url"],
-            )
-            try:
-                query_embedding = await provider.embed_query(query)
-            except Exception:
-                logger.exception("query embedding failed for %r — group skipped", model)
-                continue
+            # Lexical-only retrieval needs no embeddings — mirror the
+            # single-cohort path where a missing provider short-circuits.
+            cohort_embedding: list[float]
+            if retrieval_method == "lexical":
+                cohort_embedding = []
+            else:
+                cfg = await get_embedding_config(preferred_model=model)
+                if cfg is None or cfg["api_key"] is None:
+                    logger.warning(
+                        "no embedding config for cohort %r — skipped", model
+                    )
+                    continue
+                provider = EmbeddingProvider(
+                    api_key=cfg["api_key"],
+                    model=cfg["model"] or EMBEDDING_MODEL,
+                    base_url=cfg["base_url"],
+                )
+                try:
+                    cohort_embedding = await provider.embed_query(query)
+                except Exception:
+                    logger.exception(
+                        "query embedding failed for %r — group skipped", model
+                    )
+                    continue
             merged.extend(
                 await store.search(
-                    query_embedding,
+                    cohort_embedding,
                     query_text=query,
                     user_id=user_id,
                     session_id=session_id,
@@ -276,12 +286,9 @@ async def _rerank_results(
         api_key=cfg["api_key"], base_url=cfg["base_url"], model=cfg["model"]
     )
     indices = await provider.rerank(query, [r["text"] for r in results], top_n=top_k)
-    by_index = {i: results[i] for i in range(len(results))}
-    reranked: list[dict[str, Any]] = []
-    for idx in indices:
-        if idx in by_index:
-            reranked.append(by_index[idx])
-    return reranked
+    # Drop out-of-range indices defensively — a provider bug must not crash
+    # retrieval, only narrow the ranked list.
+    return [results[idx] for idx in indices if 0 <= idx < len(results)]
 
 
 def _asset_label(metadata: dict[str, Any]) -> str:

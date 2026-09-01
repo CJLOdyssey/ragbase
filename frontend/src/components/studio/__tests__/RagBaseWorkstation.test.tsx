@@ -108,6 +108,19 @@ describe('RagBaseWorkstation', () => {
       interruptedMessageId: null,
       continuingId: null,
     });
+    // 恢复 matchMedia 桌面默认（测试间不泄漏视口状态）
+    (window.matchMedia as ReturnType<typeof vi.fn>).mockImplementation(
+      () => ({
+        matches: false,
+        media: '',
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }),
+    );
   });
 
   it('renders HomeScreen when there are no messages', () => {
@@ -169,6 +182,66 @@ describe('RagBaseWorkstation', () => {
     // After collapse, the sidebar is hidden (width=0)
     const aside = document.querySelector('aside');
     expect(aside?.classList.contains('w-0')).toBe(true);
+  });
+
+  it('starts with the drawer closed on a mobile viewport', () => {
+    // 移动视口（<768px）：useIsMobile → true，侧边栏应为收起抽屉态
+    (window.matchMedia as ReturnType<typeof vi.fn>).mockImplementation(
+      (query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }),
+    );
+    renderWorkstation();
+    const aside = document.querySelector('aside');
+    expect(aside?.classList.contains('fixed')).toBe(true);
+    expect(aside?.classList.contains('-translate-x-full')).toBe(true);
+    expect(aside?.classList.contains('w-0')).toBe(false);
+  });
+
+  it('forces the drawer closed when the viewport crosses to mobile', async () => {
+    // 桌面打开页面（侧边栏展开）→ 窗口缩到手机宽度，
+    // 侧边栏必须收起为抽屉态（此前以展开态压住消息区——占屏 70%+）。
+    let currentMatches = false;
+    const listeners = new Set<() => void>();
+    (window.matchMedia as ReturnType<typeof vi.fn>).mockImplementation(
+      (query: string) => ({
+        get matches() {
+          return currentMatches;
+        },
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn((_: string, cb: () => void) =>
+          listeners.add(cb),
+        ),
+        removeEventListener: vi.fn((_: string, cb: () => void) =>
+          listeners.delete(cb),
+        ),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }),
+    );
+    renderWorkstation();
+    let aside = document.querySelector('aside');
+    expect(aside?.classList.contains('fixed')).toBe(false);
+
+    currentMatches = true;
+    act(() => {
+      listeners.forEach((cb) => cb());
+    });
+
+    await waitFor(() => {
+      aside = document.querySelector('aside');
+      expect(aside?.classList.contains('fixed')).toBe(true);
+      expect(aside?.classList.contains('-translate-x-full')).toBe(true);
+    });
   });
 
   it('renders conversations from the sessions query when authenticated', async () => {

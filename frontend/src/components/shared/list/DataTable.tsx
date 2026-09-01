@@ -1,13 +1,12 @@
 /**
- * DataTable — column-config driven table shell.
- *
- * Visual baseline: AssetsTable (uppercase mono headers, accent-4% row hover,
- * 14px rounded container, overflow-visible for portal menus).
+ * DataTable — antd Table wrapper with project-specific styling.
  *
  * OCP: new list pages pass column config — shell never changes.
  * ISP: cells render via `renderCell` delegation, so feature-specific
  * content (progress bars, menus) never leaks into the shell.
  */
+import { ConfigProvider, Table } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import type { ReactNode } from 'react';
 
 export interface DataTableColumn {
@@ -18,8 +17,22 @@ export interface DataTableColumn {
   /** CSS grid track, e.g. '84px' | 'minmax(160px,1.5fr)'. Default '1fr'. */
   width?: string;
   sortable?: boolean;
-  /** Center the header cell (first column defaults to start-aligned). */
+  /** Center the header and cell content. */
   center?: boolean;
+}
+
+/**
+ * Parse CSS grid track to antd-compatible width.
+ * '84px' → 84, 'minmax(160px,1.5fr)' → 160, '1fr' → undefined, '4fr' → undefined.
+ */
+function parseWidth(width?: string): number | undefined {
+  if (!width) return undefined;
+  const pxMatch = width.match(/^(\d+)px$/);
+  if (pxMatch) return Number(pxMatch[1]);
+  const minmaxMatch = width.match(/minmax\((\d+)px/);
+  if (minmaxMatch) return Number(minmaxMatch[1]);
+  // fr units are not supported by antd Table, return undefined to use default
+  return undefined;
 }
 
 interface DataTableProps<T> {
@@ -34,22 +47,8 @@ interface DataTableProps<T> {
   onSort?: (field: string) => void;
   /** Rendered when rows is empty. */
   emptyState?: ReactNode;
-}
-
-function SortArrow({
-  active,
-  dir,
-}: {
-  active: boolean;
-  dir: 'asc' | 'desc' | undefined;
-}) {
-  return (
-    <span
-      className={`ml-1 text-[10px] ${active ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)]'}`}
-    >
-      {active ? (dir === 'asc' ? '↑' : '↓') : '↕'}
-    </span>
-  );
+  /** Additional className for the outer container. */
+  className?: string;
 }
 
 export default function DataTable<T>({
@@ -63,48 +62,74 @@ export default function DataTable<T>({
   sortDir,
   onSort,
   emptyState,
+  className,
 }: DataTableProps<T>) {
-  const gridTemplateColumns = columns.map((c) => c.width ?? '1fr').join(' ');
+  const antdColumns: ColumnsType<T> = columns.map((col, i) => ({
+    title: col.header,
+    key: col.key,
+    width: parseWidth(col.width),
+    align: col.center ? 'center' : undefined,
+    sorter: col.sortable,
+    sortOrder:
+      col.sortable && sortField === col.key
+        ? sortDir === 'asc'
+          ? 'ascend'
+          : 'descend'
+        : undefined,
+    render: (_value: unknown, record: T) => (
+      <div className="min-w-0">{renderCell(record, col, i)}</div>
+    ),
+  }));
 
   return (
-    <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-visible">
-      <div
-        className="grid items-center h-10 px-[18px] border-b border-[var(--color-border-subtle)] bg-[color-mix(in_srgb,var(--color-surface-hover)_40%,transparent)]"
-        style={{ gridTemplateColumns }}
-      >
-        {columns.map((col, i) => (
-          <div
-            key={col.key}
-            onClick={() => {
-              if (col.sortable && onSort) onSort(col.key);
-            }}
-            className={`text-[10.5px] font-semibold tracking-[0.07em] uppercase font-mono text-[var(--color-text-tertiary)] flex items-center ${i === 0 && !col.center ? 'justify-start' : 'justify-center text-center'} ${col.sortable && onSort ? 'cursor-pointer hover:text-[var(--color-text-secondary)]' : ''}`}
-          >
-            {col.header}
-            {col.sortable && onSort && (
-              <SortArrow active={sortField === col.key} dir={sortDir} />
-            )}
-          </div>
-        ))}
+    <ConfigProvider
+      theme={{
+        token: {
+          colorBgContainer: 'var(--color-surface-raised)',
+          colorBorderSecondary: 'var(--color-border-subtle)',
+          colorText: 'var(--color-text-primary)',
+          colorTextSecondary: 'var(--color-text-secondary)',
+        },
+        components: {
+          Table: {
+            headerBg: 'color-mix(in srgb, var(--color-surface-hover) 40%, transparent)',
+            headerColor: 'var(--color-text-tertiary)',
+            rowHoverBg: 'color-mix(in srgb, var(--color-accent) 4%, transparent)',
+            borderColor: 'var(--color-border-subtle)',
+            cellPaddingBlock: 0,
+            cellPaddingInline: 18,
+            headerBorderRadius: 14,
+          },
+        },
+      }}
+    >
+      <div className="overflow-x-auto">
+        <Table<T>
+          className={className}
+          columns={antdColumns}
+          dataSource={rows}
+          rowKey={rowKey}
+          pagination={false}
+          size="small"
+          // 移动端：表格按内容最窄宽度渲染，由外层容器横向滚动
+          // （antd scroll prop 会复制表头导致文本重复，改用 CSS 方案）
+          style={{ minWidth: 'max-content' }}
+          onChange={(_pagination, _filters, sorter) => {
+            if (!onSort) return;
+            const s = Array.isArray(sorter) ? sorter[0] : sorter;
+            if (s?.columnKey != null && s.order) {
+              onSort(String(s.columnKey));
+            }
+          }}
+        onRow={(record) => ({
+          onClick: () => onRowClick?.(record),
+          'data-testid': rowTestId?.(record),
+        })}
+        locale={{
+          emptyText: emptyState ?? undefined,
+        }}
+        />
       </div>
-
-      {rows.length === 0 && emptyState}
-
-      {rows.map((row) => (
-        <div
-          key={rowKey(row)}
-          onClick={() => onRowClick?.(row)}
-          className="grid items-center px-[18px] h-[56px] border-b border-[var(--color-border-subtle)] hover:bg-[color-mix(in_srgb,var(--color-accent)_4%,transparent)] transition-colors cursor-pointer"
-          style={{ gridTemplateColumns }}
-          data-testid={rowTestId?.(row)}
-        >
-          {columns.map((col, i) => (
-            <div key={col.key} className="min-w-0">
-              {renderCell(row, col, i)}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
+    </ConfigProvider>
   );
 }

@@ -211,7 +211,7 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
   });
 
   describe('info event', () => {
-    it('appends info to streaming message content', () => {
+    it('appends info to streaming message content (content 优先)', () => {
       const set = vi.fn();
       const get = vi.fn(() => makeBasicState());
 
@@ -228,7 +228,25 @@ describe('chatStreaming', { tags: ['unit'] }, () => {
         const result = updater(s);
         const msgs = result.messages as Array<{ id: string; content: string }>;
         const streamMsg = msgs.find((m) => m.id === 'stream-1');
+        expect(streamMsg?.content).toContain('[Fetching data...]');
+      }
+    });
+
+    it('content 缺失时回退到 data，绝不追加 undefined', () => {
+      const set = vi.fn();
+      const get = vi.fn(() => makeBasicState());
+
+      const handler = createStreamHandler(set as never, get as never);
+      handler({ type: 'info', data: 'extra info' });
+
+      const updater = set.mock.calls[0]?.[0];
+      if (typeof updater === 'function') {
+        const s = makeBasicState();
+        const result = updater(s);
+        const msgs = result.messages as Array<{ id: string; content: string }>;
+        const streamMsg = msgs.find((m) => m.id === 'stream-1');
         expect(streamMsg?.content).toContain('[extra info]');
+        expect(streamMsg?.content).not.toContain('undefined');
       }
     });
 

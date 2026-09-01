@@ -85,13 +85,13 @@ class TestSemanticChunk:
         result2 = semantic_chunk(text, "s1")
         assert result1[0].id == result2[0].id
 
-    def test_semantic_chunk_different_sessions_different_ids(self):
+    def test_semantic_chunk_id_ignores_session(self):
         from rag.rag_chunking import semantic_chunk
 
         text = "Same text"
         r1 = semantic_chunk(text, "sess-a")
         r2 = semantic_chunk(text, "sess-b")
-        assert r1[0].id == r2[0].id  # id is hash of text only
+        assert r1[0].id == r2[0].id  # id is hash of text only, session 不参与
 
     def test_semantic_chunk_with_headings(self):
         from rag.rag_chunking import semantic_chunk

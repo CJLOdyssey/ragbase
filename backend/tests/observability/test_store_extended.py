@@ -3,7 +3,7 @@
 import os
 import tempfile
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from observability.schema import Event
 
@@ -200,26 +200,6 @@ class TestEventStoreSelfCheck:
             assert check["write_errors"] == 1
         finally:
             os.unlink(db_path)
-
-
-class TestEventStoreSingleton:
-    def test_get_store_returns_same_instance(self):
-        import observability.store as obs_store
-
-        original = obs_store._store
-        obs_store._store = None
-
-        try:
-            with patch.object(obs_store, "EventStore") as MockStore:
-                mock_instance = MagicMock()
-                MockStore.return_value = mock_instance
-
-                s1 = obs_store.get_store()
-                s2 = obs_store.get_store()
-                assert s1 is s2
-                MockStore.assert_called_once()
-        finally:
-            obs_store._store = original
 
 
 class TestEventStoreDbReconnect:

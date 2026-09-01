@@ -90,9 +90,7 @@ function TextBlock({
     return (
       <div className="py-8 text-center">
         <p className="text-sm text-[var(--color-text-muted)] mb-4">
-          {t('attachment.emptyPreview', {
-            defaultValue: '文件为空或无可预览内容',
-          })}
+          {t('attachment.emptyPreview')}
         </p>
         <a
           href={url}
@@ -109,7 +107,7 @@ function TextBlock({
     text.length > 64 * 1024
       ? `${text.slice(0, 64 * 1024)}\n\n${t('attachment.truncated')}`
       : text;
-  const showNote = Boolean(truncated) || text.length > 64 * 1024;
+  const showNote = truncated || text.length > 64 * 1024;
   return (
     <div>
       <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--color-text-primary)]">

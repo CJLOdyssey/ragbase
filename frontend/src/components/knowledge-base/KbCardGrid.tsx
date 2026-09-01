@@ -26,8 +26,12 @@ export default function KbCardGrid({
       {kbs.map((kb, idx) => {
         const s = perKb.get(kb.id) ?? EMPTY_STAT;
         const assetCount = kb.assetCount ?? s.assetCount;
+        // 同 computeTotals 口径：assetCount 可能来自后端、indexed 来自前端
+        // 列表，刷新时机不同会瞬时超 100%，收敛展示。
         const indexRate =
-          assetCount > 0 ? Math.round((s.indexedCount / assetCount) * 100) : 0;
+          assetCount > 0
+            ? Math.min(100, Math.max(0, Math.round((s.indexedCount / assetCount) * 100)))
+            : 0;
         return (
           <KbCard
             key={kb.id}

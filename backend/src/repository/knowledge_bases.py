@@ -1,9 +1,42 @@
-"""Knowledge base repository — multi-KB isolation CRUD."""
+"""Knowledge base repository — multi-KB isolation CRUD.
+
+Usage::
+
+    from repository.knowledge_bases import create_kb, change_indexing_config
+
+    kb = await create_kb(user_id, "docs", embed_model="bge-m3")
+    updated, affected = await change_indexing_config(kb.id, user_id, embed_model="bge-m3-v2")
+"""
 
 from typing import Any
 
 from core.infra.database import AssetDB, KnowledgeBaseDB, get_session_factory
 from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def _get_owned_kb(
+    session: AsyncSession, kb_id: str, user_id: str
+) -> KnowledgeBaseDB | None:
+    """Fetch a KB row only when it belongs to user_id."""
+    result = await session.execute(
+        select(KnowledgeBaseDB).where(
+            KnowledgeBaseDB.id == kb_id,
+            KnowledgeBaseDB.user_id == user_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def _kb_belongs_to(session: AsyncSession, kb_id: str, user_id: str) -> bool:
+    """True when a KB with this id exists and belongs to user_id."""
+    result = await session.execute(
+        select(KnowledgeBaseDB.id).where(
+            KnowledgeBaseDB.id == kb_id,
+            KnowledgeBaseDB.user_id == user_id,
+        )
+    )
+    return result.scalar_one_or_none() is not None
 
 
 async def create_kb(
@@ -59,13 +92,7 @@ async def get_kb(kb_id: str, user_id: str) -> KnowledgeBaseDB | None:
     """Fetch a KB only if it belongs to user_id. None otherwise."""
     factory = get_session_factory()
     async with factory() as session:
-        result = await session.execute(
-            select(KnowledgeBaseDB).where(
-                KnowledgeBaseDB.id == kb_id,
-                KnowledgeBaseDB.user_id == user_id,
-            )
-        )
-        return result.scalar_one_or_none()
+        return await _get_owned_kb(session, kb_id, user_id)
 
 
 async def delete_kb(kb_id: str, user_id: str) -> bool:
@@ -75,13 +102,7 @@ async def delete_kb(kb_id: str, user_id: str) -> bool:
     """
     factory = get_session_factory()
     async with factory() as session:
-        result = await session.execute(
-            select(KnowledgeBaseDB).where(
-                KnowledgeBaseDB.id == kb_id,
-                KnowledgeBaseDB.user_id == user_id,
-            )
-        )
-        kb = result.scalar_one_or_none()
+        kb = await _get_owned_kb(session, kb_id, user_id)
         if kb is None:
             return False
         # Nullify assets referencing this KB
@@ -101,13 +122,7 @@ async def update_kb(
     """Update a KB's name/description. Returns updated KB or None if not found."""
     factory = get_session_factory()
     async with factory() as session:
-        result = await session.execute(
-            select(KnowledgeBaseDB).where(
-                KnowledgeBaseDB.id == kb_id,
-                KnowledgeBaseDB.user_id == user_id,
-            )
-        )
-        kb = result.scalar_one_or_none()
+        kb = await _get_owned_kb(session, kb_id, user_id)
         if kb is None:
             return None
         if name is not None:
@@ -137,13 +152,7 @@ async def change_indexing_config(
     """
     factory = get_session_factory()
     async with factory() as session:
-        result = await session.execute(
-            select(KnowledgeBaseDB).where(
-                KnowledgeBaseDB.id == kb_id,
-                KnowledgeBaseDB.user_id == user_id,
-            )
-        )
-        kb = result.scalar_one_or_none()
+        kb = await _get_owned_kb(session, kb_id, user_id)
         if kb is None:
             return None, []
 
@@ -194,15 +203,8 @@ async def assign_asset_to_kb(asset_id: str, kb_id: str | None, user_id: str) -> 
         if asset is None or asset.user_id != user_id:
             return False
         # If assigning to a KB, verify KB ownership
-        if kb_id is not None:
-            kb_result = await session.execute(
-                select(KnowledgeBaseDB).where(
-                    KnowledgeBaseDB.id == kb_id,
-                    KnowledgeBaseDB.user_id == user_id,
-                )
-            )
-            if kb_result.scalar_one_or_none() is None:
-                return False
+        if kb_id is not None and not await _kb_belongs_to(session, kb_id, user_id):
+            return False
         asset.knowledge_base_id = kb_id
         await session.commit()
         return True
@@ -219,13 +221,7 @@ async def assign_assets_to_kb_batch(
     """
     factory = get_session_factory()
     async with factory() as session:
-        kb_result = await session.execute(
-            select(KnowledgeBaseDB.id).where(
-                KnowledgeBaseDB.id == kb_id,
-                KnowledgeBaseDB.user_id == user_id,
-            )
-        )
-        if kb_result.scalar_one_or_none() is None:
+        if not await _kb_belongs_to(session, kb_id, user_id):
             raise LookupError(f"knowledge base {kb_id} not found")
 
         rows = await session.execute(

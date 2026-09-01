@@ -29,7 +29,9 @@ function clearLocalConversations() {
     sm.remove(STORAGE_KEYS.CONVERSATIONS);
     sm.remove(STORAGE_KEYS.SESSIONS_CACHE);
     window.dispatchEvent(new Event('ragbase-conversations-updated'));
-  } catch {}
+  } catch {
+    // 存储清理为非关键操作：隐私模式/配额满时失败不影响登出流程
+  }
 }
 
 export type AuthModalView =

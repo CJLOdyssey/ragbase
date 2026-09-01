@@ -51,6 +51,10 @@ def downgrade() -> None:
     inspector = sa.inspect(bind)
     cols = {c['name'] for c in inspector.get_columns('assets')}
     if 'knowledge_base_id' in cols:
+        # Drop the index first — SQLite refuses to drop an indexed column.
+        indexes = {i['name'] for i in inspector.get_indexes('assets')}
+        if 'ix_assets_knowledge_base_id' in indexes:
+            op.drop_index('ix_assets_knowledge_base_id', table_name='assets')
         op.drop_column('assets', 'knowledge_base_id')
     if inspector.has_table('knowledge_bases'):
         op.drop_table('knowledge_bases')

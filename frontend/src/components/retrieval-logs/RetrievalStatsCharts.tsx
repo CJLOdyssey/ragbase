@@ -201,6 +201,10 @@ function ActivityHeatmapChart({ stats }: { stats: RetrievalStatsResponse }) {
   const { t } = useTranslation();
   const option: EChartsOption = useMemo(() => {
     const { dailyActivity } = stats;
+
+    // Convert UTC hours to browser local timezone, matching the trend
+    // chart which uses new Date(ts) (implicitly local timezone).
+    const utcOffsetHours = -(new Date().getTimezoneOffset() / 60);
     const days = [
       t('retrievalLogs.daySun'),
       t('retrievalLogs.dayMon'),
@@ -211,11 +215,14 @@ function ActivityHeatmapChart({ stats }: { stats: RetrievalStatsResponse }) {
       t('retrievalLogs.daySat'),
     ];
     const hours = Array.from({ length: 24 }, (_, i) => `${i}`);
-    const data: [number, number, number][] = dailyActivity.map((d) => [
-      d.hour,
-      d.day,
-      d.count,
-    ]);
+    const data: [number, number, number][] = dailyActivity.map((d) => {
+      let localHour = (d.hour + utcOffsetHours + 24) % 24;
+      let localDay = d.day;
+      // Day of week rolls forward if hour wraps past midnight
+      if (d.hour + utcOffsetHours >= 24) localDay = (d.day + 1) % 7;
+      else if (d.hour + utcOffsetHours < 0) localDay = (d.day + 6) % 7;
+      return [localHour, localDay, d.count];
+    });
     const maxCount = Math.max(...data.map((d) => d[2]), 1);
 
     return {

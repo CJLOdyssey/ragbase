@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth, type AuthModalView } from './AuthContext';
@@ -59,21 +59,23 @@ export default function LoginModal({ onClose }: Props) {
     try {
       await sendRegisterCode(email);
       setCodeCooldown(60);
-      const id = setInterval(() => {
-        setCodeCooldown((c) => {
-          if (c <= 1) {
-            clearInterval(id);
-            return 0;
-          }
-          return c - 1;
-        });
-      }, 1000);
     } catch (err: unknown) {
       setError((err as { message?: string })?.message || t('auth.sendFailed'));
     } finally {
       setSubmitting(false);
     }
   }
+
+  // 验证码倒计时：interval 生命周期绑定组件，卸载即清理
+  // （原实现内联 setInterval，切换 tab/关闭弹窗后定时器泄漏并
+  // 在已卸载组件上 setState）。
+  useEffect(() => {
+    if (codeCooldown <= 0) return;
+    const id = setInterval(() => {
+      setCodeCooldown((c) => (c <= 1 ? 0 : c - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [codeCooldown > 0]);
 
   async function handleRegister() {
     setError('');
@@ -144,7 +146,7 @@ export default function LoginModal({ onClose }: Props) {
         style={{ animation: 'fadeIn 0.15s ease' }}
       >
         <div
-          className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] max-w-[400px] p-0 overflow-hidden"
+          className="bg-[var(--color-surface-raised)] rounded-xl w-full h-full flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] p-0 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:w-[90%] sm:max-w-[400px] sm:max-h-[85vh] sm:rounded-xl sm:pt-0 sm:pb-0"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-center relative px-6 py-4 border-b border-[var(--color-border)]">
@@ -191,7 +193,7 @@ export default function LoginModal({ onClose }: Props) {
       style={{ animation: 'fadeIn 0.15s ease' }}
     >
       <div
-        className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] max-w-[400px] p-0 overflow-hidden"
+        className="bg-[var(--color-surface-raised)] rounded-xl w-full h-full flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] p-0 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:w-[90%] sm:max-w-[400px] sm:max-h-[85vh] sm:rounded-xl sm:pt-0 sm:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center pt-[28px] pb-1">

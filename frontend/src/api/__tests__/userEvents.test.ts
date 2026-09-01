@@ -24,6 +24,10 @@ class FakeWebSocket {
 
   close(): void {
     this.readyState = FakeWebSocket.CLOSED;
+    // 与真实浏览器一致：onclose 异步派发
+    if (this.onclose) {
+      Promise.resolve().then(() => this.onclose?.());
+    }
   }
 }
 
@@ -35,6 +39,7 @@ describe('userEvents', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('opens the events channel and dispatches parsed events', () => {
@@ -71,5 +76,46 @@ describe('userEvents', () => {
     ws.onmessage?.({ data: JSON.stringify({ foo: 1 }) });
     expect(handler).not.toHaveBeenCalled();
     disconnectUserEvents(handler);
+  });
+
+  it('断开后自动重连（指数退避）', async () => {
+    vi.useFakeTimers();
+    const handler = vi.fn();
+    connectUserEvents(handler);
+    const ws = FakeWebSocket.instances[0];
+    ws.onopen?.();
+    ws.close();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(FakeWebSocket.instances.length).toBe(2);
+    disconnectUserEvents(handler);
+  });
+
+  it('最后一个监听器离开后不再重连（异步 onclose 不复活连接）', async () => {
+    vi.useFakeTimers();
+    const handler = vi.fn();
+    connectUserEvents(handler);
+    const ws = FakeWebSocket.instances[0];
+    ws.onopen?.();
+    disconnectUserEvents(handler);
+    // 真实浏览器中 close() 的 onclose 异步派发；即使如此也不能
+    // 重新武装重连定时器（历史缺陷：无监听器 socket 无限重连）。
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(FakeWebSocket.instances.length).toBe(1);
+  });
+
+  it('重新连接后 attempts 归零、可再次重连', async () => {
+    vi.useFakeTimers();
+    const handler = vi.fn();
+    const onReconnect = vi.fn();
+    connectUserEvents(handler, onReconnect);
+    const first = FakeWebSocket.instances[0];
+    first.onopen?.();
+    first.close();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(FakeWebSocket.instances.length).toBe(2);
+    const second = FakeWebSocket.instances[1];
+    second.onopen?.();
+    expect(onReconnect).toHaveBeenCalledTimes(2);
+    disconnectUserEvents(handler, onReconnect);
   });
 });

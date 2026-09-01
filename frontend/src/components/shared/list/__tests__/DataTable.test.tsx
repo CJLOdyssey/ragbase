@@ -1,6 +1,6 @@
 import { TestProviders } from '../../../../test/setup';
 import DataTable, { type DataTableColumn } from '../DataTable';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 interface Row {
@@ -14,8 +14,8 @@ const rows: Row[] = [
   { id: 'b', name: 'beta.md', size: 2 },
 ];
 
-const columns: DataTableColumn<Row>[] = [
-  { key: 'name', header: '文件名', width: 'minmax(160px,1.5fr)', sortable: true },
+const columns: DataTableColumn[] = [
+  { key: 'name', header: '文件名', width: '160px', sortable: true },
   { key: 'size', header: '大小', width: '84px' },
 ];
 
@@ -48,20 +48,12 @@ describe('DataTable', { tags: ['unit'] }, () => {
     expect(screen.getByTitle('beta.md')).toBeInTheDocument();
   });
 
-  it('builds gridTemplateColumns from column widths', () => {
-    const { container } = renderTable();
-    const header = container.querySelector('.grid.h-10') as HTMLElement;
-    expect(header.style.gridTemplateColumns).toBe('minmax(160px,1.5fr) 84px');
-  });
-
   it('sortable header triggers onSort with column key', () => {
     const onSort = vi.fn();
-    const { container } = renderTable({ onSort });
+    renderTable({ onSort, sortField: null, sortDir: undefined });
     const nameHeader = screen.getByText('文件名');
     fireEvent.click(nameHeader);
     expect(onSort).toHaveBeenCalledWith('name');
-    // sort arrow present on sortable column only
-    expect(container.querySelectorAll('.ml-1.text-\\[10px\\]').length).toBe(1);
   });
 
   it('non-sortable header does not trigger onSort', () => {
@@ -72,9 +64,13 @@ describe('DataTable', { tags: ['unit'] }, () => {
   });
 
   it('sort arrow direction follows sortDir when active', () => {
-    renderTable({ sortField: 'name', sortDir: 'desc', onSort: () => {} });
-    const arrow = screen.getByText('↓');
-    expect(arrow).toBeInTheDocument();
+    const { container } = renderTable({
+      sortField: 'name',
+      sortDir: 'desc',
+      onSort: vi.fn(),
+    });
+    const sortIcon = container.querySelector('.anticon-caret-down.active');
+    expect(sortIcon).toBeInTheDocument();
   });
 
   it('row click delegates to onRowClick; testid applied', () => {
@@ -92,13 +88,9 @@ describe('DataTable', { tags: ['unit'] }, () => {
     expect(screen.getByText('暂无数据')).toBeInTheDocument();
   });
 
-  it('header style matches assets baseline (uppercase mono, centered non-first)', () => {
-    renderTable();
-    const h1 = screen.getByText('文件名');
-    const h2 = screen.getByText('大小');
-    expect(h1.className).toContain('justify-start');
-    expect(h2.className).toContain('justify-center');
-    expect(h1.className).toContain('uppercase');
-    expect(h1.className).toContain('font-mono');
+  it('applies project theme via ConfigProvider', () => {
+    const { container } = renderTable();
+    const wrapper = container.querySelector('.ant-table-wrapper');
+    expect(wrapper).toBeInTheDocument();
   });
 });

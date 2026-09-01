@@ -14,7 +14,9 @@ export default function WorkstationHeader({
   onToggleSidebar,
 }: WorkstationHeaderProps) {
   return (
-    <header className="h-14 flex items-center px-4 flex-shrink-0 z-40 bg-[var(--color-surface)]">
+    <header className="h-14 flex items-center px-4 flex-shrink-0 z-40 bg-[var(--color-surface)]" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      {/* 仅侧边栏收起时显示打开按钮：移动端初始抽屉收起即出现，
+          抽屉打开后由遮罩/抽屉内按钮关闭，此处不再显示（避免重复入口） */}
       {!isSidebarOpen && (
         <button
           type="button"

@@ -5,7 +5,7 @@ from typing import Any
 from auth.auth_rbac import require_role
 from core.infra.database import RoleDB, UserDB, UserRoleDB, get_session_factory
 from core.infra.logging_config import get_logger
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 from repository.auth import get_user_roles
@@ -45,8 +45,8 @@ class UpdateStatusIn(BaseModel):
 @router.get("/api/admin/users", response_model=UserListOut)
 async def list_users(
     request: Request,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     search: str | None = None,
     user: Any = Depends(require_role("admin")),
 ) -> Any:
@@ -115,6 +115,31 @@ async def update_user_role(
         if role is None:
             raise HTTPException(status_code=400, detail=f"Role '{req.role}' not found")
 
+        # Last-admin protection: demoting the final admin (or self-demotion)
+        # would lock everyone out of administration (OWASP A01/A07).
+        target_roles = await get_user_roles(user_id)
+        target_is_admin = "admin" in target_roles
+        if target_is_admin and req.role != "admin":
+            admin_role_id = (
+                await session.execute(
+                    select(RoleDB.id).where(RoleDB.name == "admin")
+                )
+            ).scalar_one_or_none()
+            if admin_role_id is None:
+                raise HTTPException(status_code=500, detail="admin role missing")
+            admin_count = (
+                await session.execute(
+                    select(func.count()).select_from(UserRoleDB).where(
+                        UserRoleDB.role_id == admin_role_id
+                    )
+                )
+            ).scalar() or 0
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="不能降级最后一名管理员",
+                )
+
         # Remove existing roles and add the new one
         await session.execute(sa_delete(UserRoleDB).where(UserRoleDB.user_id == user_id))
         session.add(UserRoleDB(user_id=user_id, role_id=role.id))
@@ -137,6 +162,32 @@ async def update_user_status(
         user = await session.get(UserDB, user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
+
+        # Deactivating the last active admin locks everyone out (OWASP A01/A07).
+        if not req.is_active:
+            target_roles = await get_user_roles(user_id)
+            if "admin" in target_roles:
+                admin_role_id = (
+                    await session.execute(
+                        select(RoleDB.id).where(RoleDB.name == "admin")
+                    )
+                ).scalar_one_or_none()
+                active_admin_count = (
+                    await session.execute(
+                        select(func.count())
+                        .select_from(UserRoleDB)
+                        .join(UserDB, UserDB.id == UserRoleDB.user_id)
+                        .where(
+                            UserRoleDB.role_id == admin_role_id,
+                            UserDB.is_active.is_(True),
+                        )
+                    )
+                ).scalar() or 0
+                if active_admin_count <= 1:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="不能停用最后一名启用的管理员",
+                    )
 
         user.is_active = req.is_active
         await session.commit()

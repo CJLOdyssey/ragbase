@@ -222,13 +222,38 @@ class TestSessions:
         assert resp.status_code == 404
 
     def test_delete_memory_success(self, client):
-        with patch("routers.sessions.delete_memory_entry", new_callable=AsyncMock) as mock_del:
+        with (
+            patch("routers.sessions.get_memory_entry", new_callable=AsyncMock) as mock_get,
+            patch("routers.sessions.get_session", new_callable=AsyncMock) as mock_sess,
+            patch("routers.sessions.delete_memory_entry", new_callable=AsyncMock) as mock_del,
+        ):
+            mock_get.return_value = MagicMock(session_id="sess-1")
+            mock_sess.return_value = MagicMock(user_id="admin-login")
             mock_del.return_value = True
             resp = client.delete("/api/memories/mem-1")
             assert resp.status_code == 200
+            mock_del.assert_awaited_once_with("mem-1")
+
+    def test_delete_memory_forbidden_other_user(self, client, other_user_headers):
+        with (
+            patch("routers.sessions.get_memory_entry", new_callable=AsyncMock) as mock_get,
+            patch("routers.sessions.get_session", new_callable=AsyncMock) as mock_sess,
+            patch("routers.sessions.delete_memory_entry", new_callable=AsyncMock) as mock_del,
+        ):
+            mock_get.return_value = MagicMock(session_id="sess-1")
+            mock_sess.return_value = MagicMock(user_id="owner-elsewhere")
+            resp = client.delete("/api/memories/mem-1", headers=other_user_headers)
+            assert resp.status_code == 403
+            mock_del.assert_not_awaited()
 
     def test_delete_memory_exception(self, client):
-        with patch("routers.sessions.delete_memory_entry", new_callable=AsyncMock, side_effect=RuntimeError("err")):
+        with (
+            patch("routers.sessions.get_memory_entry", new_callable=AsyncMock) as mock_get,
+            patch("routers.sessions.get_session", new_callable=AsyncMock) as mock_sess,
+            patch("routers.sessions.delete_memory_entry", new_callable=AsyncMock, side_effect=RuntimeError("err")),
+        ):
+            mock_get.return_value = MagicMock(session_id="sess-1")
+            mock_sess.return_value = MagicMock(user_id="admin-login")
             resp = client.delete("/api/memories/mem-1")
             assert resp.status_code == 500
 

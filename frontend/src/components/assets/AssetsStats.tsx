@@ -106,7 +106,7 @@ export default function AssetsStats({
       </div>
       {typeof filteredCount === 'number' && filteredCount !== total && (
         <div className="text-[11px] font-mono text-[var(--color-text-tertiary)]">
-          筛选 {filteredCount} / {total}
+          {t('assets.filterCount', { filteredCount, total })}
         </div>
       )}
       {typeof pending === 'number' && pending > 0 && (

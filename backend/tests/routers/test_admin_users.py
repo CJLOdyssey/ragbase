@@ -1,29 +1,28 @@
-"""Tests for admin_users router."""
+"""Tests for admin_users router.
 
+client 以 admin-login（admin 角色）登录：断言真实权限语义——
+管理员可列出用户、对不存在用户的操作返回 404，而不是恒真状态集合。
+"""
 
-import pytest
 from fastapi.testclient import TestClient
 
 
-@pytest.mark.asyncio
-async def test_list_users_endpoint(client: TestClient):
-    """Should access list users endpoint."""
+def test_list_users_endpoint(client: TestClient):
+    """管理员可访问用户列表，且返回结构含 users 字段。"""
     response = client.get("/api/admin/users")
-    # Endpoint should be accessible (auth handled by middleware)
-    assert response.status_code in [200, 401, 403]
+    assert response.status_code == 200
+    assert "users" in response.json()
 
 
-@pytest.mark.asyncio
-async def test_update_user_role_endpoint(client: TestClient):
-    """Should access update user role endpoint."""
+def test_update_user_role_endpoint(client: TestClient):
+    """对不存在的用户修改角色 → 404（路由层契约）。"""
     response = client.put("/api/admin/users/test_user/role", json={"role": "admin"})
-    # Endpoint should be accessible (may return 404 if user doesn't exist)
-    assert response.status_code in [200, 401, 403, 404]
+    assert response.status_code == 404
 
 
-@pytest.mark.asyncio
-async def test_update_user_status_endpoint(client: TestClient):
-    """Should access update user status endpoint."""
-    response = client.put("/api/admin/users/test_user/status", json={"is_active": False})
-    # Endpoint should be accessible (may return 404 if user doesn't exist)
-    assert response.status_code in [200, 401, 403, 404]
+def test_update_user_status_endpoint(client: TestClient):
+    """对不存在的用户修改状态 → 404（路由层契约）。"""
+    response = client.put(
+        "/api/admin/users/test_user/status", json={"is_active": False}
+    )
+    assert response.status_code == 404

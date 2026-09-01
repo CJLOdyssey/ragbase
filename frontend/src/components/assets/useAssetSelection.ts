@@ -87,19 +87,22 @@ export function useAssetSelection(
   const getUpdatedTime = (a: AssetItem) =>
     a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
 
+  const filterWith = (searchValue: string) =>
+    filterAssets(assets, {
+      search: searchValue,
+      timeFrom: timeBounds.from,
+      timeTo: timeBounds.to,
+      formats,
+      statuses,
+      kbFilter,
+      indexing,
+      progressMap,
+      getTime: getUpdatedTime,
+    });
+
   const filteredAssets = useMemo(
-    () =>
-      filterAssets(assets, {
-        search: debouncedSearch,
-        timeFrom: timeBounds.from,
-        timeTo: timeBounds.to,
-        formats,
-        statuses,
-        kbFilter,
-        indexing,
-        progressMap,
-        getTime: getUpdatedTime,
-      }),
+    () => filterWith(debouncedSearch),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       assets,
       debouncedSearch,
@@ -162,7 +165,10 @@ export function useAssetSelection(
     filteredAssets.length > 0 &&
     filteredAssets.every((a) => selectedIds.has(a.id));
   const handleSelectAll = (checked: boolean) => {
-    if (checked) setSelectedIds(new Set(filteredAssets.map((a) => a.id)));
+    if (checked)
+      // 用即时 search 计算选中集（而非 300ms 防抖后的旧列表）：输入关键词
+      // 后立刻全选，否则会按防抖窗口前的旧过滤结果勾选无关资产。
+      setSelectedIds(new Set(filterWith(search).map((a) => a.id)));
     else setSelectedIds(new Set());
   };
   const handleSelectOne = (id: string, checked: boolean) => {

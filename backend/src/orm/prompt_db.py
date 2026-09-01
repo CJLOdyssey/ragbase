@@ -42,8 +42,18 @@ class VersionDB(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
+    # ix_versions_resource serves history listing by resource;
+    # the unique index backs create_version's max+1 numbering against
+    # multi-instance races (conflict → savepoint retry recomputes).
     __table_args__ = (
         Index("ix_versions_resource", "resource_type", "resource_id"),
+        Index(
+            "ux_versions_resource_version",
+            "resource_type",
+            "resource_id",
+            "version_num",
+            unique=True,
+        ),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

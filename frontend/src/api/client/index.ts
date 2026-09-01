@@ -17,8 +17,6 @@ export {
   deleteSession,
   deleteMemory,
   exportSessionMemories,
-  getRun,
-  listRuns,
   healthCheck,
 } from './sessions';
 export { listModels } from './models';

@@ -57,19 +57,7 @@ export function useApiKeys() {
   };
 
   useEffect(() => {
-    let cancelled = false;
-    api
-      .listKeys()
-      .then((serverKeys) => {
-        if (!cancelled) setKeys(serverKeys);
-      })
-      .catch((err) => Logger.warn('Failed to load API keys from server', err))
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    void loadKeys();
   }, []);
 
   useEffect(() => {
@@ -79,7 +67,7 @@ export function useApiKeys() {
       .then((data) => {
         if (!cancelled) setUsage(data);
       })
-      .catch(() => {});
+      .catch((err) => Logger.warn('Failed to load key usage', err));
     return () => {
       cancelled = true;
     };
@@ -136,16 +124,12 @@ export function useApiKeys() {
       });
       await loadKeys();
       void queryClient.invalidateQueries({ queryKey: ['keys'] });
-      // Background model fetch may still be in flight — refresh once shortly
-      // so the model list populates without a manual reload.
-      window.setTimeout(() => {
-        void loadKeys();
-        void queryClient.invalidateQueries({ queryKey: ['keys'] });
-      }, 2000);
       setEditingKey(null);
     } catch (err: unknown) {
+      // 保存失败写入 modalError（弹窗内可见）：写 setError 只会显示在
+      // 列表页横幅，被弹窗遮住，用户误以为保存成功。
       const msg = err instanceof Error ? err.message : t('api.saveFailed');
-      setError(msg);
+      setModalError(msg);
       Logger.error('Failed to save API key', err);
     } finally {
       setSaving(false);

@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef } from 'react';
+import type { VirtuosoHandle } from 'react-virtuoso';
 
 /**
  * Auto-follow scroll: scrolls to bottom when messages change, pauses when user
  * scrolls up, resumes when user scrolls back to bottom.
+ *
+ * Uses Virtuoso's scrollToIndex API for smooth virtualized scrolling.
  */
 export function useAutoScroll(
-  containerRef: React.RefObject<HTMLDivElement | null>,
+  virtuosoRef: React.RefObject<VirtuosoHandle | null>,
   displayMessages: readonly { thinking?: string; content?: string }[],
   activeConvId: string | null,
 ) {
@@ -16,33 +19,22 @@ export function useAutoScroll(
     return `${m.thinking ?? ''}|${m.content ?? ''}`;
   }, [displayMessages]);
   const followBottomRef = useRef(true);
-  const programmaticScrollRef = useRef(false);
   const prevLenRef = useRef(lastMsgLen);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      if (programmaticScrollRef.current) {
-        programmaticScrollRef.current = false;
-        return;
-      }
-      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-      if (atBottom !== followBottomRef.current) followBottomRef.current = atBottom;
-    };
-    el.addEventListener('scroll', onScroll);
-    return () => el.removeEventListener('scroll', onScroll);
-  }, [containerRef]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const lenChanged = lastMsgLen !== prevLenRef.current;
     prevLenRef.current = lastMsgLen;
-    if (!lenChanged && !followBottomRef.current) return;
-    programmaticScrollRef.current = true;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
-  }, [lastMsgLen, lastMsgStream, containerRef]);
+    // 契约：用户上滑阅读历史（followBottom=false）时不抢滚动位置；
+    // 仅跟随态才在新消息/流式内容变化时跳底。
+    if (!followBottomRef.current) return;
+    // Scroll to last message using Virtuoso API
+    if (displayMessages.length > 0) {
+      virtuosoRef.current?.scrollToIndex({
+        index: displayMessages.length - 1,
+        align: 'end',
+        behavior: 'auto',
+      });
+    }
+  }, [lastMsgLen, lastMsgStream, virtuosoRef, displayMessages.length]);
 
   useEffect(() => {
     followBottomRef.current = true;

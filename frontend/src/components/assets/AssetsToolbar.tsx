@@ -71,8 +71,8 @@ export default function AssetsToolbar({
         </div>
       </div>
 
-      {/* 筛选行：四下拉并列（居中） */}
-      <div className="flex flex-wrap items-center justify-center gap-3">
+      {/* 筛选行：四下拉并列（居中），移动端垂直排列 */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] font-mono tracking-[0.06em] uppercase text-[var(--color-text-tertiary)]">
             {t('assets.filter.kb', { defaultValue: '知识库' })}
@@ -80,7 +80,7 @@ export default function AssetsToolbar({
           <select
             value={kbFilter}
             onChange={(e) => onKbFilterChange(e.target.value)}
-            className="h-8 w-[130px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+            className="h-8 w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)] sm:w-[130px]"
             data-testid="filter-kb"
           >
             <option value="all">
@@ -108,7 +108,7 @@ export default function AssetsToolbar({
               if (v === 'all') onFormatsChange([]);
               else onFormatsChange([v]);
             }}
-            className="h-8 w-[110px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+            className="h-8 w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)] sm:w-[110px]"
             data-testid="filter-format"
           >
             <option value="all">
@@ -133,7 +133,7 @@ export default function AssetsToolbar({
               if (v === 'all') onStatusesChange([]);
               else onStatusesChange([v]);
             }}
-            className="h-8 w-[110px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+            className="h-8 w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)] sm:w-[110px]"
             data-testid="filter-status"
           >
             <option value="all">
@@ -157,7 +157,7 @@ export default function AssetsToolbar({
           <select
             value={timeRange}
             onChange={(e) => onTimeRangeChange(e.target.value as TimeRange)}
-            className="h-8 w-[110px] rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)]"
+            className="h-8 w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)] sm:w-[110px]"
             data-testid="filter-time"
           >
             {TIME_RANGES.map((r) => (

@@ -1,7 +1,6 @@
 """Memory entry repository — CRUD for session-scoped agent memory entries."""
 
 from datetime import UTC, datetime
-from typing import Any
 from uuid import uuid4
 
 from core.infra.database import MemoryEntry, get_session_factory
@@ -19,6 +18,13 @@ async def get_session_memories(session_id: str) -> list[MemoryEntry]:
         )
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+
+async def get_memory_entry(memory_id: str) -> MemoryEntry | None:
+    """Fetch a single memory entry by ID, or None if missing."""
+    factory = get_session_factory()
+    async with factory() as session:
+        return await session.get(MemoryEntry, memory_id)
 
 
 async def create_memory_entry(
@@ -61,7 +67,7 @@ async def create_memory_entry(
         return obj
 
 
-async def clear_session_memories(session_id: str) -> Any:
+async def clear_session_memories(session_id: str) -> None:
     """Delete all memory entries belonging to a session."""
     factory = get_session_factory()
     async with factory() as session:

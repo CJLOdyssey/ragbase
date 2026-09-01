@@ -70,7 +70,8 @@ except (ImportError, SyntaxError):
         """No-op fallback when conftest_flaky is unavailable."""
         return lambda fn: fn
 
-BASE = os.environ.get("E2E_BASE_URL", "http://localhost:8082")
+#: ragbase 后端实际监听端口（systemd，见 AGENTS.md 端口表）。
+BASE = os.environ.get("E2E_BASE_URL", "http://localhost:8081")
 
 # Test user credentials for rbac mode
 TEST_EMAIL = "e2e@test.com"
@@ -85,16 +86,21 @@ def _rid(prefix: str = "test") -> str:
     return result
 
 
+#: 后端 REDIS_URL 指向 db 1（redis://localhost:6380/1）——
+#: 限流/验证码 key 都在 db 1（auth:* 命名空间）。
+_REDIS_DB = "1"
+
+
 def _clear_rate_limits() -> None:
     try:
         out = subprocess.run(
-            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "KEYS", "ratelimit:*"],
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", _REDIS_DB, "KEYS", "*"],
             capture_output=True, text=True, timeout=5,
         )
         if out.stdout.strip():
             keys = out.stdout.strip().split("\n")
             subprocess.run(
-                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "DEL"] + keys,
+                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", _REDIS_DB, "DEL"] + keys,
                 capture_output=True, timeout=5,
             )
     except Exception:
@@ -174,14 +180,14 @@ def _read_redis(pattern: str) -> list[str]:
     """Read values from Redis matching a key pattern (via docker exec)."""
     try:
         out = subprocess.run(
-            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "KEYS", pattern],
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", _REDIS_DB, "KEYS", pattern],
             capture_output=True, text=True, timeout=5,
         )
         if not out.stdout.strip():
             return []
         keys = out.stdout.strip().split("\n")
         vals = subprocess.run(
-            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "MGET"] + keys,
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", _REDIS_DB, "MGET"] + keys,
             capture_output=True, text=True, timeout=5,
         )
         return [v for v in vals.stdout.strip().split("\n") if v]
@@ -193,12 +199,12 @@ def _delete_redis(pattern: str) -> None:
     """Delete Redis keys matching a pattern (via docker exec)."""
     try:
         out = subprocess.run(
-            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "KEYS", pattern],
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", _REDIS_DB, "KEYS", pattern],
             capture_output=True, text=True, timeout=5,
         )
         if out.stdout.strip():
             subprocess.run(
-                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0", "DEL"]
+                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", _REDIS_DB, "DEL"]
                 + out.stdout.strip().split("\n"),
                 capture_output=True, timeout=5,
             )
@@ -296,25 +302,30 @@ async def test_client() -> Any:
 
     factory = async_sessionmaker(engine, expire_on_commit=False)
 
-    try:
-        # ── 3. Rebind BOTH singletons to the session engine ─────────
-        # Overwriting only _async_session_factory used to leave
-        # get_async_engine() callers on a different, table-less in-memory
-        # database (split-brain). Both globals must point at one engine,
-        # and both must be restored when this fixture ends.
-        with patch_test_globals(db={"_async_engine": engine, "_async_session_factory": factory}):
-            # ── 4. Import the app and create ASGI client ────────────
-            from core.app import app
-            from httpx import ASGITransport, AsyncClient
+    # ── 3. Rebind BOTH singletons to the session engine ─────────────
+    # Overwriting only _async_session_factory used to leave
+    # get_async_engine() callers on a different, table-less in-memory
+    # database (split-brain). Both globals must point at one engine,
+    # and both must be restored when this fixture ends.
+    patch_test_globals_ctx = patch_test_globals(
+        db={"_async_engine": engine, "_async_session_factory": factory}
+    )
+    patch_test_globals_ctx.__enter__()
 
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as client:
-                try:
-                    yield client
-                finally:
-                    patch_redis.stop()
+    try:
+        # ── 4. Import the app and create ASGI client ────────────────
+        from core.app import app
+        from httpx import ASGITransport, AsyncClient
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            try:
+                yield client
+            finally:
+                patch_redis.stop()
     finally:
         await engine.dispose()
+        patch_test_globals_ctx.__exit__(None, None, None)
 
 
 @pytest.fixture(scope="session")
@@ -332,37 +343,24 @@ async def db_engine(test_client: Any) -> None:
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_setup(item: pytest.Item) -> None:
-    """Skip @pytest.mark.integration tests when the backend is unreachable."""
+    """Skip @pytest.mark.integration tests when the backend is unreachable.
+
+    Any HTTP response (401 included) proves the backend is reachable — the
+    auth middleware guards most routes, so a bare probe must not require 200.
+    """
     if item.get_closest_marker("integration") is None:
         return
     try:
-        resp = httpx.get(f"{BASE}/api/models", timeout=3)
-        if resp.status_code != 200:
-            pytest.skip(f"Backend not available (status {resp.status_code})")
+        httpx.get(f"{BASE}/api/models", timeout=3)
     except Exception:
         pytest.skip("Backend not available (connection failed)")
 
 
 # ── Test data factories ──────────────────────────────────────────────────────
 from tests.factories import (  # noqa: E402
-    agent_factory,
-    mcp_factory,
     prompt_factory,
     session_factory,
-    skill_factory,
-    team_factory,
-    tool_factory,
 )
-
-
-@pytest.fixture
-def agent_data():
-    return agent_factory
-
-
-@pytest.fixture
-def team_data():
-    return team_factory
 
 
 @pytest.fixture
@@ -371,20 +369,5 @@ def session_data():
 
 
 @pytest.fixture
-def tool_data():
-    return tool_factory
-
-
-@pytest.fixture
 def prompt_data():
     return prompt_factory
-
-
-@pytest.fixture
-def skill_data():
-    return skill_factory
-
-
-@pytest.fixture
-def mcp_data():
-    return mcp_factory

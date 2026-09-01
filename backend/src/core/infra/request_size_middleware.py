@@ -1,16 +1,23 @@
-from __future__ import annotations
+"""Request body size limit middleware — rejects oversized requests with 413.
 
-import os
+Pure ASGI to avoid Starlette BaseHTTPMiddleware buffering the whole body.
+"""
+
+from __future__ import annotations
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-_MAX_BODY = int(os.environ.get("MAX_REQUEST_BODY_SIZE", "10_485_760"))  # 10 MiB default
+from core.env import env_int
+
+# 10 MiB default.
+_MAX_BODY = env_int("MAX_REQUEST_BODY_SIZE", 10_485_760)
 
 
 class RequestSizeLimitMiddleware:
     """Pure ASGI middleware that rejects requests with oversized bodies.
 
-    Reads Content-Length header before processing body.
+    Reads the Content-Length header before processing the body. Chunked
+    requests without Content-Length are not intercepted (documented limit).
     """
 
     def __init__(self, app: ASGIApp) -> None:

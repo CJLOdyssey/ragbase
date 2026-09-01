@@ -22,6 +22,13 @@ def _stub_embed_model_groups(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _reset_embedding_provider():
+    """_embedding_provider 是模块级单例：断言中途失败也不能泄漏到同 worker 后续用例。"""
+    yield
+    rag_pipeline.ensure_embedding_provider(api_key=None)
+
+
 class TestRagPipeline:
     def test_get_rag_pipeline(self):
         p, store = rag_pipeline.get_rag_pipeline()
@@ -223,6 +230,122 @@ class TestRagPipeline:
                 assert call_kwargs["tag_filter"] == ["python", "bug"]
 
     @pytest.mark.asyncio
+    async def test_retrieve_sources_structured(self):
+        """retrieve_sources：结构化来源（asset_id/asset_name/text/similarity）供引文 UI。"""
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        search_results = [
+            {
+                "asset_id": "a1",
+                "metadata": {"asset_name": "手册"},
+                "text": "chunk text",
+                "similarity": 0.9,
+                "tags": [],
+            },
+        ]
+        with (
+            patch.object(rag_pipeline, "_embedding_provider", provider),
+            patch.object(
+                rag_pipeline._vector_store,
+                "search",
+                new_callable=AsyncMock,
+                return_value=search_results,
+            ),
+        ):
+            sources = await rag_pipeline.retrieve_sources(
+                "query", user_id="u1", retrieval_method="lexical"
+            )
+
+        assert sources == [
+            {"asset_id": "a1", "asset_name": "手册", "text": "chunk text", "similarity": 0.9}
+        ]
+
+    @pytest.mark.asyncio
+    async def test_search_multi_cohort_merges_by_score(self):
+        """多 embedding cohort：逐模型取配置/embed/检索，按 score 合并排序。"""
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        store = MagicMock()
+        store.embed_model_groups = AsyncMock(return_value=["model-a", "model-b"])
+        store.search = AsyncMock(
+            side_effect=[
+                [{"asset_id": "a1", "metadata": {}, "score": 0.8, "similarity": 0.8}],
+                [{"asset_id": "b1", "metadata": {}, "score": 0.6, "similarity": 0.6}],
+            ]
+        )
+        cfg = {"api_key": "k", "model": "model-a", "base_url": "https://x"}
+        provider_inst = MagicMock()
+        provider_inst.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        provider_factory = MagicMock(return_value=provider_inst)
+        with (
+            patch.object(rag_pipeline, "_embedding_provider", provider),
+            patch.object(rag_pipeline, "_vector_store", store),
+            patch("repository.keys.get_embedding_config", new=AsyncMock(return_value=cfg)),
+            patch.object(rag_pipeline, "EmbeddingProvider", provider_factory),
+        ):
+            out = await rag_pipeline._search_results("query", user_id="u1")
+
+        assert [r["asset_id"] for r in out] == ["a1", "b1"]
+        assert store.search.await_count == 2
+        # 每个 cohort 独立检索（向量只在自身模型空间内比较）。
+        search_kwargs = [c.kwargs for c in store.search.await_args_list]
+        assert search_kwargs[0]["embed_model"] == "model-a"
+        assert search_kwargs[1]["embed_model"] == "model-b"
+
+    @pytest.mark.asyncio
+    async def test_search_multi_cohort_skips_missing_config(self):
+        """某 cohort 无 embedding 配置 → 跳过该组，其余正常合并。"""
+        provider = MagicMock()
+        provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        store = MagicMock()
+        store.embed_model_groups = AsyncMock(return_value=["model-a", "model-b"])
+        store.search = AsyncMock(
+            return_value=[{"asset_id": "b1", "metadata": {}, "score": 0.6}]
+        )
+        cfg = {"api_key": "k", "model": "model-a", "base_url": "https://x"}
+        provider_inst = MagicMock()
+        provider_inst.embed_query = AsyncMock(return_value=[0.1] * 1024)
+        provider_factory = MagicMock(return_value=provider_inst)
+        with (
+            patch.object(rag_pipeline, "_embedding_provider", provider),
+            patch.object(rag_pipeline, "_vector_store", store),
+            # model-a 无配置被跳过；model-b 有配置正常检索。
+            patch(
+                "repository.keys.get_embedding_config",
+                new=AsyncMock(side_effect=[None, cfg]),
+            ),
+            patch.object(rag_pipeline, "EmbeddingProvider", provider_factory),
+        ):
+            out = await rag_pipeline._search_results("query", user_id="u1")
+
+        assert [r["asset_id"] for r in out] == ["b1"]
+        store.search.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_search_multi_cohort_embedding_failure_skips_group(self):
+        """某 cohort embed 失败 → 该组跳过，不中断整体检索。"""
+        store = MagicMock()
+        store.embed_model_groups = AsyncMock(return_value=["model-a", "model-b"])
+        store.search = AsyncMock(
+            return_value=[{"asset_id": "b1", "metadata": {}, "score": 0.6}]
+        )
+        cfg = {"api_key": "k", "model": "model-a", "base_url": "https://x"}
+        provider_inst = MagicMock()
+        provider_inst.embed_query = AsyncMock(
+            side_effect=[RuntimeError("embed down"), [0.1] * 1024]
+        )
+        provider_factory = MagicMock(return_value=provider_inst)
+        with (
+            patch.object(rag_pipeline, "_vector_store", store),
+            patch("repository.keys.get_embedding_config", new=AsyncMock(return_value=cfg)),
+            patch.object(rag_pipeline, "EmbeddingProvider", provider_factory),
+        ):
+            out = await rag_pipeline._search_results("query", user_id="u1")
+
+        assert [r["asset_id"] for r in out] == ["b1"]
+        store.search.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_retrieve_with_top_k(self):
         provider = MagicMock()
         provider.embed_query = AsyncMock(return_value=[0.1] * 1024)
@@ -294,8 +417,8 @@ class TestRagPipeline:
                 result = await rag_pipeline.retrieve_context("query", user_id="u1")
                 assert "Single result" in result
                 assert "0.90" in result
-                # No tags bracket for empty tags
-                assert "[" not in result.split("---")[0] or result.count("[") == 0
+                # 空 tags：不渲染 tag 段（相似度标签本身含方括号，故不能断言不含 "["）。
+                assert "[python, test]" not in result
 
     @pytest.mark.asyncio
     async def test_ingest_whole_text_too_short_for_chunks(self):

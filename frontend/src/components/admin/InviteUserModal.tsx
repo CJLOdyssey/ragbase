@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Modal as AntdModal, Input, Select } from 'antd';
+import { Input, Select } from 'antd';
 import { Mail, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 
 export type InviteRole = 'admin' | 'member';
 
@@ -33,11 +34,11 @@ export default function InviteUserModal({
   };
 
   return (
-    <AntdModal
-      title={t('admin.invite.title')}
+    <MobileModal
       open={true}
-      onCancel={onClose}
-      centered
+      onClose={onClose}
+      mode="sheet"
+      title={t('admin.invite.title')}
       width={460}
       footer={
         <>
@@ -108,6 +109,6 @@ export default function InviteUserModal({
           />
         </div>
       </div>
-    </AntdModal>
+    </MobileModal>
   );
 }

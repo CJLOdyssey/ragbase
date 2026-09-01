@@ -1,4 +1,4 @@
-import type { ProjectRun, SessionDetail, SessionItem } from '../../types';
+import type { SessionDetail, SessionItem } from '../../types';
 import api from './instance';
 
 export async function listSessions(limit = 50): Promise<SessionItem[]> {
@@ -65,21 +65,6 @@ export async function exportSessionMemories(
   const { data } = await api.get(`/sessions/${sessionId}/memories/export`, {
     params: { format },
     responseType: 'blob',
-  });
-  return data;
-}
-
-export async function getRun(runId: string): Promise<ProjectRun> {
-  const { data } = await api.get(`/runs/${runId}`);
-  return data;
-}
-
-export async function listRuns(
-  limit = 20,
-  offset?: number,
-): Promise<ProjectRun[]> {
-  const { data } = await api.get('/runs', {
-    params: { limit, ...(offset !== undefined && { offset }) },
   });
   return data;
 }

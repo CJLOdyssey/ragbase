@@ -23,8 +23,6 @@ export default function PromptGrid({
   const { t } = useTranslation();
 
   const renderCard = (p: PromptItem) => {
-    const tags = (p as unknown as { tags?: string[] }).tags;
-    const uses = ((p as unknown as { uses?: number }).uses ?? 0).toLocaleString();
     return (
       <div
         key={p.id}
@@ -40,15 +38,11 @@ export default function PromptGrid({
         </div>
 
         <p className="m-0 mb-3 text-[12.5px] leading-[1.5] text-[var(--color-text-secondary)] line-clamp-2 min-h-[38px]">
-          {p.description || '暂无描述'}
+          {p.description || t('prompts.noDescription')}
         </p>
 
         <div className="flex gap-1 flex-wrap mb-3">
-          {Array.isArray(tags) ? (
-            tags.map((tag) => <Tag key={tag}>{tag}</Tag>)
-          ) : (
-            <Tag>{p.category}</Tag>
-          )}
+          <Tag>{p.category}</Tag>
           <MonoBadge>{p.version}</MonoBadge>
         </div>
 
@@ -56,9 +50,6 @@ export default function PromptGrid({
           className="flex items-center pt-3 border-t border-[var(--color-border)]"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="text-[11px] font-mono text-[var(--color-text-tertiary)]">
-            {uses} 次调用
-          </span>
           <div className="ml-auto flex items-center gap-1">
             <ActionButton
               title={t('prompts.list.edit')}

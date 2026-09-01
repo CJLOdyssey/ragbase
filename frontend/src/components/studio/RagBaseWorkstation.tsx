@@ -1,4 +1,7 @@
-import { lazy, Suspense, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { type VirtuosoHandle } from 'react-virtuoso';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import InputToolbar, { type InputToolbarHandle } from '../input/InputToolbar';
 import HomeScreen from './HomeScreen';
 import MessagesPanel from './MessagesPanel';
@@ -8,6 +11,7 @@ import WorkstationHeader from './WorkstationHeader';
 import { useAutoScroll } from './useAutoScroll';
 import { useDragAndDrop } from './useDragAndDrop';
 import { useHomeState } from './useHomeState';
+import { pathToView, viewToPath } from './viewRoutes';
 
 const PromptLibraryPage = lazy(() => import('../prompts/PromptLibraryPage'));
 const AssetsPage = lazy(() => import('../assets/AssetsPage'));
@@ -27,10 +31,13 @@ export type ManageView =
 
 export default function RagBaseWorkstation() {
   const s = useHomeState();
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputToolbarRef = useRef<InputToolbarHandle>(null);
-  const [activeView, setActiveView] = useState<ManageView>('chat');
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const activeView = useMemo(() => pathToView(location.pathname), [location.pathname]);
+  const isMobile = useIsMobile();
   const {
     isPageDragOver,
     handlePageDragOver,
@@ -38,10 +45,64 @@ export default function RagBaseWorkstation() {
     handlePageDrop,
   } = useDragAndDrop(inputToolbarRef);
 
-  useAutoScroll(messagesContainerRef, s.displayMessages, s.activeConvId);
+  const navigateToView = useCallback(
+    (view: ManageView) => navigate(viewToPath(view), { replace: false }),
+    [navigate],
+  );
+
+  // 会话选中 → 输入框回填标题（原实现传空函数导致选中态从不回填）。
+  const handleSetInputValue = useCallback(
+    (value: string) => {
+      inputToolbarRef.current?.setValue(value);
+    },
+    [inputToolbarRef],
+  );
+
+  useAutoScroll(virtuosoRef, s.displayMessages, s.activeConvId);
+
+  // 移动端选中会话后自动收起抽屉（桌面端无此需求），防止遮罩覆盖消息区。
+  const handleSetActiveConvId = useCallback(
+    (id: string | null) => {
+      navigateToView('chat');
+      s.setActiveConvId(id);
+      if (isMobile) s.setIsSidebarOpen(false);
+    },
+    [navigateToView, s.setActiveConvId, s.setIsSidebarOpen, isMobile],
+  );
+
+  const handleNewChat = useCallback(() => {
+    navigateToView('chat');
+    s.handleNewChat();
+    if (isMobile) s.setIsSidebarOpen(false);
+  }, [navigateToView, s.handleNewChat, s.setIsSidebarOpen, isMobile]);
+
+  const handleToggleSidebar = useCallback(
+    () => s.setIsSidebarOpen((prev) => !prev),
+    [s.setIsSidebarOpen],
+  );
+
+  const handleCloseSidebar = useCallback(
+    () => s.setIsSidebarOpen(false),
+    [s.setIsSidebarOpen],
+  );
+
+  const handleCloseSettings = useCallback(
+    () => s.setIsSettingsOpen(false),
+    [s.setIsSettingsOpen],
+  );
+
+  const handleCloseApi = useCallback(
+    () => s.setIsApiOpen(false),
+    [s.setIsApiOpen],
+  );
+
+  const handleToggleTheme = useCallback(
+    () => s.updateSettings({ theme: s.isDarkMode ? 'light' : 'dark' }),
+    [s.updateSettings, s.isDarkMode],
+  );
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+    <div className="h-dvh w-full flex flex-col overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
       <div className="flex flex-1 overflow-hidden relative">
         <RagBaseSidebar
           conversations={s.conversations}
@@ -50,34 +111,26 @@ export default function RagBaseWorkstation() {
           setIsUserMenuOpen={s.setIsUserMenuOpen}
           setIsSettingsOpen={s.setIsSettingsOpen}
           setIsApiOpen={s.setIsApiOpen}
-          setActiveConvId={(id) => {
-            setActiveView('chat');
-            s.setActiveConvId(id);
-          }}
-          setInputValue={() => {}}
+          setActiveConvId={handleSetActiveConvId}
+          setInputValue={handleSetInputValue}
           onDeleteConversation={s.handleDeleteConversation}
           onRenameConversation={s.handleRenameConversation}
           onPinConversation={s.handlePinConversation}
-          onNewChat={() => {
-            setActiveView('chat');
-            s.handleNewChat();
-          }}
+          onNewChat={handleNewChat}
           isSidebarOpen={s.isSidebarOpen}
-          onToggleSidebar={() => s.setIsSidebarOpen((prev) => !prev)}
+          onToggleSidebar={handleToggleSidebar}
+          isMobile={isMobile}
+          onCloseSidebar={handleCloseSidebar}
           activeView={activeView}
-          onNavigate={setActiveView}
+          onNavigate={navigateToView}
         />
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <WorkstationHeader
             isDarkMode={s.isDarkMode}
-            onToggleTheme={() =>
-              s.updateSettings({
-                theme: s.isDarkMode ? 'light' : 'dark',
-              })
-            }
+            onToggleTheme={handleToggleTheme}
             isSidebarOpen={s.isSidebarOpen}
-            onToggleSidebar={() => s.setIsSidebarOpen((prev) => !prev)}
+            onToggleSidebar={handleToggleSidebar}
           />
 
           <main
@@ -109,16 +162,14 @@ export default function RagBaseWorkstation() {
             )}
             {activeView === 'chat' ? (
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div
-                  className="flex-1 overflow-y-auto flex flex-col bg-[var(--color-surface)]"
-                  ref={messagesContainerRef}
-                >
+                <div className="flex-1 flex flex-col bg-[var(--color-surface)]">
                   {s.hasMessages ? (
                     <MessagesPanel
                       hasMessages={s.hasMessages}
                       displayMessages={s.displayMessages}
                       messagesEndRef={messagesEndRef}
                       onSwitchBranch={s.handleSwitchBranch}
+                      virtuosoRef={virtuosoRef}
                     />
                   ) : (
                     <HomeScreen
@@ -176,8 +227,8 @@ export default function RagBaseWorkstation() {
       <Modals
         isSettingsOpen={s.isSettingsOpen}
         isApiOpen={s.isApiOpen}
-        onCloseSettings={() => s.setIsSettingsOpen(false)}
-        onCloseApi={() => s.setIsApiOpen(false)}
+        onCloseSettings={handleCloseSettings}
+        onCloseApi={handleCloseApi}
       />
     </div>
   );

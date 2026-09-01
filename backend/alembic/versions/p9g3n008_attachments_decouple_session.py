@@ -18,21 +18,21 @@ def upgrade() -> None:
         "attachments",
         sa.Column("user_id", sa.String(length=128), nullable=True),
     )
-    op.alter_column(
-        "attachments",
-        "session_id",
-        existing_type=sa.String(length=36),
-        nullable=True,
-    )
+    with op.batch_alter_table("attachments") as batch_op:
+        batch_op.alter_column(
+            "session_id",
+            existing_type=sa.String(length=36),
+            nullable=True,
+        )
     op.create_index("ix_attachments_user_id", "attachments", ["user_id"])
 
 
 def downgrade() -> None:
     op.drop_index("ix_attachments_user_id", table_name="attachments")
-    op.alter_column(
-        "attachments",
-        "session_id",
-        existing_type=sa.String(length=36),
-        nullable=False,
-    )
+    with op.batch_alter_table("attachments") as batch_op:
+        batch_op.alter_column(
+            "session_id",
+            existing_type=sa.String(length=36),
+            nullable=False,
+        )
     op.drop_column("attachments", "user_id")

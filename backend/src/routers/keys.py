@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field, field_validator
 from repository import (
     create_api_key,
     delete_api_key,
+    fetch_models_for_provider,
     get_api_keys,
     get_key_usage_stats,
     test_api_key_connection,
@@ -245,6 +246,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
     if set(req.capabilities) == {"embedding"}:
         from core.infra.key_vault import decrypt_api_key, mask_api_key
 
+        await log_audit("create", "api_key", obj.label, "创建成功")
         return KeyResponse(
             id=obj.id,
             provider=obj.provider,
@@ -275,6 +277,8 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
         user_id=user_id,
         models=models_to_store,
     )
+
+    await log_audit("create", "api_key", obj.label, "创建成功")
 
     from core.infra.key_vault import decrypt_api_key, mask_api_key
 
@@ -321,7 +325,7 @@ async def edit_key(key_id: str, req: KeyUpdateRequest, request: Request) -> Any:
                 await update_api_key(key_id=key_id, user_id=user_id, models=fetched_models)
                 result["models"] = fetched_models
 
-    await log_audit("create", "api_key", result["label"], "创建成功")
+    await log_audit("update", "api_key", result["label"], "更新成功")
     return KeyResponse(
         id=result["id"],
         provider=result["provider"],
@@ -367,14 +371,9 @@ async def test_key_connection(key_id: str, request: Request) -> Any:
 @router.post("/api/keys/fetch-models")
 async def fetch_models_from_provider(req: FetchModelsRequest) -> Any:
     """Fetch available models from a provider's API without saving a key."""
-    from repository.keys import _test_connection_sync
-
-    key_cfg = {
-        "provider": req.provider,
-        "api_key": req.api_key,
-        "base_url": req.base_url,
-    }
-    result = await asyncio.to_thread(_test_connection_sync, key_cfg)
+    result = await fetch_models_for_provider(
+        req.provider, req.api_key, req.base_url
+    )
     if result.get("success"):
         return {
             "success": True,

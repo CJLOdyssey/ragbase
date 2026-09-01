@@ -63,8 +63,8 @@ async def get_current_user(request: Request) -> CurrentUser:
         user = await get_user_by_id(user_id)
         if user is not None:
             roles = await get_user_roles(user.id)
-            logger.info(
-                "Auth login success | user=%s | roles=%s | client=%s",
+            logger.debug(
+                "Auth user resolved | user=%s | roles=%s | client=%s",
                 user.username, roles,
                 request.client.host if request.client else "?",
             )

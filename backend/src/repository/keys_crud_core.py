@@ -1,4 +1,12 @@
-"""API key CRUD — encrypt, store, list, update, delete user API keys."""
+"""API key CRUD — encrypt, store, list, update, delete user API keys.
+
+Usage::
+
+    from repository.keys_crud import create_api_key, get_api_keys
+
+    key = await create_api_key(user_id, "deepseek", plaintext_key="sk-...")
+    keys = await get_api_keys(user_id)  # key_masked only, never plaintext
+"""
 
 from datetime import UTC, datetime
 from typing import Any
@@ -7,6 +15,38 @@ from uuid import uuid4
 from core.infra.database import UserApiKey, get_session_factory
 from core.infra.key_vault import decrypt_api_key, encrypt_api_key, mask_api_key
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+def _parse_models(raw: str | None) -> list[str]:
+    """Split the comma-joined models column into a non-empty list."""
+    return [m.strip() for m in raw.split(",") if m.strip()] if raw else []
+
+
+def _can_access(row: UserApiKey, user_id: str) -> bool:
+    """True when the caller owns the key, or it is an anonymous fallback key.
+
+    Anonymous (pre-login) keys are shared infrastructure; any authenticated
+    user may read/update/delete them, but an "anonymous" caller cannot touch
+    an authenticated user's key.
+    """
+    return row.user_id == user_id or (
+        user_id != "anonymous" and row.user_id == "anonymous"
+    )
+
+
+async def _clear_other_defaults(
+    session: AsyncSession, user_id: str, exclude_id: str | None = None
+) -> None:
+    """Demote every other default key of the user before setting a new one."""
+    stmt = select(UserApiKey).where(
+        UserApiKey.user_id == user_id,
+        UserApiKey.is_default.is_(True),
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(UserApiKey.id != exclude_id)
+    for other in (await session.execute(stmt)).scalars().all():
+        other.is_default = False
 
 
 async def create_api_key(
@@ -25,14 +65,7 @@ async def create_api_key(
     async with factory() as session:
         # If set as default, clear other defaults for this user
         if is_default:
-            result = await session.execute(
-                select(UserApiKey).where(
-                    UserApiKey.user_id == user_id,
-                    UserApiKey.is_default.is_(True),
-                )
-            )
-            for row in result.scalars().all():
-                row.is_default = False
+            await _clear_other_defaults(session, user_id)
 
         encrypted = encrypt_api_key(plaintext_key)
         obj = UserApiKey(
@@ -98,6 +131,8 @@ async def get_api_keys(
 
         results = []
         for r in rows:
+            # Decryption failure must not block the list; surface a hint instead
+            # of masking the whole keys page (plaintext is never exposed).
             try:
                 key_masked = mask_api_key(decrypt_api_key(r.encrypted_key))
             except Exception:
@@ -111,9 +146,7 @@ async def get_api_keys(
                     "label": r.label,
                     "key_masked": key_masked,
                     "base_url": r.base_url,
-                    "models": [m.strip() for m in r.models.split(",") if m.strip()]
-                    if r.models
-                    else [],
+                    "models": _parse_models(r.models),
                     "is_active": r.is_active,
                     "is_default": r.is_default,
                     "last_used_at": r.last_used_at.isoformat() if r.last_used_at else None,
@@ -167,7 +200,7 @@ async def get_api_key_for_use(key_id: str, user_id: str) -> dict[str, Any] | Non
             "model_types": row.model_types,
             "api_key": decrypt_api_key(row.encrypted_key),
             "base_url": row.base_url,
-            "models": [m.strip() for m in row.models.split(",") if m.strip()] if row.models else [],
+            "models": _parse_models(row.models),
         }
 
 
@@ -189,9 +222,7 @@ async def update_api_key(
         row = await session.get(UserApiKey, key_id)
         if row is None:
             return None
-        owner_match = row.user_id == user_id
-        anonymous_fallback = user_id != "anonymous" and row.user_id == "anonymous"
-        if not owner_match and not anonymous_fallback:
+        if not _can_access(row, user_id):
             return None
 
         if label is not None:
@@ -211,16 +242,8 @@ async def update_api_key(
         if is_default is not None:
             row.is_default = is_default
             if is_default:
-                # Clear other defaults
-                result = await session.execute(
-                    select(UserApiKey).where(
-                        UserApiKey.user_id == user_id,
-                        UserApiKey.is_default.is_(True),
-                        UserApiKey.id != key_id,
-                    )
-                )
-                for other in result.scalars().all():
-                    other.is_default = False
+                # Demote any other default of this user (one default per user).
+                await _clear_other_defaults(session, user_id, exclude_id=key_id)
 
         row.updated_at = datetime.now(UTC)
         await session.commit()
@@ -244,9 +267,7 @@ async def delete_api_key(key_id: str, user_id: str) -> bool:
         row = await session.get(UserApiKey, key_id)
         if row is None:
             return False
-        owner_match = row.user_id == user_id
-        anonymous_fallback = user_id != "anonymous" and row.user_id == "anonymous"
-        if not owner_match and not anonymous_fallback:
+        if not _can_access(row, user_id):
             return False
         await session.delete(row)
         await session.commit()

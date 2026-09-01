@@ -1,9 +1,28 @@
-"""Asset repository — user-level asset library CRUD."""
+"""Asset repository — user-level asset library CRUD.
+
+Usage::
+
+    from repository.assets import create_asset, list_assets_by_user
+
+    asset = await create_asset(user_id, "doc.pdf", "document", 1024, "/store/a1.pdf")
+    assets = await list_assets_by_user(user_id, sort_by="updated_at", order="desc")
+"""
 
 from datetime import UTC, datetime
 
 from core.infra.database import AssetDB, get_session_factory
 from sqlalchemy import asc, desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def _get_owned_asset(
+    session: AsyncSession, asset_id: str, user_id: str
+) -> AssetDB | None:
+    """Fetch an asset row only when it belongs to user_id."""
+    asset = await session.get(AssetDB, asset_id)
+    if asset is None or asset.user_id != user_id:
+        return None
+    return asset
 
 
 async def create_asset(
@@ -43,18 +62,15 @@ async def get_asset_for_user(asset_id: str, user_id: str) -> AssetDB | None:
     """Fetch an asset only if it belongs to user_id. None otherwise."""
     factory = get_session_factory()
     async with factory() as session:
-        asset = await session.get(AssetDB, asset_id)
-        if asset is None or asset.user_id != user_id:
-            return None
-        return asset
+        return await _get_owned_asset(session, asset_id, user_id)
 
 
 async def update_asset_name(asset_id: str, user_id: str, name: str) -> AssetDB | None:
     """Rename an asset only if it belongs to user_id. None otherwise."""
     factory = get_session_factory()
     async with factory() as session:
-        asset = await session.get(AssetDB, asset_id)
-        if asset is None or asset.user_id != user_id:
+        asset = await _get_owned_asset(session, asset_id, user_id)
+        if asset is None:
             return None
         asset.name = name
         await session.commit()
@@ -68,13 +84,14 @@ async def list_assets_by_user(
 ) -> list[AssetDB]:
     """List a user's assets.
 
-    默认：最新一次点击优先，其次点击次数从高到低（均 desc，全栈对齐）。
-    支持显式 sort_by: usage_count | updated_at/last_used | name | size | created_at。
+    Default sort: most recently clicked first, then click count descending
+    (both desc — aligned with the frontend). Explicit ``sort_by`` accepts
+    usage_count | updated_at | last_used | name | size | created_at.
     """
     factory = get_session_factory()
     async with factory() as session:
         stmt = select(AssetDB).where(AssetDB.user_id == user_id)
-        # 显式排序（供前端/外部调用）
+        # Explicit sort (frontend/external callers)
         sort_map = {
             "usage_count": AssetDB.usage_count,
             "usage": AssetDB.usage_count,
@@ -91,8 +108,10 @@ async def list_assets_by_user(
             direction = desc if (order or "desc").lower() == "desc" else asc
             stmt = stmt.order_by(direction(col))
         else:
-            # 默认：最新一次点击优先，其次点击次数从高到低
-            stmt = stmt.order_by(desc(AssetDB.updated_at), desc(AssetDB.usage_count), desc(AssetDB.created_at))
+            # Default: recency first, then click count, then creation time
+            stmt = stmt.order_by(
+                desc(AssetDB.updated_at), desc(AssetDB.usage_count), desc(AssetDB.created_at)
+            )
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
@@ -158,8 +177,8 @@ async def update_asset_tags(
     """Replace an asset's curated tags (owner-scoped); returns updated asset."""
     factory = get_session_factory()
     async with factory() as session:
-        asset = await session.get(AssetDB, asset_id)
-        if asset is None or asset.user_id != user_id:
+        asset = await _get_owned_asset(session, asset_id, user_id)
+        if asset is None:
             return None
         asset.tags = tags
         await session.commit()

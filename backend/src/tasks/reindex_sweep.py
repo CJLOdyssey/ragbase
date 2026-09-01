@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .index_asset import is_index_in_flight
+
 
 async def _reindex_sweep() -> dict[str, int]:
     from core.infra.database import AssetDB, get_session_factory
@@ -16,22 +18,38 @@ async def _reindex_sweep() -> dict[str, int]:
 
     factory = get_session_factory()
     async with factory() as session:
-        rows = (await session.execute(select(AssetDB))).scalars().all()
+        # Column projection only: the sweep touches six fields of every row,
+        # never ORM mutations — loading full entities per asset is waste.
+        rows = (
+            await session.execute(
+                select(
+                    AssetDB.id,
+                    AssetDB.user_id,
+                    AssetDB.storage_path,
+                    AssetDB.indexed,
+                    AssetDB.updated_at,
+                    AssetDB.created_at,
+                )
+            )
+        ).all()
 
     queued = 0
-    for asset in rows:
-        path = Path(asset.storage_path)
+    for row in rows:
+        path = Path(row.storage_path)
         if not path.exists():
             continue
         mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
-        indexed_at = asset.updated_at
-        if indexed_at is None:
-            indexed_at = asset.created_at
-        if not asset.indexed or mtime > indexed_at:
-            from tasks.registry import index_asset
+        indexed_at = row.updated_at or row.created_at
+        # Stale = never indexed (retry a failed attempt) or the file was
+        # replaced/edited externally after indexing (mtime newer than row).
+        stale = not row.indexed or mtime > indexed_at
+        # 并发防重：已有索引任务在飞的资产不入队，避免重复 embedding。
+        if not stale or await is_index_in_flight(row.id):
+            continue
+        from tasks.registry import index_asset
 
-            index_asset.delay(asset.id, asset.user_id)
-            queued += 1
+        index_asset.delay(row.id, row.user_id)
+        queued += 1
     return {"queued": queued}
 
 

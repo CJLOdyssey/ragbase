@@ -67,8 +67,15 @@ const en = deepMerge(
   adminEn,
 );
 
-const saved =
-  typeof window !== 'undefined' ? localStorage.getItem('language') : null;
+// 存储不可用（隐私模式/SSR）时降级默认语言，模块初始化不抛错。
+let saved: string | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    saved = localStorage.getItem('language');
+  } catch {
+    saved = null;
+  }
+}
 const legacyMap: Record<string, string> = { en: 'en-US' };
 const lang = saved ? legacyMap[saved] || saved : 'zh-CN';
 
@@ -96,7 +103,11 @@ if (typeof document !== 'undefined') {
 }
 
 export function changeLanguage(lng: string) {
-  localStorage.setItem('language', lng);
+  try {
+    localStorage.setItem('language', lng);
+  } catch {
+    // storage unavailable — session-only language switch
+  }
   void i18n.changeLanguage(lng);
   if (typeof document !== 'undefined') {
     document.documentElement.lang = LANG_TO_HTML[lng] || lng;

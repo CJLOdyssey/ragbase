@@ -36,7 +36,6 @@ export default function AdminUsersPage() {
   );
   const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviting, setInviting] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', page, search],
@@ -80,22 +79,16 @@ export default function AdminUsersPage() {
   };
 
   const handleInvite = (_email: string, _role: InviteRole) => {
-    setInviting(true);
-    // No dedicated invite endpoint exists in the current API client; mirror the
-    // reset-password flow by surfacing success and refreshing the list.
-    setTimeout(() => {
-      setInviting(false);
-      setInviteOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      toast(t('admin.toast.inviteSent'), 'success');
-    }, 300);
+    // 后端当前未提供邀请/删除/重置密码端点（admin_users.py 仅有
+    // list/role/status）——不得假成功误导用户，明确提示未接入。
+    setInviteOpen(false);
+    toast(t('admin.toast.notSupported'), 'error');
   };
 
   const handleDelete = () => {
     if (!deleteUser) return;
-    // No dedicated delete-user endpoint exists in the current API client.
-    toast(t('admin.toast.userDeleted'), 'success');
     setDeleteUser(null);
+    toast(t('admin.toast.notSupported'), 'error');
   };
 
   const users = data?.users ?? [];
@@ -103,23 +96,12 @@ export default function AdminUsersPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-4 border-b border-[var(--color-border)] px-8 py-[22px]">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--color-accent)_22%,transparent)] bg-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] text-[var(--color-accent-soft)]">
-            <Users size={14} />
-          </div>
-          <div className="min-w-0">
-            <h1 className="m-0 text-[18px] font-bold tracking-[-0.03em] leading-none text-[var(--color-text-primary)]">
-              {t('admin.users.title')}
-            </h1>
-            <p className="m-0 mt-1 hidden text-[12.5px] leading-[1.4] text-[var(--color-text-muted)] sm:block">
-              {t('admin.users.subtitle')}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="relative hidden md:flex">
+      <div className="flex flex-col gap-2 border-b border-[var(--color-border)] px-4 py-4 sm:px-6 lg:px-8">
+        <h1 className="m-0 text-[18px] font-bold tracking-[-0.03em] leading-none text-[var(--color-text-primary)]">
+          {t('admin.users.title')}
+        </h1>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
             <Search
               size={13}
               className="pointer-events-none absolute left-[9px] top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]"
@@ -132,12 +114,12 @@ export default function AdminUsersPage() {
                 setPage(1);
               }}
               placeholder={t('admin.users.search')}
-              className="h-[34px] w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-[30px] pr-3 text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] transition-colors focus:border-[color-mix(in_srgb,var(--color-accent)_40%,transparent)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_8%,transparent)]"
+              className="h-[34px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-[30px] pr-3 text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] transition-colors focus:border-[color-mix(in_srgb,var(--color-accent)_40%,transparent)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_8%,transparent)]"
             />
           </div>
           <button
             onClick={() => setInviteOpen(true)}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[9px] border-none bg-[linear-gradient(135deg,var(--color-accent),var(--color-accent-hover))] px-4 text-[13px] font-medium text-white shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent)_28%,transparent)] transition-all hover:-translate-y-px hover:shadow-[0_4px_18px_color-mix(in_srgb,var(--color-accent)_45%,transparent)]"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-none bg-[linear-gradient(135deg,var(--color-accent),var(--color-accent-hover))] px-3 text-[13px] font-medium text-white shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent)_28%,transparent)] transition-all hover:-translate-y-px hover:shadow-[0_4px_18px_color-mix(in_srgb,var(--color-accent)_45%,transparent)] sm:px-4"
           >
             <UserPlus size={14} />
             {t('admin.users.invite')}
@@ -145,7 +127,7 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
         {isLoading ? (
           <LoadingState centered />
         ) : !data || users.length === 0 ? (
@@ -200,7 +182,8 @@ export default function AdminUsersPage() {
           titleKey="admin.users.resetPassword"
           messageKey="admin.users.resetPasswordConfirm"
           onConfirm={() => {
-            toast(t('admin.users.resetPasswordSuccess'), 'success');
+            // 同 invite/delete：后端无重置密码端点，假成功会误导操作。
+            toast(t('admin.toast.notSupported'), 'error');
             setResetPasswordUser(null);
           }}
           onCancel={() => setResetPasswordUser(null)}
@@ -226,7 +209,7 @@ export default function AdminUsersPage() {
 
       {inviteOpen && (
         <InviteUserModal
-          submitting={inviting}
+          submitting={false}
           onClose={() => setInviteOpen(false)}
           onInvite={handleInvite}
         />

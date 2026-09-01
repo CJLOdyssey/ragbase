@@ -12,8 +12,8 @@ interface UseCommandPaletteReturn {
     e: React.KeyboardEvent<HTMLTextAreaElement>,
     value: string,
   ) => boolean;
-  /** Select a command by index — returns the replacement text */
-  selectCommand: (index: number) => string;
+  /** Select a command by index — returns the replacement text（含斜杠前前缀） */
+  selectCommand: (index: number, currentValue: string) => string;
   /** Set active index on mouse hover */
   setActiveIndex: (index: number) => void;
   /** Force close the palette */
@@ -106,14 +106,17 @@ export function useCommandPalette(
   );
 
   const selectCommand = useCallback(
-    (index: number): string => {
+    (index: number, currentValue: string): string => {
       if (index < 0 || index >= filtered.length) return '';
       const cmd = filtered[index];
-      const replacement = `/${cmd.name} `;
+      // 保留斜杠前的行内前缀（如「帮我 /search」选中后输出「帮我 /search 」），
+      // 只替换命令段，避免整体替换 textarea 丢失前缀文本。
+      const prefix = currentValue.slice(0, slashIndex);
+      const replacement = `${prefix}/${cmd.name} `;
       close();
       return replacement;
     },
-    [filtered, close],
+    [filtered, close, slashIndex],
   );
 
   /** Call from onChange — keeps query in sync with textarea value */
