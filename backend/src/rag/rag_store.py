@@ -194,12 +194,6 @@ class PgVectorStore(CurationMixin):
                     where_clauses.append("metadata->>'embed_model' = :em")
                     params["em"] = embed_model
 
-            if min_score is not None and method in ("hybrid", "semantic"):
-                where_clauses.append(
-                    "(1 - (embedding <=> CAST(:emb AS vector))) >= :min_score"
-                )
-                params["min_score"] = min_score
-
             where_sql = " AND ".join(where_clauses)
 
             emb_str = _vector_literal(query_embedding)
@@ -207,18 +201,25 @@ class PgVectorStore(CurationMixin):
             legs: list[list[dict[str, Any]]] = []
 
             if method in ("hybrid", "semantic"):
+                # Add min_score filter only for vector search
+                vec_where = where_sql
+                vec_params = {**params}
+                if min_score is not None:
+                    vec_where += " AND (1 - (embedding <=> CAST(:emb AS vector))) >= :min_score"
+                    vec_params["min_score"] = min_score
+
                 vec_rows = await session.execute(
                     text(
                         f"""
                         SELECT id, text, tags, session_id, run_id, asset_id, metadata,
                                1 - (embedding <=> CAST(:emb AS vector)) AS similarity
                         FROM vector_chunks
-                        WHERE {where_sql}
+                        WHERE {vec_where}
                         ORDER BY embedding <=> CAST(:emb AS vector)
                         LIMIT :vec_k
                     """
                     ),
-                    {**params, "emb": emb_str, "vec_k": top_k * 5},
+                    {**vec_params, "emb": emb_str, "vec_k": top_k * 5},
                 )
                 legs.append(_rows_to_dicts(vec_rows.fetchall()))
 

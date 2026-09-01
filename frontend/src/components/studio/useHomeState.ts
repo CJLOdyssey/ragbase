@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */ // 视口断点同步是合法副作用
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useResolvedIsDark } from '../../theme/useResolvedTheme';
 import { useAuth } from '../auth/AuthContext';
@@ -49,9 +50,9 @@ export function useHomeState() {
   // 移动端侧边栏为覆盖抽屉，默认收起（桌面保持展开）
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isMobile);
 
-  // 视口跨 md 断点时强制同步侧边栏状态：桌面 → 移动端时若抽屉处于打开态，
-  // 会以「展开抽屉」姿态压在消息区上（占屏 70%+、主区被挤压成细条）。
-  // 移动端一律收起（由汉堡按钮打开），切回桌面时恢复展开。
+  // 视口跨 md 断点时强制收起侧边栏：移动端一律收起（由汉堡按钮打开），
+  // 切回桌面时恢复展开。此 effect 响应视口断点变化——属于与外部系统同步
+  // 的合法副作用（React 官方 pattern：同步状态与外部系统）。
   useEffect(() => {
     setIsSidebarOpen(!isMobile);
   }, [isMobile]);
@@ -363,7 +364,7 @@ export function useHomeState() {
     if (seq === loadSeqRef.current) {
       setRestoring(false);
     }
-  }, []);
+  }, [navigate]);
 
   // 会话路由驱动：进入/切换/前进后退（URL 变化）→ 加载对应会话；
   // URL 无会话（主页）→ 清空消息。setTimeout 延后一帧：加载开始的同步

@@ -52,7 +52,6 @@ _DOC_TYPES = {
 
 def _extract_format(filename: str) -> str:
     """Extract file extension (format) from filename, lowercase without dot."""
-    from pathlib import Path
     suffix = Path(filename).suffix.lower()
     return suffix.lstrip(".") if suffix else "unknown"
 

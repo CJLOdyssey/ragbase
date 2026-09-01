@@ -7,7 +7,7 @@ from core.infra.logging_config import get_logger
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
-from rag.rag_pipeline import get_rag_pipeline, retrieve_sources
+from rag.rag_pipeline import retrieve_sources
 from repository.assets import list_asset_ids_by_kb
 
 from routers.query_strategies import rewrite_query
@@ -57,7 +57,24 @@ async def test_retrieval(req: RetrievalTestIn, request: Request) -> Any:
     if not original:
         raise HTTPException(status_code=400, detail="query is required")
 
-    embedding_provider, _ = get_rag_pipeline()
+    # Ensure embedding provider is configured for retrieval.
+    # NOTE: ensure_embedding_provider mutates the process-global _embedding_provider
+    # in rag_pipeline.py. This is intentional — the test workbench must exercise the
+    # same retrieval path as production chat, which depends on the global provider.
+    # Concurrent test-retrieval requests from different users will overwrite each
+    # other's provider; this is acceptable because the test workbench is a diagnostic
+    # tool, not a production query path.
+    from rag.rag_pipeline import ensure_embedding_provider
+    from repository.keys import get_embedding_config
+
+    cfg = await get_embedding_config()
+    if cfg and cfg["api_key"]:
+        logger.debug("Setting embedding provider: model=%s", cfg.get("model"))
+        ensure_embedding_provider(
+            cfg["api_key"], model=cfg["model"], base_url=cfg["base_url"]
+        )
+    else:
+        logger.warning("No embedding config found — retrieval will be lexical-only")
 
     effective = original
     if req.rewrite:
@@ -86,6 +103,6 @@ async def test_retrieval(req: RetrievalTestIn, request: Request) -> Any:
         original_query=original,
         query=effective,
         hit_count=len(sources),
-        embedding_configured=embedding_provider is not None,
+        embedding_configured=cfg is not None and bool(cfg.get("api_key")),
         sources=[RetrievalSourceOut(**s) for s in sources],
     )

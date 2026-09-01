@@ -66,38 +66,38 @@ export default function RagBaseWorkstation() {
       s.setActiveConvId(id);
       if (isMobile) s.setIsSidebarOpen(false);
     },
-    [navigateToView, s.setActiveConvId, s.setIsSidebarOpen, isMobile],
+    [navigateToView, s, isMobile],
   );
 
   const handleNewChat = useCallback(() => {
     navigateToView('chat');
     s.handleNewChat();
     if (isMobile) s.setIsSidebarOpen(false);
-  }, [navigateToView, s.handleNewChat, s.setIsSidebarOpen, isMobile]);
+  }, [navigateToView, s, isMobile]);
 
   const handleToggleSidebar = useCallback(
     () => s.setIsSidebarOpen((prev) => !prev),
-    [s.setIsSidebarOpen],
+    [s],
   );
 
   const handleCloseSidebar = useCallback(
     () => s.setIsSidebarOpen(false),
-    [s.setIsSidebarOpen],
+    [s],
   );
 
   const handleCloseSettings = useCallback(
     () => s.setIsSettingsOpen(false),
-    [s.setIsSettingsOpen],
+    [s],
   );
 
   const handleCloseApi = useCallback(
     () => s.setIsApiOpen(false),
-    [s.setIsApiOpen],
+    [s],
   );
 
   const handleToggleTheme = useCallback(
     () => s.updateSettings({ theme: s.isDarkMode ? 'light' : 'dark' }),
-    [s.updateSettings, s.isDarkMode],
+    [s],
   );
 
   return (
