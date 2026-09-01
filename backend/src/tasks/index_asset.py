@@ -46,16 +46,14 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     if await is_index_in_flight(asset_id):
         return {"indexed": False, "skipped": "in-flight"}
 
-    # Per-KB binding: vectors in one KB share a single embedding space, so the
-    # owning KB's bound model (when set) wins over the global heuristic.
-    kb_id = asset.knowledge_base_id
-    kb_embed_model: str | None = None
-    kb_parser_config: dict[str, Any] | None = None
-    if kb_id:
-        kb = await get_kb(kb_id, user_id)
-        if kb is not None:
-            kb_embed_model = getattr(kb, "embed_model", None)
-            kb_parser_config = getattr(kb, "parser_config", None) or None
+    # Invariant: vector-write must belong to a KB (rag_guard).
+    from rag.rag_guard import require_kb_binding
+    kb_id = require_kb_binding(asset)
+
+    # Per-KB binding: vectors in one KB share a single embedding space.
+    kb = await get_kb(kb_id, user_id)
+    kb_embed_model: str | None = getattr(kb, "embed_model", None) if kb else None
+    kb_parser_config: dict[str, Any] | None = (getattr(kb, "parser_config", None) or None) if kb else None
 
     from rag.rag_guard import ALLOWED_INDEX_SOURCES, scan_document
     from rag.rag_parsing import extract_text

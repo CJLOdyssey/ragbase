@@ -19,6 +19,7 @@ import CommandDropdown from './CommandDropdown';
 import FileAttach from './FileAttach';
 import ModelSelector from './ModelSelector';
 import PromptSelector from './PromptSelector';
+import SessionKBSelector from './SessionKBSelector';
 import { useCommandPalette } from '../../hooks/useCommandPalette';
 import { useMessageComposer } from '../../hooks/useMessageComposer';
 import { useToast } from '../../utils/useToast';
@@ -44,6 +45,12 @@ interface InputToolbarProps {
   isRunning?: boolean;
   /** Called when stop button is clicked */
   onStop?: () => void;
+  /** Session ID for KB binding */
+  sessionId?: string | null;
+  /** Knowledge base IDs bound to the current session */
+  knowledgeBaseIds?: string[];
+  /** Called when KB selection changes */
+  onKBChange?: (ids: string[]) => void;
 }
 
 const MAX_FILES = 5;
@@ -62,6 +69,9 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
       maxLength = 10000,
       isRunning = false,
       onStop,
+      sessionId,
+      knowledgeBaseIds = [],
+      onKBChange,
     },
     ref,
   ) {
@@ -320,6 +330,11 @@ const InputToolbar = forwardRef<InputToolbarHandle, InputToolbarProps>(
                 selectedModel={selectedModel}
                 onChange={onModelChange}
                 onConfigure={onConfigureModels}
+              />
+              <SessionKBSelector
+                sessionId={sessionId ?? null}
+                knowledgeBaseIds={knowledgeBaseIds}
+                onChange={onKBChange ?? (() => {})}
               />
               <PromptSelector />
               <FileAttach

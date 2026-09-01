@@ -123,6 +123,7 @@ export interface SessionItem {
   kind: string;
   run_count: number;
   is_pinned?: boolean;
+  knowledge_base_ids?: string[];
   created_at: string | null;
   updated_at: string | null;
   /** 乐观占位：发送中未获 server 确认（id=temp-*，确认后原位替换为 sessionId） */

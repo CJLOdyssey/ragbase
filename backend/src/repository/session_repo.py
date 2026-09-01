@@ -104,6 +104,11 @@ async def update_session_title(session_id: str, title: str) -> SessionDB | None:
     return await _update_session(session_id, title=title)
 
 
+async def update_session_kbs(session_id: str, kb_ids: list[str]) -> SessionDB | None:
+    """Set the knowledge base IDs bound to a chat session."""
+    return await _update_session(session_id, knowledge_base_ids=kb_ids)
+
+
 async def delete_session(session_id: str) -> bool:
     """Delete a session by ID. Returns False if not found."""
     factory = get_session_factory()

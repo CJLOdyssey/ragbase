@@ -33,19 +33,28 @@ _MAX_IMAGE_MB = 10
 _MAX_DOC_MB = 20
 _MAX_REDIRECTS = 3
 _IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"}
+_DATA_TYPES = {
+    "text/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
 _DOC_TYPES = {
     "application/pdf",
     "text/plain",
     "text/markdown",
-    "text/csv",
     "text/html",
     "application/msword",
-    "application/vnd.ms-excel",
     "application/vnd.ms-powerpoint",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
+
+
+def _extract_format(filename: str) -> str:
+    """Extract file extension (format) from filename, lowercase without dot."""
+    from pathlib import Path
+    suffix = Path(filename).suffix.lower()
+    return suffix.lstrip(".") if suffix else "unknown"
 
 
 class AssetItem(BaseModel):
@@ -53,6 +62,7 @@ class AssetItem(BaseModel):
     id: str
     name: str
     asset_type: str
+    format: str | None = None
     size_bytes: int
     usage_count: int
     indexed: bool
@@ -104,14 +114,13 @@ async def _embed_for_asset(
     must fail loudly rather than write vectors from an unknown space.
     """
     from rag.rag_embedding import EmbeddingProvider
+    from rag.rag_guard import require_kb_binding
     from repository.keys import get_embedding_config
     from repository.knowledge_bases import get_kb
 
-    kb_embed_model: str | None = None
-    if asset.knowledge_base_id:
-        kb = await get_kb(asset.knowledge_base_id, asset.user_id)
-        if kb is not None:
-            kb_embed_model = getattr(kb, "embed_model", None)
+    require_kb_binding(asset)
+    kb = await get_kb(asset.knowledge_base_id, asset.user_id)
+    kb_embed_model: str | None = getattr(kb, "embed_model", None) if kb else None
     cfg = await get_embedding_config(preferred_model=kb_embed_model)
     if cfg is None or cfg["api_key"] is None:
         raise RuntimeError("no embedding API key configured")
@@ -128,6 +137,9 @@ def _validate(content_type: str, size: int) -> str:
     if content_type in _IMAGE_TYPES:
         limit = _MAX_IMAGE_MB * 1024 * 1024
         asset_type = "image"
+    elif content_type in _DATA_TYPES:
+        limit = _MAX_DOC_MB * 1024 * 1024
+        asset_type = "data"
     elif content_type in _DOC_TYPES:
         limit = _MAX_DOC_MB * 1024 * 1024
         asset_type = "document"
@@ -146,6 +158,7 @@ def _to_item(asset: Any, chunk_count: int | None = None) -> AssetItem:
         id=asset.id,
         name=asset.name,
         asset_type=asset.asset_type,
+        format=getattr(asset, "format", None),
         size_bytes=asset.size_bytes,
         usage_count=asset.usage_count,
         indexed=asset.indexed,
@@ -238,6 +251,7 @@ async def upload_asset(
             user_id=user_id,
             name=(name or file.filename or filename)[:256],
             asset_type=asset_type,
+            format=_extract_format(safe_name),
             size_bytes=len(content),
             storage_path=storage_path,
         )
@@ -386,6 +400,7 @@ async def import_asset_from_url(req: UrlImportIn, request: Request) -> Any:
             user_id=user_id,
             name=(req.name or safe_name)[:256],
             asset_type=asset_type,
+            format=_extract_format(safe_name),
             size_bytes=len(content),
             storage_path=storage_path,
             source="url",
@@ -556,6 +571,8 @@ async def index_asset(asset_id: str, request: Request) -> Any:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
     if asset.asset_type != "document":
         raise error_response(ErrorCode.INVALID_REQUEST, detail="仅文档类素材可索引")
+    if not asset.knowledge_base_id:
+        raise error_response(ErrorCode.INVALID_REQUEST, detail="请先将素材分配到知识库")
 
     # Async, idempotent (reindex clears old chunks first); HTTP request returns
     # immediately — heavy work runs in the Celery worker.
@@ -606,7 +623,7 @@ async def add_asset_chunk(asset_id: str, req: ChunkTextIn, request: Request) -> 
 
     try:
         embeddings, model = await _embed_for_asset(asset, [req.text.strip()])
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         raise error_response(ErrorCode.INVALID_REQUEST, detail=str(e)) from e
     store: PgVectorStore = PgVectorStore()
     chunk_id = await store.add_manual_chunk(
@@ -641,7 +658,7 @@ async def edit_asset_chunk(
 
     try:
         embeddings, model = await _embed_for_asset(asset, [req.text.strip()])
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         raise error_response(ErrorCode.INVALID_REQUEST, detail=str(e)) from e
     new_id = await PgVectorStore().update_chunk_text(
         chunk_id, asset_id, user_id, req.text.strip(), embeddings[0], model
@@ -762,6 +779,8 @@ async def retry_index_asset(asset_id: str, request: Request) -> Any:
         raise error_response(ErrorCode.ASSET_NOT_FOUND, detail="素材不存在")
     if asset.asset_type != "document":
         raise error_response(ErrorCode.INVALID_REQUEST, detail="仅文档类素材可索引")
+    if not asset.knowledge_base_id:
+        raise error_response(ErrorCode.INVALID_REQUEST, detail="请先将素材分配到知识库")
 
     from repository.assets import set_asset_index_result
     from tasks.registry import index_asset as index_asset_task
@@ -793,7 +812,7 @@ async def add_qa_chunks(asset_id: str, req: ChunkBatchQAIn, request: Request) ->
     texts = [f"{p.question.strip()}\n{p.answer.strip()}" for p in req.pairs]
     try:
         embeddings, model = await _embed_for_asset(asset, texts)
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         raise error_response(ErrorCode.INVALID_REQUEST, detail=str(e)) from e
 
     store: PgVectorStore = PgVectorStore()

@@ -18,7 +18,7 @@ async def _reindex_sweep() -> dict[str, int]:
 
     factory = get_session_factory()
     async with factory() as session:
-        # Column projection only: the sweep touches six fields of every row,
+        # Column projection only: the sweep touches seven fields of every row,
         # never ORM mutations — loading full entities per asset is waste.
         rows = (
             await session.execute(
@@ -27,6 +27,7 @@ async def _reindex_sweep() -> dict[str, int]:
                     AssetDB.user_id,
                     AssetDB.storage_path,
                     AssetDB.indexed,
+                    AssetDB.knowledge_base_id,
                     AssetDB.updated_at,
                     AssetDB.created_at,
                 )
@@ -35,6 +36,9 @@ async def _reindex_sweep() -> dict[str, int]:
 
     queued = 0
     for row in rows:
+        # Skip assets not bound to a KB — vector-write invariant.
+        if not row.knowledge_base_id:
+            continue
         path = Path(row.storage_path)
         if not path.exists():
             continue

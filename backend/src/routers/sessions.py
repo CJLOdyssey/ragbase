@@ -23,6 +23,7 @@ from repository import (
     get_session_messages,
     get_session_runs,
     get_sessions,
+    update_session_kbs,
     update_session_pin,
     update_session_title,
 )
@@ -56,6 +57,10 @@ class SessionPinRequest(BaseModel):
     is_pinned: bool = True
 
 
+class SessionKBRequest(BaseModel):
+    knowledge_base_ids: list[str] = Field(default_factory=list)
+
+
 @router.get("/api/sessions", response_model=list[SessionSummary])
 async def list_sessions(request: Request, limit: int = 50) -> Any:
     """List sessions for the current user."""
@@ -74,6 +79,7 @@ async def list_sessions(request: Request, limit: int = 50) -> Any:
                     "kind": s.kind,
                     "run_count": len(runs),
                     "is_pinned": s.is_pinned,
+                    "knowledge_base_ids": s.knowledge_base_ids or [],
                     "created_at": s.created_at.isoformat() if s.created_at else None,
                     "updated_at": s.updated_at.isoformat() if s.updated_at else None,
                 }
@@ -163,6 +169,7 @@ async def get_session_detail(request: Request, session_id: str) -> Any:
             "id": sess.id,
             "title": sess.title,
             "kind": sess.kind,
+            "knowledge_base_ids": sess.knowledge_base_ids or [],
             "created_at": sess.created_at.isoformat() if sess.created_at else None,
             "updated_at": sess.updated_at.isoformat() if sess.updated_at else None,
             "runs": [
@@ -243,6 +250,30 @@ async def pin_session(request: Request, session_id: str, req: SessionPinRequest)
         raise
     except Exception as e:
         logger.error("Error pinning session %s: %s", session_id, e, exc_info=True)
+        raise error_response(ErrorCode.INTERNAL_ERROR) from e
+
+
+@router.put("/api/sessions/{session_id}/knowledge-bases")
+async def set_session_knowledge_bases(
+    request: Request, session_id: str, req: SessionKBRequest
+) -> Any:
+    """Set which knowledge bases are bound to this chat session for RAG retrieval."""
+    try:
+        user_id = get_user_id(request)
+        sess = await get_session(session_id)
+        if not sess:
+            raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        if sess.user_id != user_id:
+            raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权修改该对话")
+        sess = await update_session_kbs(session_id, req.knowledge_base_ids)
+        if not sess:
+            raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        await _publish_session_event(user_id, "session.updated", session_id)
+        return {"id": sess.id, "knowledge_base_ids": sess.knowledge_base_ids or [], "status": "updated"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error setting KBs for session %s: %s", session_id, e, exc_info=True)
         raise error_response(ErrorCode.INTERNAL_ERROR) from e
 
 

@@ -191,8 +191,17 @@ async def update_knowledge_base(kb_id: str, req: KBUpdateIn, request: Request) -
 
 @router.delete("/api/knowledge-bases/{kb_id}")
 async def delete_knowledge_base(kb_id: str, request: Request) -> Any:
-    """Delete a knowledge base (nullifies assets' knowledge_base_id)."""
+    """Delete a knowledge base (clear vectors, reset indexed, then nullify)."""
     user_id = get_user_id(request)
+    # Clear vector chunks and reset indexed flag before nullifying asset bindings.
+    from rag.rag_store import PgVectorStore
+    from repository.assets import list_asset_ids_by_kb, set_asset_index_result
+
+    asset_ids = await list_asset_ids_by_kb(kb_id, user_id)
+    if asset_ids:
+        await PgVectorStore().clear_assets(asset_ids)
+        for aid in asset_ids:
+            await set_asset_index_result(aid, False, None)
     deleted = await delete_kb(kb_id, user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Knowledge base not found")

@@ -181,6 +181,9 @@ export default function RagBaseWorkstation() {
                       inputToolbarRef={inputToolbarRef}
                       isRunning={s.isRunning}
                       onStop={s.handleStop}
+                      sessionId={s.activeConvId}
+                      knowledgeBaseIds={s.sessionKBIds}
+                      onKBChange={s.setSessionKBIds}
                     />
                   )}
                 </div>
@@ -197,6 +200,9 @@ export default function RagBaseWorkstation() {
                     onConfigureModels={() => s.setIsApiOpen(true)}
                     isRunning={s.isRunning}
                     onStop={s.handleStop}
+                    sessionId={s.activeConvId}
+                    knowledgeBaseIds={s.sessionKBIds}
+                    onKBChange={s.setSessionKBIds}
                   />
                 )}
               </div>

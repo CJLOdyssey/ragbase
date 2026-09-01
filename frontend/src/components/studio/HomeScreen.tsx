@@ -29,6 +29,9 @@ interface Props {
   inputToolbarRef: RefObject<InputToolbarHandle>;
   isRunning?: boolean;
   onStop?: () => void;
+  sessionId?: string | null;
+  knowledgeBaseIds?: string[];
+  onKBChange?: (ids: string[]) => void;
 }
 
 export default function HomeScreen({
@@ -43,6 +46,9 @@ export default function HomeScreen({
   inputToolbarRef,
   isRunning,
   onStop,
+  sessionId,
+  knowledgeBaseIds,
+  onKBChange,
 }: Props) {
   const { t } = useTranslation();
   const reduce = useReducedMotion();
@@ -76,6 +82,9 @@ export default function HomeScreen({
             onConfigureModels={onConfigureModels}
             isRunning={isRunning}
             onStop={onStop}
+            sessionId={sessionId}
+            knowledgeBaseIds={knowledgeBaseIds}
+            onKBChange={onKBChange}
           />
           {/* 快捷功能按钮仅在已接线命令时渲染：命令列表为空时点击无任何
               响应（假按钮），按「真实性」标准隐藏而非保留死 UI。 */}

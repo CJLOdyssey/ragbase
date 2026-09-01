@@ -69,6 +69,7 @@ export function useHomeState() {
     () => sessionId !== undefined || readActiveConvId() !== null,
   );
   const [selectedModel, setSelectedModel] = useState(readStoredModel);
+  const [sessionKBIds, setSessionKBIds] = useState<string[]>([]);
   const [recentModelIds, setRecentModelIds] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem('ragbase-recent-models');
@@ -332,6 +333,7 @@ export function useHomeState() {
     try {
       const detail = await getSessionDetail(convId);
       if (seq !== loadSeqRef.current) return;
+      setSessionKBIds(detail.knowledge_base_ids ?? []);
       const { path, active } = buildRunPath(detail.runs ?? []);
       const loaded = buildPathTurns(path, detail.runs ?? []);
       // Persisted messages are completed turns — mark agent thinking as done
@@ -457,5 +459,7 @@ export function useHomeState() {
     apiStatus,
     apiError,
     retryApi: retry,
+    sessionKBIds,
+    setSessionKBIds,
   };
 }

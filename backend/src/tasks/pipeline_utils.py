@@ -147,6 +147,10 @@ async def _get_rag_context(
 ) -> tuple[str, list[dict[str, Any]]]:
     """Retrieve RAG context + structured sources for citation.
 
+    Dual-path retrieval: searches both the session's bound knowledge bases
+    (asset vectors) and the session's own message memory (conversation
+    vectors). Results are merged and deduplicated by text content.
+
     Returns (plain-text context for the LLM, chunk-level source list for the
     message UI). On any failure: empty context, no sources — retrieval must
     never break the chat.
@@ -154,6 +158,7 @@ async def _get_rag_context(
     try:
         from rag.rag_pipeline import ensure_embedding_provider, retrieve_context, retrieve_sources
         from repository.keys import get_embedding_config
+        from repository.session_repo import get_session
 
         cfg = await get_embedding_config()
         if cfg is None or cfg["api_key"] is None:
@@ -162,12 +167,60 @@ async def _get_rag_context(
             cfg["api_key"], model=cfg["model"], base_url=cfg["base_url"]
         )
         started = time.perf_counter()
-        sources = await retrieve_sources(
+
+        # Resolve session-bound KB asset IDs for KB-scope retrieval.
+        kb_asset_ids: list[str] | None = None
+        sess = await get_session(session_id)
+        kb_ids = getattr(sess, "knowledge_base_ids", None) if sess else None
+        if isinstance(kb_ids, str):
+            import json as _json
+            kb_ids = _json.loads(kb_ids)
+        if kb_ids:
+            from repository.assets import list_asset_ids_by_kb
+
+            all_asset_ids: list[str] = []
+            for kb_id in kb_ids:
+                aids = await list_asset_ids_by_kb(kb_id, user_id)
+                all_asset_ids.extend(aids)
+            if all_asset_ids:
+                kb_asset_ids = all_asset_ids
+
+        # Path 1: KB asset retrieval (scoped to bound knowledge bases).
+        kb_sources: list[dict[str, Any]] = []
+        if kb_asset_ids:
+            kb_sources = await retrieve_sources(
+                query=query,
+                user_id=user_id,
+                asset_ids=kb_asset_ids,
+                top_k=5,
+                rerank=True,
+            )
+
+        # Path 2: Session memory retrieval (conversation continuity).
+        mem_sources = await retrieve_sources(
             query=query, user_id=user_id, session_id=session_id, top_k=3, rerank=True
         )
-        context = await retrieve_context(
+
+        # Merge: KB sources first (higher priority), then memory, dedupe by text.
+        seen_texts: set[str] = set()
+        sources: list[dict[str, Any]] = []
+        for src in kb_sources + mem_sources:
+            text_key = src.get("text", "")
+            if text_key not in seen_texts:
+                seen_texts.add(text_key)
+                sources.append(src)
+        sources = sources[:5]
+
+        # Path 3: LLM context — both KB assets and session memory.
+        kb_context = ""
+        if kb_asset_ids:
+            kb_context = await retrieve_context(
+                query=query, user_id=user_id, asset_ids=kb_asset_ids, top_k=3, rerank=True
+            )
+        mem_context = await retrieve_context(
             query=query, user_id=user_id, session_id=session_id, top_k=3, rerank=True
         )
+        context = (kb_context + "\n\n" + mem_context).strip()
         latency_ms = int((time.perf_counter() - started) * 1000)
         # OWASP LLM08: append-only retrieval activity log (query/sources/
         # latency/user) — best-effort, must never break the chat.

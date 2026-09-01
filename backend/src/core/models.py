@@ -136,6 +136,7 @@ class SessionSummary(BaseModel):
     kind: str = "normal"
     run_count: int = 0
     is_pinned: bool = False
+    knowledge_base_ids: list[str] = Field(default_factory=list)
     created_at: str | None = None
     updated_at: str | None = None
 
@@ -192,6 +193,7 @@ class SessionDetailResponse(BaseModel):
     id: str
     title: str
     kind: str = "normal"
+    knowledge_base_ids: list[str] = Field(default_factory=list)
     created_at: str | None = None
     updated_at: str | None = None
     runs: list[RunSummary] = Field(default_factory=list)

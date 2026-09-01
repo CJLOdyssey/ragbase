@@ -38,6 +38,15 @@ export async function deleteSession(sessionId: string): Promise<void> {
   await api.delete(`/sessions/${sessionId}`);
 }
 
+export async function updateSessionKBs(
+  sessionId: string,
+  knowledgeBaseIds: string[],
+): Promise<void> {
+  await api.put(`/sessions/${sessionId}/knowledge-bases`, {
+    knowledge_base_ids: knowledgeBaseIds,
+  });
+}
+
 export interface MemoryItem {
   id: string;
   agent_role: string;

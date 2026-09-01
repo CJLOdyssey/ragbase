@@ -53,6 +53,11 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.registry.health_snapshot",
         "schedule": 3600.0,
     },
+    # Hourly purge of vector chunks for assets without a KB binding.
+    "purge-orphan-vectors": {
+        "task": "tasks.registry.purge_orphan_vectors",
+        "schedule": 3600.0,
+    },
 }
 
 # ---------------------------------------------------------------------------

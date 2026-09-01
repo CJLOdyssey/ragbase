@@ -13,6 +13,7 @@ from .complete_pipeline import _complete_pipeline
 from .health_snapshot import run_health_snapshot
 from .index_asset import _index_asset
 from .pipeline_utils import _report_run_error, _run_async, _try_mock_fallback
+from .purge_orphan_vectors import run_purge_orphan_vectors
 from .reindex_sweep import run_reindex_sweep
 
 logger = get_logger(__name__)
@@ -137,6 +138,14 @@ def health_snapshot() -> Any:
         "Celery health snapshot | users=%s | failed=%s | pruned=%s",
         result.get("users"), result.get("failed"), result.get("pruned"),
     )
+    return result
+
+
+@_task()
+def purge_orphan_vectors() -> Any:
+    """Celery beat entry: clear vector chunks for assets without a KB binding."""
+    result = run_purge_orphan_vectors()
+    logger.info("Celery purge orphans | purged=%s", result.get("purged"))
     return result
 
 
