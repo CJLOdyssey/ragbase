@@ -251,6 +251,7 @@ export default function AssetsTable({
       header: t('assets.table.updated'),
       width: 'minmax(132px,1.2fr)',
       sortable: true,
+      center: true,
     },
     {
       key: 'actions',
