@@ -29,6 +29,7 @@ frontend/tsconfig.tsbuildinfo
 *.swo
 *~
 .obsidian/
+.trae-html-share-packages/
 
 # ── OS ─────────────────────────────────────────────────────────────────────
 .DS_Store
