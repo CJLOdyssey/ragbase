@@ -24,16 +24,19 @@ def semantic_chunk(
     chunk_size: int = 512,
     overlap: int = 64,
 ) -> list[Chunk]:
+    """Split text into overlapping word windows, one Chunk per markdown section.
+
+    ``chunk_size`` counts *words* (not characters); adjacent windows overlap
+    by ``overlap`` words so sentence boundaries across a cut stay retrievable.
+    Heading blocks (``#``/``##``/``###``) become section boundaries — each
+    section is chunked independently and inherits the section's tags.
+    Chunk ids are content hashes, so re-chunking identical text is idempotent.
+    """
     if not text or not text.strip():
         return []
 
-    sections = re.split(r"(?=^#{1,3}\s)", text, flags=re.MULTILINE)
     chunks: list[Chunk] = []
-
-    for section in sections:
-        section = section.strip()
-        if not section:
-            continue
+    for section in _split_sections(text):
         tags = _extract_tags(section)
 
         if len(section) <= chunk_size:
@@ -48,10 +51,7 @@ def semantic_chunk(
             )
         else:
             words = section.split()
-            start = 0
-            while start < len(words):
-                end = min(start + chunk_size, len(words))
-                chunk_text = " ".join(words[start:end])
+            for chunk_text, start in _word_windows(words, chunk_size, overlap):
                 chunks.append(
                     Chunk(
                         id=_hash_id(chunk_text + str(start)),
@@ -61,9 +61,6 @@ def semantic_chunk(
                         tags=tags,
                     )
                 )
-                if end == len(words):
-                    break
-                start = end - overlap
 
     return chunks
 
@@ -86,13 +83,8 @@ def hierarchical_chunk(
     if not text or not text.strip():
         return []
 
-    sections = re.split(r"(?=^#{1,3}\s)", text, flags=re.MULTILINE)
     chunks: list[Chunk] = []
-
-    for section in sections:
-        section = section.strip()
-        if not section:
-            continue
+    for section in _split_sections(text):
         tags = _extract_tags(section)
         words = section.split()
         if not words:
@@ -115,10 +107,7 @@ def hierarchical_chunk(
             )
             continue
 
-        start = 0
-        while start < len(words):
-            end = min(start + child_size, len(words))
-            chunk_text = " ".join(words[start:end])
+        for chunk_text, start in _word_windows(words, child_size, child_overlap):
             chunks.append(
                 Chunk(
                     id=_hash_id(chunk_text + str(start)),
@@ -129,28 +118,62 @@ def hierarchical_chunk(
                     metadata={"parent_id": parent_id, "parent_text": parent_text},
                 )
             )
-            if end == len(words):
-                break
-            start = end - child_overlap
 
     return chunks
 
 
-TAG_PATTERNS = [
-    (r"##\s*(.+)", 1),
-    (r"###\s*(.+)", 2),
-    (r"```(\w+)", 3),
-    (r"(Bug|Fix|Bugfix|修复|缺陷|BUG)", 4),
-    (r"(PRD|Feature|需求|功能|设计)", 4),
-    (r"(API|接口|端点|endpoint)", 4),
-    (r"(Test|测试|test)", 4),
-    (r"(Deploy|部署|CI/CD)", 4),
-]
+TAG_PATTERNS: tuple[str, ...] = (
+    r"##\s*(.+)",
+    r"###\s*(.+)",
+    r"```(\w+)",
+    r"(Bug|Fix|Bugfix|修复|缺陷|BUG)",
+    r"(PRD|Feature|需求|功能|设计)",
+    r"(API|接口|端点|endpoint)",
+    r"(Test|测试|test)",
+    r"(Deploy|部署|CI/CD)",
+)
+
+
+def _split_sections(text: str) -> list[str]:
+    """Split markdown into non-empty sections on heading boundaries.
+
+    Heading blocks (``#``/``##``/``###``) start a new section; the rest of
+    the text forms its own sections. Shared by semantic and hierarchical
+    chunking so both honour the same boundary rules.
+    """
+    return [
+        s.strip()
+        for s in re.split(r"(?=^#{1,3}\s)", text, flags=re.MULTILINE)
+        if s.strip()
+    ]
+
+
+def _word_windows(words: list[str], size: int, overlap: int) -> list[tuple[str, int]]:
+    """Sliding word windows over a section, each with its start offset.
+
+    The tail window is emitted before the loop exits, so a window landing
+    exactly on ``len(words)`` never loops forever or drops the tail.
+    Degenerate sizes are clamped rather than trusted: ``size <= 0`` yields
+    no windows, and ``overlap >= size`` would pin ``start`` and hang — it is
+    capped at ``size - 1``.
+    """
+    if size <= 0:
+        return []
+    overlap = max(0, min(overlap, size - 1))
+    windows: list[tuple[str, int]] = []
+    start = 0
+    while start < len(words):
+        end = min(start + size, len(words))
+        windows.append((" ".join(words[start:end]), start))
+        if end == len(words):
+            break
+        start = end - overlap
+    return windows
 
 
 def _extract_tags(text: str) -> list[str]:
     tags = []
-    for pattern, _ in TAG_PATTERNS:
+    for pattern in TAG_PATTERNS:
         matches = re.findall(pattern, text, re.IGNORECASE)
         for m in matches:
             tag = m.strip().lower()[:32]

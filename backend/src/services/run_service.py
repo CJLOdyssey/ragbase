@@ -4,22 +4,24 @@ Decouples HTTP routing (routers/runs.py) from run orchestration logic
 (tasks/*, repository/*, broker.py).  Routers become thin HTTP adapters;
 RunService holds the business process.
 """
-# ▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲▼▲
 from __future__ import annotations
 
 import asyncio
 import contextlib
 import os
+import time
 from typing import Any, cast
 
-from broker import buffer_run_messages
+from broker import buffer_run_messages, publish_user_event
 from core.config import load_config
 from core.infra.logging_config import get_logger
 from repository import (
     create_session,
     get_messages,
     get_run,
+    get_run_for_user,
     get_runs,
+    get_runs_for_user,
     get_session,
     save_message,
     update_run_status,
@@ -69,6 +71,7 @@ class RunService:
         model: str | None = None,
         parent_run_id: str | None = None,
         attachment_ids: list[str] | None = None,
+        prompt_id: str | None = None,
     ) -> dict[str, Any]:
         """Create a run, resolve credentials, subscribe to buffer, dispatch pipeline.
 
@@ -91,6 +94,9 @@ class RunService:
                     title=requirement[:64], user_id=user_id, kind="normal"
                 )
                 session_id = sess.id
+            elif existing_sess.user_id != user_id:
+                # 归属校验：禁止向他人会话追加 run（跨用户写）。
+                raise ValueError("无权访问该对话")
 
         # ── Key resolution ──────────────────────────────────────────
         effective_model = model or config.model
@@ -105,7 +111,10 @@ class RunService:
         try:
             req_versions: list[str] | None = None
             if parent_run_id:
-                parent = await get_run(parent_run_id)
+                # 归属校验：parent 必须是本人会话内的 run。非本人/不存在
+                # 视为无 parent（版本链不继承）—— 恶意引用他人 run 无法
+                # 复制其 requirement 历史，仅残留无害的无效指针。
+                parent = await get_run_for_user(parent_run_id, user_id)
                 if parent:
                     # Version list INCLUDES the current requirement (enhanced chain).
                     # parent_versions, when present, already ends with parent.requirement,
@@ -124,6 +133,18 @@ class RunService:
         except Exception as e:
             logger.error("Failed to create run: %s", e, exc_info=True)
             raise
+
+        # ── Cross-client sync ─────────────────────────────────────────
+        # 发消息（新 run）后广播会话更新：其他浏览器/端收到事件即失效并
+        # 重拉会话列表（创建时的会话 updated/run 数变化）。fail-open。
+        await publish_user_event(
+            user_id,
+            {
+                "type": "session.updated",
+                "session_id": session_id,
+                "ts": int(time.time()),
+            },
+        )
 
         # ── Bind pre-uploaded attachments ─────────────────────────────
         # Pre-uploaded files (POST /api/attachments) carry session_id but no
@@ -156,15 +177,19 @@ class RunService:
             logger.warning("Failed to persist user message for run %s", run_id)
 
         # ── Update session timestamp ────────────────────────────────
+        # Best-effort touch（刷新 updated_at 用于会话列表排序）：失败不影响建 run。
         try:
             existing_sess = await get_session(session_id)
             if existing_sess:
                 await update_session_title(session_id, existing_sess.title)
         except Exception:
-            pass
+            logger.debug("Session timestamp refresh failed for %s", session_id, exc_info=True)
 
         # ── Redis buffer (subscribe *before* task starts) ───────────
-        await buffer_run_messages(run_id)
+        try:
+            await buffer_run_messages(run_id)
+        except Exception:
+            logger.warning("Redis buffer setup failed for run %s; continuing without buffer", run_id, exc_info=True)
 
         # ── Dispatch pipeline ───────────────────────────────────────
         try:
@@ -175,6 +200,7 @@ class RunService:
                     requirement=requirement, run_id=run_id, session_id=session_id,
                     api_key=api_key, api_base=api_base,
                     model=effective_model, user_id=user_id,
+                    prompt_id=prompt_id,
                 )
                 logger.info("Task -> celery | run=%s", run_id)
                 return {"run_id": run_id, "status": "pending", "session_id": session_id}
@@ -192,6 +218,7 @@ class RunService:
                     model=effective_model,
                     user_id=user_id,
                     image_model=image_model,
+                    prompt_id=prompt_id,
                 )
             )
             self._register_task(run_id, task)
@@ -234,6 +261,13 @@ class RunService:
             title = (content or "续写")[:64]
             sess = await create_session(title=title, user_id=user_id)
             session_id = sess.id
+        else:
+            existing_sess = await get_session(session_id)
+            if existing_sess is None:
+                raise ValueError("会话不存在")
+            if existing_sess.user_id != user_id:
+                # 归属校验：禁止在他人会话中发起续写（跨用户写）。
+                raise ValueError("无权访问该对话")
 
         # ── Key resolution ──────────────────────────────────────────
         effective_model = model or config.model
@@ -265,7 +299,10 @@ class RunService:
             logger.warning("Failed to persist user message for continuation run %s", run_id)
 
         # ── Redis buffer ────────────────────────────────────────────
-        await buffer_run_messages(run_id)
+        try:
+            await buffer_run_messages(run_id)
+        except Exception:
+            logger.warning("Redis buffer setup failed for run %s; continuing without buffer", run_id, exc_info=True)
 
         # ── Dispatch background pipeline ────────────────────────────
         if RUN_DISPATCH == "celery":
@@ -304,13 +341,22 @@ class RunService:
 
         return {"run_id": run_id, "status": "running", "session_id": session_id}
 
-    async def cancel_run(self, run_id: str) -> dict[str, Any]:
+    async def cancel_run(self, run_id: str, user_id: str | None = None) -> dict[str, Any]:
         """Cancel an in-flight run — propagate cancellation to the LLM stream.
 
         Thread mode: ``task.cancel()`` unwinds the await chain and aborts the
         upstream httpx request; the pipeline marks the run ``cancelled``.
         Celery mode: best-effort revoke (no hard kill).
+
+        When ``user_id`` is given, ownership is enforced via the run's session
+        — a run the caller cannot access reports ``not_found`` (never leaks
+        existence, never cancels someone else's task).
         """
+        if user_id:
+            run = await get_run_for_user(run_id, user_id)
+            if run is None:
+                return {"run_id": run_id, "status": "not_found", "cancelled": False}
+
         if RUN_DISPATCH == "celery":
             try:
                 from broker import celery_app
@@ -336,17 +382,32 @@ class RunService:
         await update_run_status(run_id, "cancelled")
         return {"run_id": run_id, "status": "cancelled", "cancelled": True}
 
-    async def get_run(self, run_id: str) -> dict[str, Any] | None:
-        """Fetch a single run by id."""
-        run = await get_run(run_id)
+    async def get_run(self, run_id: str, user_id: str | None = None) -> dict[str, Any] | None:
+        """Fetch a single run by id, optionally enforcing session ownership.
+
+        When ``user_id`` is given, ``get_run_for_user`` returns None for runs
+        whose session belongs to another user — the caller cannot tell the
+        difference between "missing" and "forbidden" (no existence leak).
+        """
+        if user_id:
+            run = await get_run_for_user(run_id, user_id)
+        else:
+            run = await get_run(run_id)
         if run is None:
             return None
         messages = await get_messages(run_id)
         return serialize_run(run, messages)
 
-    async def list_runs(self, limit: int = 20) -> list[dict[str, Any]]:
-        """List recent runs."""
-        runs = await get_runs(limit=min(limit, 100))
+    async def list_runs(self, limit: int = 20, user_id: str | None = None) -> list[dict[str, Any]]:
+        """List recent runs, optionally scoped to a user's own sessions.
+
+        When ``user_id`` is given, only runs whose sessions belong to that user
+        are returned (``project_runs`` has no user_id column).
+        """
+        if user_id:
+            runs = await get_runs_for_user(user_id, limit=min(limit, 100))
+        else:
+            runs = await get_runs(limit=min(limit, 100))
         return [serialize_run(r) for r in runs]
 
 

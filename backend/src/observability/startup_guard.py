@@ -1,5 +1,3 @@
-from typing import Any
-
 """Captures pre-startup crashes that the logging system can't reach.
 
 Writes to a simple file, not the EventStore, because the EventStore
@@ -11,6 +9,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 _MARKER_DIR = Path(tempfile.gettempdir()) / "ragbase"
 _MARKER_FILE = _MARKER_DIR / "startup.marker"

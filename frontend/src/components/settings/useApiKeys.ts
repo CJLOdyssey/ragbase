@@ -58,15 +58,18 @@ export function useApiKeys() {
 
   useEffect(() => {
     let cancelled = false;
-    api
-      .listKeys()
-      .then((serverKeys) => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const serverKeys = await api.listKeys();
         if (!cancelled) setKeys(serverKeys);
-      })
-      .catch((err) => Logger.warn('Failed to load API keys from server', err))
-      .finally(() => {
+      } catch (err) {
+        Logger.warn('Failed to load API keys from server', err);
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    void load();
     return () => {
       cancelled = true;
     };
@@ -79,7 +82,7 @@ export function useApiKeys() {
       .then((data) => {
         if (!cancelled) setUsage(data);
       })
-      .catch(() => {});
+      .catch((err) => Logger.warn('Failed to load key usage', err));
     return () => {
       cancelled = true;
     };
@@ -138,8 +141,10 @@ export function useApiKeys() {
       void queryClient.invalidateQueries({ queryKey: ['keys'] });
       setEditingKey(null);
     } catch (err: unknown) {
+      // 保存失败写入 modalError（弹窗内可见）：写 setError 只会显示在
+      // 列表页横幅，被弹窗遮住，用户误以为保存成功。
       const msg = err instanceof Error ? err.message : t('api.saveFailed');
-      setError(msg);
+      setModalError(msg);
       Logger.error('Failed to save API key', err);
     } finally {
       setSaving(false);

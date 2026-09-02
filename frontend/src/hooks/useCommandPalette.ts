@@ -12,8 +12,8 @@ interface UseCommandPaletteReturn {
     e: React.KeyboardEvent<HTMLTextAreaElement>,
     value: string,
   ) => boolean;
-  /** Select a command by index — returns the replacement text */
-  selectCommand: (index: number) => string;
+  /** Select a command by index — returns the replacement text（含斜杠前前缀） */
+  selectCommand: (index: number, currentValue: string) => string;
   /** Set active index on mouse hover */
   setActiveIndex: (index: number) => void;
   /** Force close the palette */
@@ -57,7 +57,6 @@ export function useCommandPalette(
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>, value: string): boolean => {
       if (!open) {
-        // Detect '/' trigger: at start of input or after a space
         if (e.key === '/' && (value === '' || value.endsWith(' '))) {
           setOpen(true);
           setQuery('');
@@ -90,37 +89,34 @@ export function useCommandPalette(
 
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        // Selection is handled by the caller via selectCommand
         return true; // caller should call selectCommand and replace text
       }
 
       if (e.key === 'Backspace') {
-        // If we backspace past the '/', close the palette
         if (value.length <= slashIndex + 1) {
           close();
           return false; // let backspace happen normally
         }
-        // Update query — will be recalculated from value by caller
         return false;
       }
 
-      // Any other key: update query from the value
-      // (caller will extract query from value after the slash)
       return false;
     },
     [open, filtered.length, close, slashIndex],
   );
 
   const selectCommand = useCallback(
-    (index: number): string => {
+    (index: number, currentValue: string): string => {
       if (index < 0 || index >= filtered.length) return '';
       const cmd = filtered[index];
-      // Replace "/query" with the command name + space
-      const replacement = `/${cmd.name} `;
+      // 保留斜杠前的行内前缀（如「帮我 /search」选中后输出「帮我 /search 」），
+      // 只替换命令段，避免整体替换 textarea 丢失前缀文本。
+      const prefix = currentValue.slice(0, slashIndex);
+      const replacement = `${prefix}/${cmd.name} `;
       close();
       return replacement;
     },
-    [filtered, close],
+    [filtered, close, slashIndex],
   );
 
   /** Call from onChange — keeps query in sync with textarea value */

@@ -1,3 +1,4 @@
+import { disconnectRun } from '../api/websocket';
 import type { ChatMessage, RunResult } from '../types';
 import Logger from '../utils/logger';
 import type { ChatState } from './chatTypes';
@@ -152,7 +153,11 @@ export function handleResultEvent(
     }
     return {
       messages: msgs,
-      pendingRegenerate,
+      // 终态统一清理挂起状态（与 error 路径对称）：续写/重新生成若空输出
+      // 直接 result，无 stream 事件走不到上面的合并分支，残留会让下一次
+      // 正常提交被 startContinueBranch 错误合并进旧的中断消息。
+      pendingRegenerate: null,
+      continuingId: null,
       status: 'idle' as ChatState['status'],
       streamingId: null,
       // 续写/生成完成：清除中断标记，避免「已中断/继续」按钮永久残留
@@ -164,6 +169,9 @@ export function handleResultEvent(
   });
   Logger.info('[chat] result received — status set to idle');
   activeStreamMsgIds.delete(runId || '');
+  // Run done: stop the WS stream. Otherwise onclose auto-reconnects and the
+  // backend drain_buffer replay duplicates the completed conversation.
+  if (runId) disconnectRun(runId);
 }
 
 export function handleTeamResultEvent(
@@ -197,6 +205,11 @@ export function handleTeamResultEvent(
       messages: msgs,
       status: 'idle' as ChatState['status'],
       streamingId: null,
+      // 终态统一清理挂起状态（与 error/result 路径对称）。
+      continuingId: null,
+      pendingRegenerate: null,
+      pendingVersions: null,
+      pendingThinkingVersions: null,
       skipThinking: false,
     };
   });
@@ -205,6 +218,7 @@ export function handleTeamResultEvent(
     artifactCount,
   );
   activeStreamMsgIds.delete(runId || '');
+  if (runId) disconnectRun(runId);
 }
 
 export function handleThumbsEvent(set: SetFn, msg: WsThumbsEvent): void {

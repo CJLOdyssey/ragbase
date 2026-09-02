@@ -12,23 +12,18 @@ export interface PromptItem {
   created_at: string;
 }
 
-export interface GeneratedPrompt {
-  id: string;
-  name: string;
-  content: string;
-  category: string;
-  is_valid: boolean;
-  error_message?: string | null;
-}
-
-export interface PromptValidationResult {
-  is_valid: boolean;
-  error_message?: string | null;
-  suggestions: string[];
+export interface PromptCategory {
+  value: string;
+  label: string;
 }
 
 export async function listPrompts(): Promise<PromptItem[]> {
   const { data } = await api.get('/prompts');
+  return data;
+}
+
+export async function listPromptCategories(): Promise<PromptCategory[]> {
+  const { data } = await api.get('/prompts/categories');
   return data;
 }
 
@@ -60,22 +55,4 @@ export async function updatePrompt(
 
 export async function deletePrompt(id: string): Promise<void> {
   await api.delete(`/prompts/${id}`);
-}
-
-export async function generatePrompt(
-  description: string,
-  category: string = 'general',
-): Promise<GeneratedPrompt> {
-  const { data } = await api.post('/prompts/generate', {
-    description,
-    category,
-  });
-  return data;
-}
-
-export async function validatePrompt(
-  content: string,
-): Promise<PromptValidationResult> {
-  const { data } = await api.post('/prompts/validate', { content });
-  return data;
 }

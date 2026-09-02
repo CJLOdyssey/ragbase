@@ -12,6 +12,8 @@ from celery import Celery
 from core.infra.logging_config import get_logger
 from redis.asyncio import Redis as AsyncRedis  # noqa: F401  # re-exported for backward compat
 
+logger = get_logger(__name__)
+
 # ---------------------------------------------------------------------------
 # Celery app
 # ---------------------------------------------------------------------------
@@ -46,6 +48,16 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.registry.reindex_sweep",
         "schedule": 300.0,
     },
+    # Hourly error-budget health-score snapshots (score trend source).
+    "health-score-snapshot": {
+        "task": "tasks.registry.health_snapshot",
+        "schedule": 3600.0,
+    },
+    # Hourly purge of vector chunks for assets without a KB binding.
+    "purge-orphan-vectors": {
+        "task": "tasks.registry.purge_orphan_vectors",
+        "schedule": 3600.0,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -61,9 +73,10 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6380/0")
 # Keyed by the loop OBJECT (not id()): asyncio.run() creates a fresh loop per
 # task; after the task the loop is garbage-collected and its id() can be
 # REUSED by the next task's loop. Keying by id() then hits the stale pool
-# whose connections belong to a closed loop -> redis calls hang forever
-# (redis-py has no socket_timeout on publish). Keying by the loop object and
-# dropping entries whose loop is gone fixes both the stale-hit and the leak.
+# whose connections belong to a closed loop -> redis calls hang forever.
+# Keying by the loop object and dropping entries whose loop is gone fixes
+# both the stale-hit and the leak (socket_timeout on the pool is a last-resort
+# guard against a hung-but-connected Redis).
 _pools: dict[asyncio.AbstractEventLoop, Any] = {}
 CHANNEL_PREFIX = "run:"
 
@@ -129,16 +142,70 @@ async def subscribe_run(run_id: str) -> AsyncIterator[dict[str, Any]]:
     """
     r = get_redis()
     pubsub = r.pubsub()
-    await pubsub.subscribe(_channel(run_id))
     try:
-        async for msg in pubsub.listen():
-            if msg["type"] == "message":
+        # subscribe inside try: a failing subscribe (pool exhausted) must not
+        # leak the pubsub/connection — finally closes it.
+        await pubsub.subscribe(_channel(run_id))
+        while True:
+            try:
+                msg = await asyncio.wait_for(
+                    pubsub.get_message(ignore_subscribe_messages=True, timeout=None),
+                    timeout=60.0,
+                )
+            except TimeoutError:
+                return  # idle keepalive window exhausted — stop the stream
+            if msg and msg["type"] == "message":
                 data = msg["data"]
                 if isinstance(data, str):
-                    yield json.loads(data)
+                    payload = json.loads(data)
+                    yield payload
+                    if payload.get("type") == "result":
+                        return  # run finished — close the stream
     finally:
         with contextlib.suppress(Exception):
             await pubsub.unsubscribe(_channel(run_id))
+        with contextlib.suppress(Exception):
+            await pubsub.close()
+
+
+def _user_channel(user_id: str) -> str:
+    return f"user:{user_id}:events"
+
+
+async def publish_user_event(user_id: str, event: dict[str, Any]) -> None:
+    """Publish a domain event to a user's cross-client event channel.
+
+    Fail-open: a Redis outage must never break the primary request path.
+    """
+    try:
+        r = get_redis()
+        await r.publish(_user_channel(user_id), json.dumps(event, ensure_ascii=False))
+    except Exception:
+        logger.debug("publish_user_event failed for %s", user_id, exc_info=True)
+
+
+async def subscribe_user_events(user_id: str) -> AsyncIterator[dict[str, Any]]:
+    """Yield domain events published for *user_id*. Caller cancels to stop."""
+    r = get_redis()
+    pubsub = r.pubsub()
+    try:
+        # subscribe inside try: a failing subscribe (pool exhausted) must not
+        # leak the pubsub/connection — finally closes it.
+        await pubsub.subscribe(_user_channel(user_id))
+        while True:
+            try:
+                msg = await asyncio.wait_for(
+                    pubsub.get_message(ignore_subscribe_messages=True, timeout=None),
+                    timeout=60.0,
+                )
+            except TimeoutError:
+                continue  # idle keepalive; connection health-checked by redis-py
+            if msg and msg["type"] == "message":
+                try:
+                    yield json.loads(msg["data"])
+                except (TypeError, ValueError):
+                    continue
+    finally:
         with contextlib.suppress(Exception):
             await pubsub.close()
 
@@ -151,7 +218,6 @@ async def subscribe_run(run_id: str) -> AsyncIterator[dict[str, Any]]:
 
 _buffers: dict[str, list[dict[str, Any]]] = {}
 _buffer_tasks: dict[str, asyncio.Task[Any]] = {}
-_lock: asyncio.Lock = asyncio.Lock()
 
 
 async def buffer_run_messages(run_id: str) -> None:
@@ -163,11 +229,17 @@ async def buffer_run_messages(run_id: str) -> None:
     """
     buf: list[dict[str, Any]] = []
     _buffers[run_id] = buf
-    logger = get_logger(__name__)
 
-    r = get_redis()
-    pubsub = r.pubsub()
-    await pubsub.subscribe(f"run:{run_id}")
+    try:
+        r = get_redis()
+        pubsub = r.pubsub()
+        await pubsub.subscribe(f"run:{run_id}")
+    except Exception:
+        # Fail-open: a Redis outage must never 500 the POST /runs request.
+        # With the subscription down nothing can be published either, so an
+        # empty buffer degrades gracefully (WS drains nothing, run proceeds).
+        logger.warning("Redis buffer subscribe failed for run %s; buffering disabled", run_id, exc_info=True)
+        return
 
     async def _worker() -> None:
         try:

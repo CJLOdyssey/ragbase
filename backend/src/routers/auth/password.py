@@ -1,5 +1,6 @@
 """Password management endpoints: forgot, reset, change."""
 
+import hmac
 from typing import Any
 
 import bcrypt
@@ -87,7 +88,7 @@ async def reset_password(body: ResetPasswordRequest) -> Any:
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码已过期，请重新获取")
 
     stored_code = stored.decode() if isinstance(stored, bytes) else stored
-    if stored_code != code:
+    if not hmac.compare_digest(stored_code, code):
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码错误")
 
     pwd_error = validate_password(new_password)
@@ -121,7 +122,16 @@ async def change_password(
     body: ChangePasswordRequest,
     current_user: CurrentUser = Depends(get_current_user),
 ) -> Any:
-    """Change the current user's password after verifying the old one."""
+    """Change the current user's password after verifying the old one.
+
+    Per-user rate limit (5/min) — a stolen session must not allow unlimited
+    password-change attempts (OWASP A07).
+    """
+    r = get_redis()
+    rate_key = f"auth:change-pwd:{current_user.id}"
+    if not await _check_rate_limit(r, rate_key, 5, 60):
+        raise error_response(ErrorCode.RATE_LIMITED, detail="操作过于频繁，请稍后重试")
+
     user = await get_user_by_id(current_user.id)
     if user is None:
         raise error_response(ErrorCode.AUTH_USER_NOT_FOUND, detail="用户不存在")

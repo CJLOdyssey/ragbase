@@ -14,6 +14,7 @@ Strategy:
 
 
 import pytest
+from _global_state import patch_test_globals
 from core.infra.database import Base
 from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
@@ -35,19 +36,15 @@ async def db_engine():
 
 @pytest.fixture(autouse=True)
 async def _setup_db(db_engine):
-    """Ensure the test session factory points at the test engine and tables exist.
+    """Point the global session factory at the test engine; restore on exit.
 
     Runs before EVERY test function — drops all tables, recreates them,
-    then sets ``_async_session_factory`` to the test engine. This prevents
-    cross-test contamination when other fixtures monkey-patch the factory.
+    and rebinds ``_async_session_factory`` to the session engine via the
+    central snapshot/restore helper, so no mutation leaks past teardown.
     """
-    import core.infra.database as db
-
-    async with db_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-    db._async_session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
-    db._read_session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
-    yield
-    # No teardown needed — next test's setup will drop everything anyway.
+    factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    with patch_test_globals(db={"_async_session_factory": factory}):
+        async with db_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        yield

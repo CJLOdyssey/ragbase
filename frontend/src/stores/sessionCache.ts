@@ -26,7 +26,11 @@ export function readSessionsCache(): SessionItem[] {
 
 export function writeSessionsCache(items: SessionItem[]): void {
   try {
-    localStorage.setItem(SESSIONS_CACHE_KEY, JSON.stringify(items));
+    // 乐观占位（temp）不落盘：刷新后以 server 为准
+    localStorage.setItem(
+      SESSIONS_CACHE_KEY,
+      JSON.stringify(items.filter((s) => !s.temp)),
+    );
   } catch {
     // non-fatal
   }
@@ -69,21 +73,72 @@ export function toConversation(s: SessionItem): Conversation {
   };
 }
 
-const cache = new Map<string, SessionCacheEntry>();
+// ── LRU + TTL in-memory cache ──────────────────────────────────────────────
+// Limits memory usage and auto-expires stale entries.
+const CACHE_MAX = 500;
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+interface CacheNode {
+  key: string;
+  value: SessionCacheEntry;
+  expiresAt: number;
+}
+
+const cache = new Map<string, CacheNode>();
+let accessOrder: string[] = []; // LRU tracking (oldest first)
+
+function evict(): void {
+  // Remove expired entries
+  const now = Date.now();
+  for (const [key, node] of cache) {
+    if (node.expiresAt <= now) {
+      cache.delete(key);
+      accessOrder = accessOrder.filter((k) => k !== key);
+    }
+  }
+  // Enforce max size (remove least recently used)
+  while (cache.size > CACHE_MAX) {
+    const lruKey = accessOrder.shift();
+    if (lruKey) cache.delete(lruKey);
+  }
+}
+
+function touch(key: string): void {
+  accessOrder = accessOrder.filter((k) => k !== key);
+  accessOrder.push(key);
+}
 
 export function getSessionCache(convId: string): SessionCacheEntry | undefined {
-  return cache.get(convId);
+  evict();
+  const node = cache.get(convId);
+  if (!node) return undefined;
+  if (node.expiresAt <= Date.now()) {
+    cache.delete(convId);
+    accessOrder = accessOrder.filter((k) => k !== convId);
+    return undefined;
+  }
+  touch(convId);
+  return node.value;
 }
 
 export function setSessionCache(
   convId: string,
   entry: SessionCacheEntry,
 ): void {
-  cache.set(convId, entry);
+  evict();
+  cache.set(convId, {
+    key: convId,
+    value: entry,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  });
+  touch(convId);
 }
 
 export function invalidateSessionCache(
   convId: string | null | undefined,
 ): void {
-  if (convId) cache.delete(convId);
+  if (convId) {
+    cache.delete(convId);
+    accessOrder = accessOrder.filter((k) => k !== convId);
+  }
 }

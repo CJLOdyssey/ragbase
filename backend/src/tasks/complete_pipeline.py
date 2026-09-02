@@ -13,6 +13,7 @@ from core.infra.logging_config import get_logger
 from repository import save_message, update_run_result, update_run_status
 
 from .completion_request import ContinuationContext, build_completion_request
+from .pipeline_utils import _read_rss_kb
 from .prefix_completion import stream_prefix_completion
 
 logger = get_logger(__name__)
@@ -32,14 +33,10 @@ async def _complete_pipeline(
 
     global _complete_counter
     _complete_counter += 1
-    try:
-        pid = os.getpid()
-        with open(f"/proc/{pid}/status") as f:
-            rss_kb = int(f.read().split("VmRSS:")[1].split()[0])
-        logger.info("[MEM] complete run=#%s pid=%s rss=%dKB", _complete_counter, pid, rss_kb)
-    except Exception:
-        pass
-    if not tracemalloc.is_tracing():
+    rss_kb = _read_rss_kb()
+    if rss_kb is not None:
+        logger.info("[MEM] complete run=#%s pid=%s rss=%dKB", _complete_counter, os.getpid(), rss_kb)
+    if os.environ.get("MEM_TRACE", "").lower() in ("1", "true", "yes") and not tracemalloc.is_tracing():
         tracemalloc.start(25)
 
     cfg = load_config()
@@ -66,14 +63,18 @@ async def _complete_pipeline(
     try:
         full_content, thinking_chunks = await stream_prefix_completion(url, headers, body, run_id)
     except httpx.HTTPStatusError as e:
+        # 状态码可供用户排查（余额/限流），但原始异常含上游 URL/响应体，只留服务日志。
         logger.error("[complete] HTTP error for run %s: %s", run_id, e, exc_info=True)
         await update_run_status(run_id, "error")
-        await publish_run_message(run_id, {"type": "error", "detail": f"LLM API 错误: {e}"})
+        await publish_run_message(
+            run_id,
+            {"type": "error", "detail": f"LLM 服务错误（HTTP {e.response.status_code}），请检查模型配置或余额"},
+        )
         return None
     except Exception as e:
         logger.error("[complete] Stream failed for run %s: %s", run_id, e, exc_info=True)
         await update_run_status(run_id, "error")
-        await publish_run_message(run_id, {"type": "error", "detail": f"续写失败: {e}"})
+        await publish_run_message(run_id, {"type": "error", "detail": "续写失败，请稍后重试"})
         return None
 
     if thinking_chunks:
@@ -119,14 +120,18 @@ async def _complete_pipeline(
     except Exception as e:
         logger.error("[complete] Save failed for run %s: %s", run_id, e, exc_info=True)
         await update_run_status(run_id, "error")
-        await publish_run_message(run_id, {"type": "error", "detail": f"保存失败: {e}"})
+        await publish_run_message(run_id, {"type": "error", "detail": "结果保存失败，请稍后重试"})
     finally:
-        gc.collect()
+        # run 结束即释放 buffer pubsub 连接（continue_run 里 buffer_run_messages
+        # 订阅；不释放则每次续写泄漏一个 Redis 连接，池耗尽 → MaxConnectionsError）
         try:
-            pid = os.getpid()
-            with open(f"/proc/{pid}/status") as f:
-                rss_kb = int(f.read().split("VmRSS:")[1].split()[0])
-            logger.info("[MEM] complete end run=#%s pid=%s rss=%dKB", _complete_counter, pid, rss_kb)
+            from broker import stop_buffer
+
+            await stop_buffer(run_id)
         except Exception:
-            pass
+            logger.debug("stop_buffer failed for run %s", run_id, exc_info=True)
+        gc.collect()
+        rss_kb = _read_rss_kb()
+        if rss_kb is not None:
+            logger.info("[MEM] complete end run=#%s pid=%s rss=%dKB", _complete_counter, os.getpid(), rss_kb)
     return None

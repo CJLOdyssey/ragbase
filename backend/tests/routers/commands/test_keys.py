@@ -63,6 +63,36 @@ class TestKeys:
         resp = client.post("/api/keys", json={}, headers={"X-User-ID": "admin"})
         assert resp.status_code == 422
 
+    def test_create_key_connection_check_times_out(self, client):
+        """Slow provider must NOT block key save — degraded result + background refresh."""
+        import asyncio as _asyncio
+
+        async def _slow(*args, **kwargs):
+            await _asyncio.sleep(1)
+            return {"success": True, "models": ["gpt-4"]}
+
+        with patch("routers.keys._KEY_TEST_TIMEOUT", 0.05), \
+             patch("routers.keys.test_api_key_connection", new=AsyncMock(side_effect=_slow)), \
+             patch("routers.keys._schedule_key_models_refresh") as mock_schedule:
+            resp = client.post("/api/keys", json={
+                "provider": "openai", "capabilities": ["llm"],
+                "label": "llm-key-slow", "api_key": "sk-slow-test",
+            }, headers={"X-User-ID": "admin"})
+        assert resp.status_code == 201
+        assert resp.json()["models"] == []
+        mock_schedule.assert_called_once()
+
+    def test_create_key_connection_check_raises(self, client):
+        """Provider crash must still save the key and schedule a background refresh."""
+        with patch("routers.keys.test_api_key_connection", new=AsyncMock(side_effect=RuntimeError("boom"))), \
+             patch("routers.keys._schedule_key_models_refresh") as mock_schedule:
+            resp = client.post("/api/keys", json={
+                "provider": "openai", "capabilities": ["llm"],
+                "label": "llm-key-raise", "api_key": "sk-raise-test",
+            }, headers={"X-User-ID": "admin"})
+        assert resp.status_code == 201
+        mock_schedule.assert_called_once()
+
     def test_edit_key_not_found(self, client):
         with patch("routers.keys.update_api_key", new_callable=AsyncMock) as mock_update:
             mock_update.return_value = None
@@ -146,8 +176,8 @@ class TestKeys:
             assert resp.json()["success"] is False
 
     def test_fetch_models_from_provider_success(self, client):
-        with patch("repository.keys._test_connection_sync") as mock_sync:
-            mock_sync.return_value = {"success": True, "models": ["gpt-4"]}
+        with patch("routers.keys.fetch_models_for_provider", new_callable=AsyncMock) as mock_fetch:
+            mock_fetch.return_value = {"success": True, "models": ["gpt-4"]}
             resp = client.post("/api/keys/fetch-models", json={
                 "api_key": "sk-test", "provider": "openai",
             })
@@ -155,8 +185,8 @@ class TestKeys:
             assert resp.json()["models"] == ["gpt-4"]
 
     def test_fetch_models_from_provider_failure(self, client):
-        with patch("repository.keys._test_connection_sync") as mock_sync:
-            mock_sync.return_value = {"success": False, "message": "Connection refused"}
+        with patch("routers.keys.fetch_models_for_provider", new_callable=AsyncMock) as mock_fetch:
+            mock_fetch.return_value = {"success": False, "message": "Connection refused"}
             resp = client.post("/api/keys/fetch-models", json={
                 "api_key": "sk-test", "provider": "openai",
             })

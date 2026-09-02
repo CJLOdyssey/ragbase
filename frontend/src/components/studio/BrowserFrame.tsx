@@ -57,7 +57,8 @@ export default function BrowserFrame() {
         <iframe
           src={url}
           className="w-full h-[480px] bg-white"
-          sandbox="allow-scripts allow-same-origin allow-forms"
+          sandbox="allow-scripts allow-forms"
+          referrerPolicy="no-referrer"
         />
       )}
     </div>

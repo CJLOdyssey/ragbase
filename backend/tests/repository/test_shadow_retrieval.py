@@ -3,7 +3,8 @@
 
 import pytest
 from orm import ShadowRetrievalLogDB
-from repository.shadow_retrieval import _sources_json, create_shadow_log
+from repository.retrieval_logs import sources_to_json
+from repository.shadow_retrieval import create_shadow_log
 from sqlalchemy import func, select
 
 
@@ -57,12 +58,12 @@ async def test_create_shadow_log_minimal_defaults(db_engine):
 
 
 def test_sources_json_none_and_empty():
-    assert _sources_json(None) is None
-    assert _sources_json([]) is None
+    assert sources_to_json(None) is None
+    assert sources_to_json([]) is None
 
 
 def test_sources_json_serializes_fields():
-    raw = _sources_json([{"asset_id": "a", "asset_name": "名.md", "similarity": 0.5}])
+    raw = sources_to_json([{"asset_id": "a", "asset_name": "名.md", "similarity": 0.5}])
     assert raw is not None
     assert '"asset_id": "a"' in raw
     assert '"asset_name": "名.md"' in raw

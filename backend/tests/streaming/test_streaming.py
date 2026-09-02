@@ -1,4 +1,4 @@
-"""Unit tests for backend/streaming.py (StreamEmitter edge cases)."""
+"""Unit tests for streaming/emitter.py (StreamEmitter edge cases)."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -36,7 +36,7 @@ class TestStreamingEdgeCases:
         from streaming.emitter import StreamEmitter
 
         emitter = StreamEmitter("run-none")
-        await emitter({"event": "on_custom_token", "data": {}})
+        await emitter({"event": "on_custom_token", "data": None})
         assert emitter._stream_buffer == []
 
     @pytest.mark.asyncio
@@ -241,16 +241,5 @@ class TestStreamingEdgeCases:
         with patch("streaming.emitter.publish_run_message", side_effect=Exception("Redis down")):
             await emitter({"event": "on_custom_token", "data": {"content": "hello"}})
             assert emitter._stream_buffer == ["hello"]
-
-
-# ─────────────────────────────────────────────────────────────────────
-# 11. backend/app.py — FastAPI app creation
-# ─────────────────────────────────────────────────────────────────────
-
-
-"""Extended tests for backend/streaming.py — edge cases and event handlers."""
-
-
-import pytest
 
 

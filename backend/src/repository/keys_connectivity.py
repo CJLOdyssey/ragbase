@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from domain.model_types import infer_model_type
+from domain.ssrf import validate_public_url
 
 from repository.keys_crud import get_api_key_for_use
 
@@ -26,7 +27,7 @@ _SUB_TYPE_TO_MODEL_TYPE: dict[str, str] = {
 _ASR_NAME_MARKERS = ("asr", "whisper", "paraformer", "sherpa", "sensevoice")
 _TTS_NAME_MARKERS = ("tts", "voice", "speech", "cosyvoice", "edge-tts", "moss")
 
-_FETCH_TIMEOUT = 15
+_FETCH_TIMEOUT = 8
 
 
 async def test_api_key_connection(key_id: str, user_id: str) -> dict[str, Any]:
@@ -39,6 +40,22 @@ async def test_api_key_connection(key_id: str, user_id: str) -> dict[str, Any]:
         return {"success": False, "message": "Key not found or inactive"}
 
     return await asyncio.to_thread(_test_connection_sync, key_cfg)
+
+
+async def fetch_models_for_provider(
+    provider: str,
+    api_key: str,
+    base_url: str | None = None,
+) -> dict[str, Any]:
+    """Probe a provider's /models endpoint with a transient (unpersisted) key.
+
+    Used by the fetch-models route where the user's raw key is never stored;
+    returns the same payload shape as :func:`test_api_key_connection`.
+    """
+    return await asyncio.to_thread(
+        _test_connection_sync,
+        {"provider": provider, "api_key": api_key, "base_url": base_url},
+    )
 
 
 def _test_connection_sync(key_cfg: dict[str, Any]) -> dict[str, Any]:
@@ -70,7 +87,7 @@ def _test_connection_sync(key_cfg: dict[str, Any]) -> dict[str, Any]:
     return {"success": success, "message": message, "models": models, "types": types}
 
 
-def _parse_models_from_response(resp: Any, provider: str) -> list[str]:
+def _parse_models_from_response(resp: Any) -> list[str]:
     """Extract model IDs from the provider's /models response."""
     try:
         body = json.loads(resp.read().decode())
@@ -89,11 +106,20 @@ def _is_siliconflow(provider: str, base_url: str) -> bool:
     """True when the provider is SiliconFlow (name or base URL)."""
     provider_l = (provider or "").lower()
     base_l = (base_url or "").lower()
-    return "硅基流动" in provider or "siliconflow" in provider_l or "siliconflow" in base_l
+    return (
+        "硅基流动" in (provider or "")
+        or "siliconflow" in provider_l
+        or "siliconflow" in base_l
+    )
 
 
 def _fetch_models_for_url(url: str, api_key: str) -> list[str]:
-    """GET a /models-style endpoint with Bearer auth. Raises on HTTP error."""
+    """GET a /models-style endpoint with Bearer auth. Raises on HTTP error.
+
+    SSRF guard: the target host must be public — private/loopback/link-local
+    hosts (cloud metadata, internal services) are rejected before any request.
+    """
+    validate_public_url(url)
     req = urllib.request.Request(url, method="GET")
     req.add_header("Authorization", f"Bearer {api_key}")
     req.add_header("Content-Type", "application/json")
@@ -101,7 +127,7 @@ def _fetch_models_for_url(url: str, api_key: str) -> list[str]:
     with urllib.request.urlopen(req, timeout=_FETCH_TIMEOUT) as resp:  # nosec B310
         if resp.status != 200:
             raise ConnectionError(f"HTTP {resp.status}")
-        return _parse_models_from_response(resp, "siliconflow")
+        return _parse_models_from_response(resp)
 
 
 def _infer_audio_type(model_id: str) -> str:

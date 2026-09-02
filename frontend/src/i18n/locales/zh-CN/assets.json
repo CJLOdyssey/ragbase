@@ -1,6 +1,19 @@
 {
   "assets": {
-    "title": "素材库",
+    "title": "素材",
+    "subtitle": "管理知识库使用的原始文件与文档资源",
+    "viewTable": "表格视图",
+    "viewGrid": "卡片视图",
+    "dropHint": "拖拽文件到此处上传",
+    "dropFormats": "支持 .txt .md .pdf .docx .xlsx .csv .html .doc .xls .ppt .pptx，单文件不超过 20 MB",
+    "noMatch": "无匹配素材",
+    "noMatchDesc": "调整搜索或筛选条件",
+    "more": "更多",
+    "filterCount": "筛选 {{filteredCount}} / {{total}}",
+    "prevPage": "上一页",
+    "nextPage": "下一页",
+    "pageIndicator": "· 第 {{current}} / {{total}} 页",
+    "download": "下载",
     "upload": {
       "button": "上传素材",
       "selectFile": "选择文件",
@@ -11,13 +24,156 @@
       "failed": "上传失败"
     },
     "list": {
-      "empty": "暂无素材，点击上方按钮上传",
+      "empty": "暂无素材",
+      "emptyDesc": "点击上方按钮上传",
       "rename": "重命名",
       "deleteConfirm": "确定要删除素材 \"{{name}}\" 吗？此操作不可撤销。",
       "deleteSuccess": "删除成功",
       "index": "建立索引",
+      "indexing": "索引中…",
       "indexSuccess": "索引已建立",
-      "documentsOnly": "仅支持为文档类型素材建立索引"
+      "documentsOnly": "仅支持为文档类型素材建立索引",
+      "retry": "重试",
+      "retrySuccess": "已重新索引",
+      "retryFailed": "重新索引失败"
+    },
+    "uncategorized": {
+      "banner": "有 {{count}} 个素材未分类，无法被按库召回",
+      "handle": "立即处理",
+      "filterChip": "未分类",
+      "clearFilter": "清除筛选",
+      "assignAction": "分配知识库",
+      "back": "返回操作",
+      "assignSuccess": "已分配知识库"
+    },
+    "bulk": {
+      "selected": "已选 {{count}} 项",
+      "assignTo": "分配到知识库",
+      "noKbs": "先创建知识库",
+      "index": "建立索引",
+      "indexing": "索引中…",
+      "indexDisabledHint": "选中项中无未索引的文档",
+      "cancel": "取消选择",
+      "selectAll": "全选",
+      "select": "选择",
+      "assignSuccess": "已将 {{count}} 个素材分配到「{{name}}」",
+      "assignPartial": "已分配 {{assigned}} 个，跳过 {{skipped}} 个（无权限或不存在）",
+      "indexQueued": "已提交 {{count}} 个索引任务"
+    },
+    "urlImport": {
+      "button": "URL 导入",
+      "title": "从 URL 导入",
+      "urlLabel": "文档 URL",
+      "nameLabel": "名称（可选）",
+      "namePlaceholder": "自动从 URL 推断",
+      "submit": "导入",
+      "importing": "导入中…",
+      "invalidUrl": "请输入合法的 http/https 链接",
+      "failed": "导入失败，请检查链接是否可访问"
+    },
+    "chunks": {
+      "button": "分块",
+      "title": "分块预览",
+      "empty": "暂无分块",
+      "emptyDesc": "该素材尚未生成分块",
+      "loading": "加载分块中…",
+      "count": "共 {{count}} 个分块",
+      "truncated": "仅显示前 {{count}} 个分块",
+      "manualTag": "手动",
+      "toggle": "启用/停用",
+      "edit": "编辑 chunk",
+      "save": "保存",
+      "saving": "保存中…",
+      "addLabel": "手动追加 chunk",
+      "addPlaceholder": "输入要追加的文本，保存后自动嵌入…",
+      "addButton": "追加",
+      "deleteTitle": "删除 chunk",
+      "deleteConfirm": "确认删除该 chunk？该操作不可恢复。",
+      "tabChunks": "文档 chunks",
+      "tabQa": "QA 导入",
+      "qa": {
+        "hint": "每行一对问答，保存后按知识库绑定的嵌入模型自动向量化；问答对不依赖文档解析。",
+        "questionPlaceholder": "问题，如：支持哪些部署方式？",
+        "answerPlaceholder": "答案…",
+        "addRow": "添加一行",
+        "removeRow": "移除该行",
+        "import": "导入 {count} 对",
+        "importing": "导入中…",
+        "importFailed": "导入失败，请重试"
+      }
+    },
+    "table": {
+      "fileName": "文件名",
+      "kb": "知识库",
+      "format": "格式",
+      "size": "大小",
+      "status": "状态",
+      "chunks": "分块数",
+      "updated": "更新时间",
+      "actions": "操作"
+    },
+    "action": {
+      "index": "索引",
+      "retry": "重试",
+      "chunks": "分块预览",
+      "rename": "重命名",
+      "delete": "删除",
+      "tags": "标签"
+    },
+    "section": {
+      "fileInfo": "文件信息",
+      "chunks": "分块预览"
+    },
+    "info": {
+      "format": "格式",
+      "size": "大小",
+      "status": "状态",
+      "chunks": "分块数",
+      "updated": "更新时间"
+    },
+    "status": {
+      "indexed": "已索引",
+      "processing": "处理中",
+      "failed": "失败",
+      "pending": "未索引",
+      "noIndex": "无需索引"
+    },
+    "stat": {
+      "total": "文件总数",
+      "indexed": "已索引",
+      "processing": "处理中",
+      "totalSize": "总大小",
+      "unit": "个"
+    },
+    "toolbar": {
+      "searchPlaceholder": "请输入文件名",
+      "timeFrom": "开始时间",
+      "timeTo": "结束时间",
+      "clear": "清除"
+    },
+    "filter": {
+      "kb": "知识库",
+      "unassigned": "未分配",
+      "format": "格式",
+      "status": "索引状态",
+      "time": "更新时间",
+      "timeAll": "全部",
+      "timeToday": "今天",
+      "time7d": "最近7天",
+      "time30d": "最近30天",
+      "timeCustom": "自定义范围",
+      "clearAll": "清除全部"
+    },
+    "processing": "正在处理中，请稍候…",
+    "loading": "加载中…",
+    "noChunks": "暂无分块数据",
+    "viewAllChunks": "查看全部 {{count}} 个分块",
+    "notIndexed": "该文件尚未索引，无分块预览",
+    "chunkUnit": "块",
+    "tags": {
+      "title": "编辑标签",
+      "placeholder": "输入后回车添加标签",
+      "hint": "标签在重新索引时写入 chunk，并可用于检索测试的标签过滤"
     }
   }
 }

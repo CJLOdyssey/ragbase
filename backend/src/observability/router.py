@@ -1,16 +1,28 @@
-"""Debug API router for observability events, traces, errors, and health checks."""
+"""Debug API router for observability events, traces, errors, and health checks.
+
+Admin-only: logged payloads include request bodies (except keys/auth paths)
+and full stack traces — never readable by regular members.
+"""
 
 from typing import Any
 
+from auth.auth_rbac import require_role
 from core.infra.circuit_breaker import llm_circuit
-from fastapi import APIRouter, Query
+from core.infra.logging_config import get_logger
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from observability.analyzer import analyze_trace, recent_errors_report
 from observability.startup_guard import health as guard_health
 from observability.store import get_store
 
-router = APIRouter(prefix="/api/debug", tags=["debug"])
+logger = get_logger(__name__)
+
+router = APIRouter(
+    prefix="/api/debug",
+    tags=["debug"],
+    dependencies=[Depends(require_role("admin"))],
+)
 
 
 @router.get("/events")
@@ -33,38 +45,34 @@ def list_events(
     elif slow is not None:
         data = store.slow_events(slow, seconds, limit)
     else:
-        cutoff = __import__("time").time() - seconds
-        data = store._query(
-            "SELECT * FROM events WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?",
-            (cutoff, limit),
-        )
+        data = store.recent(seconds, limit)
     return {"events": data, "total": len(data)}
 
 
 @router.get("/trace/{trace_id}")
-def trace_detail(trace_id: str)-> Any:
+def trace_detail(trace_id: str) -> Any:
     """Analyze a single trace by ID."""
     return analyze_trace(trace_id)
 
 
 @router.get("/errors")
-def errors(seconds: int = Query(300))-> Any:
+def errors(seconds: int = Query(300)) -> Any:
     """List recent error reports."""
     return {"reports": recent_errors_report(seconds)}
 
 
 @router.get("/stats")
-def stats(seconds: int = Query(300))-> Any:
+def stats(seconds: int = Query(300)) -> Any:
     """Return event counts grouped by level."""
     return get_store().stats(seconds)
 
 
 @router.get("/health")
-def observability_health()-> Any:
+def observability_health() -> Any:
     """Health check including self-check and startup guard status."""
     store = get_store()
     try:
-        count = store._query("SELECT COUNT(*) as cnt FROM events")[0]["cnt"]
+        count = store.count()
         self_check = store.self_check()
         guard = guard_health()
         degraded = (
@@ -80,10 +88,11 @@ def observability_health()-> Any:
             "startup": guard,
             **self_check,
         }
-    except Exception as e:
+    except Exception:
+        logger.exception("Observability self-health query failed")
         return JSONResponse(
             status_code=500,
-            content={"status": "error", "detail": str(e), "write_errors": -1},
+            content={"status": "error", "detail": "observability store unavailable", "write_errors": -1},
         )
 
 

@@ -1,13 +1,16 @@
 """Document text extraction for asset indexing.
 
-Suffix-driven: PDF → pypdf; DOCX/XLSX → zipfile + XML (stdlib, no extra
-deps — both are OOXML zip containers); everything else reads as UTF-8 text.
+Suffix-driven: PDF → pypdf; DOCX/XLSX/PPTX → zipfile + XML via defusedxml
+(XXE-hardened — uploaded files are untrusted input); HTML strips tags;
+CSV/TXT/MD read as UTF-8 text.
 """
 
 import re
 import zipfile
 from pathlib import Path
-from xml.etree import ElementTree
+from typing import Any
+
+from defusedxml import ElementTree  # type: ignore[import-untyped]
 
 _DOCX_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 _XLSX_NS = {
@@ -17,6 +20,7 @@ _XLSX_NS = {
 # XLSX cell types: s=shared string (index into sharedStrings.xml), inlineStr=inline text
 _XLSX_SHARED = "s"
 _XLSX_INLINE = "inlineStr"
+_PPTX_NS = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
 
 
 def extract_text(path: str | Path) -> str:
@@ -29,7 +33,28 @@ def extract_text(path: str | Path) -> str:
         return _extract_docx(p)
     if suffix == ".xlsx":
         return _extract_xlsx(p)
+    if suffix == ".pptx":
+        return _extract_pptx(p)
+    if suffix in (".html", ".htm"):
+        return _extract_html(p)
+    # .doc/.xls/.ppt (legacy OLE) 无轻量解析，退化为文本读取（乱码但不抛异常）
+    # .csv/.txt/.md/.json 等直接按文本读取
     return p.read_text(encoding="utf-8", errors="ignore")
+
+
+def extract_metadata(path: str | Path) -> dict[str, str | None]:
+    """Extract document-level metadata (author, date, title) from an asset file.
+
+    Returns a dict with keys: author, creation_date, title.  Values are
+    None when the property is unavailable or unsupported for the file type.
+    """
+    p = Path(path)
+    suffix = p.suffix.lower()
+    if suffix == ".pdf":
+        return _extract_pdf_metadata(p)
+    if suffix == ".docx":
+        return _extract_docx_metadata(p)
+    return {"author": None, "creation_date": None, "title": None}
 
 
 def _extract_pdf(path: Path) -> str:
@@ -113,3 +138,67 @@ def _xlsx_sheet_rows(xml: bytes, shared: list[str]) -> list[str]:
         if cells:
             rows.append(" | ".join(cells))
     return rows
+
+
+def _extract_pptx(path: Path) -> str:
+    """Extract text from PPTX slides (a:t nodes in ppt/slides/)."""
+    try:
+        with zipfile.ZipFile(path) as zf:
+            slide_names = sorted(
+                n for n in zf.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)
+            )
+            texts: list[str] = []
+            for name in slide_names:
+                root = ElementTree.fromstring(zf.read(name))
+                for node in root.iter(f"{{{_PPTX_NS['a']}}}t"):
+                    if node.text and node.text.strip():
+                        texts.append(node.text.strip())
+            return "\n\n".join(texts)
+    except (KeyError, zipfile.BadZipFile):
+        return ""
+    return ""
+
+
+def _extract_html(path: Path) -> str:
+    """Strip HTML tags to plain text for indexing."""
+    raw = path.read_text(encoding="utf-8", errors="ignore")
+    # 去 script/style 块
+    raw = re.sub(r"(?is)<script.*?>.*?</script>", " ", raw)
+    raw = re.sub(r"(?is)<style.*?>.*?</style>", " ", raw)
+    text = re.sub(r"<[^>]+>", " ", raw)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _extract_pdf_metadata(path: Path) -> dict[str, str | None]:
+    """Extract author, creation date, and title from PDF document info."""
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(str(path))
+        info: Any = reader.metadata or {}
+        return {
+            "author": getattr(info, "author", None),
+            "creation_date": getattr(info, "creation_date", None),
+            "title": getattr(info, "title", None),
+        }
+    except Exception:
+        return {"author": None, "creation_date": None, "title": None}
+
+
+def _extract_docx_metadata(path: Path) -> dict[str, str | None]:
+    """Extract author and title from DOCX core properties."""
+    try:
+        with zipfile.ZipFile(path) as zf:
+            if "docProps/core.xml" not in zf.namelist():
+                return {"author": None, "creation_date": None, "title": None}
+            root = ElementTree.fromstring(zf.read("docProps/core.xml"))
+            ns = {"cp": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
+                  "dc": "http://purl.org/dc/elements/1.1/",
+                  "dcterms": "http://purl.org/dc/terms/"}
+            author = root.findtext("dc:creator", namespaces=ns)
+            title = root.findtext("dc:title", namespaces=ns)
+            date = root.findtext("dcterms:created", namespaces=ns)
+            return {"author": author, "creation_date": date, "title": title}
+    except Exception:
+        return {"author": None, "creation_date": None, "title": None}

@@ -1,29 +1,22 @@
-"""LLM configuration via environment variables and .env file."""
+"""LLM configuration — env-driven, Pydantic-validated, BYOK by default."""
 
 import os
-from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from core.env import env_float, env_int, load_dotenv
 from core.infra.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-_env_file = Path(__file__).resolve().parent.parent.parent / ".env"
-if _env_file.exists():
-    for line in _env_file.read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = value
+load_dotenv()
 
 
 class LLMConfig(BaseModel):
-    """LLM configuration with validation via Pydantic."""
+    """LLM runtime settings with Pydantic validation (bounds enforced)."""
 
+    # Reject unknown keys so a mapping typo fails loudly instead of silently
+    # being ignored downstream.
     model_config = {"extra": "forbid"}
 
     api_key: str = Field(default="", repr=False)
@@ -36,7 +29,7 @@ class LLMConfig(BaseModel):
     max_requirement_length: int = Field(default=2000, ge=1, le=10000)
 
     def __repr__(self) -> str:
-        """Return a safe string representation with masked API key."""
+        """Safe string representation with the API key masked."""
         safe = self.model_dump()
         safe["api_key"] = "***" if self.api_key else "(unset)"
         return f"LLMConfig({safe})"
@@ -45,18 +38,18 @@ class LLMConfig(BaseModel):
 def load_config() -> LLMConfig:
     """Load configuration from environment variables.
 
-    Note: This reads DEEPSEEK_API_KEY/OPENAI_API_KEY for backward compatibility,
-    but the server NEVER uses these as a fallback (BYOK pattern).
-    Users must configure their own API keys through the frontend key vault.
+    Reads DEEPSEEK_API_KEY/OPENAI_API_KEY for backward compatibility only —
+    the server never uses them as a fallback (BYOK pattern). Users configure
+    their own keys through the frontend key vault instead.
     """
     api_key = os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
     api_base = os.environ.get("OPENAI_BASE_URL") or None
     model = os.environ.get("OPENAI_MODEL", "deepseek-v4-flash")
-    temperature = _safe_float("TEMPERATURE", 0.7)
-    max_rounds = _safe_int("MAX_ROUNDS", 5)
-    timeout = _safe_int("TIMEOUT", 120)
-    max_retries = _safe_int("MAX_RETRIES", 3)
-    max_requirement_length = _safe_int("MAX_REQUIREMENT_LENGTH", 2000)
+    temperature = env_float("TEMPERATURE", 0.7)
+    max_rounds = env_int("MAX_ROUNDS", 5)
+    timeout = env_int("TIMEOUT", 120)
+    max_retries = env_int("MAX_RETRIES", 3)
+    max_requirement_length = env_int("MAX_REQUIREMENT_LENGTH", 2000)
     return LLMConfig(
         api_key=api_key,
         api_base=api_base,
@@ -67,17 +60,3 @@ def load_config() -> LLMConfig:
         max_retries=max_retries,
         max_requirement_length=max_requirement_length,
     )
-
-
-def _safe_float(key: str, default: float) -> float:
-    try:
-        return float(os.environ[key])
-    except (KeyError, ValueError, TypeError):
-        return default
-
-
-def _safe_int(key: str, default: int) -> int:
-    try:
-        return int(os.environ[key])
-    except (KeyError, ValueError, TypeError):
-        return default

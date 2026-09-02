@@ -11,32 +11,26 @@ import {
   forgotPassword as apiForgotPassword,
   login as apiLogin,
   logout as apiLogout,
-  mergeGuestData as apiMergeGuestData,
   register as apiRegister,
   resendVerification as apiResendVerification,
   resetPassword as apiResetPassword,
   sendRegisterCode as apiSendRegisterCode,
   verify as apiVerify,
-  getAuthConfig,
   getMe,
-  refreshTokens,
 } from '../../api/client/auth';
+import { refreshAccessToken } from '../../api/client/refresh';
 import { useChatStore } from '../../stores/chatStore';
+import { getStorageManager, STORAGE_KEYS } from '../../utils/storage';
+
+const sm = getStorageManager();
 
 function clearLocalConversations() {
   try {
-    localStorage.removeItem('ragbase-conversations');
-    localStorage.removeItem('ragbase-sessions-cache');
+    sm.remove(STORAGE_KEYS.CONVERSATIONS);
+    sm.remove(STORAGE_KEYS.SESSIONS_CACHE);
     window.dispatchEvent(new Event('ragbase-conversations-updated'));
-  } catch {}
-}
-
-async function mergeGuest() {
-  try {
-    const guestId = localStorage.getItem('ragbase_user_id');
-    if (guestId) await apiMergeGuestData(guestId);
   } catch {
-    /* merge is best-effort */
+    // 存储清理为非关键操作：隐私模式/配额满时失败不影响登出流程
   }
 }
 
@@ -53,7 +47,6 @@ interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  legacyMode: boolean;
   isAuthenticated: boolean;
   loginModalOpen: boolean;
   loginModalView: AuthModalView;
@@ -82,13 +75,10 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// 页面常驻期间定时续期 access_token（httpOnly cookie 轮换），刷新页面时
-// cookie 仍然新鲜 → getMe 直接 200，跳过 401→refresh→me 串行链（token 保鲜机制，刷新体验更丝滑）。
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [legacyMode, setLegacyMode] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginModalView, setLoginModalView] = useState<AuthModalView>('login');
@@ -98,25 +88,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
     try {
-      await refreshTokens();
+      await refreshAccessToken();
       lastRefreshRef.current = Date.now();
       return true;
-    } catch (err) {
-      // refresh 失败（401/403）→ 会话过期：登出，避免"幽灵登录"后业务请求
-      // 以 anonymous 身份报误导性 400。网络错误不登出（由定时器重试）。
-      const status = (err as { response?: { status?: number } })?.response
-        ?.status;
-      if (status === 401 || status === 403) {
-        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-      }
+    } catch {
       return false;
     }
   }, []);
 
   useEffect(() => {
-    // 登录后每 10 分钟续期；失败（后端重启/瞬时故障）时 60 秒快速重试，
-    // 避免 access_token 在 TTL 内过期且无人续期。后台标签页计时器被节流，
-    // 切回前台时若超期立即补一次。
     const start = () => {
       lastRefreshRef.current = Date.now();
       if (refreshTimerRef.current !== null) return;
@@ -149,8 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleUnauthorized = () => {
       setUser(null);
       clearLocalConversations();
-      localStorage.removeItem('ragbase-selected-model');
-      localStorage.removeItem('ragbase-recent-models');
       setLoginModalOpen(true);
     };
     window.addEventListener('auth:login', start);
@@ -170,17 +148,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    let authenticated = false;
 
     function applySession(me: Awaited<ReturnType<typeof getMe>>) {
-      authenticated = true;
       setUser({
         userId: me.id,
         email: me.email,
         username: me.username,
         roles: me.roles,
       });
-      localStorage.setItem('ragbase_user_id', me.id);
+      sm.setUserId(me.id);
       window.dispatchEvent(new CustomEvent('auth:login'));
     }
 
@@ -188,7 +164,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await getMe();
       if (!cancelled && me) {
         applySession(me);
-        void mergeGuest();
         return true;
       }
       return false;
@@ -196,41 +171,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function refreshAndRestore(): Promise<void> {
       try {
-        await refreshTokens();
+        await refreshAccessToken();
         const me = await getMe();
         if (!cancelled && me) {
           applySession(me);
-          void mergeGuest();
         }
+        // getMe returned falsy → no valid session. Do NOT dispatch
+        // auth:unauthorized here; errors.ts normalizeError owns that
+        // responsibility for 401/403 responses on actual API calls.
       } catch {
-        // Refresh failed — guest stays
+        // refreshAccessToken failed — again, errors.ts dispatches
+        // auth:unauthorized when the next API call 401s. Avoid
+        // double-dispatch from AuthContext.
       }
     }
 
     async function init() {
       try {
-        // B: identity restore and auth config run in parallel — a slow config
-        // request must not block showing the signed-in user on refresh.
-        const [config, restored] = await Promise.all([
-          getAuthConfig().catch(() => null),
-          (async () => {
-            try {
-              return await restoreSession();
-            } catch {
-              return false;
-            }
-          })(),
-        ]);
+        // 尝试恢复 session (JWT cookie)
+        const restored = await restoreSession().catch(() => false);
         if (cancelled) return;
-        const isLegacy = !config?.enabled || config?.mode === 'legacy';
-        setLegacyMode(isLegacy);
 
         if (!restored) {
-          if (isLegacy) {
-            setLoading(false);
-            return;
-          }
-          // Access token may be expired — try refreshing before giving up
+          // 无有效 session — 尝试 refresh
           await refreshAndRestore();
         }
       } catch {
@@ -238,9 +201,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         if (!cancelled) {
           setLoading(false);
-          if (!authenticated) {
-            clearLocalConversations();
-          }
         }
       }
     }
@@ -256,6 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (email: string, password: string, rememberMe?: boolean) => {
       const res = await apiLogin(email, password, rememberMe);
+      sm.setUserId(res.user.id);
+      localStorage.setItem('ragbase-access-token', res.access_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -263,9 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: res.user.username,
         roles: res.user.roles,
       });
-      localStorage.setItem('ragbase_user_id', res.user.id);
       window.dispatchEvent(new CustomEvent('auth:login'));
-      void mergeGuest();
     },
     [],
   );
@@ -273,6 +233,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (email: string, code: string, password: string) => {
       const res = await apiRegister(email, code, password);
+      sm.setUserId(res.user.id);
+      localStorage.setItem('ragbase-access-token', res.access_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -280,15 +242,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: res.user.username,
         roles: res.user.roles,
       });
-      localStorage.setItem('ragbase_user_id', res.user.id);
       window.dispatchEvent(new CustomEvent('auth:login'));
-      void mergeGuest();
     },
     [],
   );
 
   const verify = useCallback(async (email: string, code: string) => {
     const res = await apiVerify(email, code);
+    sm.setUserId(res.user.id);
+    localStorage.setItem('ragbase-access-token', res.access_token);
     setLoading(false);
     setUser({
       userId: res.user.id,
@@ -296,9 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: res.user.username,
       roles: res.user.roles,
     });
-    localStorage.setItem('ragbase_user_id', res.user.id);
     window.dispatchEvent(new CustomEvent('auth:login'));
-    void mergeGuest();
   }, []);
 
   const forgotPassword = useCallback(async (email: string) => {
@@ -314,16 +274,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      // Invalidate server-side refresh_token cookie (httpOnly); local state clears either way.
       await apiLogout();
     } catch {
-      // access_token may already be expired — the refresh cookie expires server-side on next refresh attempt.
+      // access_token may already be expired
     }
+    localStorage.removeItem('ragbase-access-token');
     setUser(null);
-    clearLocalConversations();
-    localStorage.removeItem('ragbase_user_id');
-    localStorage.removeItem('ragbase-selected-model');
-    localStorage.removeItem('ragbase-recent-models');
+    sm.clearSession();
     useChatStore.getState().reset();
     setLoginModalOpen(true);
     window.dispatchEvent(new CustomEvent('auth:logout'));
@@ -352,7 +309,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         loading,
-        legacyMode,
         isAuthenticated,
         loginModalOpen,
         loginModalView,

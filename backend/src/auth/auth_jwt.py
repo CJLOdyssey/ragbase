@@ -46,8 +46,10 @@ def decode_jwt(token: str, secret: str) -> dict[str, Any] | None:
                 algorithms=["HS256"],
                 options={"require": ["exp"], "verify_exp": True},
             )
-        except Exception:
-            logger.warning("JWT decode error", exc_info=True)
+        except Exception as exc:
+            # Expected outcome for attacker-supplied tokens — log the reason
+            # without a stack trace to avoid log flooding on auth probing.
+            logger.warning("JWT decode rejected: %s", exc)
             return None
 
     # Legacy simplified token: base64url(user_id:ts:sig[:16])

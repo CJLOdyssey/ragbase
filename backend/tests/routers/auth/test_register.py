@@ -177,6 +177,7 @@ class TestAuthRegister:
         resp = client.post("/api/auth/send-register-code", json={"email": "verify@test.com"})
         assert resp.status_code == 200
         mock_redis_v = AsyncMock()
+        mock_redis_v.get = AsyncMock(return_value=b"999999")
         mock_redis_v.incr = AsyncMock(return_value=1)
         mock_redis_v.expire = AsyncMock(return_value=True)
         with patch("routers.auth.register.get_redis", return_value=mock_redis_v):

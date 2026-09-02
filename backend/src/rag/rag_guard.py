@@ -11,6 +11,7 @@ ALLOWED_INDEX_SOURCES the source whitelist half.
 """
 
 import re
+from typing import Any
 
 # Zero-width / bidi override / control chars that carry no visible glyph —
 # the classic hidden-text smuggling vector (white-on-white text, invisible
@@ -60,6 +61,19 @@ def scan_document(text: str) -> list[str]:
 
 
 _REDACTION = "[已过滤]"
+
+
+def require_kb_binding(asset: Any) -> str:
+    """Vector-write precondition: asset must be assigned to a knowledge base.
+
+    Invariant: any vector-write operation (index, add/edit chunk, QA import)
+    must belong to a KB so the embedding model is deterministic and vectors
+    live in a retrievable cohort. Raises ValueError when unassigned.
+    """
+    kb_id: str | None = getattr(asset, "knowledge_base_id", None)
+    if not kb_id:
+        raise ValueError("素材未分配到知识库，无法索引/写入向量")
+    return kb_id
 
 
 def sanitize_context(text: str) -> str:

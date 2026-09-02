@@ -4,10 +4,14 @@ import * as Sentry from '@sentry/react';
 import App from './App';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { installGlobalErrorHandlers } from './utils/errorHandler';
+import { getStorageManager } from './utils/storage';
 import './i18n/index';
 import './styles/tailwind-entry.css';
 import './styles/modals/index.css';
 import './styles/antd/index.css';
+
+// 验证 localStorage 旧数据
+getStorageManager().validateAll();
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN || '',
@@ -16,11 +20,9 @@ Sentry.init({
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration(),
   ],
-  // Performance Monitoring
-  tracesSampleRate: 1.0, // Capture 100% of transactions in dev; reduce in prod
-  // Session Replay
-  replaysSessionSampleRate: 0.1, // 10% of sessions
-  replaysOnErrorSampleRate: 1.0, // 100% of error sessions
+  tracesSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
   enabled: !!import.meta.env.VITE_SENTRY_DSN,
 });
 

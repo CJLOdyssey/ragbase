@@ -88,3 +88,66 @@ async def test_generate_image_raises_on_transport_error() -> None:
     with _patch_client(client):
         with pytest.raises(ImageGenerationError, match="请求失败"):
             await generate_image("sk-test", "a cat", model="Kwai-Kolors/Kolors")
+
+
+@pytest.mark.asyncio
+async def test_generate_image_raises_on_timeout() -> None:
+    client = _mock_client(exc=httpx.ReadTimeout("read timed out"))
+    with _patch_client(client):
+        with pytest.raises(ImageGenerationError, match="请求失败"):
+            await generate_image("sk-test", "a cat", model="Kwai-Kolors/Kolors")
+
+
+@pytest.mark.asyncio
+async def test_generate_image_propagates_cancellation() -> None:
+    """Task cancel (asyncio.CancelledError) must propagate, not be wrapped."""
+    import asyncio
+
+    client = _mock_client(exc=asyncio.CancelledError())
+    with _patch_client(client):
+        with pytest.raises(asyncio.CancelledError):
+            await generate_image("sk-test", "a cat", model="Kwai-Kolors/Kolors")
+
+
+@pytest.mark.asyncio
+async def test_generate_image_raises_on_non_json_body() -> None:
+    client = _mock_client(text="<html>gateway error</html>")
+    with _patch_client(client):
+        with pytest.raises(ImageGenerationError, match="格式错误"):
+            await generate_image("sk-test", "a cat", model="Kwai-Kolors/Kolors")
+
+
+@pytest.mark.asyncio
+async def test_generate_image_raises_when_image_missing_url() -> None:
+    client = _mock_client(json_payload={"images": [{"foo": "bar"}]})
+    with _patch_client(client):
+        with pytest.raises(ImageGenerationError, match="缺少 URL"):
+            await generate_image("sk-test", "a cat", model="Kwai-Kolors/Kolors")
+
+
+@pytest.mark.asyncio
+async def test_generate_image_passes_custom_params_and_strips_slash() -> None:
+    sent: dict = {}
+
+    async def fake_post(url: str, headers: dict, json: dict) -> httpx.Response:
+        sent["url"] = url
+        sent["body"] = json
+        return httpx.Response(200, json={"images": [{"url": "https://img.example/a.png"}]})
+
+    client = AsyncMock()
+    client.post = AsyncMock(side_effect=fake_post)
+    client.__aenter__ = AsyncMock(return_value=client)
+    with _patch_client(client):
+        await generate_image(
+            "sk-test",
+            "a dog",
+            model="Kwai-Kolors/Kolors",
+            base_url="https://api.siliconflow.cn/v1/",
+            image_size="768x768",
+            batch_size=2,
+        )
+
+    assert sent["url"] == "https://api.siliconflow.cn/v1/images/generations"
+    assert sent["body"]["prompt"] == "a dog"
+    assert sent["body"]["image_size"] == "768x768"
+    assert sent["body"]["batch_size"] == 2

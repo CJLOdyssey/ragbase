@@ -124,13 +124,6 @@ describe('instance', { tags: ['unit'] }, () => {
     localStorage.clear();
   });
 
-  describe('getAccessToken', () => {
-    it('returns null (access token is httpOnly cookie)', async () => {
-      const { getAccessToken } = await import('../instance');
-      expect(getAccessToken()).toBeNull();
-    });
-  });
-
   describe('request interceptor', () => {
     it('does not add Authorization header (access token is httpOnly cookie)', async () => {
       const handlers = captureHandlers();
@@ -139,7 +132,8 @@ describe('instance', { tags: ['unit'] }, () => {
       expect(result.headers.Authorization).toBeUndefined();
     });
 
-    it('adds X-User-ID header', async () => {
+    it('does not add X-User-ID header (user identity comes from JWT cookie)', async () => {
+      localStorage.setItem('ragbase_user_id', 'legacy-uid');
       const handlers = captureHandlers();
       await import('../instance');
       const result = handlers.request!({
@@ -147,29 +141,8 @@ describe('instance', { tags: ['unit'] }, () => {
         method: 'GET',
         url: '/test',
       });
-      expect(result.headers['X-User-ID']).toBeDefined();
-    });
-
-    it('generates user ID when none exists', async () => {
-      const handlers = captureHandlers();
-      await import('../instance');
-      const result = handlers.request!({
-        headers: {},
-        method: 'GET',
-        url: '/test',
-      });
-      const uid = result.headers['X-User-ID'];
-      expect(uid).toBeDefined();
-      expect(uid.startsWith('u_')).toBe(true);
-      expect(localStorage.getItem('ragbase_user_id')).toBe(uid);
-    });
-
-    it('reuses existing user ID', async () => {
-      localStorage.setItem('ragbase_user_id', 'existing-uid');
-      const handlers = captureHandlers();
-      await import('../instance');
-      const result = handlers.request!({ headers: {} });
-      expect(result.headers['X-User-ID']).toBe('existing-uid');
+      expect(result.headers['X-User-ID']).toBeUndefined();
+      expect(result.headers.Authorization).toBeUndefined();
     });
   });
 
@@ -227,7 +200,7 @@ describe('instance', { tags: ['unit'] }, () => {
       expect(mockRefresh.refreshTokens).toHaveBeenCalledWith();
     });
 
-    it('dispatches auth:unauthorized when refresh fails', async () => {
+    it('does not dispatch auth:unauthorized on refresh failure (errors.ts owns it)', async () => {
       const mockRefresh = await import('../auth');
       (mockRefresh.refreshTokens as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Refresh failed'),
@@ -238,7 +211,9 @@ describe('instance', { tags: ['unit'] }, () => {
       await import('../instance');
       const axiosErr = await make401('/private');
       await expect(handlers.onRejected!(axiosErr)).rejects.toBeDefined();
-      expect(authSpy).toHaveBeenCalled();
+      // 401/403 的登出派发由 errors.ts normalizeError 单点负责；
+      // instance 只做刷新编排，不重复派发（避免双发 auth:unauthorized）。
+      expect(authSpy).not.toHaveBeenCalled();
       window.removeEventListener('auth:unauthorized', authSpy);
     });
 
@@ -265,9 +240,11 @@ describe('instance', { tags: ['unit'] }, () => {
 
       // Both callers must settle — the queued one used to be dropped and
       // stayed pending forever, leaving AuthContext's Promise.all unresolved
-      // and loading stuck on the skeleton.
+      // and loading stuck on the skeleton. With the single-flight coordinator
+      // both reject with their own 401 error; the refresh failure surfaces via
+      // the auth:unauthorized event.
       await expect(p1).rejects.toBeDefined();
-      await expect(p2).rejects.toThrow('Refresh failed');
+      await expect(p2).rejects.toBeDefined();
       // Queued retry is single-shot: a 401 on retry rejects instead of
       // recursing into another refresh.
       expect(err2.config?._retry).toBe(true);

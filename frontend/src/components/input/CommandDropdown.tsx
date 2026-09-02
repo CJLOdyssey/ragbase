@@ -27,7 +27,6 @@ export default function CommandDropdown({
   const ref = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
@@ -36,7 +35,6 @@ export default function CommandDropdown({
     return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
 
-  // Scroll active item into view
   useEffect(() => {
     if (!listRef.current) return;
     const items = listRef.current.querySelectorAll('[data-cmd-option]');

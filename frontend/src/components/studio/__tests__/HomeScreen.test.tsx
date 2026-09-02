@@ -63,9 +63,14 @@ describe('HomeScreen', () => {
     expect(screen.getByText('home.greeting')).toBeInTheDocument();
   });
 
+  it('hides feature buttons when no commands are wired (no dead UI)', () => {
+    renderHome();
+    expect(screen.queryByText('Search')).not.toBeInTheDocument();
+  });
+
   it('fires onExecuteCommand for each feature button', () => {
     const onExecuteCommand = vi.fn();
-    renderHome({ onExecuteCommand });
+    renderHome({ commands: [{ id: 'search', label: 'search', source: 'local' }], onExecuteCommand });
     fireEvent.click(screen.getByText('Search'));
     expect(onExecuteCommand).toHaveBeenCalledWith('search');
     fireEvent.click(screen.getByText('Data'));
@@ -80,7 +85,7 @@ describe('HomeScreen', () => {
   });
 
   it('uses i18n fallback labels for feature buttons', () => {
-    renderHome();
+    renderHome({ commands: [{ id: 'search', label: 'search', source: 'local' }], onExecuteCommand: vi.fn() });
     expect(screen.getByText('Search')).toBeInTheDocument();
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('More')).toBeInTheDocument();

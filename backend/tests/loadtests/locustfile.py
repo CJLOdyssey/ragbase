@@ -1,4 +1,4 @@
-"""Locust load test for Virtual Team backend — multi-scenario with user types.
+"""Locust load test for RagBase — multi-scenario with user types.
 
 Usage:
     pip install locust
@@ -9,7 +9,7 @@ Usage:
     # Headless: 100 users, 10 spawn/s, 5 min:
     locust -f tests/loadtests/locustfile.py \
         --headless --users 100 --spawn-rate 10 --run-time 5m \
-        --host http://localhost:8080
+        --host http://localhost:8081
 
     # Or use the convenience script:
     bash tests/loadtests/run_load_test.sh
@@ -26,7 +26,7 @@ from typing import Any
 from locust import FastHttpUser, between, events, task
 from locust.runners import MasterRunner, WorkerRunner
 
-AUTH_USERNAME = os.environ.get("LOADTEST_USERNAME", "admin")
+AUTH_EMAIL = os.environ.get("LOADTEST_EMAIL", "admin@example.com")
 AUTH_PASSWORD = os.environ.get("LOADTEST_PASSWORD", "admin123")
 
 # ── Shared utility ────────────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ def _uid() -> str:
 
 def _login(client: Any) -> str | None:
     resp = client.post("/api/auth/login", json={
-        "username": AUTH_USERNAME,
+        "email": AUTH_EMAIL,
         "password": AUTH_PASSWORD,
     })
     if resp.status_code == 200:
@@ -128,7 +128,7 @@ def _on_locust_init(environment: Any, **kwargs: Any) -> None:
 
 
 class ReadOnlyUser(FastHttpUser):
-    """Browses endpoints — agents, tools, skills, sessions, prompts, teams, MCPs, keys, providers, commands, workflows, versions.
+    """浏览端点：sessions/prompts/models/providers/keys/versions/health。
 
     Weight: 5 (most common user).
     """
@@ -144,64 +144,44 @@ class ReadOnlyUser(FastHttpUser):
         self.client.get("/api/health", name="health")
 
     @task(4)
-    def list_agents(self) -> None:
-        self.client.get("/api/agents", name="list_agents")
-
-    @task(3)
-    def list_tools(self) -> None:
-        self.client.get("/api/tools", name="list_tools")
-
-    @task(3)
-    def list_skills(self) -> None:
-        self.client.get("/api/skills", name="list_skills")
-
-    @task(2)
     def list_sessions(self) -> None:
         self.client.get("/api/sessions", name="list_sessions")
 
-    @task(2)
+    @task(3)
     def list_prompts(self) -> None:
         self.client.get("/api/prompts", name="list_prompts")
 
-    @task(2)
-    def list_teams(self) -> None:
-        self.client.get("/api/teams", name="list_teams")
-
-    @task(2)
-    def list_mcps(self) -> None:
-        self.client.get("/api/mcps", name="list_mcps")
+    @task(3)
+    def list_models(self) -> None:
+        self.client.get("/api/models", name="list_models")
 
     @task(2)
     def list_keys(self) -> None:
         self.client.get("/api/keys", name="list_keys")
 
-    @task(1)
+    @task(2)
     def list_providers(self) -> None:
         self.client.get("/api/providers", name="list_providers")
-
-    @task(1)
-    def list_commands(self) -> None:
-        self.client.get("/api/commands", name="list_commands")
-
-    @task(1)
-    def list_workflows(self) -> None:
-        self.client.get("/api/workflows", name="list_workflows")
 
     @task(1)
     def list_versions(self) -> None:
         self.client.get("/api/versions", name="list_versions")
 
     @task(1)
-    def list_models(self) -> None:
-        self.client.get("/api/models", name="list_models")
+    def list_assets(self) -> None:
+        self.client.get("/api/assets", name="list_assets")
 
     @task(1)
-    def get_tools_plugins(self) -> None:
-        self.client.get("/api/tools/plugins", name="get_tools_plugins")
+    def retrieval_logs(self) -> None:
+        self.client.get("/api/retrieval-logs", name="retrieval_logs")
+
+    @task(1)
+    def query_strategies(self) -> None:
+        self.client.get("/api/query/strategies", name="query_strategies")
 
 
 class PowerUser(FastHttpUser):
-    """Creates a resource then deletes it; creates a session then sends a chat.
+    """创建会话并发起问答；创建/删除提示词。
 
     Weight: 2 (less common, heavier operations).
     """
@@ -213,40 +193,6 @@ class PowerUser(FastHttpUser):
         _login(self.client)
 
     @task(3)
-    def create_then_delete_agent(self) -> None:
-        tag = _uid()
-        payload = {
-            "name": f"loadtest-agent-{tag}",
-            "role_identifier": f"role_{tag}",
-            "system_prompt": "You are a helpful assistant.",
-            "model": "deepseek-v4-flash",
-            "temperature": 0.7,
-            "is_active": True,
-            "icon": "🤖",
-        }
-        resp = self.client.post("/api/agents", json=payload, name="create_agent")
-        if resp.status_code in (200, 201):
-            agent = resp.json()
-            agent_id = agent.get("id")
-            if agent_id:
-                self.client.delete(f"/api/agents/{agent_id}", name="delete_agent")
-
-    @task(2)
-    def create_then_delete_tool(self) -> None:
-        tag = _uid()
-        payload = {
-            "name": f"loadtest-tool-{tag}",
-            "category": "api",
-            "description": "Load test tool.",
-        }
-        resp = self.client.post("/api/tools", json=payload, name="create_tool")
-        if resp.status_code in (200, 201):
-            tool = resp.json()
-            tid = tool.get("id")
-            if tid:
-                self.client.delete(f"/api/tools/{tid}", name="delete_tool")
-
-    @task(2)
     def session_then_chat(self) -> None:
         tag = _uid()
         resp = self.client.post("/api/sessions", json={
@@ -258,11 +204,10 @@ class PowerUser(FastHttpUser):
             if sid:
                 self.client.post("/api/runs", json={
                     "session_id": sid,
-                    "agent_id": None,
-                    "user_message": "Hello, how are you?",
+                    "requirement": "你好，请介绍一下知识库功能",
                 }, name="start_chat_run")
 
-    @task(1)
+    @task(2)
     def create_then_delete_prompt(self) -> None:
         tag = _uid()
         payload = {
@@ -278,68 +223,35 @@ class PowerUser(FastHttpUser):
                 self.client.delete(f"/api/prompts/{pid}", name="delete_prompt")
 
     @task(1)
-    def create_then_delete_skill(self) -> None:
+    def create_then_delete_session(self) -> None:
         tag = _uid()
-        payload = {
-            "name": f"loadtest-skill-{tag}",
-            "category": "general",
-            "description": "Load test skill.",
-        }
-        resp = self.client.post("/api/skills", json=payload, name="create_skill")
-        if resp.status_code in (200, 201):
-            skill = resp.json()
-            sid = skill.get("id")
-            if sid:
-                self.client.delete(f"/api/skills/{sid}", name="delete_skill")
-
-    @task(1)
-    def create_then_delete_mcp(self) -> None:
-        tag = _uid()
-        payload = {
-            "name": f"loadtest-mcp-{tag}",
-            "type": "stdio",
-            "command": "python",
-            "args": ["-m", "mcp"],
-            "env": {},
-        }
-        resp = self.client.post("/api/mcps", json=payload, name="create_mcp")
-        if resp.status_code in (200, 201):
-            mcp = resp.json()
-            mid = mcp.get("id")
-            if mid:
-                self.client.delete(f"/api/mcps/{mid}", name="delete_mcp")
-
-    @task(1)
-    def create_then_delete_team(self) -> None:
-        tag = _uid()
-        payload = {
-            "name": f"loadtest-team-{tag}",
-            "description": "Load test team.",
-        }
-        resp = self.client.post("/api/teams", json=payload, name="create_team")
+        resp = self.client.post("/api/sessions", json={
+            "title": f"loadtest-cleanup-{tag}",
+        }, name="create_cleanup_session")
         if resp.status_code == 201:
-            team = resp.json()
-            tid = team.get("id")
-            if tid:
-                self.client.delete(f"/api/teams/{tid}", name="delete_team")
+            sid = resp.json().get("id")
+            if sid:
+                self.client.delete(f"/api/sessions/{sid}", name="delete_session")
 
     @task(1)
-    def create_then_delete_workflow(self) -> None:
+    def create_key_then_delete(self) -> None:
         tag = _uid()
         payload = {
-            "name": f"loadtest-workflow-{tag}",
-            "description": "Load test workflow.",
+            "name": f"loadtest-key-{tag}",
+            "provider": "siliconflow",
+            "api_key": "sk-loadtest-placeholder",
+            "capabilities": ["llm"],
         }
-        resp = self.client.post("/api/workflows", json=payload, name="create_workflow")
+        resp = self.client.post("/api/keys", json=payload, name="create_key")
         if resp.status_code in (200, 201):
-            wf = resp.json()
-            wid = wf.get("id")
-            if wid:
-                self.client.delete(f"/api/workflows/{wid}", name="delete_workflow")
+            key = resp.json()
+            kid = key.get("id")
+            if kid:
+                self.client.delete(f"/api/keys/{kid}", name="delete_key")
 
 
 class AdminUser(FastHttpUser):
-    """Checks admin stats, logs, activity; lists all sessions.
+    """监控/管理端：monitoring、feedback、admin、debug。
 
     Weight: 1 (least common, admin-only).
     """
@@ -351,29 +263,25 @@ class AdminUser(FastHttpUser):
         _login(self.client)
 
     @task(3)
-    def admin_stats(self) -> None:
-        self.client.get("/api/admin/stats", name="admin_stats")
+    def monitoring_summary(self) -> None:
+        self.client.get("/api/monitoring/summary", name="monitoring_summary")
 
     @task(2)
-    def admin_logs(self) -> None:
-        self.client.get("/api/admin/logs", name="admin_logs")
+    def monitoring_timeseries(self) -> None:
+        self.client.get("/api/monitoring/timeseries", name="monitoring_timeseries")
+
+    @task(2)
+    def debug_health(self) -> None:
+        self.client.get("/api/debug/health", name="debug_health")
 
     @task(1)
-    def admin_activity(self) -> None:
-        self.client.get("/api/admin/activity", name="admin_activity")
-
-    @task(1)
-    def list_all_sessions(self) -> None:
-        self.client.get("/api/sessions", name="admin_list_sessions")
-
-    @task(1)
-    def list_agents_for_audit(self) -> None:
-        self.client.get("/api/agents", name="admin_list_agents")
-
-    @task(1)
-    def health_check(self) -> None:
-        self.client.get("/api/health", name="admin_health")
+    def admin_users(self) -> None:
+        self.client.get("/api/admin/users", name="admin_users")
 
     @task(1)
     def metrics(self) -> None:
         self.client.get("/api/metrics", name="admin_metrics")
+
+    @task(1)
+    def health_check(self) -> None:
+        self.client.get("/api/health", name="admin_health")

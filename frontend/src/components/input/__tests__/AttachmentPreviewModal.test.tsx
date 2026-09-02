@@ -33,7 +33,7 @@ describe('AttachmentPreviewModal', { tags: ['unit'] }, () => {
         />
       </TestProviders>,
     );
-    const img = screen.getByRole('img');
+    const img = screen.getByRole('img', { name: 'photo.png' });
     expect(img).toHaveAttribute('src', '/api/attachments/att-1');
   });
 
@@ -46,9 +46,9 @@ describe('AttachmentPreviewModal', { tags: ['unit'] }, () => {
         />
       </TestProviders>,
     );
-    fireEvent.error(screen.getByRole('img'));
+    fireEvent.error(screen.getByRole('img', { name: 'photo.png' }));
     expect(screen.getByText('图片加载失败')).toBeInTheDocument();
-    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.queryByRole('img', { name: 'photo.png' })).toBeNull();
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/api/attachments/att-1');
     expect(link).toHaveAttribute('download');
@@ -115,7 +115,7 @@ describe('AttachmentPreviewModal', { tags: ['unit'] }, () => {
         blob: () => Promise.resolve({ text: () => Promise.resolve(big) }),
       }),
     );
-    const { container } = render(
+    render(
       <TestProviders>
         <AttachmentPreviewModal
           file={makeFile('f1', { name: 'notes.md' })}
@@ -123,8 +123,11 @@ describe('AttachmentPreviewModal', { tags: ['unit'] }, () => {
         />
       </TestProviders>,
     );
-    await waitFor(() => expect(container.querySelector('pre')).not.toBeNull());
-    const pre = container.querySelector('pre')!;
+    const pre = await waitFor(() => {
+      const el = document.body.querySelector('pre');
+      expect(el).not.toBeNull();
+      return el;
+    });
     expect(pre.textContent).toContain('…');
     expect(pre.textContent!.length).toBeLessThan(70 * 1024);
     expect(pre.textContent!.endsWith('…(内容过长，已截断)')).toBe(true);
@@ -158,7 +161,7 @@ describe('AttachmentPreviewModal', { tags: ['unit'] }, () => {
         />
       </TestProviders>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalled();
   });
 

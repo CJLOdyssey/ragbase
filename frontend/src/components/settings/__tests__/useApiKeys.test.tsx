@@ -128,7 +128,7 @@ describe('useApiKeys', () => {
     expect(result.current.modalError).toContain('providerEdit.keyExists');
   });
 
-  it('handleSaveKey surfaces create failures as error', async () => {
+  it('handleSaveKey surfaces create failures as modalError (弹窗内可见)', async () => {
     apiMocks.createKey.mockRejectedValue(new Error('boom'));
     const { result } = renderApi();
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -142,7 +142,8 @@ describe('useApiKeys', () => {
         models: [],
       });
     });
-    expect(result.current.error).toBe('boom');
+    // 保存失败走 modalError（弹窗内横幅）；写 error 会被弹窗遮住，误导用户
+    expect(result.current.modalError).toBe('boom');
   });
 
   it('handleUpdateKey updates and reloads keys', async () => {

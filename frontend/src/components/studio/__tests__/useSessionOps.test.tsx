@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   deleteSession,
+  listSessions,
   pinSession,
   renameSession,
 } from '../../../api/client/sessions';
@@ -12,6 +13,7 @@ import type { SessionItem } from '../../types';
 
 vi.mock('../../../api/client/sessions', () => ({
   deleteSession: vi.fn(),
+  listSessions: vi.fn(),
   pinSession: vi.fn(),
   renameSession: vi.fn(),
 }));
@@ -51,6 +53,7 @@ describe('useSessionOps', () => {
     vi.clearAllMocks();
     localStorage.clear();
     vi.mocked(deleteSession).mockResolvedValue({});
+    vi.mocked(listSessions).mockResolvedValue([]);
     vi.mocked(renameSession).mockResolvedValue({});
     vi.mocked(pinSession).mockResolvedValue({});
   });

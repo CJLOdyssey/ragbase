@@ -18,7 +18,6 @@ dist/
 
 # ── Node / Frontend ───────────────────────────────────────────────────────
 node_modules/
-frontend/node_modules/
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
 
@@ -29,6 +28,7 @@ frontend/tsconfig.tsbuildinfo
 *.swo
 *~
 .obsidian/
+.trae-html-share-packages/
 
 # ── OS ─────────────────────────────────────────────────────────────────────
 .DS_Store
@@ -37,15 +37,14 @@ desktop.ini
 
 # ── Secrets / Env ──────────────────────────────────────────────────────────
 .env
-.env.local
-.env.*.local
 .env.*
+!.env.example
 
 # ── Databases ──────────────────────────────────────────────────────────────
 *.db
 *.db-shm
 *.db-wal
-.sqlite3
+*.sqlite3
 
 # ── Runtime / Logs ─────────────────────────────────────────────────────────
 *.log
@@ -55,6 +54,7 @@ desktop.ini
 .coverage
 .coverage.*
 coverage.xml
+coverage.json
 coverage/
 frontend/coverage/
 
@@ -102,8 +102,6 @@ prototypes/
 scripts/deploy_prod.py
 scripts/ask_credentials.py
 .omo/
-coverage.json
-# Docs are versioned — keep screenshots out
 
 # Internal (not for public repo)
 start.sh
@@ -119,16 +117,24 @@ scripts/run_mutmut.sh
 scripts/test_tools_in_ai_response.py
 scripts/test_tools_verified.py
 
-# Web prototype leftovers (never commit)
-index.html
-script.js
-styles.css
+# Web prototype leftovers (never commit) — scoped to prototypes/ so it doesn't
+# match frontend/index.html
+/prototypes/index.html
+/prototypes/script.js
+/prototypes/styles.css
 # Internal docs (not for public repo)
 docs/
 AGENTS.md
+
+# Development process artifacts (never commit — source-code repos only)
+PROJECT_STATUS.md
+**/tasks/**/progress.md
 CLAUDE.md
 RUNBOOK.md
 .mutmut-cache
 celerybeat-schedule*
 backups/
 tls/
+
+# QA checklists (working docs, never commit)
+qa/

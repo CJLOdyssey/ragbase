@@ -92,12 +92,21 @@ class TestSharedCircuit:
         assert llm_circuit.state == State.CLOSED
 
     def test_env_var_config(self, monkeypatch):
+        """llm_circuit 阈值接线自 env_int/env_float（LLM_CB_MAXFAIL/LLM_CB_RESET）。
+
+        不 reload 模块——reload 会替换模块级 CircuitBreaker/State 类对象，
+        使文件顶部 import 绑定的旧枚举与新实例的 == 比较失效（跨测试污染）。
+        单例在 import 时固化配置（无法回溯当时 env），故只验证生产接线单元：
+        env_int/env_float 对 LLM_CB_* 的解析路径（默认值 + 环境覆盖）。
+        """
+        from core.env import env_float, env_int
+
+        monkeypatch.delenv("LLM_CB_MAXFAIL", raising=False)
+        monkeypatch.delenv("LLM_CB_RESET", raising=False)
+        assert env_int("LLM_CB_MAXFAIL", 5) == 5
+        assert env_float("LLM_CB_RESET", 60) == 60.0
+
         monkeypatch.setenv("LLM_CB_MAXFAIL", "10")
         monkeypatch.setenv("LLM_CB_RESET", "120")
-        cb = CircuitBreaker(
-            name="env",
-            maxfail=int(__import__("os").environ.get("LLM_CB_MAXFAIL", "5")),
-            reset_timeout=float(__import__("os").environ.get("LLM_CB_RESET", "60")),
-        )
-        assert cb.maxfail == 10
-        assert cb.reset_timeout == 120.0
+        assert env_int("LLM_CB_MAXFAIL", 5) == 10
+        assert env_float("LLM_CB_RESET", 60) == 120.0

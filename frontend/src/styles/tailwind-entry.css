@@ -53,6 +53,11 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
+  /* ── 语义圆角（F §1.5 规范） ── */
+  --radius-btn: 8px; /* 按钮 */
+  --radius-card: 12px; /* 卡片/弹窗 */
+  --radius-sheet: 16px; /* Sheet 顶角 */
+
   /* ── 表面色（通过 :root 变量引用） ── */
   --color-surface: var(--color-surface);
   --color-surface-raised: var(--color-surface-raised);
@@ -79,6 +84,26 @@
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
+
+  /* ── Elevation 5 档阴影（F §1.3 规范） ── */
+  --shadow-surface: none;
+  --shadow-card: var(--shadow-sm);
+  --shadow-raised: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.16);
+  --shadow-top: 0 12px 40px rgba(0, 0, 0, 0.2);
+
+  /* ── 断点语义（F §1.1 规范） ── */
+  --breakpoint-tablet: 1024px;
+
+  /* ── 动效曲线（浮层/弹窗，对应 ease-out-quint / ease-spring 工具类） ── */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.32, 1.25, 0.38, 1);
+}
+
+/* ── 触控目标（WCAG 2.5.8 建议 44px；视觉元素可小于 44px，热区用本类补齐） ── */
+@utility tap-target {
+  min-width: 44px;
+  min-height: 44px;
 }
 
 /* ── 主题相关颜色（运行时切换） ── */
@@ -145,11 +170,6 @@
   --sp-12: 48px;
   --sp-16: 64px;
 
-  --radius-btn: 6px; /* Button / Input / Select / Tag */
-  --radius-card: 10px; /* Card / Modal / Table */
-  --radius-modal: 16px; /* 大弹窗 */
-  --radius-full: 9999px; /* Pill / Avatar */
-
   /* ── 字体 ── */
   --font-sans:
     'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
@@ -166,6 +186,26 @@
   --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.1);
   --shadow-md: 0 4px 8px -2px rgba(255, 255, 255, 0.15);
   --shadow-lg: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
+
+  /* ── Logo 5色 ── */
+  --logo-bg-1: #0f172a;
+  --logo-bg-2: #1e293b;
+  --logo-cyan: #22d3ee;
+  --logo-cyan-body: #0e4f5c;
+  --logo-cyan-top: #164e63;
+  --logo-emerald: #34d399;
+  --logo-emerald-fill: #065f46;
+  --logo-emerald-glow: #6ee7b7;
+  --logo-amber: #fbbf24;
+  --logo-amber-body: #78350f;
+  --logo-amber-handle: #f59e0b;
+  --logo-rose: #fb7185;
+  --logo-rose-fill: #be123c;
+  --logo-violet: #a78bfa;
+  --logo-violet-fill: #4c1d95;
+  --logo-glass: rgba(255, 255, 255, 0.04);
+  --logo-glass-stroke: rgba(255, 255, 255, 0.08);
+  --logo-shadow: rgba(0, 0, 0, 0.3);
 }
 
 /* 亮色主题（当 .dark class 不存在时） */
@@ -182,9 +222,9 @@
   --color-surface-sidebar: #f7f8fa;
 
   --color-text-primary: #1a1a2e;
-  --color-text-secondary: #495057;
-  --color-text-muted: #868e96;
-  --color-text-tertiary: #adb5bd;
+  --color-text-secondary: #81858c;
+  --color-text-muted: #81858c;
+  --color-text-tertiary: #81858c;
 
   --color-text-on-accent: #1a1a2e;
 
@@ -198,4 +238,65 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 8px -1px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 8px 16px -3px rgba(0, 0, 0, 0.1);
+
+  /* ── Logo 5色（浅色模式） ── */
+  --logo-bg-1: #f8fafc;
+  --logo-bg-2: #e2e8f0;
+  --logo-cyan: #0d9488;
+  --logo-cyan-body: #ccfbf1;
+  --logo-cyan-top: #99f6e4;
+  --logo-emerald: #10b981;
+  --logo-emerald-fill: #d1fae5;
+  --logo-emerald-glow: #059669;
+  --logo-amber: #d97706;
+  --logo-amber-body: #fef3c7;
+  --logo-amber-handle: #d97706;
+  --logo-rose: #e11d48;
+  --logo-rose-fill: #fda4af;
+  --logo-violet: #7c3aed;
+  --logo-violet-fill: #ede9fe;
+  --logo-glass: rgba(0, 0, 0, 0.02);
+  --logo-glass-stroke: rgba(0, 0, 0, 0.06);
+  --logo-shadow: rgba(0, 0, 0, 0.06);
+}
+
+/* ── 原生下拉主题跟随 ───────────────────────────────────────────────
+ * select 一旦被作者样式化（如 bg-transparent + 自定文字色），
+ * Chromium 弹层不再继承 color-scheme，option 回退白底。
+ * 统一在此处用语义 token 着色 option，全站下拉一处生效。 */
+select option {
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+/* ── 移动端（<768px，Tailwind md 断点）──────────────────────────────
+ * contain：阻止 overscroll 传播到浏览器（iOS 回退手势/下拉刷新），
+ * 但保留容器内橡皮筋效果——比 none 更温和，不影响页面内滚动体验。 */
+@media (max-width: 767px) {
+  html,
+  body {
+    overscroll-behavior-y: contain;
+  }
+
+  /* 消息列表区域：允许垂直滚动但阻止水平/缩放 */
+  [data-testid='messages-panel'],
+  .messages-container {
+    touch-action: pan-y;
+  }
+
+  /* 输入框区域：避免 300ms 点击延迟 */
+  textarea,
+  input[type='text'],
+  input[type='search'],
+  input[type='email'],
+  input[type='password'] {
+    touch-action: manipulation;
+  }
+
+  /* 按钮和可点击元素：避免 300ms 点击延迟 */
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
+  }
 }

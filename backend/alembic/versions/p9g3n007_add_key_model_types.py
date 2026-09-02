@@ -18,7 +18,11 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "user_api_keys",
-        sa.Column("model_types", postgresql.JSONB(), nullable=True),
+        sa.Column(
+            "model_types",
+            postgresql.JSONB().with_variant(sa.JSON(), "sqlite"),
+            nullable=True,
+        ),
     )
 
 

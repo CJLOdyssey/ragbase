@@ -1,216 +1,122 @@
-import { useState } from 'react';
-import EmptyState from '../shared/EmptyState';
-import { useQuery } from '@tanstack/react-query';
-import {
-  AlertTriangle,
-  BarChart3,
-  CheckCircle2,
-  Search,
-  ThumbsUp,
-} from 'lucide-react';
+import type { ComponentType } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fetchMonitoringSummary } from '../../api/client/monitoring';
+import { DatePicker } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
+import type { TimeRangeQuery } from '../../types/monitoring';
+import MonitoringTabs from './MonitoringTabs';
+import OverviewPanel from './panels/OverviewPanel';
+import ConversionPanel from './panels/ConversionPanel';
+import DiagnosisPanel from './panels/DiagnosisPanel';
+import FeedbackPanel from './panels/FeedbackPanel';
+import {
+  useMonitoringTab,
+  type MonitoringTabKey,
+} from './useMonitoringTab';
 
 const WINDOWS = [
   { hours: 24, key: 'monitoring.windowDay' },
   { hours: 24 * 7, key: 'monitoring.windowWeek' },
+  { hours: 24 * 30, key: 'monitoring.windowMonth' },
+  // 0 = all time — the backend builds a bounded grid for it.
+  { hours: 0, key: 'monitoring.windowAll' },
 ] as const;
 
-function formatPct(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '—';
-  return `${(value * 100).toFixed(1)}%`;
+/** 自定义范围激活时下发给全部子面板的统一时间参数。 */
+function buildTimeQuery(
+  range: [Dayjs, Dayjs] | null,
+  windowHours: number,
+): TimeRangeQuery {
+  if (range) {
+    return {
+      window_hours: 0,
+      since: range[0].toISOString(),
+      until: range[1].toISOString(),
+    };
+  }
+  return { window_hours: windowHours };
 }
 
-function formatMs(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '—';
-  return `${value}ms`;
+interface PanelProps {
+  timeQuery: TimeRangeQuery;
 }
 
-function formatCount(value: number): string {
-  return new Intl.NumberFormat().format(value);
-}
+const PANELS: Record<MonitoringTabKey, ComponentType<PanelProps>> = {
+  overview: OverviewPanel,
+  conversion: ConversionPanel,
+  diagnosis: DiagnosisPanel,
+  feedback: FeedbackPanel,
+};
 
-function formatAlertValue(code: string, value: number): string {
-  if (code === 'good_ratio_low') return formatPct(value);
-  if (code === 'empty_recall_high') return `${value.toFixed(1)}%`;
-  return formatMs(Math.round(value));
-}
-
-function StatCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1 px-4 py-3 rounded-lg bg-[var(--color-surface-raised)]">
-      <span className="text-xs text-[var(--color-text-muted)]">{label}</span>
-      <span className="text-lg font-semibold text-[var(--color-text-primary)]">
-        {value}
-      </span>
-      {hint && (
-        <span className="text-xs text-[var(--color-text-muted)]">{hint}</span>
-      )}
-    </div>
-  );
-}
-
+/**
+ * 质量监控壳层：只负责共享时间控件与 Tab 导航；
+ * 各 Tab 的数据获取与图表渲染下沉到 panels/ 下自治面板。
+ */
 export default function QualityMonitor() {
   const { t } = useTranslation();
   const [windowHours, setWindowHours] = useState(24);
+  const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const timeQuery = useMemo(
+    () => buildTimeQuery(range, windowHours),
+    [range, windowHours],
+  );
+  const { tab, setTab } = useMonitoringTab();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['monitoring', windowHours],
-    queryFn: () => fetchMonitoringSummary(windowHours),
-  });
+  const ActivePanel = PANELS[tab];
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+    <div className="flex flex-col h-full bg-[var(--color-surface)]">
+      <div className="flex flex-col gap-2 px-4 py-4 border-b border-[var(--color-border)] sm:px-6">
         <h1 className="text-lg font-semibold text-[var(--color-text-primary)] m-0">
           {t('monitoring.title')}
         </h1>
-        <div className="flex items-center gap-1">
-          {WINDOWS.map((w) => (
-            <button
-              key={w.hours}
-              className={`px-3 py-1.5 rounded-md text-sm cursor-pointer border-none transition-colors duration-150 ${
-                windowHours === w.hours
-                  ? 'bg-[var(--color-accent)] text-white'
-                  : 'bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-              }`}
-              onClick={() => setWindowHours(w.hours)}
-              data-testid={`window-${w.hours}`}
-            >
-              {t(w.key)}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <DatePicker.RangePicker
+            popupClassName="mobile-picker"
+            showTime={{ format: 'HH:mm' }}
+            format="YYYY-MM-DD HH:mm"
+            value={range}
+            allowClear
+            disabledDate={(d) => d.isAfter(dayjs(), 'day')}
+            onChange={(v) =>
+              setRange(
+                v && v[0] && v[1] ? ([v[0], v[1]] as [Dayjs, Dayjs]) : null,
+              )
+            }
+            placeholder={[
+              t('monitoring.rangeStart'),
+              t('monitoring.rangeEnd'),
+            ]}
+            data-testid="custom-range"
+          />
+          <div className="hidden md:block flex-1" />
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-1 shrink-0">
+            {WINDOWS.map((w) => (
+              <button
+                key={w.hours}
+                className={`px-2 py-1.5 rounded-md text-xs cursor-pointer border-none transition-colors duration-150 sm:px-3 sm:text-sm ${
+                  !range && windowHours === w.hours
+                    ? 'bg-[var(--color-accent)] text-[var(--color-text-on-accent)]'
+                    : 'bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                }`}
+                onClick={() => {
+                  setRange(null);
+                  setWindowHours(w.hours);
+                }}
+                data-testid={`window-${w.hours}`}
+              >
+                {t(w.key)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 p-6">
-        {isLoading || !data ? (
-          <p className="text-sm text-[var(--color-text-muted)]">
-            {t('monitoring.loading')}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-6">
-            <section
-              className="flex flex-col gap-3"
-              data-testid="retrieval-section"
-            >
-              <h2 className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] m-0">
-                <Search size={16} />
-                {t('monitoring.retrieval.title')}
-              </h2>
-              {data.retrieval.total === 0 ? (
-                <EmptyState
-                  icon={<BarChart3 size={24} />}
-                  description={t('monitoring.retrieval.noSamples')}
-                />
-              ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <StatCard
-                    label={t('monitoring.retrieval.requests')}
-                    value={formatCount(data.retrieval.total)}
-                  />
-                  <StatCard
-                    label={t('monitoring.retrieval.emptyRecall')}
-                    value={formatPct(data.retrieval.empty_recall_rate)}
-                    hint={`${formatCount(data.retrieval.empty_recall_count)} / ${formatCount(data.retrieval.total)}`}
-                  />
-                  <StatCard
-                    label={t('monitoring.retrieval.p50')}
-                    value={formatMs(data.retrieval.latency_p50_ms)}
-                  />
-                  <StatCard
-                    label={t('monitoring.retrieval.p95')}
-                    value={formatMs(data.retrieval.latency_p95_ms)}
-                  />
-                </div>
-              )}
-            </section>
-
-            <section
-              className="flex flex-col gap-3"
-              data-testid="feedback-section"
-            >
-              <h2 className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] m-0">
-                <ThumbsUp size={16} />
-                {t('monitoring.feedback.title')}
-              </h2>
-              {data.feedback.total === 0 ? (
-                <EmptyState
-                  icon={<ThumbsUp size={24} />}
-                  description={t('monitoring.feedback.noSamples')}
-                />
-              ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <StatCard
-                    label={t('monitoring.feedback.title')}
-                    value={formatPct(data.feedback.good_ratio)}
-                  />
-                  <StatCard
-                    label={t('monitoring.feedback.good')}
-                    value={formatCount(data.feedback.good_count)}
-                  />
-                  <StatCard
-                    label={t('monitoring.feedback.bad')}
-                    value={formatCount(data.feedback.bad_count)}
-                  />
-                </div>
-              )}
-            </section>
-
-            <section
-              className="flex flex-col gap-3"
-              data-testid="alerts-section"
-            >
-              <h2 className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] m-0">
-                <AlertTriangle size={16} />
-                {t('monitoring.alerts.title')}
-              </h2>
-              {data.alerts.length === 0 ? (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[var(--color-surface-raised)]">
-                  <CheckCircle2
-                    size={16}
-                    className="text-[var(--color-accent)]"
-                  />
-                  <span className="text-sm text-[var(--color-text-secondary)]">
-                    {t('monitoring.alerts.none')}
-                  </span>
-                </div>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {data.alerts.map((alert) => (
-                    <li
-                      key={alert.code}
-                      className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[var(--color-surface-raised)]"
-                      data-testid={`alert-${alert.code}`}
-                    >
-                      <AlertTriangle
-                        size={16}
-                        className="text-[var(--color-warning, #d97706)] shrink-0"
-                      />
-                      <span className="text-sm text-[var(--color-text-primary)]">
-                        {t(`monitoring.alerts.${alert.code}`, {
-                          current: formatAlertValue(alert.code, alert.current),
-                          threshold: formatAlertValue(
-                            alert.code,
-                            alert.threshold,
-                          ),
-                        })}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6">
+        <div className="flex flex-col gap-4">
+          <MonitoringTabs tab={tab} onChange={setTab} />
+          <ActivePanel timeQuery={timeQuery} />
+        </div>
       </div>
     </div>
   );

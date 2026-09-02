@@ -64,11 +64,16 @@ describe('retry', { tags: ['unit'] }, () => {
     const state = useChatStore.getState();
     expect(state.currentRunId).toBe('run-1');
     expect(state.status).toBe('running');
+    // retry 走 store 完整流程（submitRequirement）：session 复用 + 消息绑定，
+    // 不会因 currentSessionId 缺失而让后端新建会话。
     expect(mockSubmitReq).toHaveBeenCalledWith(
       'follow-up',
       'sess-1',
       'key-1',
       'deepseek-chat',
+      null, // parent_run_id（根分支）
+      undefined, // attachment_ids
+      undefined, // prompt_id
     );
     expect(connectRun).toHaveBeenCalled();
   });
@@ -104,6 +109,9 @@ describe('retry', { tags: ['unit'] }, () => {
       'sess-1',
       'siliconflow-key',
       'THUDM/GLM-Z1-9B-0414',
+      null,
+      undefined,
+      undefined, // prompt_id
     );
   });
 

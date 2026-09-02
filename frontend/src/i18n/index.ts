@@ -1,14 +1,20 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import adminEn from './locales/en-US/admin.json';
 import apiEn from './locales/en-US/api.json';
 import assetsEn from './locales/en-US/assets.json';
 import commonEn from './locales/en-US/common.json';
+import kbEn from './locales/en-US/knowledge-base.json';
 import monitoringEn from './locales/en-US/monitoring.json';
+import retrievalLogsEn from './locales/en-US/retrieval-logs.json';
 import settingsEn from './locales/en-US/settings.json';
+import adminZh from './locales/zh-CN/admin.json';
 import apiZh from './locales/zh-CN/api.json';
 import assetsZh from './locales/zh-CN/assets.json';
 import commonZh from './locales/zh-CN/common.json';
+import kbZh from './locales/zh-CN/knowledge-base.json';
 import monitoringZh from './locales/zh-CN/monitoring.json';
+import retrievalLogsZh from './locales/zh-CN/retrieval-logs.json';
 import settingsZh from './locales/zh-CN/settings.json';
 
 function deepMerge<T extends Record<string, unknown>>(
@@ -38,11 +44,38 @@ function deepMerge<T extends Record<string, unknown>>(
   return out;
 }
 
-const zh = deepMerge({}, commonZh, apiZh, assetsZh, settingsZh, monitoringZh);
-const en = deepMerge({}, commonEn, apiEn, assetsEn, settingsEn, monitoringEn);
+const zh = deepMerge(
+  {},
+  commonZh,
+  apiZh,
+  assetsZh,
+  settingsZh,
+  monitoringZh,
+  kbZh,
+  retrievalLogsZh,
+  adminZh,
+);
+const en = deepMerge(
+  {},
+  commonEn,
+  apiEn,
+  assetsEn,
+  settingsEn,
+  monitoringEn,
+  kbEn,
+  retrievalLogsEn,
+  adminEn,
+);
 
-const saved =
-  typeof window !== 'undefined' ? localStorage.getItem('language') : null;
+// 存储不可用（隐私模式/SSR）时降级默认语言，模块初始化不抛错。
+let saved: string | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    saved = localStorage.getItem('language');
+  } catch {
+    saved = null;
+  }
+}
 const legacyMap: Record<string, string> = { en: 'en-US' };
 const lang = saved ? legacyMap[saved] || saved : 'zh-CN';
 
@@ -70,7 +103,11 @@ if (typeof document !== 'undefined') {
 }
 
 export function changeLanguage(lng: string) {
-  localStorage.setItem('language', lng);
+  try {
+    localStorage.setItem('language', lng);
+  } catch {
+    // storage unavailable — session-only language switch
+  }
   void i18n.changeLanguage(lng);
   if (typeof document !== 'undefined') {
     document.documentElement.lang = LANG_TO_HTML[lng] || lng;

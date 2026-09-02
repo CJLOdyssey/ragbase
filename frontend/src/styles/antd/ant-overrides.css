@@ -231,3 +231,21 @@
   padding-top: 6px;
   padding-bottom: 6px;
 }
+
+/* ── DatePicker 移动端适配 ──
+ * 通过 popupClassName="mobile-picker" 精确控制，不碰 antd 内部类名。 */
+@media (max-width: 767px) {
+  .mobile-picker.ant-picker-dropdown .ant-picker-panel-container {
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  .mobile-picker.ant-picker-dropdown .ant-picker-cell-inner {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .mobile-picker.ant-picker-dropdown .ant-picker-time-panel-cell-inner {
+    min-width: 44px;
+    min-height: 36px;
+  }
+}

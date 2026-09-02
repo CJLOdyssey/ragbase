@@ -4,7 +4,6 @@ import {
   getMe,
   login,
   logout,
-  mergeGuestData,
   refreshTokens,
   register,
   resendVerification,
@@ -254,17 +253,5 @@ describe('resendVerification', { tags: ['unit'] }, () => {
       email: 'a@b.com',
     });
     expect(result).toEqual(mockResponse.data);
-  });
-});
-
-describe('mergeGuestData', { tags: ['unit'] }, () => {
-  it('calls POST /auth/merge', async () => {
-    mockApi.post.mockResolvedValue({});
-
-    await mergeGuestData('guest-123');
-
-    expect(mockApi.post).toHaveBeenCalledWith('/auth/merge', {
-      guest_id: 'guest-123',
-    });
   });
 });

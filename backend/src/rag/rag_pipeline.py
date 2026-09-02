@@ -1,20 +1,20 @@
-from typing import Any
-
 """RAG pipeline: analysis → chunking → embedding → vector store → retrieval.
 
-Steps 8-15 of the single-agent template:
-  8.  Analyze & preprocess session content
-  9.  Semantic chunking
-  10. Text vectorization (DashScope text-embedding-v3, 1024d)
-  11. Store in pgvector
-  12. On new input: vectorize query
-  13. Hybrid retrieval (tag match + cosine similarity via pgvector)
-  14. Inject results into LLM context
+Pipeline stages:
+  1.  Analyze & preprocess session content
+  2.  Semantic chunking
+  3.  Text vectorization (DashScope text-embedding-v3)
+  4.  Store in pgvector
+  5.  On new input: vectorize query
+  6.  Hybrid retrieval (tag match + cosine similarity via pgvector)
+  7.  Inject results into LLM context
 
 Production stack:
   - Embedding: Alibaba DashScope (text-embedding-v3)
   - Vector DB: PostgreSQL + pgvector extension
 """
+
+from typing import Any
 
 from core.infra.logging_config import get_logger
 
@@ -24,6 +24,22 @@ from rag.rag_store import PgVectorStore
 
 logger = get_logger(__name__)
 
+
+def _display_text(result: dict[str, Any]) -> str:
+    """Extract display text from a search result.
+
+    Contextual Retrieval stores the original (un-prefixed) text in
+    metadata["original_text"].  When present, use it for LLM context and
+    citation — the context prefix was only needed for embedding semantics.
+    """
+    meta: dict[str, Any] = result.get("metadata") or {}
+    original = meta.get("original_text")
+    if isinstance(original, str) and original:
+        return original
+    text = result.get("text", "")
+    return str(text)
+
+
 # ── Global state ─────────────────────────────────────────────────────────────
 
 _embedding_provider: EmbeddingProvider | None = None
@@ -31,6 +47,7 @@ _vector_store = PgVectorStore()
 
 
 def get_rag_pipeline() -> tuple[EmbeddingProvider | None, PgVectorStore]:
+    """Return the process-global (embedding provider, vector store)."""
     return _embedding_provider, _vector_store
 
 
@@ -39,6 +56,7 @@ def ensure_embedding_provider(
     model: str | None = None,
     base_url: str | None = None,
 ) -> None:
+    """Set the global embedding provider from an API key; None disables embedding."""
     global _embedding_provider
     _embedding_provider = (
         EmbeddingProvider(
@@ -55,7 +73,7 @@ async def ingest_session_messages(
     messages: list[dict[str, Any]],
     user_id: str = "anonymous",
 ) -> None:
-    """Steps 8-11: Ingest conversation messages into pgvector.
+    """Ingest conversation messages into the pgvector store.
 
     1. Concatenate messages → text
     2. Chunk semantically
@@ -95,11 +113,12 @@ async def retrieve_context(
     user_id: str,
     session_id: str | None = None,
     tags: list[str] | None = None,
+    asset_ids: list[str] | None = None,
     top_k: int = 5,
     rerank: bool = False,
     min_score: float | None = DEFAULT_MIN_SCORE,
 ) -> str:
-    """Steps 13-14: Retrieve relevant context for a user query.
+    """Retrieve relevant context for a user query.
 
     1. Embed query
     2. Hybrid search (HNSW ‖ pg_trgm + RRF), filtered to user_id
@@ -111,6 +130,7 @@ async def retrieve_context(
         user_id=user_id,
         session_id=session_id,
         tags=tags,
+        asset_ids=asset_ids,
         top_k=top_k,
         rerank=rerank,
         min_score=min_score,
@@ -118,14 +138,19 @@ async def retrieve_context(
     if not results:
         return ""
 
+    return _format_results(results)
+
+
+def _format_results(results: list[dict[str, Any]]) -> str:
+    """Format retrieval results into LLM context string with source trace."""
     parts = []
     for r in results:
         tag_str = f" [{', '.join(r['tags'])}]" if r["tags"] else ""
         asset_str = _asset_label(r["metadata"]) or ""
+        display = _display_text(r)
         parts.append(
-            f"--- [相似度: {r['similarity']:.2f}]{asset_str}{tag_str} ---\n{r['text']}"
+            f"--- [相似度: {r['similarity']:.2f}]{asset_str}{tag_str} ---\n{display}"
         )
-
     return "\n\n".join(parts)
 
 
@@ -134,9 +159,11 @@ async def retrieve_sources(
     user_id: str,
     session_id: str | None = None,
     tags: list[str] | None = None,
+    asset_ids: list[str] | None = None,
     top_k: int = 5,
     rerank: bool = False,
     min_score: float | None = DEFAULT_MIN_SCORE,
+    retrieval_method: str = "hybrid",
 ) -> list[dict[str, Any]]:
     """Structured retrieval for citation UI — same pipeline as retrieve_context.
 
@@ -150,15 +177,17 @@ async def retrieve_sources(
         user_id=user_id,
         session_id=session_id,
         tags=tags,
+        asset_ids=asset_ids,
         top_k=top_k,
         rerank=rerank,
         min_score=min_score,
+        retrieval_method=retrieval_method,
     )
     return [
         {
             "asset_id": r.get("asset_id"),
             "asset_name": (r.get("metadata") or {}).get("asset_name"),
-            "text": r["text"],
+            "text": _display_text(r),
             "similarity": r["similarity"],
         }
         for r in results
@@ -170,23 +199,93 @@ async def _search_results(
     user_id: str,
     session_id: str | None = None,
     tags: list[str] | None = None,
+    asset_ids: list[str] | None = None,
     top_k: int = 5,
     rerank: bool = False,
     min_score: float | None = DEFAULT_MIN_SCORE,
+    retrieval_method: str = "hybrid",
 ) -> list[dict[str, Any]]:
-    """Shared retrieval core: embed → hybrid search → optional rerank."""
-    if _embedding_provider is None:
-        return []
-    query_embedding = await _embedding_provider.embed_query(query)
-    results: list[dict[str, Any]] = await _vector_store.search(
-        query_embedding,
-        query_text=query,
-        user_id=user_id,
-        session_id=session_id,
-        tag_filter=tags,
-        top_k=RERANK_CANDIDATES if rerank else top_k,
-        min_score=min_score,
+    """Shared retrieval core: embed → hybrid search → optional rerank.
+
+    Mixed-model corpora: the query is embedded once per distinct embedding
+    cohort (the ``embed_model`` marker recorded at index time), so vectors
+    are only ever compared inside their own space. Group results merge by
+    RRF score — an ordering heuristic across models; enabling rerank lets
+    the cross-encoder restore a common scale.
+    """
+    store = _vector_store
+    groups = await store.embed_model_groups(
+        user_id, session_id=session_id, tag_filter=tags, asset_ids=asset_ids
     )
+    if not groups:
+        return []
+
+    candidate_k = RERANK_CANDIDATES if rerank else top_k
+
+    if len(groups) == 1:
+        if _embedding_provider is None and retrieval_method != "lexical":
+            return []
+        query_embedding: list[float] = (
+            [] if retrieval_method == "lexical" or _embedding_provider is None
+            else await _embedding_provider.embed_query(query)
+        )
+        results: list[dict[str, Any]] = await store.search(
+            query_embedding,
+            query_text=query,
+            user_id=user_id,
+            session_id=session_id,
+            tag_filter=tags,
+            asset_ids=asset_ids,
+            top_k=candidate_k,
+            min_score=min_score,
+            method=retrieval_method,
+        )
+    else:
+        # Lazy: repository.keys sits at the tail of the rag import chain.
+        from repository.keys import get_embedding_config
+
+        merged: list[dict[str, Any]] = []
+        for model in groups:
+            # Lexical-only retrieval needs no embeddings — mirror the
+            # single-cohort path where a missing provider short-circuits.
+            cohort_embedding: list[float]
+            if retrieval_method == "lexical":
+                cohort_embedding = []
+            else:
+                cfg = await get_embedding_config(preferred_model=model)
+                if cfg is None or cfg["api_key"] is None:
+                    logger.warning(
+                        "no embedding config for cohort %r — skipped", model
+                    )
+                    continue
+                provider = EmbeddingProvider(
+                    api_key=cfg["api_key"],
+                    model=cfg["model"] or EMBEDDING_MODEL,
+                    base_url=cfg["base_url"],
+                )
+                try:
+                    cohort_embedding = await provider.embed_query(query)
+                except Exception:
+                    logger.exception(
+                        "query embedding failed for %r — group skipped", model
+                    )
+                    continue
+            merged.extend(
+                await store.search(
+                    cohort_embedding,
+                    query_text=query,
+                    user_id=user_id,
+                    session_id=session_id,
+                    tag_filter=tags,
+                    asset_ids=asset_ids,
+                    top_k=candidate_k,
+                    min_score=min_score,
+                    embed_model=model,
+                    embed_model_filter=True,
+                    method=retrieval_method,
+                )
+            )
+        results = sorted(merged, key=lambda r: r["score"], reverse=True)[:candidate_k]
 
     if results and rerank and len(results) > top_k:
         results = await _rerank_results(query, results, top_k)
@@ -208,12 +307,85 @@ async def _rerank_results(
         api_key=cfg["api_key"], base_url=cfg["base_url"], model=cfg["model"]
     )
     indices = await provider.rerank(query, [r["text"] for r in results], top_n=top_k)
-    by_index = {i: results[i] for i in range(len(results))}
-    reranked: list[dict[str, Any]] = []
-    for idx in indices:
-        if idx in by_index:
-            reranked.append(by_index[idx])
-    return reranked
+    # Drop out-of-range indices defensively — a provider bug must not crash
+    # retrieval, only narrow the ranked list.
+    return [results[idx] for idx in indices if 0 <= idx < len(results)]
+
+
+async def retrieve_context_advanced(
+    query: str,
+    user_id: str,
+    session_id: str | None = None,
+    tags: list[str] | None = None,
+    asset_ids: list[str] | None = None,
+    top_k: int = 5,
+    rerank: bool = False,
+    min_score: float | None = DEFAULT_MIN_SCORE,
+    use_decomposition: bool = True,
+    use_hyde: bool = True,
+) -> str:
+    """Retrieve with advanced strategies (Query Decomposition + HyDE).
+
+    Falls back to standard retrieval when advanced strategies fail or are
+    disabled.  The extra LLM calls are bounded: decomposition adds at most
+    1 call, HyDE adds 1 call, both timeout at 30s.
+    """
+    from repository.keys import get_embedding_config
+
+    from rag.rag_advanced import retrieve_with_advanced_strategies
+
+    # Resolve LLM credentials for decomposition/HyDE
+    cfg = await get_embedding_config()
+    if cfg is None or cfg["api_key"] is None:
+        # No LLM key — fall back to standard retrieval
+        return await retrieve_context(
+            query, user_id, session_id, tags, asset_ids, top_k, rerank, min_score,
+        )
+
+    async def _search_fn(
+        q: str,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        """Thin wrapper around _search_results for the advanced orchestrator."""
+        return await _search_results(
+            query=q,
+            user_id=user_id,
+            session_id=session_id,
+            tags=tags,
+            asset_ids=asset_ids,
+            top_k=kwargs.get("top_k", top_k),
+            rerank=rerank,
+            min_score=min_score,
+        )
+
+    try:
+        results = await retrieve_with_advanced_strategies(
+            query=query,
+            search_fn=_search_fn,
+            api_key=cfg["api_key"],
+            model=cfg.get("model"),
+            base_url=cfg.get("base_url"),
+            use_decomposition=use_decomposition,
+            use_hyde=use_hyde,
+            top_k=top_k,
+        )
+    except Exception:
+        logger.exception("Advanced retrieval failed — falling back to standard")
+        results = await _search_results(
+            query=query,
+            user_id=user_id,
+            session_id=session_id,
+            tags=tags,
+            asset_ids=asset_ids,
+            top_k=top_k,
+            rerank=rerank,
+            min_score=min_score,
+        )
+
+    if not results:
+        return ""
+
+    return _format_results(results)
 
 
 def _asset_label(metadata: dict[str, Any]) -> str:

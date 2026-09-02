@@ -1,4 +1,12 @@
-"""Attachment repository — CRUD for AttachmentDB."""
+"""Attachment repository — CRUD for AttachmentDB.
+
+Usage::
+
+    from repository.attachments import bind_attachments_to_run, list_attachments_by_run
+
+    await bind_attachments_to_run(ids, run_id, session_id, user_id)  # owner-qualified
+    files = await list_attachments_by_run(run_id)
+"""
 
 from core.infra.database import AttachmentDB, get_session_factory
 from sqlalchemy import and_, or_, select, update

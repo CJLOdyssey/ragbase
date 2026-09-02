@@ -49,13 +49,6 @@ class TestCheckpointerFactoryCore:
             assert dsn == "pg://local"
 
 
-# ─────────────────────────────────────────────────────────────────────
-# 8. backend/checkpoint/models.py — ORM & dataclass models
-# ─────────────────────────────────────────────────────────────────────
-
-
-
-
 class TestCheckpointDB:
     def test_orm_model_attributes(self):
         from checkpoint.models import CheckpointDB
@@ -81,8 +74,6 @@ class TestCheckpointDB:
 
         obj = CheckpointDB(session_id="sess-1", agent_state="{}", step_index=0)
         assert obj.step_index == 0
-
-
 
 
 class TestAgentCheckpoint:
@@ -134,54 +125,59 @@ class TestAgentCheckpoint:
         assert "\\u" not in json_str
 
 
-# ─────────────────────────────────────────────────────────────────────
-# 9. backend/checkpoint/repository.py — CRUD operations
-# ─────────────────────────────────────────────────────────────────────
+@pytest.fixture
+def mock_async_session():
+    """AsyncSession double: sync add() + async commit/refresh/execute.
 
-
+    Using a plain MagicMock for add() matters: AsyncMock makes EVERY method
+    a coroutine, so the un-awaited ``session.add(obj)`` would leak a
+    "coroutine was never awaited" RuntimeWarning into the test output.
+    """
+    session = MagicMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.execute = AsyncMock()
+    return session
 
 
 class TestCheckpointRepository:
     @patch("checkpoint.repository.get_session_factory")
     @pytest.mark.asyncio
-    async def test_save_checkpoint(self, mock_get_factory):
+    async def test_save_checkpoint(self, mock_get_factory, mock_async_session):
         from checkpoint.models import AgentCheckpoint
         from checkpoint.repository import save_checkpoint
 
         mock_factory = MagicMock()
-        mock_session = AsyncMock()
-        mock_session.refresh = AsyncMock()
-        mock_factory.return_value.__aenter__.return_value = mock_session
+        mock_factory.return_value.__aenter__.return_value = mock_async_session
         mock_get_factory.return_value = mock_factory
 
         cp = AgentCheckpoint(session_id="sess-1", run_id="run-1", step_index=2)
         result_id = await save_checkpoint(cp)
 
-        mock_session.add.assert_called_once()
-        added = mock_session.add.call_args[0][0]
+        mock_async_session.add.assert_called_once()
+        added = mock_async_session.add.call_args[0][0]
         assert added.session_id == "sess-1"
         assert added.run_id == "run-1"
         assert added.step_index == 2
-        mock_session.commit.assert_awaited_once()
-        mock_session.refresh.assert_awaited_once()
+        mock_async_session.commit.assert_awaited_once()
+        mock_async_session.refresh.assert_awaited_once()
         assert result_id == added.id
 
     @patch("checkpoint.repository.get_session_factory")
     @pytest.mark.asyncio
-    async def test_load_latest_checkpoint_found(self, mock_get_factory):
+    async def test_load_latest_checkpoint_found(self, mock_get_factory, mock_async_session):
         from checkpoint.models import AgentCheckpoint
         from checkpoint.repository import load_latest_checkpoint
 
         mock_factory = MagicMock()
-        mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = MagicMock(
             agent_state=AgentCheckpoint(
                 session_id="sess-1", run_id="run-1", step_index=5
             ).to_json()
         )
-        mock_session.execute.return_value = mock_result
-        mock_factory.return_value.__aenter__.return_value = mock_session
+        mock_async_session.execute.return_value = mock_result
+        mock_factory.return_value.__aenter__.return_value = mock_async_session
         mock_get_factory.return_value = mock_factory
 
         result = await load_latest_checkpoint("sess-1")
@@ -191,15 +187,14 @@ class TestCheckpointRepository:
 
     @patch("checkpoint.repository.get_session_factory")
     @pytest.mark.asyncio
-    async def test_load_latest_checkpoint_not_found(self, mock_get_factory):
+    async def test_load_latest_checkpoint_not_found(self, mock_get_factory, mock_async_session):
         from checkpoint.repository import load_latest_checkpoint
 
         mock_factory = MagicMock()
-        mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        mock_session.execute.return_value = mock_result
-        mock_factory.return_value.__aenter__.return_value = mock_session
+        mock_async_session.execute.return_value = mock_result
+        mock_factory.return_value.__aenter__.return_value = mock_async_session
         mock_get_factory.return_value = mock_factory
 
         result = await load_latest_checkpoint("nonexistent")
@@ -207,32 +202,27 @@ class TestCheckpointRepository:
 
     @patch("checkpoint.repository.get_session_factory")
     @pytest.mark.asyncio
-    async def test_list_checkpoints(self, mock_get_factory):
+    async def test_list_checkpoints(self, mock_get_factory, mock_async_session):
         from checkpoint.models import AgentCheckpoint
         from checkpoint.repository import list_checkpoints
 
         mock_factory = MagicMock()
-        mock_session = AsyncMock()
         mock_result = MagicMock()
+
         class _ScalarResult:
             def __init__(self, items):
                 self._items = items
+
             def __iter__(self):
                 return iter(self._items)
+
         cp1 = MagicMock(agent_state=AgentCheckpoint(session_id="sess-1", run_id=None, step_index=0).to_json())
         cp2 = MagicMock(agent_state=AgentCheckpoint(session_id="sess-1", run_id=None, step_index=1).to_json())
         mock_result.scalars.return_value = _ScalarResult([cp1, cp2])
-        mock_session.execute.return_value = mock_result
-        mock_factory.return_value.__aenter__.return_value = mock_session
+        mock_async_session.execute.return_value = mock_result
+        mock_factory.return_value.__aenter__.return_value = mock_async_session
         mock_get_factory.return_value = mock_factory
 
         results = await list_checkpoints("sess-1")
         assert len(results) == 2
         assert all(c.session_id == "sess-1" for c in results)
-
-
-# ─────────────────────────────────────────────────────────────────────
-# 10. backend/routers/auth/schemas.py — Pydantic schemas & helpers
-# ─────────────────────────────────────────────────────────────────────
-
-

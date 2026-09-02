@@ -47,6 +47,7 @@
     "antd": "^6.5.3",
     "axios": "^1.7.0",
     "dompurify": "^3.4.7",
+    "echarts": "^6.1.0",
     "geist": "^1.7.2",
     "i18next": "^26.3.0",
     "lucide-react": "^1.17.0",
@@ -56,7 +57,7 @@
     "react-error-boundary": "^6.1.2",
     "react-i18next": "^17.0.8",
     "react-markdown": "^9.1.0",
-    "react-router-dom": "^6.30.4",
+    "react-router-dom": "^7.18.2",
     "react-syntax-highlighter": "^16.1.1",
     "react-virtuoso": "^4.18.11",
     "reactflow": "^11.11.4",
@@ -67,7 +68,7 @@
     "@eslint/js": "^10.0.1",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@playwright/test": "^1.62.0",
-    "@size-limit/preset-app": "^12.1.0",
+    "@size-limit/file": "^12.1.0",
     "@tailwindcss/vite": "^4.3.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -124,6 +125,7 @@
     "ip-address": "10.4.0",
     "brace-expansion": "5.0.9",
     "postcss": "8.5.25",
-    "sharp": "0.35.3"
+    "sharp": "0.35.3",
+    "nanoid": "^3.3.8"
   }
 }

@@ -13,25 +13,29 @@ from tests.conftest import Api
 
 
 def _clear_limits():
+    # 与 e2e/conftest 对齐：后端 REDIS_URL=redis://localhost:6380/1，
+    # 限流/验证码 key 都在 db 1（auth:* 命名空间）；历史只清 db 0 或
+    # ratelimit:* 导致旧 key 残留 → 登录永久 429。
     import subprocess
-    for container in ["ragbase-redis"]:
-        try:
-            out = subprocess.run(
-                ["docker", "exec", container, "redis-cli", "-n", "1", "KEYS", "ratelimit:*"],
-                capture_output=True, text=True, timeout=5,
+
+    try:
+        out = subprocess.run(
+            ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1", "KEYS", "*"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if out.stdout.strip():
+            keys = out.stdout.strip().split("\n")
+            subprocess.run(
+                ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1", "DEL"] + keys,
+                capture_output=True, timeout=5,
             )
-            if out.stdout.strip():
-                keys = out.stdout.strip().split("\n")
-                subprocess.run(
-                    ["docker", "exec", container, "redis-cli", "-n", "1", "DEL"] + keys,
-                    capture_output=True, timeout=5,
-                )
-        except Exception:
-            pass
+    except Exception:
+        pass
 
-pytestmark = pytest.mark.benchmark
+# benchmark + integration：需真实运行的后端，CI/本地无后端时自动跳过
+pytestmark = [pytest.mark.benchmark, pytest.mark.integration]
 
-WS_BASE = os.environ.get("BENCH_WS_URL", "ws://localhost:8080")
+WS_BASE = os.environ.get("BENCH_WS_URL", "ws://localhost:8081")
 
 
 class TestWebSocketConcurrency:

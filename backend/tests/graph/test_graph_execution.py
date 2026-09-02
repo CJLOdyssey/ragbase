@@ -1,7 +1,7 @@
 """Tests for SingleAgentGraph image node path in backend/graph/graph.py.
 
 Mocks the LLM and streaming layer to exercise _image_node dispatch without
-real HTTP calls. Mirrors the agent-studio equivalent test file.
+real HTTP calls.
 """
 
 from __future__ import annotations

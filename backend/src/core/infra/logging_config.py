@@ -7,7 +7,11 @@ import sys
 
 
 def get_logger(name: str, level: int | None = None) -> logging.Logger:
-    """Get or create a configured logger with optional observability handler."""
+    """Get or create a configured logger, then attach the observability handler.
+
+    Attachment happens here (not in _get_logger) so loggers that already had
+    handlers installed by a third party still get observability support.
+    """
     logger = _get_logger(name, level)
     _maybe_attach_obs_handler(logger)
     return logger
@@ -40,7 +44,6 @@ def _get_logger(name: str, level: int | None = None) -> logging.Logger:
 
     logger.addHandler(handler)
     logger.propagate = False
-    _maybe_attach_obs_handler(logger)
     return logger
 
 
@@ -88,9 +91,6 @@ def _is_debug() -> bool:
     return os.environ.get("LOG_LEVEL", "").upper() == "DEBUG"
 
 
-_OBS_ATTACHED = False
-
-
 _OBS_HANDLER: logging.Handler | None = None
 
 
@@ -105,4 +105,5 @@ def _maybe_attach_obs_handler(logger: logging.Logger) -> None:
         if _OBS_HANDLER not in logger.handlers:
             logger.addHandler(_OBS_HANDLER)
     except Exception:
+        # Observability is best-effort — plain logging still works without it.
         pass

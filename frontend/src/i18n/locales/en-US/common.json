@@ -1,7 +1,10 @@
 {
   "common": {
+    "all": "All",
+    "selectAll": "Select all",
+    "comingSoon": "Coming soon",
     "close": "Close",
-    "error": "Error",
+    "error": "An error occurred",
     "retry": "Retry",
     "loading": "Loading...",
     "connecting": "Reconnecting",
@@ -11,12 +14,15 @@
     "cancel": "Cancel",
     "noData": "No data",
     "unknownError": "Unknown error",
-    "appError": "App error",
-    "skipToContent": "Skip to main content"
+    "appError": "Application error",
+    "skipToContent": "Skip to content",
+    "prev": "Previous",
+    "next": "Next"
   },
   "confirm": {
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "saving": "Saving...",
     "delete": "Delete",
     "danger": "Dangerous Action",
     "info": "Confirmation",
@@ -29,6 +35,8 @@
     "requestAbandoned": "Switched conversation, current request abandoned",
     "saveSuccess": "Saved successfully",
     "saveFailed": "Failed to save",
+    "deleteSuccess": "Deleted successfully",
+    "deleteFailed": "Failed to delete",
     "error": "Operation failed, please retry"
   },
   "user": {
@@ -61,6 +69,11 @@
     "recent": "Recent",
     "statusDeprecated": "Deprecated",
     "statusSunset": "Sunsetting"
+  },
+  "promptSelect": {
+    "label": "Prompt",
+    "none": "None",
+    "empty": "No active prompts"
   },
   "auth": {
     "login": "Log in",
@@ -125,11 +138,26 @@
     "more": "More",
     "rename": "Rename",
     "pin": "Pin",
-    "unpin": "Unpin"
+    "unpin": "Unpin",
+    "group": {
+      "resources": "Resources",
+      "knowledge": "Knowledge",
+      "analytics": "Analytics",
+      "admin": "Admin"
+    },
+    "nav": {
+      "prompts": "Prompts",
+      "assets": "Assets",
+      "knowledgeBases": "Knowledge Bases",
+      "qualityReport": "Quality Report",
+      "retrievalLogs": "Retrieval Logs",
+      "userManagement": "User Management"
+    }
   },
   "teamMessage": {
     "copy": "Copy",
     "copied": "Copied",
+    "copyFailed": "Copy failed, please retry",
     "edit": "Edit",
     "continue": "Continue",
     "continuing": "Continuing…",
@@ -245,6 +273,7 @@
     "download": "Download file",
     "previewLoadFailed": "Failed to load preview",
     "unsupportedType": "Preview not supported for this type",
+    "emptyPreview": "File is empty or no previewable content",
     "failed": "Failed",
     "countSelected": "{{count}} files selected"
   },
@@ -268,5 +297,212 @@
     "nameDuplicate": "Name already exists, please use another one",
     "teamLimit": "You can create at most {{max}} teams",
     "agentLimit": "Each team can have at most {{max}} agents"
+  },
+  "prompts": {
+    "title": "Prompts",
+    "subtitle": "Manage and version-control your AI prompt templates",
+    "searchPlaceholder": "Search prompts…",
+    "noDescription": "No description",
+    "noData": "No {{label}} data",
+    "statusEnabled": "Enabled",
+    "statusDraft": "Draft",
+    "tabAll": "All",
+    "tab": {
+      "list": "List",
+      "version": "Version"
+    },
+    "table": {
+      "name": "Name",
+      "desc": "Description",
+      "category": "Category",
+      "status": "Status",
+      "version": "Version",
+      "uses": "Uses",
+      "actions": "Actions"
+    },
+    "list": {
+      "empty": "No prompts yet",
+      "emptyDesc": "Click the button above to create a prompt",
+      "secureNote": "System = security asset; admin only",
+      "edit": "Edit",
+      "delete": "Delete",
+      "history": "History"
+    },
+"editor": {
+      "new": "New prompt",
+      "edit": "Edit prompt",
+      "name": "Name",
+      "description": "Description",
+      "category": "Category",
+      "status": "Status",
+      "content": "Content",
+      "namePlaceholder": "e.g. Product Q&A assistant",
+      "descPlaceholder": "Briefly describe the purpose of this prompt",
+      "contentPlaceholder": "You are a…{{context}}…{{question}}",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "saveHint": "Saving creates a new version",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveFailed": "Save failed",
+      "retry": "Retry"
+    },
+    "history": {
+      "title": "Version History",
+      "empty": "No history available",
+      "version": "Version {{num}}",
+      "view": "View"
+    },
+    "version": {
+      "title": "Version History",
+      "backToList": "Back to list",
+      "rollback": "Rollback",
+      "view": "View",
+      "current": "Current version",
+      "createdAt": "Created at",
+      "createdBy": "Created by",
+      "rollbackTitle": "Roll back to {{version}}",
+      "rollbackMsg": "Overwrite current with this version; history is preserved",
+      "rollbackConfirm": "Confirm rollback",
+      "rollbackSuccess": "Rolled back (new version created)"
+    },
+    "deleteTitle": "Delete Prompt",
+    "deleteConfirm": "Delete \"{{name}}\"?",
+    "detail": {
+      "basicInfo": "Basic Info",
+      "content": "Prompt Content",
+      "uses": "Uses",
+      "copy": "Copy content",
+      "copied": "Copied",
+      "emptyContent": "No content yet"
+    }
+  },
+  "memory": {
+    "title": "Session Memory",
+    "empty": "No memories yet",
+    "emptyDesc": "Memories generated during conversations will appear here",
+    "exportJson": "Export JSON",
+    "exportMd": "Export Markdown",
+    "deleteTitle": "Delete Memory",
+    "deleteConfirm": "Delete this memory?"
+  },
+  "retrievalPanel": {
+    "title": "Retrieval Sources ({{count}})",
+    "viewDetails": "View Details"
+  },
+  "retrievalLogs": {
+    "navTitle": "Retrieval Logs",
+    "title": "Retrieval Logs",
+    "emptyOnly": "Empty Recall Only",
+    "maxLatency": "Max Latency",
+    "query": "Query",
+    "hitCount": "Hit Count",
+    "latency": "Latency",
+    "sources": "Sources",
+    "time": "Time",
+    "noLogs": "No Retrieval Logs",
+    "noLogsDesc": "Records will appear here after retrieval",
+    "loadFailed": "Failed to load retrieval logs",
+    "loadFailedDesc": "Network or service issue, please retry later",
+    "sourceDetail": "Source details",
+    "detail": "Log Details",
+    "timeRange": "Time range",
+    "last72h": "Last 72h"
+  },
+  "admin": {
+    "navTitle": "User Management",
+    "users": {
+      "title": "User Management",
+      "search": "Search users...",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "createdAt": "Created At",
+      "noUsers": "No Users",
+      "noUsersDesc": "Users will appear here after registration",
+      "confirmRoleChange": "Confirm changing this user's role?",
+      "confirmStatusChange": "Confirm changing this user's status?",
+      "viewDetails": "View Details",
+      "userDetails": "User Details",
+      "resetPassword": "Reset Password",
+      "resetPasswordConfirm": "Confirm resetting password for {{name}}?",
+      "resetPasswordSuccess": "Password reset successfully"
+    }
+  },
+  "kb": {
+    "navTitle": "Knowledge Base",
+    "title": "Knowledge Base",
+    "create": "New Knowledge Base",
+    "name": "Name",
+    "description": "Description",
+    "assetCount": "Asset count",
+    "noKbs": "No knowledge bases yet",
+    "createDesc": "Create a knowledge base to organize your document assets",
+    "uncategorized": "Uncategorized Assets",
+    "assignTo": "Assign to...",
+    "noUncategorized": "All assets are categorized",
+    "deleteConfirm": "Delete this knowledge base? Assets in it will become uncategorized.",
+    "editTitle": "Edit Knowledge Base",
+    "createTitle": "New Knowledge Base"
+  },
+  "ragTest": {
+    "button": "Test Retrieval",
+    "title": "Retrieval Test",
+    "queryLabel": "Test query",
+    "queryPlaceholder": "Enter a query to test retrieval…",
+    "topK": "Top K",
+    "rewrite": "Rewrite query first",
+    "run": "Run",
+    "running": "Running…",
+    "hits": "{{count}} hits",
+    "noHits": "No hits",
+    "embeddingNotConfigured": "Embedding not configured",
+    "emptyHint": "No hits: try enabling \"rewrite\", or add documents in Assets",
+    "similarity": "Similarity",
+    "source": "Source",
+    "method": "Retrieval method",
+    "methodHybrid": "Hybrid (vector + keyword)",
+    "methodSemantic": "Vector only",
+    "methodLexical": "Keyword only",
+    "tagFilter": "Tag filter",
+    "tagFilterPlaceholder": "comma separated, e.g. api, deploy",
+    "sectionParams": "Retrieval Parameters"
+  },
+  "feedback": {
+    "feedbackNotice": "Thanks for your feedback — it will help optimize future retrievals"
+  },
+  "monitoring": {
+    "navTitle": "Quality Report",
+    "title": "Quality Report",
+    "windowDay": "Last 24h",
+    "windowWeek": "Last 7 days",
+    "windowMonth": "Last 30 days",
+    "windowAll": "All time",
+    "loadFailed": "Failed to load monitoring data",
+    "retrieval": {
+      "title": "Retrieval Quality",
+      "requests": "Retrieval Requests",
+      "emptyRecall": "Empty Recall Rate",
+      "p50": "P50 Latency",
+      "p95": "P95 Latency",
+      "noSamples": "No retrieval data yet"
+    },
+    "feedback": {
+      "title": "Answer Approval Rate",
+      "good": "Positive",
+      "bad": "Negative",
+      "noSamples": "No feedback data yet",
+      "description": "Based on user thumbs up/down on answers"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "none": "No alerts",
+      "empty_recall_high": "High empty recall rate: current {{current}}, threshold {{threshold}}",
+      "p95_latency_high": "High P95 latency: current {{current}}, threshold {{threshold}}",
+      "good_ratio_low": "Low approval rate: current {{current}}, threshold {{threshold}}"
+    }
   }
 }

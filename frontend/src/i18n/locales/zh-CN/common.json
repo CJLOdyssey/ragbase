@@ -1,5 +1,8 @@
 {
   "common": {
+    "all": "全部",
+    "selectAll": "全选",
+    "comingSoon": "功能开发中",
     "close": "关闭",
     "error": "出错了",
     "retry": "重试",
@@ -12,11 +15,14 @@
     "noData": "暂无数据",
     "unknownError": "未知错误",
     "appError": "应用出错了",
-    "skipToContent": "跳转到主内容"
+    "skipToContent": "跳转到主内容",
+    "prev": "上一页",
+    "next": "下一页"
   },
   "confirm": {
     "cancel": "取消",
     "confirm": "确定",
+    "saving": "保存中...",
     "delete": "删除",
     "danger": "危险操作",
     "info": "确认操作",
@@ -29,6 +35,8 @@
     "requestAbandoned": "已切换对话，当前请求已中断",
     "saveSuccess": "保存成功",
     "saveFailed": "保存失败",
+    "deleteSuccess": "删除成功",
+    "deleteFailed": "删除失败",
     "error": "操作失败，请重试"
   },
   "user": {
@@ -61,6 +69,11 @@
     "recent": "最近使用",
     "statusDeprecated": "已弃用",
     "statusSunset": "即将下线"
+  },
+  "promptSelect": {
+    "label": "提示词",
+    "none": "不使用",
+    "empty": "暂无启用的提示词"
   },
   "auth": {
     "login": "登录",
@@ -125,11 +138,26 @@
     "more": "更多",
     "rename": "重命名",
     "pin": "顶置",
-    "unpin": "取消顶置"
+    "unpin": "取消顶置",
+    "group": {
+      "resources": "资源",
+      "knowledge": "知识",
+      "analytics": "分析",
+      "admin": "管理"
+    },
+    "nav": {
+      "prompts": "提示词",
+      "assets": "素材",
+      "knowledgeBases": "知识库",
+      "qualityReport": "质量报告",
+      "retrievalLogs": "检索记录",
+      "userManagement": "用户管理"
+    }
   },
   "teamMessage": {
     "copy": "复制",
     "copied": "已复制",
+    "copyFailed": "复制失败，请重试",
     "edit": "编辑",
     "continue": "继续",
     "continuing": "继续生成中…",
@@ -245,6 +273,7 @@
     "download": "下载文件",
     "previewLoadFailed": "预览加载失败",
     "unsupportedType": "暂不支持预览该类型",
+    "emptyPreview": "文件为空或无可预览内容",
     "failed": "失败",
     "countSelected": "{{count}} 个文件已选择"
   },
@@ -268,5 +297,212 @@
     "nameDuplicate": "名称已存在，请使用其他名称",
     "teamLimit": "最多只能创建 {{max}} 个团队",
     "agentLimit": "每个团队最多 {{max}} 个 Agent"
+  },
+  "prompts": {
+    "title": "提示词",
+    "subtitle": "管理和版本控制你的 AI 提示词模板",
+    "searchPlaceholder": "搜索提示词…",
+    "noDescription": "暂无描述",
+    "noData": "暂无{{label}}数据",
+    "statusEnabled": "启用",
+    "statusDraft": "草稿",
+    "tabAll": "全部",
+    "tab": {
+      "list": "列表",
+      "version": "版本"
+    },
+    "table": {
+      "name": "名称",
+      "desc": "描述",
+      "category": "类别",
+      "status": "状态",
+      "version": "版本",
+      "uses": "调用数",
+      "actions": "操作"
+    },
+    "list": {
+      "empty": "暂无提示词",
+      "emptyDesc": "点击上方按钮创建提示词",
+      "secureNote": "system 类=安全资产，仅管理员可编辑",
+      "edit": "编辑",
+      "delete": "删除",
+      "history": "历史"
+    },
+    "editor": {
+      "new": "新建提示词",
+      "edit": "编辑提示词",
+      "name": "名称",
+      "description": "描述",
+      "category": "类别",
+      "status": "状态",
+      "content": "内容",
+      "namePlaceholder": "如：产品问答助手",
+      "descPlaceholder": "简短描述此提示词的用途",
+      "contentPlaceholder": "你是一位…{{context}}…{{question}}",
+      "updatedAt": "更新时间",
+      "actions": "操作",
+      "saveHint": "保存即自动记录新版本",
+      "save": "保存",
+      "saving": "保存中…",
+      "saveFailed": "保存失败",
+      "retry": "重试"
+    },
+    "detail": {
+      "basicInfo": "基本信息",
+      "content": "提示词内容",
+      "uses": "调用次数",
+      "copy": "复制内容",
+      "copied": "已复制",
+      "emptyContent": "暂无内容"
+    },
+    "history": {
+      "title": "版本历史",
+      "empty": "暂无历史记录",
+      "version": "版本 {{num}}",
+      "view": "查看"
+    },
+    "version": {
+      "title": "版本历史",
+      "backToList": "返回列表",
+      "rollback": "回滚到此",
+      "view": "查看",
+      "current": "当前版本",
+      "createdAt": "创建于",
+      "createdBy": "创建者",
+      "rollbackTitle": "回滚到 {{version}}",
+      "rollbackMsg": "将用该版本内容覆盖当前并生成新版本，历史保留",
+      "rollbackConfirm": "确认回滚",
+      "rollbackSuccess": "已回滚并生成新版本"
+    },
+    "deleteTitle": "删除提示词",
+    "deleteConfirm": "确认删除「{{name}}」？"
+  },
+  "memory": {
+    "title": "会话记忆",
+    "empty": "暂无记忆",
+    "emptyDesc": "对话过程中产生的记忆会在完成后显示",
+    "exportJson": "导出 JSON",
+    "exportMd": "导出 Markdown",
+    "deleteTitle": "删除记忆",
+    "deleteConfirm": "确认删除该记忆？"
+  },
+  "retrievalPanel": {
+    "title": "检索来源 ({{count}} 条)",
+    "viewDetails": "查看详情"
+  },
+  "retrievalLogs": {
+    "navTitle": "检索记录",
+    "title": "检索记录",
+    "emptyOnly": "仅显示空召回",
+    "maxLatency": "最大延迟",
+    "query": "查询内容",
+    "hitCount": "命中数",
+    "latency": "延迟",
+    "sources": "来源",
+    "time": "时间",
+    "noLogs": "暂无检索日志",
+    "noLogsDesc": "发起检索后将在此显示记录",
+    "loadFailed": "检索日志加载失败",
+    "loadFailedDesc": "网络或服务异常，请稍后重试",
+    "sourceDetail": "来源详情",
+    "detail": "日志详情",
+    "timeRange": "时间范围",
+    "last72h": "近 72 小时"
+  },
+  "admin": {
+    "navTitle": "用户管理",
+    "users": {
+      "title": "用户管理",
+      "search": "搜索用户...",
+      "name": "姓名",
+      "email": "邮箱",
+      "role": "角色",
+      "status": "状态",
+      "active": "活跃",
+      "inactive": "停用",
+      "createdAt": "创建时间",
+      "noUsers": "暂无用户",
+      "noUsersDesc": "注册用户后将在此显示",
+      "confirmRoleChange": "确认修改该用户的角色？",
+      "confirmStatusChange": "确认修改该用户的状态？",
+      "viewDetails": "查看详情",
+      "userDetails": "用户详情",
+      "resetPassword": "重置密码",
+      "resetPasswordConfirm": "确认重置 {{name}} 的密码？",
+      "resetPasswordSuccess": "密码重置成功"
+    }
+  },
+  "kb": {
+    "navTitle": "知识库",
+    "title": "知识库",
+    "create": "新建知识库",
+    "name": "名称",
+    "description": "描述",
+    "assetCount": "资产数量",
+    "noKbs": "暂无知识库",
+    "createDesc": "创建知识库来组织你的文档资产",
+    "uncategorized": "未分类资产",
+    "assignTo": "分配到...",
+    "noUncategorized": "所有资产已分类",
+    "deleteConfirm": "确认删除该知识库？其中的资产将变为未分类。",
+    "editTitle": "编辑知识库",
+    "createTitle": "新建知识库"
+  },
+  "ragTest": {
+    "button": "召回测试",
+    "title": "召回测试",
+    "queryLabel": "测试问题",
+    "queryPlaceholder": "输入一个检索测试问题…",
+    "topK": "返回条数",
+    "rewrite": "先改写查询",
+    "run": "开始测试",
+    "running": "测试中...",
+    "hits": "命中 {{count}} 条",
+    "noHits": "无命中",
+    "embeddingNotConfigured": "未配置 Embedding，无法检索",
+    "emptyHint": "无命中：可尝试开启「改写查询」，或在素材库补充文档",
+    "similarity": "相似度",
+    "source": "来源",
+    "method": "检索方式",
+    "methodHybrid": "混合检索（向量+关键词）",
+    "methodSemantic": "仅向量检索",
+    "methodLexical": "仅关键词检索",
+    "tagFilter": "标签过滤",
+    "tagFilterPlaceholder": "逗号分隔，如: api, 部署",
+    "sectionParams": "检索参数"
+  },
+  "feedback": {
+    "feedbackNotice": "感谢反馈，这将帮助优化后续检索"
+  },
+  "monitoring": {
+    "navTitle": "质量报告",
+    "title": "质量报告",
+    "windowDay": "近24小时",
+    "windowWeek": "近7天",
+    "windowMonth": "近30天",
+    "windowAll": "全部时间",
+    "loadFailed": "加载监控数据失败",
+    "retrieval": {
+      "title": "检索质量",
+      "requests": "检索请求数",
+      "emptyRecall": "空召回率",
+      "p50": "P50延迟",
+      "p95": "P95延迟",
+      "noSamples": "暂无检索数据"
+    },
+    "feedback": {
+      "title": "答案好评率",
+      "good": "好评数",
+      "bad": "差评数",
+      "noSamples": "暂无反馈数据",
+      "description": "基于用户对答案的点赞/点踩统计"
+    },
+    "alerts": {
+      "title": "告警",
+      "none": "当前无告警",
+      "empty_recall_high": "空召回率过高：当前 {{current}}，阈值 {{threshold}}",
+      "p95_latency_high": "P95延迟过高：当前 {{current}}，阈值 {{threshold}}",
+      "good_ratio_low": "好评率过低：当前 {{current}}，阈值 {{threshold}}"
+    }
   }
 }

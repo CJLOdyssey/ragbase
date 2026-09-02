@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from rag.rag_chunking import Chunk
 from rag.rag_embedding import EMBEDDING_DIM
+from rag.rag_store_curation import CurationMixin, _vector_literal
 
 logger = get_logger(__name__)
 
@@ -25,7 +26,7 @@ _RRF_K = 60
 _LEXICAL_MIN_LEN = 3  # pg_trgm degenerates below a trigram's worth of chars
 
 
-class PgVectorStore:
+class PgVectorStore(CurationMixin):
     """PostgreSQL vector store with hybrid search and per-user isolation.
 
     Requires:
@@ -60,7 +61,8 @@ class PgVectorStore:
                         embedding vector({EMBEDDING_DIM}),
                         user_id TEXT NOT NULL DEFAULT '',
                         asset_id TEXT,
-                        metadata JSONB
+                        metadata JSONB,
+                        enabled BOOLEAN NOT NULL DEFAULT TRUE
                     )
                 """
                 )
@@ -87,7 +89,13 @@ class PgVectorStore:
         self._initialized = True
 
     async def add(self, chunks: list[Chunk], user_id: str) -> None:
-        """Insert chunks with embeddings, tagged with their owning user."""
+        """Insert chunks with embeddings, tagged with their owning user.
+
+        Chunk ids are content hashes (session-independent), so the same text
+        re-ingested in a different session hits ON CONFLICT: session_id and
+        run_id must follow the newest insert, or ``clear_session`` would leave
+        an orphan row bound to a stale session.
+        """
         if not chunks:
             return
         await self._ensure_table()
@@ -99,7 +107,7 @@ class PgVectorStore:
             for chunk in chunks:
                 if not chunk.embedding:
                     continue
-                emb_str = "[" + ",".join(str(v) for v in chunk.embedding) + "]"
+                emb_str = _vector_literal(chunk.embedding)
                 metadata = chunk.metadata or {}
                 await session.execute(
                     text(
@@ -110,7 +118,9 @@ class PgVectorStore:
                         VALUES (:id, :sid, :rid, :text, :tags,
                                 CAST(:emb AS vector), :uid, :aid, CAST(:meta AS jsonb))
                         ON CONFLICT (id) DO UPDATE
-                        SET text = EXCLUDED.text,
+                        SET session_id = EXCLUDED.session_id,
+                            run_id = EXCLUDED.run_id,
+                            text = EXCLUDED.text,
                             tags = EXCLUDED.tags,
                             embedding = EXCLUDED.embedding,
                             user_id = EXCLUDED.user_id,
@@ -140,15 +150,25 @@ class PgVectorStore:
         user_id: str,
         session_id: str | None = None,
         tag_filter: list[str] | None = None,
+        asset_ids: list[str] | None = None,
         top_k: int = 5,
         min_score: float | None = None,
+        embed_model: str | None = None,
+        embed_model_filter: bool = False,
+        method: str = "hybrid",
     ) -> list[dict[str, Any]]:
-        """Hybrid search: HNSW cosine leg + pg_trgm leg, fused via RRF.
+        """Vector / lexical / hybrid search over the chunk store.
+
+        method: 'hybrid' (default) fuses HNSW cosine ‖ pg_trgm legs via RRF;
+        'semantic' runs the vector leg only; 'lexical' the trgm leg only.
 
         user_id is mandatory — chunks of other owners are never candidates.
         min_score (optional) drops vector-leg hits below a similarity floor —
         low-scoring chunks never enter the RRF fusion. The lexical leg is
         already bounded by the pg_trgm word_similarity_threshold (0.3).
+        ``embed_model`` + ``embed_model_filter`` restrict candidates to one
+        embedding cohort (NULL matches legacy chunks without the marker) so
+        query vectors are only compared against same-space vectors.
         Returns list of {text, tags, session_id, run_id, asset_id, metadata,
         similarity, score}, ordered by RRF score descending.
         """
@@ -158,49 +178,55 @@ class PgVectorStore:
 
         factory = get_session_factory()
         async with factory() as session:
-            where_clauses = ["user_id = :uid"]
             params: dict[str, Any] = {"uid": user_id}
+            where_clauses = _scope_filters(
+                params,
+                session_id=session_id,
+                tag_filter=tag_filter,
+                asset_ids=asset_ids,
+            )
+            where_clauses += ["user_id = :uid", "enabled"]
 
-            if session_id:
-                where_clauses.append("session_id = :sid")
-                params["sid"] = session_id
-
-            if tag_filter:
-                tag_conditions = []
-                for i, tag in enumerate(tag_filter):
-                    param_name = f"tag{i}"
-                    tag_conditions.append(f":{param_name} = ANY(tags)")
-                    params[param_name] = tag.lower()
-                where_clauses.append("(" + " OR ".join(tag_conditions) + ")")
-
-            if min_score is not None:
-                where_clauses.append(
-                    "(1 - (embedding <=> CAST(:emb AS vector))) >= :min_score"
-                )
-                params["min_score"] = min_score
+            if embed_model_filter:
+                if embed_model is None:
+                    where_clauses.append("(metadata->>'embed_model') IS NULL")
+                else:
+                    where_clauses.append("metadata->>'embed_model' = :em")
+                    params["em"] = embed_model
 
             where_sql = " AND ".join(where_clauses)
 
-            emb_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
+            emb_str = _vector_literal(query_embedding)
 
             legs: list[list[dict[str, Any]]] = []
 
-            vec_rows = await session.execute(
-                text(
-                    f"""
-                    SELECT id, text, tags, session_id, run_id, asset_id, metadata,
-                           1 - (embedding <=> CAST(:emb AS vector)) AS similarity
-                    FROM vector_chunks
-                    WHERE {where_sql}
-                    ORDER BY embedding <=> CAST(:emb AS vector)
-                    LIMIT :vec_k
-                """
-                ),
-                {**params, "emb": emb_str, "vec_k": top_k * 5},
-            )
-            legs.append(_rows_to_dicts(vec_rows.fetchall()))
+            if method in ("hybrid", "semantic"):
+                # Add min_score filter only for vector search
+                vec_where = where_sql
+                vec_params = {**params}
+                if min_score is not None:
+                    vec_where += " AND (1 - (embedding <=> CAST(:emb AS vector))) >= :min_score"
+                    vec_params["min_score"] = min_score
 
-            if len(query_text.strip()) >= _LEXICAL_MIN_LEN:
+                vec_rows = await session.execute(
+                    text(
+                        f"""
+                        SELECT id, text, tags, session_id, run_id, asset_id, metadata,
+                               1 - (embedding <=> CAST(:emb AS vector)) AS similarity
+                        FROM vector_chunks
+                        WHERE {vec_where}
+                        ORDER BY embedding <=> CAST(:emb AS vector)
+                        LIMIT :vec_k
+                    """
+                    ),
+                    {**vec_params, "emb": emb_str, "vec_k": top_k * 5},
+                )
+                legs.append(_rows_to_dicts(vec_rows.fetchall()))
+
+            if len(query_text.strip()) >= _LEXICAL_MIN_LEN and method in (
+                "hybrid",
+                "lexical",
+            ):
                 await session.execute(text("SET LOCAL pg_trgm.word_similarity_threshold = 0.3"))
                 lex_rows = await session.execute(
                     text(
@@ -217,20 +243,105 @@ class PgVectorStore:
                 )
                 legs.append(_rows_to_dicts(lex_rows.fetchall()))
 
+        if len(legs) == 1:
+            # Single-leg method: order by similarity (RRF is meaningless with
+            # one ranking); score mirrors similarity for downstream merging.
+            leg = legs[0]
+            for row in leg:
+                row["score"] = row["similarity"]
+            return sorted(leg, key=lambda r: r["score"], reverse=True)[:top_k]
         return _rrf_fuse(legs, top_k)
+
+    async def embed_model_groups(
+        self,
+        user_id: str,
+        session_id: str | None = None,
+        tag_filter: list[str] | None = None,
+        asset_ids: list[str] | None = None,
+    ) -> list[str | None]:
+        """Distinct embedding-model cohorts inside the candidate scope.
+
+        Mirrors what indexing records in chunk metadata; NULL covers legacy
+        chunks written before per-KB binding (session-message ingest too).
+        """
+        await self._ensure_table()
+        from core.infra.database import get_session_factory
+
+        factory = get_session_factory()
+        async with factory() as session:
+            params: dict[str, Any] = {"uid": user_id}
+            where_clauses = _scope_filters(
+                params,
+                session_id=session_id,
+                tag_filter=tag_filter,
+                asset_ids=asset_ids,
+            )
+            where_clauses += ["user_id = :uid", "enabled"]
+            rows = await session.execute(
+                text(
+                    f"""
+                    SELECT DISTINCT metadata->>'embed_model' AS em
+                    FROM vector_chunks
+                    WHERE {" AND ".join(where_clauses)}
+                """
+                ),
+                params,
+            )
+            return [r[0] for r in rows.fetchall()]
 
     async def clear_asset(self, asset_id: str) -> None:
         """Delete all chunks of an asset — used on asset delete and reindex."""
+        await self.clear_assets([asset_id])
+
+    async def clear_assets(self, asset_ids: list[str]) -> None:
+        """Batch-delete chunks of multiple assets (e.g. KB-wide rebind purge)."""
+        if not asset_ids:
+            return
         await self._ensure_table()
         from core.infra.database import get_session_factory
 
         factory = get_session_factory()
         async with factory() as session:
             await session.execute(
-                text("DELETE FROM vector_chunks WHERE asset_id = :aid"),
-                {"aid": asset_id},
+                text("DELETE FROM vector_chunks WHERE asset_id = ANY(:aids)"),
+                {"aids": asset_ids},
             )
             await session.commit()
+
+    async def list_asset_chunks(
+        self,
+        asset_id: str,
+        user_id: str,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        """List an asset's chunks for preview — owner-scoped, capped by limit."""
+        await self._ensure_table()
+        from core.infra.database import get_session_factory
+
+        factory = get_session_factory()
+        async with factory() as session:
+            rows = await session.execute(
+                text(
+                    """
+                    SELECT id, text, tags, metadata, enabled
+                    FROM vector_chunks
+                    WHERE asset_id = :aid AND user_id = :uid
+                    ORDER BY id
+                    LIMIT :lim
+                    """
+                ),
+                {"aid": asset_id, "uid": user_id, "lim": limit},
+            )
+            return [
+                {
+                    "id": r[0],
+                    "text": r[1],
+                    "tags": r[2] if r[2] else [],
+                    "metadata": r[3] if r[3] else {},
+                    "enabled": bool(r[4]) if r[4] is not None else True,
+                }
+                for r in rows.fetchall()
+            ]
 
     async def clear_session(self, session_id: str) -> None:
         await self._ensure_table()
@@ -243,6 +354,39 @@ class PgVectorStore:
                 {"sid": session_id},
             )
             await session.commit()
+
+
+def _scope_filters(
+    params: dict[str, Any],
+    session_id: str | None,
+    tag_filter: list[str] | None,
+    asset_ids: list[str] | None,
+) -> list[str]:
+    """Shared WHERE fragments for scoped chunk queries; binds SQL params.
+
+    ``asset_ids`` uses tri-state semantics: None = unfiltered, [] = match
+    nothing, non-empty = restricted set. Caller appends ``user_id = :uid``.
+    """
+    clauses: list[str] = []
+    if session_id:
+        clauses.append("session_id = :sid")
+        params["sid"] = session_id
+
+    if tag_filter:
+        tag_conditions = []
+        for i, tag in enumerate(tag_filter):
+            param_name = f"tag{i}"
+            tag_conditions.append(f":{param_name} = ANY(tags)")
+            params[param_name] = tag.lower()
+        clauses.append("(" + " OR ".join(tag_conditions) + ")")
+
+    if asset_ids is not None:
+        if not asset_ids:
+            clauses.append("FALSE")
+        else:
+            clauses.append("asset_id = ANY(:aids)")
+            params["aids"] = asset_ids
+    return clauses
 
 
 def _rows_to_dicts(rows: Sequence[Any]) -> list[dict[str, Any]]:

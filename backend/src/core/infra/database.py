@@ -4,10 +4,10 @@ import asyncio
 import os
 import time
 from collections.abc import AsyncIterator
-from pathlib import Path
 from typing import Any
 
 from core.base import Base
+from core.env import load_dotenv
 from core.infra.logging_config import get_logger
 from sqlalchemy import (
     event,
@@ -26,19 +26,9 @@ logger = get_logger(__name__)
 # Queries exceeding this threshold (seconds) are logged as warnings
 SLOW_QUERY_THRESHOLD = 0.5
 
-# Load .env as fallback — never override already-set env vars (standard dotenv
-# semantics). Prevents test fixtures (which set e.g. AUTH_MODE=legacy before
-# core modules are imported) from being silently clobbered by backend/.env.
-_env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-if _env_file.exists():
-    for _line in _env_file.read_text().splitlines():
-        _line = _line.strip()
-        if _line and not _line.startswith("#") and "=" in _line:
-            _key, _, _value = _line.partition("=")
-            _key = _key.strip()
-            _value = _value.strip().strip('"').strip("'")
-            if _key:
-                os.environ.setdefault(_key, _value)
+# Load .env as fallback — never overrides already-set env vars, so test
+# fixtures can't be silently clobbered by backend/.env.
+load_dotenv()
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -137,6 +127,8 @@ async def init_db() -> None:
     engine = get_async_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Ad-hoc bootstrap for legacy DBs created before `sessions.kind`
+        # existed (Alembic covers this column in new deployments).
         await conn.execute(
             text(
                 """
@@ -170,9 +162,11 @@ from orm import (  # noqa: F401
     AttachmentDB,
     AuditLogDB,
     ChatMessage,
-    CommandLogDB,
     FeedbackLog,
+    FeedbackReviewDB,
+    HealthScoreSnapshotDB,
     KeyUsageLog,
+    KnowledgeBaseDB,
     MemoryEntry,
     ProjectRun,
     PromptDB,
@@ -188,8 +182,9 @@ from orm import (  # noqa: F401
 
 __all__ = [
     "AssetDB", "AttachmentDB", "AuditLogDB",
-    "FeedbackLog",
-    "ChatMessage", "CommandLogDB", "KeyUsageLog",
+    "FeedbackLog", "FeedbackReviewDB", "HealthScoreSnapshotDB",
+    "ChatMessage", "KeyUsageLog",
+    "KnowledgeBaseDB",
     "MemoryEntry", "ProjectRun",
     "PromptDB", "RefreshTokenDB", "RetrievalLogDB",
     "RoleDB", "SessionDB",

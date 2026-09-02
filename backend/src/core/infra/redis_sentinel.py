@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from core.env import env_int
 from redis.asyncio import Redis as AsyncRedis
 from redis.asyncio.sentinel import Sentinel
 
@@ -16,7 +17,10 @@ SENTINEL_ENABLED = os.environ.get("REDIS_SENTINEL_ENABLED", "").lower() in ("1",
 SENTINEL_HOSTS_STR = os.environ.get("REDIS_SENTINEL_HOSTS", "sentinel-1:26379,sentinel-2:26380,sentinel-3:26381")
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "")
 SERVICE_NAME = os.environ.get("REDIS_SENTINEL_SERVICE", "ragbase-redis")
-SENTINEL_DB = int(os.environ.get("REDIS_SENTINEL_DB", "0"))
+SENTINEL_DB = env_int("REDIS_SENTINEL_DB", 0)
+# Per-command read timeout. Without it a hung-but-connected Redis (half-open
+# TCP, e.g. process freeze) blocks publish/incr forever instead of failing fast.
+SOCKET_TIMEOUT = env_int("REDIS_SOCKET_TIMEOUT", 10)
 
 _sentinel: Sentinel | None = None
 
@@ -33,6 +37,7 @@ def _get_sentinel() -> Sentinel:
             "decode_responses": True,
             "socket_keepalive": True,
             "socket_connect_timeout": 10,
+            "socket_timeout": SOCKET_TIMEOUT,
         }
         if REDIS_PASSWORD:
             kwargs["password"] = REDIS_PASSWORD
@@ -48,12 +53,13 @@ def create_redis() -> Any:
     """
     if SENTINEL_ENABLED:
         sentinel = _get_sentinel()
-        max_connections = int(os.environ.get("REDIS_POOL_SIZE", "100"))
+        max_connections = env_int("REDIS_POOL_SIZE", 100)
         kwargs: dict[str, Any] = {
             "db": SENTINEL_DB,
             "decode_responses": True,
             "socket_keepalive": True,
             "socket_connect_timeout": 10,
+            "socket_timeout": SOCKET_TIMEOUT,
             "health_check_interval": 30,
             "retry_on_timeout": True,
             "max_connections": max_connections,
@@ -64,13 +70,14 @@ def create_redis() -> Any:
 
     # Direct connection — read REDIS_URL from env to avoid circular imports
     url = os.environ.get("REDIS_URL", "redis://localhost:6380/0")
-    max_connections = int(os.environ.get("REDIS_POOL_SIZE", "100"))
+    max_connections = env_int("REDIS_POOL_SIZE", 100)
     return AsyncRedis.from_url(
         url,
         max_connections=max_connections,
         decode_responses=True,
         socket_keepalive=True,
         socket_connect_timeout=10,
+        socket_timeout=SOCKET_TIMEOUT,
         health_check_interval=30,
         retry_on_timeout=True,
     )

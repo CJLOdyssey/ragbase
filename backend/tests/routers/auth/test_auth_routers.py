@@ -4,26 +4,24 @@ from unittest.mock import patch
 
 
 class TestAuthLogin:
-    def test_login_inactive_user(self, client):
+    async def test_login_inactive_user(self, client):
+        # Use the pytest-asyncio loop: a fresh `asyncio.new_event_loop()`
+        # (old version) could bind/use aiosqlite connections across loops
+        # and leave admin deactivated if teardown silently failed.
         from core.infra.database import UserDB, get_session_factory
         from sqlalchemy import update
         factory = get_session_factory()
-        async def _deactivate():
-            async with factory() as s:
-                await s.execute(update(UserDB).where(UserDB.email == "admin@test.com").values(is_active=False))
-                await s.commit()
-        import asyncio
-        asyncio.new_event_loop().run_until_complete(_deactivate())
+        async with factory() as s:
+            await s.execute(update(UserDB).where(UserDB.email == "admin@test.com").values(is_active=False))
+            await s.commit()
         resp = client.post(
             "/api/auth/login",
             json={"email": "admin@test.com", "password": "admin123"},
         )
         assert resp.status_code == 403
-        async def _reactivate():
-            async with factory() as s:
-                await s.execute(update(UserDB).where(UserDB.email == "admin@test.com").values(is_active=True))
-                await s.commit()
-        asyncio.new_event_loop().run_until_complete(_reactivate())
+        async with factory() as s:
+            await s.execute(update(UserDB).where(UserDB.email == "admin@test.com").values(is_active=True))
+            await s.commit()
 
     def test_login_valid(self, client):
         resp = client.post(
@@ -107,7 +105,13 @@ class TestAuthLogin:
         assert resp2.status_code == 401
 
     def test_refresh_requires_cookie(self, client):
-        resp = client.post("/api/auth/refresh")
+        # conftest 已预登录；清空 cookie 构造"无刷新令牌"请求
+        saved = dict(client.cookies)
+        client.cookies.clear()
+        try:
+            resp = client.post("/api/auth/refresh")
+        finally:
+            client.cookies.update(saved)
         assert resp.status_code == 401
 
     def test_refresh_rotates_cookie(self, client):
@@ -366,7 +370,7 @@ class TestAuthProfile:
         resp = client.get("/api/auth/me")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["email"] == "admin@example.com"
+        assert data["email"] == "admin@test.com"
         assert data["is_verified"] is True
 
     def test_profile_returns_admin_in_legacy(self, client):

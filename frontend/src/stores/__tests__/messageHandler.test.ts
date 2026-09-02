@@ -32,7 +32,7 @@ function makeState(overrides: Record<string, unknown> = {}) {
         created_at: new Date().toISOString(),
       },
     ],
-    status: 'streaming',
+    status: 'running',
     currentRole: 'Agent',
     wsStatus: 'connected',
     skipThinking: false,
@@ -82,10 +82,27 @@ describe('handleMessageEvent', { tags: ['unit'] }, () => {
     expect(result.messages).toHaveLength(2);
     expect(result.messages[1].content).toBe('New msg');
   });
+
+  it('ignores message event when run finished (status idle — reconnect replay)', () => {
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState({ streamingId: null, status: 'idle' })),
+    );
+
+    handleMessageEvent(set as never, {
+      type: 'message',
+      content: 'Replayed',
+      thinking: '',
+      role: 'agent',
+      agent_name: 'Agent',
+    });
+
+    const result = set.mock.results[0].value;
+    expect(result).toEqual({});
+  });
 });
 
 describe('handleInfoEvent', { tags: ['unit'] }, () => {
-  it('appends info to streaming message', () => {
+  it('appends info to streaming message (content 优先)', () => {
     const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
       fn(makeState()),
     );
@@ -99,7 +116,24 @@ describe('handleInfoEvent', { tags: ['unit'] }, () => {
     const result = set.mock.results[0].value as {
       messages: Array<{ content: string }>;
     };
+    expect(result.messages[0].content).toContain('[Fetching data...]');
+  });
+
+  it('content 缺失时回退到 data，绝不追加 undefined', () => {
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState()),
+    );
+
+    handleInfoEvent(set as never, {
+      type: 'info',
+      data: 'extra',
+    });
+
+    const result = set.mock.results[0].value as {
+      messages: Array<{ content: string }>;
+    };
     expect(result.messages[0].content).toContain('[extra]');
+    expect(result.messages[0].content).not.toContain('undefined');
   });
 
   it('returns empty state when no streamingId', () => {

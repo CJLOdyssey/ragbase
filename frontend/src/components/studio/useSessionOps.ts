@@ -10,6 +10,7 @@ import type { SessionItem } from '../../types';
 import type { Conversation } from '../../types/studio';
 import {
   deleteSession,
+  listSessions,
   pinSession,
   renameSession,
 } from '../../api/client/sessions';
@@ -18,6 +19,7 @@ import {
   toConversation,
   writeSessionsCache,
 } from '../../stores/sessionCache';
+import { mergeSessions } from '../../stores/sessionMerge';
 import Logger from '../../utils/logger';
 
 interface SessionOpsParams {
@@ -40,6 +42,31 @@ export function useSessionOps({
     Record<string, { title?: string; isPinned?: boolean }>
   >({});
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+
+  // 乐观更新失败时以 server 为准纠正本地列表（回滚 tweak/deletedIds 的残留）。
+  const refetchSessions = useCallback(() => {
+    listSessions(100)
+      .then((data) => {
+        // 唯一化归并：保留发送中的乐观占位（temp）
+        setCachedSessions((prev) => {
+          const merged = mergeSessions(prev, data);
+          writeSessionsCache(merged);
+          return merged;
+        });
+      })
+      .catch(() => {
+        // non-fatal
+      });
+  }, [setCachedSessions]);
+
+  const dropTweak = useCallback((convId: string) => {
+    setLocalTweaks((prev) => {
+      if (!(convId in prev)) return prev;
+      const next = { ...prev };
+      delete next[convId];
+      return next;
+    });
+  }, []);
 
   const conversations: Conversation[] = useMemo(() => {
     return cachedSessions
@@ -86,15 +113,25 @@ export function useSessionOps({
         writeSessionsCache(next);
         return next;
       });
+      // 乐观占位（temp-*）无 server 会话，仅本地删除
+      if (convId.startsWith('temp-')) return;
       deleteSession(convId).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to delete session %s: %s',
           convId,
           String(err),
         );
+        // 乐观删除失败 → 撤销 deletedIds 并以 server 为准恢复列表
+        setDeletedIds((prev) => {
+          if (!prev.has(convId)) return prev;
+          const next = new Set(prev);
+          next.delete(convId);
+          return next;
+        });
+        refetchSessions();
       });
     },
-    [activeConvId, navigate, setCachedSessions, setRestoring],
+    [activeConvId, navigate, setCachedSessions, setRestoring, refetchSessions],
   );
 
   const handleRenameConversation = useCallback(
@@ -112,15 +149,20 @@ export function useSessionOps({
         writeSessionsCache(next);
         return next;
       });
+      // 乐观占位（temp-*）无 server 会话，仅本地更新
+      if (convId.startsWith('temp-')) return;
       renameSession(convId, trimmed).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to rename session %s: %s',
           convId,
           String(err),
         );
+        // 乐观重命名失败 → 回滚 tweak 并以 server 为准纠正标题
+        dropTweak(convId);
+        refetchSessions();
       });
     },
-    [setCachedSessions],
+    [setCachedSessions, dropTweak, refetchSessions],
   );
 
   const handlePinConversation = useCallback(
@@ -138,15 +180,20 @@ export function useSessionOps({
         writeSessionsCache(updated);
         return updated;
       });
+      // 乐观占位（temp-*）无 server 会话，仅本地更新
+      if (convId.startsWith('temp-')) return;
       pinSession(convId, next).catch((err) => {
         Logger.warn(
           '[useHomeState] failed to pin session %s: %s',
           convId,
           String(err),
         );
+        // 乐观置顶失败 → 回滚 tweak 并以 server 为准纠正
+        dropTweak(convId);
+        refetchSessions();
       });
     },
-    [conversations, setCachedSessions],
+    [conversations, setCachedSessions, dropTweak, refetchSessions],
   );
 
   return {

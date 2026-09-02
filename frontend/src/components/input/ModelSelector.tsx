@@ -183,7 +183,6 @@ export default function ModelSelector({
     return () => clearTimeout(timer);
   }, [hasLoadedOnce]);
 
-  // Memoize grouped models — grouped by provider name.
   const groups = useMemo(() => {
     const g: Record<string, ModelOption[]> = {};
     for (const m of models) (g[m.provider] ??= []).push(m);
@@ -193,7 +192,6 @@ export default function ModelSelector({
     }));
   }, [models]);
 
-  // Recent models (user's last picks) shown at top of the list
   const recentModels = useMemo(() => {
     const byId = new Map(models.map((m) => [m.id, m]));
     return recentIds
@@ -201,7 +199,6 @@ export default function ModelSelector({
       .filter((m): m is ModelOption => !!m);
   }, [models, recentIds]);
 
-  // Full list minus recent entries (no duplicates)
   const recentSet = useMemo(
     () => new Set(recentModels.map((m) => m.id)),
     [recentModels],
@@ -221,7 +218,6 @@ export default function ModelSelector({
     [recentModels, fullProviders],
   );
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const h = (e: MouseEvent) => {
@@ -242,7 +238,6 @@ export default function ModelSelector({
     });
   }, []);
 
-  // Keyboard navigation + Escape close
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => {
@@ -274,7 +269,6 @@ export default function ModelSelector({
     return () => document.removeEventListener('keydown', h);
   }, [open, focusIdx, allOptions, onChange, recordRecent]);
 
-  // Scroll focused item into view
   useEffect(() => {
     if (!open || focusIdx < 0 || !listRef.current) return;
     const items = listRef.current.querySelectorAll('[data-model-option]');
@@ -294,7 +288,7 @@ export default function ModelSelector({
   return (
     <div className="relative inline-flex items-center" ref={ref}>
       <button
-        className={`inline-flex items-center gap-1 px-2 h-[26px] min-w-[140px] border rounded-md bg-transparent text-xs font-[inherit] cursor-pointer transition-all duration-150 max-w-[180px] border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)] ${!hasLoadedOnce || isEmpty || !current ? 'justify-center' : ''}`}
+        className={`inline-flex items-center gap-1 px-2 h-[26px] min-w-[80px] sm:min-w-[140px] border rounded-md bg-transparent text-xs font-[inherit] cursor-pointer transition-all duration-150 max-w-[180px] border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)] ${!hasLoadedOnce || isEmpty || !current ? 'justify-center' : ''}`}
         onClick={() => {
           if (isEmpty) {
             onConfigure?.();

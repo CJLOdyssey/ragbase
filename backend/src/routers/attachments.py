@@ -11,6 +11,7 @@ from auth import get_user_id
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from core.models import AttachmentResponse
+from extract import ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE_MB, extract_text, validate_magic, validate_upload
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse
 from orm.infra import AttachmentDB
@@ -27,62 +28,11 @@ from repository.attachments import (
 logger = get_logger(__name__)
 router = APIRouter(tags=["attachments"])
 
-MAX_FILE_SIZE_MB = 10
-ALLOWED_CONTENT_TYPES = {
-    "image/png",
-    "image/jpeg",
-    "image/gif",
-    "image/webp",
-    "application/pdf",
-    "text/plain",
-    "text/markdown",
-    "text/csv",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/json",
-}
-# Content-Type is client-supplied and spoofable — verify file signatures too.
-# Text types carry no signature; reject embedded NUL bytes instead.
-_MAGIC_PREFIXES: dict[str, tuple[bytes, ...]] = {
-    "image/png": (b"\x89PNG\r\n\x1a\n",),
-    "image/jpeg": (b"\xff\xd8\xff",),
-    "image/gif": (b"GIF87a", b"GIF89a"),
-    "image/webp": (b"RIFF",),
-    "application/pdf": (b"%PDF-",),
-    "application/msword": (b"\xd0\xcf\x11\xe0",),  # OLE2
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": (
-        b"PK\x03\x04",
-    ),  # ZIP container
-}
-_TEXT_TYPES = {"text/plain", "text/markdown", "text/csv", "application/json"}
 DEFAULT_UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
 UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", str(DEFAULT_UPLOAD_DIR))).resolve()
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
-
-
-def _validate_upload(content_type: str, size: int) -> None:
-    if size > MAX_FILE_SIZE_MB * 1024 * 1024:
-        raise error_response(ErrorCode.ATTACHMENT_TOO_LARGE, detail=f"文件超过 {MAX_FILE_SIZE_MB}MB 限制")
-    if content_type not in ALLOWED_CONTENT_TYPES:
-        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail=f"不支持的文件类型: {content_type}")
-
-
-def _validate_magic(content: bytes, content_type: str) -> None:
-    """Reject files whose bytes don't match their declared type."""
-    if content_type in _TEXT_TYPES:
-        if b"\x00" in content:
-            raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="文件内容与类型不符")
-        return
-    if content_type == "image/webp":
-        # RIFF container + WEBP fourcc at offset 8
-        if not (content[:4] == b"RIFF" and content[8:12] == b"WEBP"):
-            raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="文件内容与类型不符")
-        return
-    prefixes = _MAGIC_PREFIXES.get(content_type)
-    if prefixes is not None and not any(content.startswith(p) for p in prefixes):
-        raise error_response(ErrorCode.ATTACHMENT_TYPE_INVALID, detail="文件内容与类型不符")
 
 
 def _validate_session_id(session_id: str) -> str:
@@ -93,11 +43,11 @@ def _validate_session_id(session_id: str) -> str:
 
 
 async def _ensure_session_access(session_id: str, user_id: str) -> None:
-    """Session must exist; with auth enabled, it must belong to the caller."""
+    """Session must exist and belong to the caller."""
     sess = await get_session(session_id)
     if sess is None:
         raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="会话不存在")
-    if os.environ.get("AUTH_ENABLED", "0") == "1" and sess.user_id != user_id:
+    if sess.user_id != user_id:
         raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权访问该会话")
 
 
@@ -109,11 +59,10 @@ async def _ensure_attachment_access(attachment_id: str, user_id: str) -> Attachm
     att = await get_attachment_by_id(attachment_id)
     if att is None:
         raise error_response(ErrorCode.ATTACHMENT_NOT_FOUND, detail="附件不存在")
-    if os.environ.get("AUTH_ENABLED", "0") == "1":
-        if att.session_id:
-            await _ensure_session_access(att.session_id, user_id)
-        elif att.user_id != user_id:
-            raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权访问该附件")
+    if att.session_id:
+        await _ensure_session_access(att.session_id, user_id)
+    elif att.user_id != user_id:
+        raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权访问该附件")
     return att
 
 
@@ -123,19 +72,6 @@ def _ensure_storage_inside_upload_dir(storage_path: str) -> Path:
     if not p.resolve().is_relative_to(UPLOAD_DIR):
         raise error_response(ErrorCode.ATTACHMENT_NOT_FOUND, detail="附件不存在")
     return p
-
-
-def _extract_text(file_path: Path, content_type: str) -> str:
-    try:
-        if content_type.startswith("text/") or content_type == "application/json":
-            return file_path.read_text(encoding="utf-8", errors="ignore")[:50000]
-        if content_type == "application/pdf":
-            return "[PDF 文档 - 需要后端解析库支持, 当前为占位符]"
-        if content_type.startswith("image/"):
-            return f"[图片文件 - {file_path.stat().st_size} bytes]"
-    except Exception as e:
-        logger.warning("Text extraction failed: %s", e)
-    return ""
 
 
 @router.post("/api/attachments", response_model=AttachmentResponse, status_code=201)
@@ -158,8 +94,8 @@ async def upload_attachment(
 
     content_type = file.content_type or "application/octet-stream"
     content = await file.read()
-    _validate_upload(content_type, len(content))
-    _validate_magic(content, content_type)
+    validate_upload(content_type, len(content))
+    validate_magic(content, content_type)
 
     attachment_id = str(uuid4())
     from pathlib import Path as _Path
@@ -175,7 +111,7 @@ async def upload_attachment(
         logger.error("Failed to save attachment: %s", e, exc_info=True)
         raise error_response(ErrorCode.INTERNAL_ERROR, detail="文件保存失败") from e
 
-    extracted = _extract_text(storage_path, content_type)
+    extracted = extract_text(storage_path, content_type)
 
     await create_attachment(
         attachment_id=attachment_id,
@@ -206,6 +142,15 @@ async def upload_attachment(
         has_extracted_text=bool(extracted),
         created_at=datetime.now(UTC),
     )
+
+
+@router.get("/api/attachments/upload-config")
+async def upload_config() -> dict[str, Any]:
+    """Expose upload constraints so the frontend stays single-sourced."""
+    return {
+        "allowed_content_types": sorted(ALLOWED_CONTENT_TYPES),
+        "max_file_size_mb": MAX_FILE_SIZE_MB,
+    }
 
 
 @router.get("/api/attachments/{attachment_id}")

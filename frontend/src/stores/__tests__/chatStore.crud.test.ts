@@ -4,7 +4,7 @@
 // before this file finishes evaluating.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  chatStoreMocks,
+  chatStoreMocks as _chatStoreMocks,
   resetChatStoreState,
 } from './helpers/chatStoreTestUtils';
 
@@ -193,8 +193,8 @@ describe('chatStore', { tags: ['unit'] }, () => {
 
       useChatStore.getState().setThumbsFeedback('m1', 'up');
       const msgs = useChatStore.getState().messages;
-      expect(msgs[0].thumbs).toBe('up');
-      expect(msgs[1].thumbs).toBeUndefined();
+      expect(msgs[0].thumbsFeedback).toBe('up');
+      expect(msgs[1].thumbsFeedback).toBeUndefined();
     });
 
     it('clears thumbs feedback when null', async () => {
@@ -207,7 +207,7 @@ describe('chatStore', { tags: ['unit'] }, () => {
             agent_name: 'Agent',
             content: 'test',
             thinking: '',
-            thumbs: 'up' as const,
+            thumbsFeedback: 'up' as const,
             round_number: 0,
             created_at: new Date().toISOString(),
           },
@@ -215,7 +215,7 @@ describe('chatStore', { tags: ['unit'] }, () => {
       });
 
       useChatStore.getState().setThumbsFeedback('m1', null);
-      expect(useChatStore.getState().messages[0].thumbs).toBeNull();
+      expect(useChatStore.getState().messages[0].thumbsFeedback).toBeNull();
     });
   });
 });

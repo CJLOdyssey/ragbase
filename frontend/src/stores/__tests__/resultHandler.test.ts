@@ -229,6 +229,30 @@ describe('handleResultEvent', { tags: ['unit'] }, () => {
     };
     expect(result.messages![0].thinking).toBeUndefined();
   });
+
+  it('result 终态无条件清理 continuingId/pendingRegenerate（与 error 对称）', () => {
+    const s = makeState({
+      streamingId: null,
+      continuingId: 'msg-old',
+      pendingRegenerate: { userMsgId: 'u1', oldRunIds: ['r-old'], requirement: 'q' },
+      messages: [makeMsg('msg-old', { content: 'old answer' })],
+    });
+    const get = vi.fn(() => s);
+    const set = vi.fn((fn: (state: typeof s) => Partial<typeof s>) => fn(s));
+    const activeStreams = new Set<string>();
+
+    handleResultEvent(set as never, get, activeStreams, {
+      type: 'result',
+      code: '',
+    });
+
+    const result = set.mock.results[0].value as {
+      continuingId: string | null;
+      pendingRegenerate: unknown;
+    };
+    expect(result.continuingId).toBeNull();
+    expect(result.pendingRegenerate).toBeNull();
+  });
 });
 
 describe('handleTeamResultEvent', { tags: ['unit'] }, () => {

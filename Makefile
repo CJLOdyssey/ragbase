@@ -81,3 +81,30 @@ dev-backend-logs:
 ## Run health check against backend
 health:
 	python scripts/dev/health.py --port ${PORT:-8080} --check-orphans
+
+# ── 混合模式: 后端(systemd) + 前端(tmux) ──────────────────────────
+.PHONY: up down restart status logs frontend
+
+## 一键启动后端 + 前端
+up:
+	bash scripts/dev/ragbase.sh start
+
+## 一键停止
+down:
+	bash scripts/dev/ragbase.sh stop
+
+## 一键重启
+restart:
+	bash scripts/dev/ragbase.sh restart
+
+## 查看服务状态
+status:
+	bash scripts/dev/ragbase.sh status
+
+## 查看后端日志 (Ctrl+C 退出)
+logs:
+	bash scripts/dev/ragbase.sh logs
+
+## attach 到前端 tmux session (Ctrl+B D 退出)
+frontend:
+	bash scripts/dev/ragbase.sh frontend

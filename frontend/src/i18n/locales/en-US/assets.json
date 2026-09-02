@@ -1,6 +1,19 @@
 {
   "assets": {
-    "title": "Assets",
+    "title": "Knowledge",
+    "subtitle": "Manage the raw files and documents used by the knowledge base",
+    "viewTable": "Table view",
+    "viewGrid": "Card view",
+    "dropHint": "Drag files here to upload",
+    "dropFormats": "Supports .txt .md .pdf .docx .xlsx .csv .html .doc .xls .ppt .pptx, up to 20 MB each",
+    "noMatch": "No matching assets",
+    "noMatchDesc": "Adjust your search or filters",
+    "more": "More",
+    "filterCount": "{{filteredCount}} / {{total}} filtered",
+    "prevPage": "Prev",
+    "nextPage": "Next",
+    "pageIndicator": "· Page {{current}} / {{total}}",
+    "download": "Download",
     "upload": {
       "button": "Upload Asset",
       "selectFile": "Select File",
@@ -11,13 +24,156 @@
       "failed": "Upload failed"
     },
     "list": {
-      "empty": "No assets yet. Upload one to get started.",
+      "empty": "No assets yet",
+      "emptyDesc": "Click the button above to upload",
       "rename": "Rename",
       "deleteConfirm": "Delete asset \"{{name}}\"? This action cannot be undone.",
       "deleteSuccess": "Deleted successfully",
       "index": "Index",
+      "indexing": "Indexing…",
       "indexSuccess": "Index created",
-      "documentsOnly": "Only document-type assets can be indexed"
+      "documentsOnly": "Only document-type assets can be indexed",
+      "retry": "Retry",
+      "retrySuccess": "Re-indexed successfully",
+      "retryFailed": "Re-index failed"
+    },
+    "uncategorized": {
+      "banner": "{{count}} assets are uncategorized and unreachable by per-KB retrieval",
+      "handle": "Handle now",
+      "filterChip": "Uncategorized",
+      "clearFilter": "Clear filter",
+      "assignAction": "Assign to knowledge base",
+      "back": "Back",
+      "assignSuccess": "Assigned to knowledge base"
+    },
+    "bulk": {
+      "selected": "{{count}} selected",
+      "assignTo": "Assign to knowledge base",
+      "noKbs": "Create a knowledge base first",
+      "index": "Index",
+      "indexing": "Indexing…",
+      "indexDisabledHint": "No unindexed documents in selection",
+      "cancel": "Clear selection",
+      "selectAll": "Select all",
+      "select": "Select",
+      "assignSuccess": "Assigned {{count}} assets to \"{{name}}\"",
+      "assignPartial": "Assigned {{assigned}}, skipped {{skipped}} (missing or not owned)",
+      "indexQueued": "Queued {{count}} indexing tasks"
+    },
+    "urlImport": {
+      "button": "Import URL",
+      "title": "Import from URL",
+      "urlLabel": "Document URL",
+      "nameLabel": "Name (optional)",
+      "namePlaceholder": "Inferred from URL",
+      "submit": "Import",
+      "importing": "Importing…",
+      "invalidUrl": "Please enter a valid http/https URL",
+      "failed": "Import failed. Check if the URL is accessible."
+    },
+    "chunks": {
+      "button": "Chunks",
+      "title": "Chunk Preview",
+      "empty": "No chunks",
+      "emptyDesc": "This asset has no chunks yet",
+      "loading": "Loading chunks…",
+      "count": "{{count}} chunks",
+      "truncated": "Showing first {{count}} chunks",
+      "manualTag": "manual",
+      "toggle": "Enable/disable",
+      "edit": "Edit chunk",
+      "save": "Save",
+      "saving": "Saving…",
+      "addLabel": "Append manual chunk",
+      "addPlaceholder": "Enter text to append — it will be embedded automatically on save…",
+      "addButton": "Append",
+      "deleteTitle": "Delete chunk",
+      "deleteConfirm": "Delete this chunk? This cannot be undone.",
+      "tabChunks": "Document chunks",
+      "tabQa": "QA import",
+      "qa": {
+        "hint": "One vector chunk per Q/A pair, embedded with the KB's bound model — no document parsing required.",
+        "questionPlaceholder": "Question, e.g. Which deployment modes are supported?",
+        "answerPlaceholder": "Answer…",
+        "addRow": "Add row",
+        "removeRow": "Remove row",
+        "import": "Import {count} pairs",
+        "importing": "Importing…",
+        "importFailed": "Import failed, please retry"
+      }
+    },
+    "table": {
+      "fileName": "File name",
+      "kb": "Knowledge base",
+      "format": "Format",
+      "size": "Size",
+      "status": "Status",
+      "chunks": "Chunks",
+      "updated": "Updated",
+      "actions": "Actions"
+    },
+    "action": {
+      "index": "Index",
+      "retry": "Retry",
+      "chunks": "Chunks",
+      "rename": "Rename",
+      "delete": "Delete",
+      "tags": "Tags"
+    },
+    "section": {
+      "fileInfo": "File Info",
+      "chunks": "Chunks Preview"
+    },
+    "info": {
+      "format": "Format",
+      "size": "Size",
+      "status": "Status",
+      "chunks": "Chunks",
+      "updated": "Updated"
+    },
+    "status": {
+      "indexed": "Indexed",
+      "processing": "Processing",
+      "failed": "Failed",
+      "pending": "Not indexed",
+      "noIndex": "No index needed"
+    },
+    "stat": {
+      "total": "Total files",
+      "indexed": "Indexed",
+      "processing": "Processing",
+      "totalSize": "Total size",
+      "unit": ""
+    },
+    "toolbar": {
+      "searchPlaceholder": "Enter file name",
+      "timeFrom": "From",
+      "timeTo": "To",
+      "clear": "Clear"
+    },
+    "filter": {
+      "kb": "Knowledge base",
+      "unassigned": "Unassigned",
+      "format": "Format",
+      "status": "Status",
+      "time": "Updated",
+      "timeAll": "All",
+      "timeToday": "Today",
+      "time7d": "Last 7 days",
+      "time30d": "Last 30 days",
+      "timeCustom": "Custom",
+      "clearAll": "Clear all"
+    },
+    "processing": "Processing, please wait…",
+    "loading": "Loading…",
+    "noChunks": "No chunk data yet",
+    "viewAllChunks": "View all {{count}} chunks",
+    "notIndexed": "This file is not indexed, no chunk preview",
+    "chunkUnit": "chunks",
+    "tags": {
+      "title": "Edit tags",
+      "placeholder": "Type and press enter to add",
+      "hint": "Tags are baked into chunks on re-index and usable as a recall filter."
     }
   }
 }

@@ -7,6 +7,7 @@ import urllib.request
 from typing import Any
 
 from core.infra.logging_config import get_logger
+from domain.ssrf import validate_public_url
 
 logger = get_logger(__name__)
 
@@ -38,7 +39,7 @@ class EmbeddingProvider:
         self.base_url = base_url
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        """Batch-embed a list of texts. Returns list of 1024-dim vectors.
+        """Batch-embed a list of texts, returning one vector per text.
 
         Raises RuntimeError on any failure — callers must handle; zero-vector
         fallback would silently poison the vector store with fake embeddings.
@@ -57,6 +58,8 @@ class EmbeddingProvider:
             )
         if self.base_url:
             url = f"{self.base_url.rstrip('/')}/embeddings"
+            # SSRF guard: custom base_url is user-influenced — must be public.
+            validate_public_url(url)
             body: dict[str, Any] = {"model": self.model, "input": texts}
             response_key = "data"
         else:
@@ -87,5 +90,6 @@ class EmbeddingProvider:
         raise RuntimeError("DashScope embedding response missing embeddings")
 
     async def embed_query(self, query: str) -> list[float]:
+        """Embed a single query string, returning one vector."""
         embeddings = await self.embed([query])
         return embeddings[0]

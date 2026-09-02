@@ -1,5 +1,5 @@
 # ── 本地开发 compose（overlay）───────────────────────────────────────────
-# 用法：docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
+# 用法：docker compose --env-file .env -f docker/compose.base.yml -f docker/compose.local.yml up -d
 # 差异：端口全暴露（5433/6380/8080/5173）、弱密钥默认、build args、本地镜像名。
 # ─────────────────────────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ services:
   backend:
     image: ragbase/backend:latest
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   frontend:
     image: ragbase/frontend:latest

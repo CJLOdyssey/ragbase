@@ -4,8 +4,6 @@ Legacy mapping: chat->[llm] vector->[embedding] general->[llm,embedding]
                 image->[tool] tool->[tool] audio->[]
 """
 
-import json
-
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
@@ -30,9 +28,9 @@ def upgrade() -> None:
         "user_api_keys",
         sa.Column(
             "capabilities",
-            postgresql.JSONB(),
+            postgresql.JSONB().with_variant(sa.JSON(), "sqlite"),
             nullable=False,
-            server_default=sa.text("'[]'::jsonb"),
+            server_default="[]",
         ),
     )
     conn = op.get_bind()
@@ -40,10 +38,8 @@ def upgrade() -> None:
     for key_id, usage in rows:
         caps = LEGACY.get(usage, [])
         conn.execute(
-            sa.text(
-                "UPDATE user_api_keys SET capabilities = CAST(:caps AS jsonb) WHERE id = :id"
-            ),
-            {"caps": json.dumps(caps), "id": key_id},
+            sa.text("UPDATE user_api_keys SET capabilities = :caps WHERE id = :id"),
+            {"caps": sa.bindparam("caps", value=caps, type_=sa.JSON()), "id": key_id},
         )
     op.drop_column("user_api_keys", "usage_type")
 

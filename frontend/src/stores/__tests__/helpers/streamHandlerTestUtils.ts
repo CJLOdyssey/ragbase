@@ -16,7 +16,7 @@ export function makeState(overrides: Record<string, unknown> = {}) {
     currentRunId: 'run-1',
     streamingId: null,
     messages: [],
-    status: 'streaming',
+    status: 'running',
     currentRole: null,
     wsStatus: 'connected',
     skipThinking: false,

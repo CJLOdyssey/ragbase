@@ -47,9 +47,8 @@ class SmtpMailer:
     """Production SMTP mailer — sends real emails."""
 
     async def send(self, to: str, subject: str, html: str) -> None:
-        """Send an email via SMTP (runs blocking call in thread pool)."""
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self._send_sync, to, subject, html)
+        """Send an email via SMTP (runs blocking call in worker thread)."""
+        await asyncio.to_thread(self._send_sync, to, subject, html)
 
     def _send_sync(self, to: str, subject: str, html: str) -> None:
         """Send email synchronously via SMTP in a thread pool executor."""
@@ -80,9 +79,8 @@ class ResendApiMailer:
     """Resend HTTP API mailer — works with onboarding@resend.dev without a domain."""
 
     async def send(self, to: str, subject: str, html: str) -> None:
-        """Send an email via the Resend HTTP API (runs blocking call in thread pool)."""
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self._send_sync, to, subject, html)
+        """Send an email via the Resend HTTP API (runs blocking call in worker thread)."""
+        await asyncio.to_thread(self._send_sync, to, subject, html)
 
     def _send_sync(self, to: str, subject: str, html: str) -> None:
         """Send email synchronously via Resend API in a thread pool."""

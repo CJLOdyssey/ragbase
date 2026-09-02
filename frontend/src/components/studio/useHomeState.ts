@@ -1,4 +1,6 @@
+/* eslint-disable react-hooks/set-state-in-effect */ // 视口断点同步是合法副作用
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useResolvedIsDark } from '../../theme/useResolvedTheme';
 import { useAuth } from '../auth/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +10,7 @@ import type { ModelOption } from '../../types/input';
 import type { Message } from '../../types/studio';
 import { listModels } from '../../api/client/models';
 import { getSessionDetail, listSessions } from '../../api/client/sessions';
+import type { UserEvent } from '../../api/userEvents';
 import { retry, submitRequirement } from '../../stores/chatActions';
 import { useChatStore } from '../../stores/chatStore';
 import {
@@ -20,7 +23,9 @@ import {
   setSessionCache,
   writeSessionsCache,
 } from '../../stores/sessionCache';
+import { makeTempSession, mergeSessions } from '../../stores/sessionMerge';
 import { useSessionOps } from './useSessionOps';
+import { useUserEvents } from './useUserEvents';
 import {
   buildBranchPath,
   buildPathTurns,
@@ -28,10 +33,13 @@ import {
 } from '../../utils/branchTurns';
 import Logger from '../../utils/logger';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export function useHomeState() {
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
+  const isDarkMode = useResolvedIsDark(settings.theme);
+  const isMobile = useIsMobile();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const messages = useChatStore((s) => s.messages);
@@ -39,7 +47,15 @@ export function useHomeState() {
   const cancelRun = useChatStore((s) => s.cancelRun);
   const apiStatus = useChatStore((s) => s.status);
   const apiError = useChatStore((s) => s.error);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // 移动端侧边栏为覆盖抽屉，默认收起（桌面保持展开）
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isMobile);
+
+  // 视口跨 md 断点时强制收起侧边栏：移动端一律收起（由汉堡按钮打开），
+  // 切回桌面时恢复展开。此 effect 响应视口断点变化——属于与外部系统同步
+  // 的合法副作用（React 官方 pattern：同步状态与外部系统）。
+  useEffect(() => {
+    setIsSidebarOpen(!isMobile);
+  }, [isMobile]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isApiOpen, setIsApiOpen] = useState(false);
@@ -54,6 +70,7 @@ export function useHomeState() {
     () => sessionId !== undefined || readActiveConvId() !== null,
   );
   const [selectedModel, setSelectedModel] = useState(readStoredModel);
+  const [sessionKBIds, setSessionKBIds] = useState<string[]>([]);
   const [recentModelIds, setRecentModelIds] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem('ragbase-recent-models');
@@ -67,6 +84,30 @@ export function useHomeState() {
   });
   // 加载竞态保护：快速切换会话/分支时，丢弃过期响应（仅最新一次落地）。
   const loadSeqRef = useRef(0);
+  // 正式模式：发送中乐观占位（temp）id —— server 确认（run 响应 session_id）
+  // 时原位替换为真实会话 id。
+  const pendingTempIdRef = useRef<string | null>(null);
+  const currentSessionId = useChatStore((s) => s.currentSessionId);
+
+  // 跨端实时同步：其他端会话增删改 → 刷新本地会话列表（DB 权威最终一致；
+  // WS 重连也触发全量对齐）。当前会话被其他端删除 → 回首页。
+  useUserEvents(
+    useCallback(
+      (event: UserEvent) => {
+        if (
+          event.type === 'session.deleted' &&
+          activeConvId === event.session_id
+        ) {
+          navigate('/');
+        }
+        queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      },
+      [activeConvId, navigate, queryClient],
+    ),
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    }, [queryClient]),
+  );
 
   useEffect(() => {
     const sync = () => {
@@ -90,21 +131,57 @@ export function useHomeState() {
   // 首帧渲染缓存中的会话列表（同步），后台 API 返回后刷新覆盖。
   const [cachedSessions, setCachedSessions] =
     useState<SessionItem[]>(readSessionsCache);
-  useQuery<SessionItem[]>({
+
+  // server 确认：run 响应返回 session_id → 乐观占位原位替换（id→session_id，
+  // temp 标记清除）+ 唯一化（同 id 只保留一条，删除 WS 先到被 merge 的空 server 条）。
+  useEffect(() => {
+    if (!currentSessionId) return;
+    const tempId = pendingTempIdRef.current;
+    if (!tempId) return;
+    pendingTempIdRef.current = null;
+    setCachedSessions((prev) => {
+      const replaced = prev.map((s) =>
+        s.id === tempId ? { ...s, id: currentSessionId, temp: false } : s,
+      );
+      const seen = new Set<string>();
+      const unique = replaced.filter((s) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+      writeSessionsCache(unique);
+      return unique;
+    });
+  }, [currentSessionId]);
+
+  const sessionsQuery = useQuery<SessionItem[]>({
     queryKey: ['sessions'],
     // 首帧渲染缓存，拉到最新列表后刷新缓存（queryFn 内落缓存，非 effect）。
     queryFn: async () => {
-      const data = await listSessions();
-      setCachedSessions(data);
-      // 登出竞态守卫：invalidate 触发的 refetch 可能在登出后仍执行，
-      // 不把登录用户会话写回 localStorage（登出已清缓存）。
-      if (isAuthenticated) writeSessionsCache(data);
+      const data = await listSessions(100);
+      // 唯一化归并：保留发送中的乐观占位（temp），server 权威会话照常进入。
+      setCachedSessions((prev) => {
+        const merged = mergeSessions(prev, data);
+        // 登出竞态守卫：invalidate 触发的 refetch 可能在登出后仍执行，
+        // 不把登录用户会话写回 localStorage（登出已清缓存）。
+        if (isAuthenticated) writeSessionsCache(merged);
+        return merged;
+      });
       return data;
     },
     // Sessions are user-owned: only fetch once authentication is ready, and
     // re-fetch when it flips (login/refresh completes after initial mount).
     enabled: isAuthenticated,
   });
+
+  // 权威兜底（两项目统一）：会话列表已从 server 加载后，URL 指向的会话不存在
+  // （跨端删除 / 本地删除 / 刷新已删 URL）→ 回首页。与 session.deleted 即时
+  // navigate 双保险；isSuccess 防初始加载竞态误跳。
+  useEffect(() => {
+    if (!activeConvId || !sessionsQuery.isSuccess) return;
+    const exists = cachedSessions.some((s) => s.id === activeConvId);
+    if (!exists) navigate('/');
+  }, [activeConvId, cachedSessions, sessionsQuery.isSuccess, navigate]);
 
   const { data: models = [] } = useQuery({
     queryKey: ['models'],
@@ -162,6 +239,14 @@ export function useHomeState() {
         userMsgId: m.userMsgId,
         runId: m.runId,
         attachments: m.attachments,
+        // 保留渲染所需元数据：RAG 引用、点赞态、时间戳、中断标记——
+        // 裁剪会导致 TeamMessage/UserMessage 拿到 undefined 而永久不显示。
+        sources: m.sources,
+        thumbsFeedback: m.thumbsFeedback,
+        timestamp: m.created_at
+          ? new Date(m.created_at).getTime()
+          : undefined,
+        interrupted: m.interrupted,
       })),
     [messages],
   );
@@ -180,10 +265,33 @@ export function useHomeState() {
       files?: import('../../types/input').AttachedFile[],
     ) => {
       if (!text.trim()) return;
+      // 并发防护：loading/running 期间锁定发送入口，避免两次提交产生
+      // 两个 run 经共享 streamHandler 交错污染同一流消息。
+      const status = useChatStore.getState().status;
+      if (status === 'loading' || status === 'running') return;
+      // 模型选择的单一事实源：UI 生效模型（selectedModel 或 recent 回退）在
+      // 提交前同步到 localStorage，否则 chatActions.resolveKey 读到 null →
+      // 默认 key（历史上"一直走 deepseek"的根因之一）。
+      if (effectiveModel) {
+        try {
+          localStorage.setItem(MODEL_STORAGE_KEY, effectiveModel);
+        } catch {
+          // non-fatal
+        }
+      }
       // 附件已由 InputToolbar 选中即传（pre-session），这里只带已上传的 id
       const ids = files
         ?.map((f) => f.attachmentId)
         .filter((x): x is string => !!x);
+      // 正式模式：乐观占位——仅新会话（无当前会话 id）时创建，server 确认
+      // （currentSessionId 变化）后原位替换。已有会话内发消息会话已在列表，
+      // 且 currentSessionId 不变时替换 effect 不触发，无条件创建会留下
+      // 无法替换的幽灵条目（点击进 /chat/temp-* 加载失败卡死）。
+      if (!currentSessionId) {
+        const temp = makeTempSession(text);
+        pendingTempIdRef.current = temp.id;
+        setCachedSessions((prev) => [temp, ...prev]);
+      }
       await submitRequirement(
         text,
         undefined,
@@ -197,7 +305,7 @@ export function useHomeState() {
       );
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
-    [queryClient],
+    [currentSessionId, effectiveModel, queryClient, setCachedSessions],
   );
 
   const handleModelChange = useCallback((id: string) => {
@@ -226,6 +334,7 @@ export function useHomeState() {
     try {
       const detail = await getSessionDetail(convId);
       if (seq !== loadSeqRef.current) return;
+      setSessionKBIds(detail.knowledge_base_ids ?? []);
       const { path, active } = buildRunPath(detail.runs ?? []);
       const loaded = buildPathTurns(path, detail.runs ?? []);
       // Persisted messages are completed turns — mark agent thinking as done
@@ -248,11 +357,14 @@ export function useHomeState() {
       );
     } catch (err) {
       Logger.warn('[useHomeState] failed to load conversation', err);
+      // 加载失败（401 未登录 / 404 会话不存在 / 网络错）不卡在空面板：
+      // 回首页（会话列表权威兜底同样会清除无效 URL）。
+      if (seq === loadSeqRef.current) navigate('/');
     }
     if (seq === loadSeqRef.current) {
       setRestoring(false);
     }
-  }, []);
+  }, [navigate]);
 
   // 会话路由驱动：进入/切换/前进后退（URL 变化）→ 加载对应会话；
   // URL 无会话（主页）→ 清空消息。setTimeout 延后一帧：加载开始的同步
@@ -269,15 +381,8 @@ export function useHomeState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConvId]);
 
-  // 直达主页（无 URL 会话）时恢复上次会话：localStorage fallback 后
-  // 以 URL 形式重建（replace，不堆历史）。
-  useEffect(() => {
-    const stored = readActiveConvId();
-    if (!sessionId && stored) {
-      navigate(`/chat/${stored}`, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 企业级行为：/ 不自动恢复上次会话，由用户主动选择。
+  // 消费级的 localStorage 自动恢复已移除。
 
   // 分支语义：切版本 = 切分支，视图整体切到目标 run 所在分支的全部消息
   // （父链 + 子孙链，后续轮次跟随目标分支；不在该分支的轮次仅视图隐藏，DB 留存）。
@@ -325,7 +430,7 @@ export function useHomeState() {
     t,
     settings,
     updateSettings,
-    isDarkMode: settings.theme === 'dark',
+    isDarkMode,
     conversations: sessionOps.conversations,
     activeConvId,
     setActiveConvId: sessionOps.handleSelectConversation,
@@ -355,5 +460,7 @@ export function useHomeState() {
     apiStatus,
     apiError,
     retryApi: retry,
+    sessionKBIds,
+    setSessionKBIds,
   };
 }

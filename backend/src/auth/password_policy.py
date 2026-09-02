@@ -2,12 +2,36 @@
 
 from dataclasses import dataclass
 
+__all__ = [
+    "COMMON_PASSWORDS",
+    "PasswordPolicy",
+    "policy",
+    "validate_password",
+]
+
 COMMON_PASSWORDS = {
-    "password", "password123", "admin123", "admin888",
-    "12345678", "qwerty123", "letmein", "welcome",
-    "monkey", "dragon", "passw0rd", "abc123",
-    "123456789", "iloveyou", "trustno1", "sunshine",
-    "master", "access", "shadow", "michael",
+    # SecLists top-100 (2023) + 中文常见弱密码 — 与 HIBP 前 10 万重合度高
+    "password", "123456", "123456789", "12345678", "12345", "1234567",
+    "qwerty", "abc123", "password1", "qwerty123", "111111", "123123",
+    "admin", "letmein", "welcome", "monkey", "dragon", "baseball",
+    "football", "shadow", "master", "michael", "mustang", "superman",
+    "batman", "freedom", "whatever", "trustno1", "passw0rd", "iloveyou",
+    "sunshine", "princess", "football1", "charlie", "hunter", "ginger",
+    "buster", "soccer", "harley", "george", "andrew", "joshua", "thomas",
+    "anthony", "daniel", "matthew", "jordan", "tigger", "pepper", "loveme",
+    "jennifer", "secret", "access", "pass", "starwars", "qazwsx",
+    "zaq12wsx", "1qaz2wsx", "qwertyuiop", "asdfghjkl", "zxcvbnm",
+    "11111111", "222222", "333333", "555555", "666666", "888888", "999999",
+    "123321", "654321", "112233", "121212", "abcabc", "a1b2c3",
+    "password123", "password1234", "password12", "p@ssw0rd", "passw0rd123",
+    "admin123", "admin888", "admin666", "administrator", "root",
+    "toor", "guest", "test", "test123", "demo", "demo123",
+    "changeme", "default", "none", "unknown", "newuser", "login",
+    # 中文常见弱密码
+    "woaini", "woaini520", "aini1314", "5201314", "1314520", "woainima",
+    "a123456", "a123456789", "qq123456", "taobao", "alipay", "weixin",
+    "wang123", "zhang123", "li123456", "chen123", "liu123", "yang123",
+    "woshishui", "nihao123", "zheshimima", "wojia123", "xiexie123",
 }
 
 

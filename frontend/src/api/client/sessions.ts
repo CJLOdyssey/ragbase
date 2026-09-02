@@ -1,4 +1,4 @@
-import type { ProjectRun, SessionDetail, SessionItem } from '../../types';
+import type { SessionDetail, SessionItem } from '../../types';
 import api from './instance';
 
 export async function listSessions(limit = 50): Promise<SessionItem[]> {
@@ -38,6 +38,31 @@ export async function deleteSession(sessionId: string): Promise<void> {
   await api.delete(`/sessions/${sessionId}`);
 }
 
+export async function updateSessionKBs(
+  sessionId: string,
+  knowledgeBaseIds: string[],
+): Promise<void> {
+  await api.put(`/sessions/${sessionId}/knowledge-bases`, {
+    knowledge_base_ids: knowledgeBaseIds,
+  });
+}
+
+export interface MemoryItem {
+  id: string;
+  agent_role: string;
+  content_type: string;
+  summary: string;
+  details: string | null;
+  created_at: string | null;
+}
+
+export async function listSessionMemories(
+  sessionId: string,
+): Promise<MemoryItem[]> {
+  const { data } = await api.get(`/sessions/${sessionId}/memories`);
+  return data;
+}
+
 export async function deleteMemory(memoryId: string): Promise<void> {
   await api.delete(`/memories/${memoryId}`);
 }
@@ -49,21 +74,6 @@ export async function exportSessionMemories(
   const { data } = await api.get(`/sessions/${sessionId}/memories/export`, {
     params: { format },
     responseType: 'blob',
-  });
-  return data;
-}
-
-export async function getRun(runId: string): Promise<ProjectRun> {
-  const { data } = await api.get(`/runs/${runId}`);
-  return data;
-}
-
-export async function listRuns(
-  limit = 20,
-  offset?: number,
-): Promise<ProjectRun[]> {
-  const { data } = await api.get('/runs', {
-    params: { limit, ...(offset !== undefined && { offset }) },
   });
   return data;
 }

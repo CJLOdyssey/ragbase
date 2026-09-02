@@ -1,5 +1,6 @@
 """Registration, email verification, and resend endpoints."""
 
+import hmac
 from typing import Any
 
 import bcrypt
@@ -20,6 +21,7 @@ from .schemas import (
     VerifyRequest,
     _check_rate_limit,
     _client_ip,
+    _cookie_secure,
     _create_auth_response,
     _generate_code,
     _mask_email,
@@ -93,7 +95,7 @@ async def register(body: RegisterRequest, request: Request, response: Response) 
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码已过期，请重新获取验证码")
 
     stored_code = stored.decode() if isinstance(stored, bytes) else stored
-    if stored_code != code:
+    if not hmac.compare_digest(stored_code, code):
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码错误")
 
     pwd_error = validate_password(password)
@@ -112,8 +114,8 @@ async def register(body: RegisterRequest, request: Request, response: Response) 
 
     logger.info("User registered and verified: %s", _mask_email(email))
     auth_resp = await _create_auth_response(user.id, user.email, user.username)
-    _set_access_token_cookie(response, auth_resp.access_token)
-    _set_refresh_token_cookie(response, auth_resp.refresh_token)
+    _set_access_token_cookie(response, auth_resp.access_token, secure=_cookie_secure(request))
+    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=_cookie_secure(request))
     return auth_resp.model_copy(update={"refresh_token": ""})
 
 
@@ -142,7 +144,7 @@ async def verify(body: VerifyRequest, request: Request, response: Response) -> A
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码已过期，请重新获取")
 
     stored_code = stored.decode() if isinstance(stored, bytes) else stored
-    if stored_code != code:
+    if not hmac.compare_digest(stored_code, code):
         raise error_response(ErrorCode.INVALID_REQUEST, detail="验证码错误")
 
     await r.delete(_verify_key(email))
@@ -158,8 +160,8 @@ async def verify(body: VerifyRequest, request: Request, response: Response) -> A
     logger.info("Email verified: %s", _mask_email(email))
 
     auth_resp = await _create_auth_response(user.id, user.email, user.username)
-    _set_access_token_cookie(response, auth_resp.access_token)
-    _set_refresh_token_cookie(response, auth_resp.refresh_token)
+    _set_access_token_cookie(response, auth_resp.access_token, secure=_cookie_secure(request))
+    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=_cookie_secure(request))
     return auth_resp.model_copy(update={"refresh_token": ""})
 
 

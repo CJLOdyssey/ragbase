@@ -1,6 +1,7 @@
 """Shared Pydantic schemas and helpers for the auth sub-package."""
 
 import logging
+import os
 import secrets
 from typing import TYPE_CHECKING, Any
 
@@ -119,9 +120,13 @@ def _mask_email(email: str) -> str:
 
 
 def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # Only trust proxy headers when deployed behind a trusted reverse proxy
+    # (TRUST_PROXY_HEADERS=1). Direct exposure must use the peer address —
+    # otherwise attackers spoof X-Forwarded-For to bypass IP rate limits.
+    if os.environ.get("TRUST_PROXY_HEADERS", "0") in ("1", "true", "yes"):
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
 
@@ -157,27 +162,41 @@ async def _build_user_response(user_id: str, email: str, username: str | None) -
     )
 
 
-ACCESS_TOKEN_TTL = 900  # 15 minutes — matches create_token default aligns with short-lived token best practice
+ACCESS_TOKEN_TTL = 900  # 15 minutes — short-lived access token per best practice
 
 
-def _set_access_token_cookie(response: Response, access_token: str) -> None:
+def _cookie_secure(request: Request) -> bool:
+    """Secure flag: https (direct or proxy-forwarded) → Secure; http dev → none.
+
+    Reverse proxies must forward X-Forwarded-Proto (uvicorn --proxy-headers
+    handles it); without it a production request behind TLS looks like http
+    and the cookie would silently lose Secure, sending tokens in cleartext.
+    """
+    if request.url.scheme == "https":
+        return True
+    forwarded = request.headers.get("X-Forwarded-Proto")
+    return "https" in (forwarded or "").lower().split(",")
+
+
+def _set_access_token_cookie(response: Response, access_token: str, *, secure: bool) -> None:
     """Set the access token as an httpOnly cookie (prevents XSS theft).
 
     The cookie is httpOnly (inaccessible to JS), SameSite=Lax (CSRF-safe
-    for top-level navigations), and secure only when not in dev mode.
+    for top-level navigations). ``secure`` follows the request scheme
+    (https → Secure; http dev → no Secure flag, else http clients silently
+    drop the cookie and the frontend gets stuck on a "ghost login" where
+    requests run anonymous while the UI still shows the user).
     The path is scoped to ``/api`` so the token is only sent to API
     endpoints, not static assets or unrelated routes.
     """
-    import os
-
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         samesite="lax",
-        secure=os.environ.get("DEV_MODE", "") != "1",
+        secure=secure,
         max_age=ACCESS_TOKEN_TTL,
-        path="/api",
+        path="/",
     )
 
 
@@ -189,28 +208,26 @@ def _clear_access_token_cookie(response: Response) -> None:
         httponly=True,
         samesite="lax",
         max_age=0,
-        path="/api",
+        path="/",
     )
 
 
 REFRESH_TOKEN_TTL = 7 * 86400  # 7 days — matches create_refresh_token default ttl_days=7
 
 
-def _set_refresh_token_cookie(response: Response, refresh_token: str) -> None:
+def _set_refresh_token_cookie(response: Response, refresh_token: str, *, secure: bool) -> None:
     """Set the refresh token as an httpOnly cookie (prevents XSS theft).
 
     httpOnly (inaccessible to JS) + SameSite=Lax + existing XSRF header
     pattern per OWASP CSRF Prevention. Path scoped to /api. Read
     server-side only by the refresh/logout endpoints.
     """
-    import os
-
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
         samesite="lax",
-        secure=os.environ.get("DEV_MODE", "") != "1",
+        secure=secure,
         max_age=REFRESH_TOKEN_TTL,
         path="/api",
     )

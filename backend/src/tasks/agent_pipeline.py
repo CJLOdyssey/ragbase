@@ -6,11 +6,12 @@ import contextlib
 import gc
 import os
 import subprocess
+import time
 import tracemalloc
 from typing import Any
 
-from broker import publish_run_message
-from checkpoint import create_checkpointer_async
+from broker import publish_run_message, publish_user_event
+from checkpoint import close_checkpointer, create_checkpointer_async
 from core.config import load_config
 from core.infra.logging_config import get_logger
 from graph.graph import SingleAgentGraph
@@ -39,6 +40,23 @@ logger = get_logger(__name__)
 
 _run_counter = 0
 _AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "600"))  # 10 minutes default
+
+
+async def _notify_session_changed(user_id: str, session_id: str | None) -> None:
+    """Broadcast a session update to other clients (cross-client sync). Fail-open."""
+    if not session_id or not user_id:
+        return
+    try:
+        await publish_user_event(
+            user_id,
+            {
+                "type": "session.updated",
+                "session_id": session_id,
+                "ts": int(time.time()),
+            },
+        )
+    except Exception:
+        logger.debug("session sync notify failed for %s", session_id, exc_info=True)
 
 
 def _guard_input(requirement: str) -> list[str]:
@@ -108,7 +126,7 @@ def _kill_stuck_child_processes() -> None:
     """
     try:
         ppid = os.getpid()
-        # 无 shell 形式：ppid 是 os.getpid() 的 int，但避免 shell 拼接（bandit B605）
+        # argv 形式调用 ps，不经 shell 拼接（bandit B605）；ppid 为本进程 int，无注入面
         with subprocess.Popen(
             ["ps", "--ppid", str(ppid), "-o", "pid=", "--no-headers"],
             stdout=subprocess.PIPE,
@@ -138,17 +156,18 @@ async def _run_agent_pipeline(
     api_key: str | None = None,
     api_base: str | None = None,
     model: str | None = None,
-    user_id: str = 'system',
+    user_id: str = "system",
     image_model: bool = False,
+    prompt_id: str | None = None,
 ) -> dict[str, Any]:
     global _run_counter
     _run_counter += 1
-    if not tracemalloc.is_tracing():
+    if os.environ.get("MEM_TRACE", "").lower() in ("1", "true", "yes") and not tracemalloc.is_tracing():
         tracemalloc.start(25)
         logger.info("[MEM] tracemalloc started")
-    # ponytail: tracemalloc snapshot/diff is heavy sync CPU work (500MB heap, 25
-    # frames) — offload to a thread or it blocks the uvicorn event loop for 10s+
-    # and POST /api/runs times out on the frontend's 10s axios limit.
+    # tracemalloc snapshot/diff is heavy sync CPU work (500MB heap, 25
+    # frames) — offload to a thread or it blocks the uvicorn event loop for
+    # 10s+ and POST /api/runs times out on the frontend's 10s axios limit.
     await asyncio.to_thread(log_memory_diff)
     logger.info("=== ENTER _run_agent_pipeline run=#%s | run=%s ===", _run_counter, run_id)
     await update_run_status(run_id, "running")
@@ -167,7 +186,12 @@ async def _run_agent_pipeline(
     effective_api_base = api_base
     effective_model = model or cfg.model
 
+    # 用户选中的启用(active)提示词作为对话人设；草稿/不存在 → 空串不注入。
     system_prompt = ""
+    if prompt_id:
+        from graph.helpers import load_active_user_prompt
+
+        system_prompt = await load_active_user_prompt(prompt_id)
 
     session_context = ""
     rag_sources: list[dict[str, Any]] = []
@@ -182,7 +206,9 @@ async def _run_agent_pipeline(
             ]
             if memories:
                 session_context = _build_session_context(memories)
-            rag_ctx, rag_sources = await _get_rag_context(requirement, session_id, user_id)
+            rag_ctx, rag_sources = await _get_rag_context(
+                requirement, session_id, user_id, run_id=run_id
+            )
             if rag_ctx:
                 session_context += "\n" + rag_ctx
         except Exception:
@@ -262,6 +288,7 @@ async def _run_agent_pipeline(
         await update_run_status(run_id, "timeout")
         # Kill any OS child processes spawned by the timed-out task
         _kill_stuck_child_processes()
+        await _notify_session_changed(user_id, session_id)
         return {"run_id": run_id, "status": "timeout"}
     except asyncio.CancelledError:
         # "停止生成"：task.cancel() 沿 await 链传播，上游 LLM 请求随之中断。
@@ -272,9 +299,32 @@ async def _run_agent_pipeline(
             await emitter.persist_partial()
         with contextlib.suppress(Exception):
             await update_run_status(run_id, "cancelled")
+        await _notify_session_changed(user_id, session_id)
         with contextlib.suppress(Exception):
             await publish_run_message(run_id, {"type": "cancelled", "run_id": run_id})
         raise
+    except Exception as exc:
+        # LLM API failures (HTTPStatusError 402/401/429 etc.) must not leak out
+        # of the task ("Task exception was never retrieved") nor leave the run
+        # stuck in running. Surface an error event + mark the run failed.
+        logger.error("[TASKS] Agent pipeline failed (run=%s): %s", run_id, exc)
+        # 不向客户端透出原始异常（可能含 httpx URL/内部细节），详情在服务日志。
+        await publish_run_message(run_id, {"type": "error", "message": "执行失败，请查看服务日志"})
+        await update_run_status(run_id, "error")
+        await _notify_session_changed(user_id, session_id)
+        return {"run_id": run_id, "status": "error"}
+    finally:
+        # Postgres/sqlite checkpointers hold an open connection; close it on
+        # every exit path (done, timeout, cancel, error) or each run leaks one.
+        await close_checkpointer(checkpointer)
+        # run 结束即释放 buffer pubsub 连接（不依赖 WS 断开/60s idle 兜底），
+        # 防 Redis 池（REDIS_POOL_SIZE=20）耗尽 → MaxConnectionsError。
+        try:
+            from broker import stop_buffer
+
+            await stop_buffer(run_id)
+        except Exception:
+            logger.debug("stop_buffer failed for run %s", run_id, exc_info=True)
 
     # ── Extract artifacts ──
     messages = result.get("messages", [])
@@ -327,14 +377,24 @@ async def _run_agent_pipeline(
             if "<review>" in m.content:
                 review = m.content
 
-    await update_run_result(
-        run_id=run_id,
-        pm_document=pm_document,
-        code=code,
-        review=review,
-        approved=True,
-        status="converged",
-    )
+    try:
+        await update_run_result(
+            run_id=run_id,
+            pm_document=pm_document,
+            code=code,
+            review=review,
+            approved=True,
+            status="converged",
+        )
+        await _notify_session_changed(user_id, session_id)
+    except Exception:
+        # 成功路径的落库/通知失败不得逃逸 task（同 LLM 失败处理：标记 error）。
+        logger.error("[TASKS] Failed to persist converged result (run=%s)", run_id, exc_info=True)
+        with contextlib.suppress(Exception):
+            await publish_run_message(run_id, {"type": "error", "message": "结果保存失败，请查看服务日志"})
+        with contextlib.suppress(Exception):
+            await update_run_status(run_id, "error")
+        return {"run_id": run_id, "status": "error"}
 
     # ── Attach download links to the final message ──
     # The model often references generated files by filename without a URL;

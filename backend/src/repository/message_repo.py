@@ -18,7 +18,18 @@ async def save_message(
     thinking: str | None = None,
     sources: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Persist a chat message to the database."""
+    """Persist a chat message to the database.
+
+    Args:
+        run_id: The parent run UUID.
+        role: Message role (e.g. "user" / "Agent").
+        agent_name: Display name of the sender.
+        content: Message body.
+        round_number: 1-based message index within the run.
+        thinking: Optional reasoning text shown separately from content.
+        sources: Optional RAG citation sources, stored as JSON.
+
+    """
     msg = ChatMessage(
         id=str(uuid4()),
         run_id=run_id,
@@ -37,7 +48,7 @@ async def save_message(
 
 
 async def update_message_content(message_id: str, content: str) -> None:
-    """Replace a chat message's content in place."""
+    """Replace a chat message's content in place. No-op if the message is missing."""
     factory = get_session_factory()
     async with factory() as session:
         msg = await session.get(ChatMessage, message_id)
@@ -57,15 +68,8 @@ async def get_messages(run_id: str) -> list[ChatMessage]:
         return list(result.scalars().all())
 
 
-async def get_run_messages(run_id: str) -> list[ChatMessage]:
-    """Return all chat messages for a run, ordered chronologically (alias)."""
-    factory = get_session_factory()
-    async with factory() as session:
-        stmt = (
-            select(ChatMessage).where(ChatMessage.run_id == run_id).order_by(ChatMessage.created_at)
-        )
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
+get_run_messages = get_messages
+# Backward-compatible alias of get_messages (kept for import stability).
 
 
 async def get_session_messages(
@@ -83,7 +87,6 @@ async def get_session_messages(
     """
     factory = get_session_factory()
     async with factory() as session:
-        # Get all run IDs for this session
         runs_stmt = select(ProjectRun.id).where(ProjectRun.session_id == session_id)
         if exclude_run_id:
             runs_stmt = runs_stmt.where(ProjectRun.id != exclude_run_id)
@@ -93,7 +96,6 @@ async def get_session_messages(
         if not run_ids:
             return []
 
-        # Get all messages for these runs
         msgs_stmt = (
             select(ChatMessage)
             .where(ChatMessage.run_id.in_(run_ids))

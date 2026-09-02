@@ -75,7 +75,11 @@ export default function ApiProviderTab({
   }, [keys, filterCat]);
 
   const paginatedKeys = useMemo(() => {
-    const start = (page - 1) * pageSize;
+    // 删除/停用后数据收缩：当前页可能越界（如第 2/2 页删空）——
+    // 派生钳制到末页，避免空表 + 越界页码死区。
+    const totalPages = Math.max(1, Math.ceil(visibleKeys.length / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * pageSize;
     return visibleKeys.slice(start, start + pageSize);
   }, [visibleKeys, page]);
 
@@ -324,6 +328,7 @@ export default function ApiProviderTab({
         ))}
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="overflow-x-auto">
         {loading && keys.length === 0 ? (
           <LoadingSkeleton type="table" rows={4} />
         ) : (
@@ -372,11 +377,12 @@ export default function ApiProviderTab({
             />
           </ConfigProvider>
         )}
+        </div>
       </div>
       {visibleKeys.length > 0 && (
         <KeyTablePagination
           total={visibleKeys.length}
-          current={page}
+          current={Math.min(page, Math.max(1, Math.ceil(visibleKeys.length / pageSize)))}
           pageSize={pageSize}
           onChange={onPageChange}
         />

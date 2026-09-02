@@ -1,20 +1,22 @@
 # ── 共享基础 compose ─────────────────────────────────────────────────────
 # 按 Docker 官方推荐（include/extends 多文件机制）拆分的共享骨架：
-#   docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d
-#   docker compose -f docker/compose.base.yml -f docker/compose.prod.yml up -d
+#   docker compose --env-file .env -f docker/compose.base.yml -f docker/compose.local.yml up -d
+#   docker compose --env-file .env -f docker/compose.base.yml -f docker/compose.prod.yml up -d
 # 环境差异（端口/密钥/celery/日志轮转）放在各自 overlay 文件，避免双份维护漂移。
 # 注意 include 的 merge 语义：mapping 字段深合并，scalar 覆盖，
 # ports/volumes 按 source:target / target 匹配合并。
+# 安全：POSTGRES_PASSWORD / REDIS_PASSWORD 必填（无默认弱密码兜底，OWASP A02）。
 # ─────────────────────────────────────────────────────────────────────────
 
 name: ragbase
 
 x-common-env: &common-env
   PYTHONPATH: /app/backend/src
-  DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/ragbase
-  REDIS_URL: redis://redis:6379/0
-  CELERY_BROKER_URL: redis://redis:6379/0
-  CELERY_RESULT_BACKEND: redis://redis:6379/0
+  # POSTGRES_PASSWORD / REDIS_PASSWORD 必填（compose 顶层解析时校验，拒绝默认弱密码）
+  DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/ragbase
+  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
+  CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
+  CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
   DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
   OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.deepseek.com}
   OPENAI_MODEL: ${OPENAI_MODEL:-deepseek-v4-flash}
@@ -29,7 +31,7 @@ x-common-env: &common-env
   NO_PROXY: localhost,127.0.0.1,postgres,redis,backend,.local
   BAIDU_QIANFAN_API_KEY: ${BAIDU_QIANFAN_API_KEY:-}
   CHECKPOINTER_BACKEND: ${CHECKPOINTER_BACKEND:-postgres}
-  CHECKPOINTER_DSN: ${CHECKPOINTER_DSN:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/ragbase}
+  CHECKPOINTER_DSN: ${CHECKPOINTER_DSN:-postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/ragbase}
 
 services:
   postgres:
@@ -39,7 +41,7 @@ services:
     environment:
       POSTGRES_DB: ragbase
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env for production}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -54,8 +56,9 @@ services:
     image: redis:7-alpine
     container_name: ragbase-redis
     restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}", "--appendonly", "no"]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}", "--no-auth-warning", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5

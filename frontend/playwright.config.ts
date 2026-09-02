@@ -6,7 +6,7 @@ export default defineConfig({
   expect: { timeout: 8000 },
   retries: 0,
   maxFailures: 1,
-  // 两个 spec 共享同一后端 DB，串行避免数据互相踩踏
+  // 多个 spec 共享同一后端 DB，串行避免数据互相踩踏
   fullyParallel: false,
   workers: 1,
   use: {
@@ -28,6 +28,22 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        storageState: '.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'mobile-chrome',
+      use: {
+        ...devices['Pixel 5'],
+        storageState: '.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'mobile-safari',
+      use: {
+        ...devices['iPhone 13'],
         storageState: '.auth/user.json',
       },
       dependencies: ['setup'],

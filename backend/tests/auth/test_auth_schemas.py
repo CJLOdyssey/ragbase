@@ -1,5 +1,7 @@
 """Unit tests for backend/routers/auth/schemas.py (Pydantic request/response models)."""
 
+import os
+import unittest.mock
 from unittest.mock import MagicMock
 
 import pytest
@@ -166,7 +168,20 @@ class TestAuthHelpers:
 
         mock_request = MagicMock()
         mock_request.headers = {"X-Forwarded-For": "203.0.113.1, 10.0.0.1"}
+        mock_request.client.host = "198.51.100.1"
+        # Security: XFF is NOT trusted by default (spoofing bypasses IP rate
+        # limits); the peer address is authoritative unless TRUST_PROXY_HEADERS=1.
         result = _client_ip(mock_request)
+        assert result == "198.51.100.1"
+
+    def test_client_ip_with_forwarded_trusted_proxy(self):
+        from routers.auth.schemas import _client_ip
+
+        mock_request = MagicMock()
+        mock_request.headers = {"X-Forwarded-For": "203.0.113.1, 10.0.0.1"}
+        mock_request.client.host = "198.51.100.1"
+        with unittest.mock.patch.dict(os.environ, {"TRUST_PROXY_HEADERS": "1"}, clear=False):
+            result = _client_ip(mock_request)
         assert result == "203.0.113.1"
 
     def test_client_ip_without_forwarded(self):
@@ -186,10 +201,5 @@ class TestAuthHelpers:
         mock_request.client = None
         result = _client_ip(mock_request)
         assert result == "unknown"
-
-
-# ─────────────────────────────────────────────────────────────────────
-# 7. backend/services/run_service.py — RunService
-# ─────────────────────────────────────────────────────────────────────
 
 

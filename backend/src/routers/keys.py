@@ -15,11 +15,13 @@ from core.audit import log_audit
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from domain.capabilities import VALID, validate_capabilities
+from domain.validation import validate_base_url
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field, field_validator
 from repository import (
     create_api_key,
     delete_api_key,
+    fetch_models_for_provider,
     get_api_keys,
     get_key_usage_stats,
     test_api_key_connection,
@@ -49,6 +51,11 @@ class KeyCreateRequest(BaseModel):
         if err:
             raise ValueError(err)
         return v
+
+    @field_validator("base_url")
+    @classmethod
+    def _check_base_url(cls, v: str | None) -> str | None:
+        return validate_base_url(v)
 
     @field_validator("model_types")
     @classmethod
@@ -81,6 +88,11 @@ class KeyUpdateRequest(BaseModel):
             raise ValueError(err)
         return v
 
+    @field_validator("base_url")
+    @classmethod
+    def _check_base_url(cls, v: str | None) -> str | None:
+        return validate_base_url(v)
+
     @field_validator("model_types")
     @classmethod
     def _check_model_types(cls, v: dict[str, str] | None) -> dict[str, str] | None:
@@ -97,6 +109,11 @@ class FetchModelsRequest(BaseModel):
     base_url: str | None = None
     provider: str = Field(default="custom")
 
+    @field_validator("base_url")
+    @classmethod
+    def _check_base_url(cls, v: str | None) -> str | None:
+        return validate_base_url(v)
+
 
 class KeyResponse(BaseModel):
     id: str
@@ -111,6 +128,60 @@ class KeyResponse(BaseModel):
     is_default: bool
     last_used_at: str | None
     created_at: str | None
+
+
+# Connectivity check runs in a short sync window so saving a key is never
+# blocked by a slow provider API; on timeout/failure a background task
+# keeps trying and backfills the model list (eventual consistency).
+_KEY_TEST_TIMEOUT = 3.0
+
+
+def _schedule_key_models_refresh(app: Any, key_id: str, user_id: str) -> None:
+    """Run a connectivity check + model fetch in the background after a
+    fast-path sync attempt failed or timed out. Task refs live on app.state
+    to prevent GC; shutdown() cancels them."""
+    async def _refresh() -> None:
+        try:
+            test_result = await test_api_key_connection(key_id, user_id)
+            if test_result.get("success"):
+                fetched_models = test_result.get("models", [])
+                if fetched_models:
+                    await update_api_key(key_id=key_id, user_id=user_id, models=fetched_models)
+        except Exception:
+            logger.exception("Background key model refresh failed | key=%s", key_id)
+
+    task = asyncio.create_task(_refresh())
+    pending = getattr(app.state, "pending_key_tasks", None)
+    if pending is None:
+        pending = set()
+        app.state.pending_key_tasks = pending
+    pending.add(task)
+    task.add_done_callback(pending.discard)
+
+
+async def _test_with_fast_path(app: Any, key_id: str, user_id: str) -> dict[str, Any]:
+    """Sync connectivity check bounded by _KEY_TEST_TIMEOUT.
+
+    Returns the test result when the provider answers in time; otherwise
+    schedules a background refresh and returns a degraded result so the
+    key is still saved successfully."""
+    try:
+        async with asyncio.timeout(_KEY_TEST_TIMEOUT):
+            return await test_api_key_connection(key_id, user_id)
+    except TimeoutError:
+        logger.warning(
+            "Key connectivity check timed out (non-blocking) — background refresh scheduled | key=%s",
+            key_id,
+        )
+        _schedule_key_models_refresh(app, key_id, user_id)
+        return {"success": False, "models": []}
+    except Exception:
+        logger.exception(
+            "Key connectivity check failed (non-blocking) — background refresh scheduled | key=%s",
+            key_id,
+        )
+        _schedule_key_models_refresh(app, key_id, user_id)
+        return {"success": False, "models": []}
 
 
 # ── CRUD routes ──────────────────────────────────────────────────────────────
@@ -175,6 +246,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
     if set(req.capabilities) == {"embedding"}:
         from core.infra.key_vault import decrypt_api_key, mask_api_key
 
+        await log_audit("create", "api_key", obj.label, "创建成功")
         return KeyResponse(
             id=obj.id,
             provider=obj.provider,
@@ -190,7 +262,7 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
             created_at=obj.created_at.isoformat() if obj.created_at else None,
         )
 
-    test_result = await test_api_key_connection(obj.id, user_id)
+    test_result = await _test_with_fast_path(request.app, obj.id, user_id)
 
     if not test_result.get("success"):
         logger.warning(
@@ -205,6 +277,8 @@ async def add_key(req: KeyCreateRequest, request: Request) -> Any:
         user_id=user_id,
         models=models_to_store,
     )
+
+    await log_audit("create", "api_key", obj.label, "创建成功")
 
     from core.infra.key_vault import decrypt_api_key, mask_api_key
 
@@ -244,14 +318,14 @@ async def edit_key(key_id: str, req: KeyUpdateRequest, request: Request) -> Any:
         raise error_response(ErrorCode.KEY_NOT_FOUND, detail="Key not found or access denied")
 
     if req.api_key or req.base_url:
-        test_result = await test_api_key_connection(key_id, user_id)
+        test_result = await _test_with_fast_path(request.app, key_id, user_id)
         if test_result.get("success"):
             fetched_models = test_result.get("models", [])
             if fetched_models:
                 await update_api_key(key_id=key_id, user_id=user_id, models=fetched_models)
                 result["models"] = fetched_models
 
-    await log_audit("create", "api_key", result["label"], "创建成功")
+    await log_audit("update", "api_key", result["label"], "更新成功")
     return KeyResponse(
         id=result["id"],
         provider=result["provider"],
@@ -297,14 +371,9 @@ async def test_key_connection(key_id: str, request: Request) -> Any:
 @router.post("/api/keys/fetch-models")
 async def fetch_models_from_provider(req: FetchModelsRequest) -> Any:
     """Fetch available models from a provider's API without saving a key."""
-    from repository.keys import _test_connection_sync
-
-    key_cfg = {
-        "provider": req.provider,
-        "api_key": req.api_key,
-        "base_url": req.base_url,
-    }
-    result = await asyncio.to_thread(_test_connection_sync, key_cfg)
+    result = await fetch_models_for_provider(
+        req.provider, req.api_key, req.base_url
+    )
     if result.get("success"):
         return {
             "success": True,

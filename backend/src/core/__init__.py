@@ -1,12 +1,19 @@
 """Core — shared infrastructure, config, models, and error handling.
 
-Public symbols are explicitly imported below so callers can use either:
-    from core import XXX
-    from core.xxx import XXX
+Curated re-exports of the most commonly used public symbols for convenience.
+Consumers may import from here or directly from the defining module
+(e.g. ``from core import get_logger`` or ``from core.infra.logging_config import get_logger``).
+
+``log_audit`` and ``seed_default_roles_and_admin`` are resolved lazily
+(PEP 562): their defining modules sit above this package in the layering
+(audit → repository, seed → orm), so importing them eagerly would make
+``import orm`` re-enter a half-initialized ``core`` and fail with an
+ImportError.
 """
 
-from ._interfaces import StreamResponseHandler, ToolDescriptor, ToolExecutor
-from .audit import log_audit
+from typing import Any
+
+from ._interfaces import StreamResponseHandler
 from .base import Base
 from .config import LLMConfig, load_config
 from .error_codes import ErrorCode, error_response
@@ -18,7 +25,6 @@ from .infra.key_vault import (
 from .infra.logging_config import get_logger
 from .infra.metrics import metrics_endpoint
 from .infra.request_logger import RequestLogMiddleware
-from .seed import seed_default_roles_and_admin
 
 __all__ = [
     "Base",
@@ -28,8 +34,6 @@ __all__ = [
     "RequestLogMiddleware",
     "StreamResponseHandler",
     "LLMConfig",
-    "ToolDescriptor",
-    "ToolExecutor",
     "decrypt_api_key",
     "encrypt_api_key",
     "error_response",
@@ -39,3 +43,21 @@ __all__ = [
     "metrics_endpoint",
     "seed_default_roles_and_admin",
 ]
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "log_audit": ("core.audit", "log_audit"),
+    "seed_default_roles_and_admin": ("core.seed", "seed_default_roles_and_admin"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name not in _LAZY_IMPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from importlib import import_module
+
+    module_path, symbol = _LAZY_IMPORTS[name]
+    return getattr(import_module(module_path), symbol)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type * as React from 'react';
-import { Paperclip, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types/studio';
+import MessageAttachments from './MessageAttachments';
 import { CopyBtn } from './messages/CopyBtn';
 import VersionPager from './VersionPager';
 import { sanitizeHtml } from '../../utils/sanitize';
@@ -94,27 +95,16 @@ export default function UserMessage({
 
   return (
     <div className="flex gap-3 flex-row-reverse">
-      <div className="flex flex-col gap-1 items-end max-w-[80%]">
+      <div className="flex flex-col gap-1 items-end max-w-[85%] md:max-w-[80%]">
         <div className="flex flex-col items-end w-fit max-w-full">
-          <div className="px-4 py-3 rounded-[12px_12px_4px_12px] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]">
-            {sanitizeHtml(msg.content)}
-          </div>
+          <div
+            className="px-4 py-3 rounded-[12px_12px_4px_12px] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
+            // sanitize 白名单过滤后按 HTML 渲染；React 字符串渲染会转义，
+            // 导致 <b>/<img> 等以字面量显示（XSS 由 DOMPurify 白名单兜底）。
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.content) }}
+          ></div>
           {msg.attachments && msg.attachments.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 justify-end mt-1">
-              {msg.attachments.map((a) => (
-                <a
-                  key={a.id}
-                  href={`/api/attachments/${a.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] text-xs cursor-pointer no-underline transition-colors duration-150 hover:text-[var(--color-text-primary)]"
-                  title={a.filename}
-                >
-                  <Paperclip size={12} />
-                  <span className="max-w-[220px] truncate">{a.filename}</span>
-                </a>
-              ))}
-            </div>
+            <MessageAttachments attachments={msg.attachments} />
           )}
           <div className="flex items-center gap-2 mt-1 w-full justify-end">
             <CopyBtn text={msg.content} label={t('teamMessage.copy')} />

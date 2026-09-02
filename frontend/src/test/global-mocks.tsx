@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { vi } from 'vitest';
 
+// 测试环境全局变量
+declare const __APP_VERSION__: string;
+if (typeof (globalThis as any).__APP_VERSION__ === 'undefined') {
+  (globalThis as any).__APP_VERSION__ = 'test';
+}
+
 // react-syntax-highlighter
 vi.mock('react-syntax-highlighter', () => ({
   default: ({ children }: any) => children,

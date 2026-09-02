@@ -3,7 +3,6 @@
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from uuid import uuid4
 
 from core.infra.database import (
@@ -16,7 +15,7 @@ from core.infra.database import (
     UserRoleDB,
     get_session_factory,
 )
-from sqlalchemy import or_, select, update
+from sqlalchemy import ColumnElement, or_, select, update
 
 
 async def get_user_by_email(email: str) -> UserDB | None:
@@ -152,9 +151,6 @@ async def get_user_roles(user_id: str) -> list[str]:
         return list(result.scalars().all())
 
 
-# ── Refresh Token operations ─────────────────────────────────────────────
-
-
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
@@ -211,10 +207,7 @@ async def consume_refresh_token(token: str) -> tuple[UserDB | None, str | None]:
             return None, None
 
         if rt.revoked_at is not None:
-            # Replay attack — revoke entire family
-            await session.execute(
-                select(RefreshTokenDB).where(RefreshTokenDB.family_id == rt.family_id)
-            )
+            # Replay attack — revoke the entire token family
             family_result = await session.execute(
                 select(RefreshTokenDB).where(RefreshTokenDB.family_id == rt.family_id)
             )
@@ -229,7 +222,7 @@ async def consume_refresh_token(token: str) -> tuple[UserDB | None, str | None]:
         if expires < datetime.now(UTC):
             return None, None
 
-        # Rotate: revoke current, check global revocation
+        # Rotate: revoke the consumed token so it cannot be reused
         rt.revoked_at = datetime.now(UTC)
 
         user = await session.get(UserDB, rt.user_id)
@@ -285,7 +278,7 @@ async def merge_guest_data(guest_ids: set[str], real_user_id: str) -> None:
     factory = get_session_factory()
     async with factory() as session:
         for table in (SessionDB, UserApiKey, KeyUsageLog):
-            conditions: list[Any] = []
+            conditions: list[ColumnElement[bool]] = []
 
             if guest_ids:
                 # For UserApiKey, skip "anonymous" — it's a shared fallback

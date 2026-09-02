@@ -9,6 +9,7 @@ RERANK_PREFIXES = ("rerank", "bge-reranker")
 
 
 def infer_model_type(model: str, provider: str) -> str:
+    """Classify a model id into embedding/rerank/speech2text/tts/moderation/tool/llm."""
     m = model.lower()
     # Match on the basename (after org/namespace prefix like "BAAI/"), since
     # real model ids carry a prefix (e.g. "BAAI/bge-m3") that would otherwise

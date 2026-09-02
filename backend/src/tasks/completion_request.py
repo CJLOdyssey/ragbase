@@ -19,10 +19,6 @@ Pure functions — no I/O, trivially unit-testable.
 from dataclasses import dataclass
 from typing import Any
 
-from core.infra.logging_config import get_logger
-
-logger = get_logger(__name__)
-
 DEEPSEEK_OFFICIAL_HOST = "api.deepseek.com"
 MOONSHOT_HOST = "api.moonshot.cn"
 DEFAULT_API_BASE = f"https://{DEEPSEEK_OFFICIAL_HOST}"
@@ -138,7 +134,9 @@ def _deepseek_prefix_request(
     carries the original question. Reasoning chain is passed back via
     ``reasoning_content`` for seamless continuation of thinking models.
     """
-    clean_base = base.rstrip("/beta")
+    # rstrip would strip a *character set* (mangling bases ending in b/e/t/a);
+    # removesuffix removes exactly the "/beta" marker.
+    clean_base = base.removesuffix("/beta")
     body: dict[str, Any] = {
         "model": model,
         "messages": [

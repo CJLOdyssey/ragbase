@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from core.infra.logging_config import get_logger
+from domain.ssrf import validate_public_url
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 logger = get_logger(__name__)
@@ -49,6 +50,8 @@ def build_llm_request_body(
     Returns ``(url, headers, body)``.
     """
     url = f"{(base_url or 'https://api.deepseek.com').rstrip('/')}/chat/completions"
+    # SSRF guard: custom base_url is user-influenced — must be public.
+    validate_public_url(url)
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
     body: dict[str, Any] = {

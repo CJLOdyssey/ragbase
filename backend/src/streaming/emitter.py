@@ -1,19 +1,25 @@
 """Streaming emitter — bridges raw httpx streaming events to Redis pub/sub + DB."""
 
-import logging
 import os
 from typing import Any
 
 from broker import publish_run_message
+from core.infra.logging_config import get_logger
 from core.infra.metrics import stream_messages_dropped_total
 from repository import save_message
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 STREAM_DEFAULT_MAX_BUFFER_SIZE = 20000
 
 
 class StreamEmitter:
+    """Async callable that converts graph/LLM stream events into run messages.
+
+    Consumed as the ``stream_cb`` of ``SingleAgentGraph`` and published to
+    Redis (live frontend) plus persisted as chat messages (history).
+    """
+
     def __init__(self, run_id: str, sources: list[dict[str, Any]] | None = None):
         self._run_id = run_id
         self._sources = sources or []
@@ -56,7 +62,9 @@ class StreamEmitter:
 
     async def __call__(self, event: dict[str, Any]) -> None:
         kind = event.get("event", "")
-        data = event.get("data", {})
+        # Event producers (LangGraph callbacks) may emit data=None; treat it
+        # as absent rather than crashing on .get().
+        data = event.get("data") or {}
 
         if kind == "on_custom_token":
             content = data.get("content", "")
@@ -72,13 +80,15 @@ class StreamEmitter:
                         },
                     )
                 except Exception:
-                    logger.exception("Stream chunk publish failed for run %s", self._run_id)
+                    # Per-token chunk: debug level to avoid log flooding on
+                    # sustained Redis issues (final message publish keeps exception).
+                    logger.debug("Stream chunk publish failed for run %s", self._run_id, exc_info=True)
 
         elif kind == "on_custom_thinking":
             rc = data.get("content", "")
             if rc:
                 if rc.startswith("[result]"):
-                    logger.debug("on_custom_thinking: [result] node received, tool=%s", rc.split(chr(10))[0][:100])
+                    logger.debug("on_custom_thinking: [result] node received, tool=%s", rc.split("\n")[0][:100])
                 self._checked_append(self._thinking_buffer, rc, "thinking")
                 try:
                     await publish_run_message(
@@ -90,7 +100,7 @@ class StreamEmitter:
                         },
                     )
                 except Exception:
-                    logger.exception("Thinking stream publish failed for run %s", self._run_id)
+                    logger.debug("Thinking stream publish failed for run %s", self._run_id, exc_info=True)
 
         elif kind == "on_node_end":
             await self._flush_buffers()
@@ -120,14 +130,18 @@ class StreamEmitter:
         elif kind == "on_client_action":
             action = data.get("action", {})
             logger.debug("streaming: on_client_action received action=%s", action)
-            await publish_run_message(
-                self._run_id,
-                {
-                    "type": "client_action",
-                    "agent_name": "Agent",
-                    "action": action,
-                },
-            )
+            try:
+                await publish_run_message(
+                    self._run_id,
+                    {
+                        "type": "client_action",
+                        "agent_name": "Agent",
+                        "action": action,
+                    },
+                )
+            except Exception:
+                # Side-effect events must not break the stream callback chain.
+                logger.exception("Client action publish failed for run %s", self._run_id)
 
         elif kind == "on_tool_results":
             tool_name = data.get("tool_name", "")
@@ -140,14 +154,18 @@ class StreamEmitter:
         # via on_custom_thinking (see _tools_node in graph.py)
 
     async def emit_balance_warning(self, message: str = "") -> None:
-        await publish_run_message(
-            self._run_id,
-            {
-                "type": "balance_warning",
-                "agent_name": "System",
-                "content": message or "模型余额不足，请检查 API Key 配置",
-            },
-        )
+        try:
+            await publish_run_message(
+                self._run_id,
+                {
+                    "type": "balance_warning",
+                    "agent_name": "System",
+                    "content": message or "模型余额不足，请检查 API Key 配置",
+                },
+            )
+        except Exception:
+            # Balance warning is advisory; a Redis failure must not surface.
+            logger.exception("Balance warning publish failed for run %s", self._run_id)
 
     def emit_thinking_nodes(self, nodes: list[dict[str, Any]]) -> None:
         max_pending = 20
@@ -159,16 +177,19 @@ class StreamEmitter:
             self._pending_thinking_nodes = nodes[:max_pending]
 
     async def emit_tool_results(self, tool_name: str, tool_call_id: str, references: list[dict[str, Any]]) -> None:
-        await publish_run_message(
-            self._run_id,
-            {
-                "type": "tool_results",
-                "agent_name": "Agent",
-                "toolName": tool_name,
-                "tool_call_id": tool_call_id,
-                "references": references,
-            },
-        )
+        try:
+            await publish_run_message(
+                self._run_id,
+                {
+                    "type": "tool_results",
+                    "agent_name": "Agent",
+                    "toolName": tool_name,
+                    "tool_call_id": tool_call_id,
+                    "references": references,
+                },
+            )
+        except Exception:
+            logger.exception("Tool results publish failed for run %s", self._run_id)
 
     async def emit_tool_complete(self, data: dict[str, Any]) -> None:
         try:
@@ -266,6 +287,9 @@ class StreamEmitter:
                         "sources": self._sources,
                     },
                 )
+            except Exception:
+                logger.exception("Stream publish failed for run %s", self._run_id)
+            try:
                 await save_message(
                     run_id=self._run_id,
                     role="Agent",
@@ -277,7 +301,9 @@ class StreamEmitter:
                 )
                 saved_with_content = True
             except Exception:
-                logger.exception("Stream publish failed for run %s", self._run_id)
+                # Publish and save are independent: a failed publish must not
+                # drop the message from history (and vice versa).
+                logger.exception("Stream save failed for run %s", self._run_id)
 
         if thinking_text:
             try:
@@ -288,8 +314,10 @@ class StreamEmitter:
                 }
                 if self._pending_thinking_nodes:
                     payload["nodes"] = self._pending_thinking_nodes
-                    self._pending_thinking_nodes = None
                 await publish_run_message(self._run_id, payload)
+                # Only drop the nodes after a successful publish so a transient
+                # Redis failure doesn't lose the thinking-chain for good.
+                self._pending_thinking_nodes = None
             except Exception:
                 logger.exception("Thinking publish failed for run %s", self._run_id)
             # Tools-only flush: has thinking but no content to save with.
@@ -297,9 +325,10 @@ class StreamEmitter:
             if not saved_with_content:
                 self._pending_thinking = thinking_text
 
-    async def _emit(
+    async def emit_message(
         self, agent_name: str, content: str, msg_type: str = "message", thinking: str | None = None
     ) -> None:
+        """Publish and persist a chat message for the run (public entry point)."""
         self._message_index += 1
         payload = {
             "type": msg_type,
@@ -317,7 +346,13 @@ class StreamEmitter:
             payload["thinking"] = thinking
         try:
             await publish_run_message(self._run_id, payload)
-            if msg_type == "message":
+        except Exception:
+            logger.exception("Stream publish failed for run %s", self._run_id)
+        if msg_type == "message":
+            # Publish and save are independent: a failed publish must not drop
+            # the message from history (and vice versa) — same contract as
+            # _flush_buffers.
+            try:
                 await save_message(
                     run_id=self._run_id,
                     role=agent_name,
@@ -327,5 +362,5 @@ class StreamEmitter:
                     round_number=self._message_index,
                     sources=self._sources or None,
                 )
-        except Exception:
-            logger.exception("Stream emit failed for run %s", self._run_id)
+            except Exception:
+                logger.exception("Stream save failed for run %s", self._run_id)

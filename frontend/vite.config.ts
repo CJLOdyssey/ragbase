@@ -4,7 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig, loadEnv } from 'vite';
+import type { Plugin } from 'vite';
 import csp from 'vite-plugin-csp';
+import { readFileSync } from 'fs';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -23,7 +25,14 @@ export default defineConfig(({ mode }) => {
     env.VITE_WS_URL ||
     apiOrigin.replace(/^http/, 'ws');
 
+  const appVersion = JSON.parse(
+    readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'),
+  ).version;
+
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -32,6 +41,18 @@ export default defineConfig(({ mode }) => {
     plugins: [
       tailwindcss(),
       react(),
+      {
+        name: 'sw-version-replace',
+        apply: 'build',
+        closeBundle() {
+          const swPath = path.resolve(__dirname, 'dist/sw.js');
+          try {
+            const content = readFileSync(swPath, 'utf-8');
+            const replaced = content.replace(/__APP_VERSION__/g, appVersion);
+            require('fs').writeFileSync(swPath, replaced);
+          } catch {}
+        },
+      } satisfies Plugin,
       csp({
         directives: {
           'default-src': ["'self'"],
@@ -61,6 +82,7 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiOrigin,
           changeOrigin: true,
+          ws: true,
         },
         '/ws': {
           target: wsOrigin,
@@ -79,6 +101,9 @@ export default defineConfig(({ mode }) => {
             vendor: ['react', 'react-dom', 'react-router-dom'],
             utils: ['axios', 'zustand'],
             sentry: ['@sentry/react', '@sentry/browser'],
+            antd: ['antd', '@ant-design/icons', '@ant-design/cssinjs'],
+            echarts: ['echarts'],
+            motion: ['motion/react'],
           },
         },
       },
@@ -101,6 +126,7 @@ export default defineConfig(({ mode }) => {
               'react-syntax-highlighter',
               'reactflow',
               '@ant-design/cssinjs',
+              'echarts',
             ],
           },
         },

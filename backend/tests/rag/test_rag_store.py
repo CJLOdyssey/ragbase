@@ -435,6 +435,51 @@ class TestPgVectorStore:
             assert mock_session.execute.call_count == 4
 
     @pytest.mark.asyncio
+    async def test_search_runs_lexical_leg_at_min_len_boundary(self):
+        """_LEXICAL_MIN_LEN=3 边界：恰 3 字符走词法腿（pg_trgm 至少一个 trigram）。"""
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        vec_result = MagicMock()
+        vec_result.fetchall.return_value = []
+        lex_result = MagicMock()
+        lex_result.fetchall.return_value = []
+        mock_session.execute = AsyncMock(
+            side_effect=[None, None, None, vec_result, None, lex_result]
+        )
+        with _patch_db(mock_session):
+            await store.search([0.1] * 1024, query_text="abc", user_id="u1")
+            assert mock_session.execute.call_count == 6
+
+    @pytest.mark.asyncio
+    async def test_search_skips_lexical_leg_below_min_len_boundary(self):
+        """_LEXICAL_MIN_LEN=3 边界：2 字符不走词法腿。"""
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        vec_result = MagicMock()
+        vec_result.fetchall.return_value = []
+        mock_session.execute = AsyncMock(side_effect=[None, None, None, vec_result])
+        with _patch_db(mock_session):
+            await store.search([0.1] * 1024, query_text="ab", user_id="u1")
+            assert mock_session.execute.call_count == 4
+
+    @pytest.mark.asyncio
+    async def test_search_pins_trgm_threshold(self):
+        """词法腿 SET LOCAL 阈值必须钉死在 0.3（改了阈值应被测试捕获）。"""
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        vec_result = MagicMock()
+        vec_result.fetchall.return_value = []
+        lex_result = MagicMock()
+        lex_result.fetchall.return_value = []
+        mock_session.execute = AsyncMock(
+            side_effect=[None, None, None, vec_result, None, lex_result]
+        )
+        with _patch_db(mock_session):
+            await store.search([0.1] * 1024, query_text="SKU-2024-001", user_id="u1")
+            threshold_call = mock_session.execute.call_args_list[4]
+            assert "word_similarity_threshold = 0.3" in str(threshold_call[0][0])
+
+    @pytest.mark.asyncio
     async def test_rrf_fuses_legs_by_rank(self):
         vec_leg = [
             {"id": "a", "text": "a", "similarity": 0.9},
@@ -454,6 +499,13 @@ class TestPgVectorStore:
         fused = _rrf_fuse(legs, top_k=3)
         assert len(fused) == 3
 
+    def test_rrf_uses_k_60(self):
+        """RRF 融合常量 k 钉死在 60：rank 1 得 1/61，rank 2 得 1/62。"""
+        leg = [[{"id": "a", "text": "a"}, {"id": "b", "text": "b"}]]
+        fused = _rrf_fuse(leg, top_k=2)
+        assert fused[0]["score"] == pytest.approx(1 / 61)
+        assert fused[1]["score"] == pytest.approx(1 / 62)
+
     # ── clear_asset() / clear_session() tests ──────────────────────────
 
     @pytest.mark.asyncio
@@ -466,8 +518,17 @@ class TestPgVectorStore:
             query = str(delete_call[0][0])
             params = delete_call[0][1]
             assert "DELETE FROM vector_chunks" in query
-            assert "asset_id = :aid" in query
-            assert params["aid"] == "a1"
+            assert "asset_id = ANY(:aids)" in query
+            assert params["aids"] == ["a1"]
+
+    @pytest.mark.asyncio
+    async def test_clear_assets_batch_skips_empty(self):
+        """Empty id list must not touch the DB at all."""
+        store = PgVectorStore()
+        mock_session = AsyncMock()
+        with _patch_db(mock_session):
+            await store.clear_assets([])
+            mock_session.execute.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_clear_session(self):
@@ -491,7 +552,7 @@ class TestPgVectorStore:
             assert "DELETE FROM vector_chunks" in query
             assert params["sid"] == "session-abc"
 
-    # ── ensure_table integration tests ─────────────────────────────────
+    # ── _ensure_table lazy-init tests（mock 会话，非真实 DB） ──────────
 
     @pytest.mark.asyncio
     async def test_add_ensure_table_called(self):

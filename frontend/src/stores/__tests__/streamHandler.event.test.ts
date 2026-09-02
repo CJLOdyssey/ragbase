@@ -91,4 +91,22 @@ describe('handleStreamEvent', { tags: ['unit'] }, () => {
     const result = updateFn(s) as { messages: Array<{ content: string }> };
     expect(result.messages![0].content).toBe('x');
   });
+
+  it('ignores stream event after run finished (status idle — reconnect replay)', () => {
+    const s = makeState({
+      status: 'idle',
+      streamingId: null,
+      currentRunId: 'run-1',
+    });
+    const get = vi.fn(() => s);
+    const set = vi.fn();
+    const activeStreams = new Set<string>();
+
+    handleStreamEvent(set as never, get, activeStreams, {
+      type: 'stream',
+      content: 'replay',
+    } as never);
+
+    expect(set).not.toHaveBeenCalled();
+  });
 });

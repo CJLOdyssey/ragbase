@@ -16,7 +16,7 @@ import uuid
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 pytestmark = pytest.mark.integration
 
@@ -248,3 +248,52 @@ class TestLiveVectorStore:
             ).all()
         assert vec_rows == []
         assert lex_rows == []
+
+    async def test_store_hybrid_search_end_to_end(self, engine, clean_test_rows):
+        """走 PgVectorStore API 全链路：add（真实 upsert SQL）→ search（双 leg
+        + RRF 融合 + 用户隔离），验证 store 本身而非手写 SQL。"""
+        from unittest.mock import patch
+
+        from rag.rag_chunking import Chunk
+        from rag.rag_store import PgVectorStore
+
+        session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        store = PgVectorStore()
+        with patch(
+            "core.infra.database.get_session_factory", return_value=session_factory
+        ):
+            await store.add(
+                [
+                    Chunk(
+                        id="live-e2e-a",
+                        text="postgres vector search hybrid retrieval",
+                        session_id="live-sess",
+                        run_id="live-run",
+                        embedding=[1.0] * 1024,
+                        metadata={"asset_id": "e2e-a"},
+                    ),
+                    Chunk(
+                        id="live-e2e-b",
+                        text="unrelated cooking recipes",
+                        session_id="live-sess",
+                        run_id="live-run",
+                        embedding=[-1.0] * 1024,
+                        metadata={"asset_id": "e2e-b"},
+                    ),
+                ],
+                user_id=_TEST_USER,
+            )
+            results = await store.search(
+                [0.9] * 1024,
+                query_text="postgres vector search",
+                user_id=_TEST_USER,
+                top_k=5,
+            )
+
+        texts = [r["text"] for r in results]
+        # A 双 leg 命中排第一；B 向量腿相似度为负但仍入列（无 min_score 地板）。
+        assert "postgres vector search hybrid retrieval" in texts
+        assert "unrelated cooking recipes" in texts
+        assert results[0]["similarity"] > results[1]["similarity"]
+        # 检索结果携带资产溯源，供引文 UI。
+        assert results[0]["metadata"]["asset_id"] == "e2e-a"

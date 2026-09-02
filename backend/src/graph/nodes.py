@@ -7,16 +7,16 @@ a file-size split (SPEC: single file <= 400 lines), no logic changed.
 import contextlib
 import json
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
-from core._interfaces import StreamResponseHandler, ToolExecutor
+from core._interfaces import StreamResponseHandler
 from core.infra.logging_config import get_logger
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
-    HumanMessage,
     SystemMessage,
     ToolMessage,
 )
@@ -31,6 +31,7 @@ from streaming.llm_stream import (
 from graph.graph_state import AgentState
 from graph.helpers import (
     CONTEXT_GUARD_PROMPT,
+    NO_RAG_HITS_PROMPT,
     _emit_balance_warning,
     _is_balance_error,
     _load_context_guard_template,
@@ -47,7 +48,6 @@ class GraphNodesMixin:
     """
 
     _stream_cb: Callable[..., Any] | None
-    _tool_map: dict[str, ToolExecutor]
     _tool_definitions: list[dict[str, Any]]
     _last_usage: dict[str, Any]
     model: str
@@ -125,7 +125,9 @@ class GraphNodesMixin:
         session_context = state.get("session_context", "")
 
         full_messages: list[BaseMessage] = []
-        now = datetime.now(UTC).astimezone()
+        # Explicit Beijing timezone — the server may run in UTC/Docker where
+        # astimezone() would report the wrong clock under the CST label.
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
         weekday_cn = ["一", "二", "三", "四", "五", "六", "日"][now.weekday()]
         date_context = (
             f"当前日期：{now.year}年{now.month}月{now.day}日 周{weekday_cn} "
@@ -138,8 +140,6 @@ class GraphNodesMixin:
         # on state.no_rag_hits only — never inject with context present (the
         # unconditional phrasing caused the answer_relevancy 0.253 regression).
         if state.get("no_rag_hits"):
-            from graph.helpers import NO_RAG_HITS_PROMPT
-
             full_messages.append(SystemMessage(content=NO_RAG_HITS_PROMPT))
         if session_context:
             # OWASP LLM01: untrusted retrieval/attachment text is sanitized
@@ -184,12 +184,14 @@ class GraphNodesMixin:
                     "toolParams": {k: str(v) for k, v in tc_args.items()} if tc_args else {},
                 })
             if self._stream_cb:
-                await self._stream_cb({
-                    "event": "on_thinking_nodes",
-                    "data": {"nodes": thinking_nodes},
-                })
+                with contextlib.suppress(Exception):
+                    await self._stream_cb({
+                        "event": "on_thinking_nodes",
+                        "data": {"nodes": thinking_nodes},
+                    })
         if self._stream_cb:
-            await self._stream_cb({"event": "on_node_end", "data": {}})
+            with contextlib.suppress(Exception):
+                await self._stream_cb({"event": "on_node_end", "data": {}})
 
         return {"messages": [AIMessage(**kwargs)]}
 
@@ -233,12 +235,13 @@ class GraphNodesMixin:
                     "event": "on_custom_token",
                     "data": {"content": content},
                 })
-            await self._stream_cb({"event": "on_node_end", "data": {}})
+            with contextlib.suppress(Exception):
+                await self._stream_cb({"event": "on_node_end", "data": {}})
 
         return {"messages": [AIMessage(content=content)]}
 
     async def _tools_node(self, state: AgentState) -> dict[str, Any]:
-        """LangGraph tools node — executes tool calls."""
+        """LangGraph tools node — returns error for any tool calls (no tools registered)."""
         messages = state.get("messages", [])
         last_msg = messages[-1] if messages else None
         if not isinstance(last_msg, AIMessage) or not last_msg.tool_calls:
@@ -249,46 +252,17 @@ class GraphNodesMixin:
             tool_name = tc.get("name", "")
             tool_args = tc.get("args", {})
             tool_id = tc.get("id", "")
-            fn = self._tool_map.get(tool_name)
 
             # ── Emit tool-call start into thinking chain ──
             if self._stream_cb:
                 args_preview = json.dumps(tool_args, ensure_ascii=False)[:200]
-                await self._stream_cb({
-                    "event": "on_custom_thinking",
-                    "data": {"content": f"[tool] {tool_name}({args_preview})"},
-                })
+                with contextlib.suppress(Exception):
+                    await self._stream_cb({
+                        "event": "on_custom_thinking",
+                        "data": {"content": f"[tool] {tool_name}({args_preview})"},
+                    })
 
-            if fn:
-                try:
-                    result = await fn.invoke(tool_args)
-                except Exception as e:
-                    result = f"Error: {e}"
-            else:
-                result = f"Unknown tool: {tool_name}"
-            if (
-                fn
-                and isinstance(result, str)
-                and ('"status":' in result or '"status": "' in result)
-            ):
-                try:
-                    desc = getattr(fn, "description", "") or ""
-                    prompt = (
-                        f"Tool: {tool_name}\n"
-                        f"Description: {desc}\n"
-                        f"Args: {json.dumps(tool_args, ensure_ascii=False)}\n"
-                        "Execute and return ONLY the result (no markdown):"
-                    )
-                    t0 = datetime.now(UTC)
-                    llm_result = await self.llm.ainvoke([HumanMessage(content=prompt)])
-                    elapsed = (datetime.now(UTC) - t0).total_seconds()
-                    result = str(llm_result.content) if llm_result.content else ""
-                    logger.info(
-                        "LLM tool-fallback | model=%s | tool=%s | elapsed=%.2fs | result_len=%d",
-                        self.model, tool_name, elapsed, len(result or ""),
-                    )
-                except Exception as exc:
-                    logger.warning("LLM tool-fallback failed | tool=%s | error=%s", tool_name, exc)
+            result = f"Unknown tool: {tool_name}"
             logger.info(
                 "Tool result | tool=%s | result_len=%d | has_cb=%s",
                 tool_name, len(str(result or "")), self._stream_cb is not None,
@@ -301,12 +275,14 @@ class GraphNodesMixin:
             # ── Emit tool result into thinking chain ──
             if self._stream_cb:
                 result_str = str(result or "")[:200]
-                await self._stream_cb({
-                    "event": "on_custom_thinking",
-                    "data": {"content": f"[result] {tool_name} | {result_str}"},
-                })
+                with contextlib.suppress(Exception):
+                    await self._stream_cb({
+                        "event": "on_custom_thinking",
+                        "data": {"content": f"[result] {tool_name} | {result_str}"},
+                    })
         if self._stream_cb:
-            await self._stream_cb({"event": "on_node_end", "data": {}})
+            with contextlib.suppress(Exception):
+                await self._stream_cb({"event": "on_node_end", "data": {}})
         return {"messages": tool_messages}
 
     def _should_continue(self, state: AgentState) -> str:

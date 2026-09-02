@@ -1,15 +1,6 @@
 """Session detail returns the full run tree — no folding, no versions array."""
 
-import os
-
 import pytest
-
-os.environ.setdefault("KEY_VAULT_SECRET", "0123456789abcdef0123456789abcdef")
-os.environ["AUTH_MODE"] = "legacy"
-os.environ["AUTH_ENABLED"] = "0"
-os.environ["RATE_LIMIT"] = "9999"
-os.environ["CHECKPOINTER_BACKEND"] = "memory"
-os.environ["DATABASE_POOL_SIZE"] = "0"
 
 
 @pytest.mark.asyncio

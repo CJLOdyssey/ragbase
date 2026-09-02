@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { changeLanguage } from '../../i18n/index';
-import Modal from '@/components/shared/Modal';
 import ToggleSwitch from '@/components/shared/ToggleSwitch';
-import { Globe, Info } from 'lucide-react';
+import { Modal as AntdModal } from 'antd';
+import { Globe, Info, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import ChangePasswordForm from './ChangePasswordForm';
 import { useSettings } from '../../contexts/SettingsContext';
 
 interface Props {
   onClose: () => void;
 }
 
-type SettingsTab = 'general' | 'about';
+type SettingsTab = 'general' | 'security' | 'about';
 
 const VERSION = '1.0.0';
 const BUILD_TIME = '2026-05-08';
@@ -22,12 +23,21 @@ export default function SettingsModal({ onClose }: Props) {
   const fontPct = ((settings.fontSize - 14) / 6) * 100;
 
   return (
-    <Modal
+    <AntdModal
       title={t('settings.title')}
-      onClose={onClose}
-      className="w-[970px] h-[600px] flex flex-col overflow-hidden"
-      hideHeaderBorder
-      hideFooterBorder
+      open={true}
+      onCancel={onClose}
+      centered
+      width={970}
+      className="mobile-fullscreen"
+      classNames={{ container: 'flex flex-col overflow-hidden' }}
+      styles={{
+        container: { height: 600 },
+        // antd v6 body 默认 flex:0 1 auto + min-height:auto，会被内容撑高、
+        // 被 container 的 overflow-hidden 硬裁（无滚动条截断）；须约束在
+        // 剩余空间内，内部 overflow-y-auto 才有滚动基准。
+        body: { flex: 1, minHeight: 0 },
+      }}
       footer={
         <>
           <button
@@ -45,17 +55,19 @@ export default function SettingsModal({ onClose }: Props) {
         </>
       }
     >
-      <div className="flex h-full min-h-0 overflow-hidden">
-        <div className="w-[160px] px-4 py-5 flex flex-col gap-1 overflow-hidden min-h-0">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
+        {/* 移动端：顶部水平 Tab 栏；桌面端：左侧垂直 Tab 栏 */}
+        <div className="flex flex-row gap-1 overflow-x-auto border-b border-[var(--color-border)] px-2 py-2 md:w-[160px] md:flex-col md:border-b-0 md:border-r md:border-r-[var(--color-border-subtle)] md:px-4 md:py-5 md:overflow-x-hidden">
           {(
             [
               ['general', Globe],
+              ['security', Shield],
               ['about', Info],
             ] as const
           ).map(([tab, Icon]) => (
             <button
               key={tab}
-              className={`flex items-center gap-3 p-2 px-3 bg-transparent border-none rounded-md text-[var(--color-text-secondary)] text-sm cursor-pointer transition-[background,color] duration-150 text-left hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] ${activeTab === tab ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
+              className={`flex items-center gap-2 whitespace-nowrap p-2 px-3 bg-transparent border-none rounded-md text-[var(--color-text-secondary)] text-sm cursor-pointer transition-[background,color] duration-150 text-left hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] md:gap-3 ${activeTab === tab ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]' : ''}`}
               onClick={() => setActiveTab(tab as SettingsTab)}
             >
               <Icon size={16} />
@@ -207,6 +219,17 @@ export default function SettingsModal({ onClose }: Props) {
             </div>
           )}
 
+          {activeTab === 'security' && (
+            <div className="flex flex-col gap-6">
+              <section>
+                <h4 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4 tracking-tight">
+                  {t('settings.changePassword.title')}
+                </h4>
+                <ChangePasswordForm />
+              </section>
+            </div>
+          )}
+
           {activeTab === 'about' && (
             <div>
               <h4>{t('settings.about')}</h4>
@@ -216,7 +239,7 @@ export default function SettingsModal({ onClose }: Props) {
           )}
         </div>
       </div>
-    </Modal>
+    </AntdModal>
   );
 }
 

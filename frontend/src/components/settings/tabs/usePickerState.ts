@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type * as React from 'react';
 import { listPrompts } from '../../../api/client/prompts';
 import i18n from '../../../i18n/index';
+import Logger from '../../../utils/logger';
 
 export interface PickerItem {
   id: string;
@@ -63,8 +64,11 @@ export function usePickerState(deps: PickerDeps) {
           output: outputItems,
         }));
       })
-      .catch(() => {});
-    // ponytail: tools/mcp/skills 无对应 API（主工作台已裁剪），留空等主窗口接入
+      .catch((err) =>
+        Logger.warn('Failed to load picker prompts', err),
+      );
+    // tools/mcp/skills 目前无对应 API（主工作台已裁剪），选择器不提供
+    // 这三个 tab；后续接入时在此扩展数据源。
     return () => {
       cancelled = true;
     };

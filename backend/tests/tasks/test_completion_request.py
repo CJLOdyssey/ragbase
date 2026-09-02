@@ -154,6 +154,36 @@ class TestFallback:
         )
         assert "api.deepseek.com" in req.url
 
+    def test_trailing_slash_base_stripped(self):
+        """base_url 尾斜杠 rstrip——不应影响路由判定与 URL 拼接。"""
+        req = build_completion_request(
+            ctx=ctx(draft="x", thinking="t"),
+            model="deepseek-chat",
+            api_base="https://api.deepseek.com/",
+            api_key=API_KEY,
+        )
+        assert req.url == "https://api.deepseek.com/beta/chat/completions"
+
+    def test_question_none_uses_deepseek_default_prompt(self):
+        """question 缺失 → DeepSeek 官方前缀接口使用默认续写指令。"""
+        req = build_completion_request(
+            ctx=ctx(draft="半截文本", thinking="t"),
+            model="deepseek-chat",
+            api_base="https://api.deepseek.com",
+            api_key=API_KEY,
+        )
+        assert req.body["messages"][0] == {"role": "user", "content": "请继续完成下面的回答"}
+
+    def test_max_tokens_cap_applied(self):
+        """超长草稿/思考：请求体仍受 _MAX_TOKENS 上限约束（防无限生成）。"""
+        req = build_completion_request(
+            ctx=ctx(question="q", draft="x" * 20000, thinking="t" * 20000),
+            model="deepseek-chat",
+            api_base="https://api.deepseek.com",
+            api_key=API_KEY,
+        )
+        assert req.body["max_tokens"] == 16384
+
 
 class TestThinkingOnlyInterruption:
     """正文未生成（仅思考被中断）时，续写原料 = 半截思考链。"""

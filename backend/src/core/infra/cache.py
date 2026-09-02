@@ -16,13 +16,14 @@ import json
 import os
 from typing import Any
 
+from core.env import env_int
 from core.infra.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 CACHE_PREFIX = os.environ.get("REDIS_CACHE_PREFIX", "cache:")
 CACHE_ENABLED = os.environ.get("REDIS_CACHE_ENABLED", "1") == "1"
-DEFAULT_TTL = int(os.environ.get("REDIS_CACHE_TTL", "300"))
+DEFAULT_TTL = env_int("REDIS_CACHE_TTL", 300)
 
 
 class Cache:
@@ -42,6 +43,7 @@ class Cache:
         return f"{CACHE_PREFIX}{name}"
 
     async def get(self, name: str) -> Any | None:
+        """Return the cached JSON value for a name, or None if missing or disabled."""
         if not CACHE_ENABLED:
             return None
         try:
@@ -57,6 +59,7 @@ class Cache:
     async def set(
         self, name: str, value: Any, ttl_seconds: int = DEFAULT_TTL
     ) -> None:
+        """Cache a JSON-serializable value under a name with a TTL in seconds."""
         if not CACHE_ENABLED:
             return
         try:
@@ -67,6 +70,7 @@ class Cache:
             logger.debug("Cache set failed for %s", name, exc_info=True)
 
     async def delete(self, name: str) -> None:
+        """Remove a cached value by name."""
         if not CACHE_ENABLED:
             return
         try:
