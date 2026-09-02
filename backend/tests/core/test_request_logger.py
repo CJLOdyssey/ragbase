@@ -3,8 +3,8 @@
 import logging
 from unittest.mock import AsyncMock
 
-import pytest
 import core.infra.asgi as asgi_mod
+import pytest
 from core.infra.asgi import client_ip
 from core.infra.request_logger import (
     RequestLogMiddleware,
