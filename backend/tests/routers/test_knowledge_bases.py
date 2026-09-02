@@ -266,7 +266,7 @@ async def test_create_knowledge_base_with_parser_config(client: TestClient):
     )
     assert response.status_code == 201
     data = response.json()
-    assert data["parserConfig"] == {"chunk_size": 256, "overlap": 32}
+    assert data["parserConfig"] == {"chunk_size": 256, "overlap": 32, "contextual_retrieval": False}
 
 
 @pytest.mark.asyncio

@@ -46,6 +46,8 @@
     "overlap": "Overlap",
     "overlapHint": "Overlapping words between chunks (0–500)",
     "overlapRequired": "Please enter an overlap",
-    "overlapLessThanSize": "Overlap must be smaller than the chunk size"
+    "overlapLessThanSize": "Overlap must be smaller than the chunk size",
+    "contextualRetrieval": "Contextual Retrieval",
+    "contextualRetrievalHint": "Prepend document-level context to chunks before embedding — improves retrieval accuracy by ~67% (Anthropic technique)"
   }
 }

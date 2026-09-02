@@ -31,6 +31,7 @@ class KBParserConfig(BaseModel):
 
     chunk_size: int = Field(default=512, ge=50, le=2000)
     overlap: int = Field(default=64, ge=0, le=500)
+    contextual_retrieval: bool = Field(default=False)
 
 
 class KBItem(BaseModel):

@@ -11,7 +11,7 @@ from typing import Any
 # Stages written while an indexing task is actively working on an asset.
 # "done"/"failed" are terminal and must not count as in-flight (a failed
 # index must remain retryable by the sweep).
-_ACTIVE_INDEX_STAGES = frozenset({"parsing", "chunking", "embedding", "storing"})
+_ACTIVE_INDEX_STAGES = frozenset({"parsing", "chunking", "contextual", "embedding", "storing"})
 
 
 async def is_index_in_flight(asset_id: str) -> bool:
@@ -54,9 +54,10 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
     kb = await get_kb(kb_id, user_id)
     kb_embed_model: str | None = getattr(kb, "embed_model", None) if kb else None
     kb_parser_config: dict[str, Any] | None = (getattr(kb, "parser_config", None) or None) if kb else None
+    contextual_enabled: bool = bool(kb_parser_config and kb_parser_config.get("contextual_retrieval"))
 
     from rag.rag_guard import ALLOWED_INDEX_SOURCES, scan_document
-    from rag.rag_parsing import extract_text
+    from rag.rag_parsing import extract_metadata, extract_text
 
     try:
         # OWASP LLM08 source whitelist: only known ingestion channels may index.
@@ -72,6 +73,10 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
         text = extract_text(asset.storage_path)
         if not text.strip():
             raise ValueError("asset has no text content — cannot index")
+
+        # Document-level metadata extraction (author, date, title) — stored
+        # in chunk metadata for richer citation and filtering.
+        doc_metadata = extract_metadata(asset.storage_path)
 
         # OWASP LLM08: reject poisoned/hidden-instruction text before it reaches
         # the vector store — a flagged asset stays unindexed, fail-loud.
@@ -112,6 +117,28 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
             for c in chunks:
                 c.tags = list(dict.fromkeys([*c.tags, *asset_tags]))
 
+        # Contextual Retrieval: prepend document-level context prefix to each
+        # chunk before embedding.  Improves retrieval accuracy by ~67%
+        # (Anthropic research) — the vector captures document-level semantics
+        # alongside chunk content.  Original text is preserved in metadata for
+        # display and LLM context injection.
+        if contextual_enabled and chunks:
+            from rag.rag_contextual import apply_context_prefixes, generate_context_prefixes
+
+            await set_index_progress(asset_id, "chunking", 40, "Generating context prefixes...")
+            chunk_texts = [c.text for c in chunks]
+            # Reuse the embedding provider's API key + base_url — same
+            # SiliconFlow/OpenAI-compatible endpoint serves both embeddings
+            # and chat completions.
+            prefixes = await generate_context_prefixes(
+                document_text=text,
+                chunk_texts=chunk_texts,
+                api_key=cfg["api_key"],
+                model=cfg["model"],
+                base_url=cfg["base_url"],
+            )
+            apply_context_prefixes(chunks, prefixes)
+
         await set_index_progress(asset_id, "embedding", 50, "Generating embeddings...")
 
         provider = EmbeddingProvider(
@@ -124,10 +151,14 @@ async def _index_asset(asset_id: str, user_id: str) -> dict[str, Any]:
             chunk.embedding = emb
             # Record the model that produced this vector — retrieval groups by
             # it so mixed-model corpora never cross vector spaces.
+            # Merge with existing metadata (apply_context_prefixes may have
+            # written original_text / context_prefix).
             chunk.metadata = {
+                **(chunk.metadata or {}),
                 "asset_id": asset.id,
                 "asset_name": asset.name,
                 "embed_model": provider.model,
+                **{k: v for k, v in doc_metadata.items() if v},
             }
 
         # Race guard against a concurrent rebind: the KB binding may have

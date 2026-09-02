@@ -24,6 +24,22 @@ from rag.rag_store import PgVectorStore
 
 logger = get_logger(__name__)
 
+
+def _display_text(result: dict[str, Any]) -> str:
+    """Extract display text from a search result.
+
+    Contextual Retrieval stores the original (un-prefixed) text in
+    metadata["original_text"].  When present, use it for LLM context and
+    citation — the context prefix was only needed for embedding semantics.
+    """
+    meta: dict[str, Any] = result.get("metadata") or {}
+    original = meta.get("original_text")
+    if isinstance(original, str) and original:
+        return original
+    text = result.get("text", "")
+    return str(text)
+
+
 # ── Global state ─────────────────────────────────────────────────────────────
 
 _embedding_provider: EmbeddingProvider | None = None
@@ -122,14 +138,19 @@ async def retrieve_context(
     if not results:
         return ""
 
+    return _format_results(results)
+
+
+def _format_results(results: list[dict[str, Any]]) -> str:
+    """Format retrieval results into LLM context string with source trace."""
     parts = []
     for r in results:
         tag_str = f" [{', '.join(r['tags'])}]" if r["tags"] else ""
         asset_str = _asset_label(r["metadata"]) or ""
+        display = _display_text(r)
         parts.append(
-            f"--- [相似度: {r['similarity']:.2f}]{asset_str}{tag_str} ---\n{r['text']}"
+            f"--- [相似度: {r['similarity']:.2f}]{asset_str}{tag_str} ---\n{display}"
         )
-
     return "\n\n".join(parts)
 
 
@@ -166,7 +187,7 @@ async def retrieve_sources(
         {
             "asset_id": r.get("asset_id"),
             "asset_name": (r.get("metadata") or {}).get("asset_name"),
-            "text": r["text"],
+            "text": _display_text(r),
             "similarity": r["similarity"],
         }
         for r in results
@@ -289,6 +310,82 @@ async def _rerank_results(
     # Drop out-of-range indices defensively — a provider bug must not crash
     # retrieval, only narrow the ranked list.
     return [results[idx] for idx in indices if 0 <= idx < len(results)]
+
+
+async def retrieve_context_advanced(
+    query: str,
+    user_id: str,
+    session_id: str | None = None,
+    tags: list[str] | None = None,
+    asset_ids: list[str] | None = None,
+    top_k: int = 5,
+    rerank: bool = False,
+    min_score: float | None = DEFAULT_MIN_SCORE,
+    use_decomposition: bool = True,
+    use_hyde: bool = True,
+) -> str:
+    """Retrieve with advanced strategies (Query Decomposition + HyDE).
+
+    Falls back to standard retrieval when advanced strategies fail or are
+    disabled.  The extra LLM calls are bounded: decomposition adds at most
+    1 call, HyDE adds 1 call, both timeout at 30s.
+    """
+    from repository.keys import get_embedding_config
+
+    from rag.rag_advanced import retrieve_with_advanced_strategies
+
+    # Resolve LLM credentials for decomposition/HyDE
+    cfg = await get_embedding_config()
+    if cfg is None or cfg["api_key"] is None:
+        # No LLM key — fall back to standard retrieval
+        return await retrieve_context(
+            query, user_id, session_id, tags, asset_ids, top_k, rerank, min_score,
+        )
+
+    async def _search_fn(
+        q: str,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        """Thin wrapper around _search_results for the advanced orchestrator."""
+        return await _search_results(
+            query=q,
+            user_id=user_id,
+            session_id=session_id,
+            tags=tags,
+            asset_ids=asset_ids,
+            top_k=kwargs.get("top_k", top_k),
+            rerank=rerank,
+            min_score=min_score,
+        )
+
+    try:
+        results = await retrieve_with_advanced_strategies(
+            query=query,
+            search_fn=_search_fn,
+            api_key=cfg["api_key"],
+            model=cfg.get("model"),
+            base_url=cfg.get("base_url"),
+            use_decomposition=use_decomposition,
+            use_hyde=use_hyde,
+            top_k=top_k,
+        )
+    except Exception:
+        logger.exception("Advanced retrieval failed — falling back to standard")
+        results = await _search_results(
+            query=query,
+            user_id=user_id,
+            session_id=session_id,
+            tags=tags,
+            asset_ids=asset_ids,
+            top_k=top_k,
+            rerank=rerank,
+            min_score=min_score,
+        )
+
+    if not results:
+        return ""
+
+    return _format_results(results)
 
 
 def _asset_label(metadata: dict[str, Any]) -> str:

@@ -3,6 +3,7 @@ import api from './instance';
 export interface KbParserConfig {
   chunk_size: number;
   overlap: number;
+  contextual_retrieval?: boolean;
 }
 
 export interface KnowledgeBase {
@@ -20,10 +21,15 @@ export interface KnowledgeBase {
 export interface ParserConfigForm {
   chunkSize: number;
   overlap: number;
+  contextualRetrieval?: boolean;
 }
 
 function toBackendConfig(c: ParserConfigForm): KbParserConfig {
-  return { chunk_size: c.chunkSize, overlap: c.overlap };
+  return {
+    chunk_size: c.chunkSize,
+    overlap: c.overlap,
+    contextual_retrieval: c.contextualRetrieval,
+  };
 }
 
 export async function listKnowledgeBases(): Promise<KnowledgeBase[]> {

@@ -1,4 +1,4 @@
-import { Form, InputNumber } from 'antd';
+import { Form, InputNumber, Switch } from 'antd';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -63,8 +63,23 @@ export default function ChunkingFields() {
           />
         </Form.Item>
       </div>
+      <Form.Item
+        name="contextualRetrieval"
+        label={
+          <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+            {t('kb.contextualRetrieval')}
+          </span>
+        }
+        valuePropName="checked"
+        className="!mb-0"
+      >
+        <Switch size="small" />
+      </Form.Item>
       <p className="m-0 text-[11px] text-[var(--color-text-muted)] leading-tight">
         {t('kb.chunkSizeHint')}；{t('kb.overlapHint')}
+      </p>
+      <p className="m-0 text-[11px] text-[var(--color-text-muted)] leading-tight">
+        {t('kb.contextualRetrievalHint')}
       </p>
     </div>
   );

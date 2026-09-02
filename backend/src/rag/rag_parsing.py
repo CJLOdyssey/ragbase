@@ -8,6 +8,7 @@ CSV/TXT/MD read as UTF-8 text.
 import re
 import zipfile
 from pathlib import Path
+from typing import Any
 
 from defusedxml import ElementTree  # type: ignore[import-untyped]
 
@@ -39,6 +40,21 @@ def extract_text(path: str | Path) -> str:
     # .doc/.xls/.ppt (legacy OLE) 无轻量解析，退化为文本读取（乱码但不抛异常）
     # .csv/.txt/.md/.json 等直接按文本读取
     return p.read_text(encoding="utf-8", errors="ignore")
+
+
+def extract_metadata(path: str | Path) -> dict[str, str | None]:
+    """Extract document-level metadata (author, date, title) from an asset file.
+
+    Returns a dict with keys: author, creation_date, title.  Values are
+    None when the property is unavailable or unsupported for the file type.
+    """
+    p = Path(path)
+    suffix = p.suffix.lower()
+    if suffix == ".pdf":
+        return _extract_pdf_metadata(p)
+    if suffix == ".docx":
+        return _extract_docx_metadata(p)
+    return {"author": None, "creation_date": None, "title": None}
 
 
 def _extract_pdf(path: Path) -> str:
@@ -152,3 +168,37 @@ def _extract_html(path: Path) -> str:
     text = re.sub(r"<[^>]+>", " ", raw)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+def _extract_pdf_metadata(path: Path) -> dict[str, str | None]:
+    """Extract author, creation date, and title from PDF document info."""
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(str(path))
+        info: Any = reader.metadata or {}
+        return {
+            "author": getattr(info, "author", None),
+            "creation_date": getattr(info, "creation_date", None),
+            "title": getattr(info, "title", None),
+        }
+    except Exception:
+        return {"author": None, "creation_date": None, "title": None}
+
+
+def _extract_docx_metadata(path: Path) -> dict[str, str | None]:
+    """Extract author and title from DOCX core properties."""
+    try:
+        with zipfile.ZipFile(path) as zf:
+            if "docProps/core.xml" not in zf.namelist():
+                return {"author": None, "creation_date": None, "title": None}
+            root = ElementTree.fromstring(zf.read("docProps/core.xml"))
+            ns = {"cp": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
+                  "dc": "http://purl.org/dc/elements/1.1/",
+                  "dcterms": "http://purl.org/dc/terms/"}
+            author = root.findtext("dc:creator", namespaces=ns)
+            title = root.findtext("dc:title", namespaces=ns)
+            date = root.findtext("dcterms:created", namespaces=ns)
+            return {"author": author, "creation_date": date, "title": title}
+    except Exception:
+        return {"author": None, "creation_date": None, "title": None}

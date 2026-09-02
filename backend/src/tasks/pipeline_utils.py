@@ -156,7 +156,7 @@ async def _get_rag_context(
     never break the chat.
     """
     try:
-        from rag.rag_pipeline import ensure_embedding_provider, retrieve_context, retrieve_sources
+        from rag.rag_pipeline import ensure_embedding_provider, retrieve_context_advanced, retrieve_sources
         from repository.keys import get_embedding_config
         from repository.session_repo import get_session
 
@@ -214,10 +214,10 @@ async def _get_rag_context(
         # Path 3: LLM context — both KB assets and session memory.
         kb_context = ""
         if kb_asset_ids:
-            kb_context = await retrieve_context(
+            kb_context = await retrieve_context_advanced(
                 query=query, user_id=user_id, asset_ids=kb_asset_ids, top_k=3, rerank=True
             )
-        mem_context = await retrieve_context(
+        mem_context = await retrieve_context_advanced(
             query=query, user_id=user_id, session_id=session_id, top_k=3, rerank=True
         )
         context = (kb_context + "\n\n" + mem_context).strip()

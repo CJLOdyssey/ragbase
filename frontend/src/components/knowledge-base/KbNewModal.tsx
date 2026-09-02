@@ -3,6 +3,7 @@ import MobileModal from '../shared/MobileModal';
 import { Alert, Form, Input, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type {
+  KbParserConfig,
   KnowledgeBase,
   ParserConfigForm,
 } from '../../api/client/knowledgeBases';
@@ -37,6 +38,14 @@ export interface KbNewModalProps {
 const DEFAULT_CHUNK_SIZE = 512;
 const DEFAULT_OVERLAP = 64;
 
+function parseConfig(pc: KbParserConfig | null | undefined): ParserConfigForm {
+  return {
+    chunkSize: pc?.chunk_size ?? DEFAULT_CHUNK_SIZE,
+    overlap: pc?.overlap ?? DEFAULT_OVERLAP,
+    contextualRetrieval: pc?.contextual_retrieval ?? false,
+  };
+}
+
 function getInitialFields(kb: KnowledgeBase | null): {
   name: string;
   description: string;
@@ -47,10 +56,7 @@ function getInitialFields(kb: KnowledgeBase | null): {
     name: kb?.name ?? '',
     description: kb?.description ?? '',
     embedModel: kb?.embedModel ?? '',
-    config: {
-      chunkSize: kb?.parserConfig?.chunk_size ?? DEFAULT_CHUNK_SIZE,
-      overlap: kb?.parserConfig?.overlap ?? DEFAULT_OVERLAP,
-    },
+    config: parseConfig(kb?.parserConfig),
   };
 }
 
@@ -60,6 +66,7 @@ interface FormValues {
   embedModel?: string;
   chunkSize?: number;
   overlap?: number;
+  contextualRetrieval?: boolean;
 }
 
 /** Rebuild is needed when a bound KB's model or chunking params change. */
@@ -76,7 +83,9 @@ function computeWillRebuild(
     Boolean(v.embedModel) && v.embedModel !== initialEmbedModel;
   const configChanged =
     (v.chunkSize ?? initialConfig.chunkSize) !== initialConfig.chunkSize ||
-    (v.overlap ?? initialConfig.overlap) !== initialConfig.overlap;
+    (v.overlap ?? initialConfig.overlap) !== initialConfig.overlap ||
+    (v.contextualRetrieval ?? initialConfig.contextualRetrieval) !==
+      initialConfig.contextualRetrieval;
   return modelChanged || configChanged;
 }
 
@@ -169,10 +178,13 @@ export default function KbNewModal({
       'embedModel',
       'chunkSize',
       'overlap',
+      'contextualRetrieval',
     ]) as FormValues;
     const patch: Partial<FormValues> = {};
     if (cur.chunkSize == null) patch.chunkSize = initial.config.chunkSize;
     if (cur.overlap == null) patch.overlap = initial.config.overlap;
+    if (cur.contextualRetrieval == null)
+      patch.contextualRetrieval = initial.config.contextualRetrieval;
     if (mode === 'edit') {
       if (cur.name == null) patch.name = initial.name;
       if (cur.description == null) patch.description = initial.description;
@@ -292,5 +304,6 @@ function buildParserConfig(v: FormValues): ParserConfigForm {
   return {
     chunkSize: v.chunkSize ?? DEFAULT_CHUNK_SIZE,
     overlap: v.overlap ?? DEFAULT_OVERLAP,
+    contextualRetrieval: v.contextualRetrieval ?? false,
   };
 }

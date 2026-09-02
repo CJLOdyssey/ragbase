@@ -47,6 +47,8 @@
     "overlapHint": "相邻块的重叠词数（0–500）",
     "overlapRequired": "请输入重叠词数",
     "overlapLessThanSize": "重叠必须小于分块大小",
+    "contextualRetrieval": "上下文检索",
+    "contextualRetrievalHint": "索引时为每个分块生成文档级上下文前缀，提升检索准确率约 67%（Anthropic 技术）",
     "sectionBasic": "基本信息",
     "sectionEmbedModel": "嵌入模型",
     "sectionChunking": "分块配置"
