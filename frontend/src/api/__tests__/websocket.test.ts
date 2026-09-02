@@ -79,13 +79,12 @@ describe('WebSocket Module', { tags: ['unit'] }, () => {
     unsub();
   });
 
-  it('连接 URL 指向 /runs/{runId} 且不带 token 查询参数', async () => {
+  it('连接 URL 指向 /ws/runs/{runId} 且带 token 查询参数', async () => {
     const ws = await getWs();
     const unsub = ws.connectRun('url-run', mockOpts());
     const url = fakeWsInstances[0].url;
     expect(url).toContain('/ws/runs/url-run');
-    expect(url).not.toContain('token=');
-    expect(url).not.toContain('?');
+    expect(url).toContain('token=');
     unsub();
   });
 

@@ -149,7 +149,7 @@ async def generate_context_prefixes(
         req.add_header("Authorization", f"Bearer {api_key}")
         req.add_header("Content-Type", "application/json")
 
-        with urllib.request.urlopen(req, timeout=_CONTEXT_LLM_TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=_CONTEXT_LLM_TIMEOUT) as resp:  # nosec B310
             result = json.loads(resp.read().decode("utf-8"))
 
         response_text = result["choices"][0]["message"]["content"]

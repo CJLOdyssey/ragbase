@@ -4,6 +4,7 @@ import logging
 from unittest.mock import AsyncMock
 
 import pytest
+import core.infra.asgi as asgi_mod
 from core.infra.asgi import client_ip
 from core.infra.request_logger import (
     RequestLogMiddleware,
@@ -20,11 +21,13 @@ class TestFormatDuration:
 
 
 class TestClientIp:
-    def test_x_forwarded_for(self):
+    def test_x_forwarded_for(self, monkeypatch):
+        monkeypatch.setattr(asgi_mod, "_TRUST_PROXY_HEADERS", True)
         scope = {"headers": [(b"x-forwarded-for", b"203.0.113.1, proxy")]}
         assert client_ip(scope) == "203.0.113.1"
 
-    def test_x_real_ip(self):
+    def test_x_real_ip(self, monkeypatch):
+        monkeypatch.setattr(asgi_mod, "_TRUST_PROXY_HEADERS", True)
         scope = {"headers": [(b"x-real-ip", b"10.0.0.5")]}
         assert client_ip(scope) == "10.0.0.5"
 
@@ -58,18 +61,21 @@ class TestBodyExemptPaths:
         return caplog.text
 
     @pytest.mark.asyncio
-    async def test_body_not_echoed_for_keys_path(self, caplog):
+    async def test_body_not_echoed_for_keys_path(self, monkeypatch, caplog):
+        monkeypatch.setattr(logging.getLogger("core.infra.request_logger"), "propagate", True)
         log = await self._run("/api/keys", b'{"api_key":"sk-secret-value"}', caplog)
         assert "sk-secret-value" not in log
         assert "body[:500]=" in log
 
     @pytest.mark.asyncio
-    async def test_body_not_echoed_for_auth_path(self, caplog):
+    async def test_body_not_echoed_for_auth_path(self, monkeypatch, caplog):
+        monkeypatch.setattr(logging.getLogger("core.infra.request_logger"), "propagate", True)
         log = await self._run("/api/auth/login", b'{"password":"hunter2"}', caplog)
         assert "hunter2" not in log
 
     @pytest.mark.asyncio
-    async def test_body_echoed_for_other_paths(self, caplog):
+    async def test_body_echoed_for_other_paths(self, monkeypatch, caplog):
+        monkeypatch.setattr(logging.getLogger("core.infra.request_logger"), "propagate", True)
         log = await self._run("/api/prompts", b'{"name":"helpful"}', caplog)
         assert '{"name":"helpful"}' in log
 

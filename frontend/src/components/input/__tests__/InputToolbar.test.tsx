@@ -421,7 +421,8 @@ describe('InputToolbar attachment bar & preview', { tags: ['unit'] }, () => {
   it('closes preview modal via close button', async () => {
     await addDoneFile();
     fireEvent.click(screen.getByRole('button', { name: 'Preview a.txt' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(dialog.querySelector('.ant-modal-close') as HTMLElement);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

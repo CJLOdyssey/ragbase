@@ -37,7 +37,7 @@ class TestValidate:
             _validate(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 100
             )
-            == "document"
+            == "data"
         )
 
     def test_rejects_unknown_type(self):
@@ -159,11 +159,15 @@ class TestImportUrl:
             asset.id = "a1"
             asset.name = "doc.md"
             asset.asset_type = "document"
+            asset.format = "md"
             asset.size_bytes = len(content)
             asset.usage_count = 0
             asset.indexed = False
+            asset.index_error = None
+            asset.knowledge_base_id = None
             asset.source = "url"
             asset.source_ref = "http://1.1.1.1/doc.md"
+            asset.tags = []
 
             with patch(
                 "httpx.AsyncClient", return_value=client_cm

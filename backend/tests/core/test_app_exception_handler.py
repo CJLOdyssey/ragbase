@@ -130,8 +130,13 @@ class TestGlobalExceptionHandler:
             "headers": [],
         }
         request = Request(scope)
-        with caplog.at_level(logging.ERROR):
-            resp = global_exception_handler(request, RuntimeError("boom"))
+        core_logger = logging.getLogger("core.app")
+        core_logger.propagate = True
+        try:
+            with caplog.at_level(logging.ERROR):
+                resp = global_exception_handler(request, RuntimeError("boom"))
+        finally:
+            core_logger.propagate = False
         assert resp.status_code == 500
         body = json.loads(bytes(resp.body).decode("utf-8"))
         assert body["detail"] == "服务器内部错误，请查看日志了解详情"

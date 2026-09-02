@@ -7,7 +7,14 @@ import {
 } from '../../../api/client/knowledgeBases';
 import KnowledgeBasePage from '../KnowledgeBasePage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -144,6 +151,7 @@ describe('KnowledgeBasePage', () => {
   });
 
   it('creates new knowledge base', async () => {
+    const user = userEvent.setup();
     vi.mocked(listKnowledgeBases).mockResolvedValue([]);
     vi.mocked(listAssets).mockResolvedValue([]);
     vi.mocked(createKnowledgeBase).mockResolvedValue({
@@ -171,13 +179,15 @@ describe('KnowledgeBasePage', () => {
     const nameInput = textInputs[0];
     const descInput = textInputs[1];
 
-    fireEvent.change(nameInput, { target: { value: '新知识库' } });
-    fireEvent.change(descInput, { target: { value: '描述' } });
+    await user.type(nameInput, '新知识库');
+    await user.type(descInput, '描述');
 
     // 等待嵌入模型列表加载并自动预填第一个可用 embedding 模型
     await waitFor(() => expect(screen.getByText('bge-m3')).toBeInTheDocument());
+    // Flush the useEffect that calls form.setFieldsValue for embedModel
+    await act(async () => {});
 
-    fireEvent.click(screen.getByRole('button', { name: 'confirm.confirm' }));
+    await user.click(screen.getByRole('button', { name: 'confirm.confirm' }));
 
     // 嵌入模型自动预填为第一个可用 embedding 模型（必选）
     await waitFor(() => {
@@ -185,12 +195,13 @@ describe('KnowledgeBasePage', () => {
         '新知识库',
         '描述',
         'bge-m3',
-        { chunkSize: 512, overlap: 64 },
+        { chunkSize: 512, overlap: 64, contextualRetrieval: false },
       );
     });
   });
 
   it('edits a knowledge base via edit modal', async () => {
+    const user = userEvent.setup();
     vi.mocked(listKnowledgeBases).mockResolvedValue([
       {
         id: 'kb-1',
@@ -226,14 +237,17 @@ describe('KnowledgeBasePage', () => {
     const nameInput = screen.getAllByRole('textbox')[0];
     // 等待表单预填 effect 完成后再改值，避免被覆盖
     await waitFor(() => expect(nameInput).toHaveValue('测试知识库'));
-    fireEvent.change(nameInput, { target: { value: '改名库' } });
+    await user.clear(nameInput);
+    await user.type(nameInput, '改名库');
 
     // 编辑模式回填 kb.embedModel，等待其出现在 Select 中
     await waitFor(() =>
       expect(screen.getAllByText('bge-m3').length).toBeGreaterThan(0),
     );
+    // Flush the useEffect that calls form.setFieldsValue for embedModel
+    await act(async () => {});
 
-    fireEvent.click(screen.getByRole('button', { name: 'confirm.confirm' }));
+    await user.click(screen.getByRole('button', { name: 'confirm.confirm' }));
 
     await waitFor(() => {
       expect(updateKnowledgeBase).toHaveBeenCalledWith(
@@ -241,7 +255,7 @@ describe('KnowledgeBasePage', () => {
         '改名库',
         '',
         'bge-m3',
-        { chunkSize: 512, overlap: 64 },
+        { chunkSize: 512, overlap: 64, contextualRetrieval: false },
       );
     });
   });

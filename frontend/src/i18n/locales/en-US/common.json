@@ -22,6 +22,7 @@
   "confirm": {
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "saving": "Saving...",
     "delete": "Delete",
     "danger": "Dangerous Action",
     "info": "Confirmation",
@@ -467,7 +468,8 @@
     "methodSemantic": "Vector only",
     "methodLexical": "Keyword only",
     "tagFilter": "Tag filter",
-    "tagFilterPlaceholder": "comma separated, e.g. api, deploy"
+    "tagFilterPlaceholder": "comma separated, e.g. api, deploy",
+    "sectionParams": "Retrieval Parameters"
   },
   "feedback": {
     "feedbackNotice": "Thanks for your feedback — it will help optimize future retrievals"

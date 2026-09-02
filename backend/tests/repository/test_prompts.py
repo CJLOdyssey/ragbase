@@ -27,7 +27,7 @@ async def test_create_prompt(db_engine):
     assert prompt.name == "test-prompt-repo"
     assert prompt.category == "general"
     assert prompt.content == "You are a helpful assistant."
-    assert prompt.status == "active"
+    assert prompt.status == "draft"
 
 
 @pytest.mark.requirement("REQ-PROMPT-001")

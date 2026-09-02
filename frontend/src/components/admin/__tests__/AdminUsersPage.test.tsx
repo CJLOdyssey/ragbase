@@ -1,8 +1,18 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  listAdminUsers,
+  updateUserRole,
+  updateUserStatus,
+} from '../../../api/client/adminUsers';
 import AdminUsersPage from '../AdminUsersPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { listAdminUsers, updateUserRole, updateUserStatus } from '../../../api/client/adminUsers';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../api/client/adminUsers', () => ({
   listAdminUsers: vi.fn(),
@@ -18,6 +28,10 @@ vi.mock('react-i18next', () => ({
       language: 'zh-CN',
     },
   }),
+}));
+
+vi.mock('../../../hooks/useMediaQuery', () => ({
+  useIsMobile: () => true,
 }));
 
 describe('AdminUsersPage', () => {
@@ -36,9 +50,7 @@ describe('AdminUsersPage', () => {
 
   const renderWithClient = (ui: React.ReactElement) => {
     return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
     );
   };
 
@@ -51,7 +63,7 @@ describe('AdminUsersPage', () => {
     });
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('admin.users.title')).toBeInTheDocument();
     });
@@ -66,7 +78,7 @@ describe('AdminUsersPage', () => {
     });
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       const searchInput = screen.getByPlaceholderText('admin.users.search');
       expect(searchInput).toBeInTheDocument();
@@ -82,7 +94,7 @@ describe('AdminUsersPage', () => {
     });
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('admin.users.noUsers')).toBeInTheDocument();
     });
@@ -108,7 +120,7 @@ describe('AdminUsersPage', () => {
     vi.mocked(listAdminUsers).mockResolvedValue(mockUsers);
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Test User')).toBeInTheDocument();
       expect(screen.getByText('test@example.com')).toBeInTheDocument();
@@ -124,7 +136,7 @@ describe('AdminUsersPage', () => {
     });
 
     renderWithClient(<AdminUsersPage />);
-    
+
     await waitFor(() => {
       const searchInput = screen.getByPlaceholderText('admin.users.search');
       fireEvent.change(searchInput, { target: { value: 'test' } });
@@ -133,10 +145,8 @@ describe('AdminUsersPage', () => {
   });
 
   /**
-   * Opens the per-row "more actions" dropdown (antd renders its menu into a
-   * body-level portal asynchronously) and clicks a menu item by i18n key.
-   * Scoped to `.ant-dropdown-menu` because some labels (e.g. the role key)
-   * also appear as table headers.
+   * Opens the per-row "more actions" ActionSheet (renders inside antd Modal)
+   * and clicks a menu item by i18n key.
    */
   const openRowMenuAndClick = async (itemText: string) => {
     const moreButton = screen.getByRole('button', {
@@ -144,11 +154,13 @@ describe('AdminUsersPage', () => {
     });
     fireEvent.click(moreButton);
     const menu = await waitFor(() => {
-      const el = document.querySelector('.ant-dropdown-menu');
-      expect(el).not.toBeNull();
-      return el as HTMLElement;
+      // ActionSheet renders buttons inside antd Modal body
+      const buttons = screen.getAllByRole('button');
+      const item = buttons.find((b) => b.textContent?.trim() === itemText);
+      expect(item).toBeDefined();
+      return item as HTMLElement;
     });
-    fireEvent.click(within(menu).getByText(itemText));
+    fireEvent.click(menu);
   };
 
   it('offers role editing in the row actions menu', async () => {
@@ -238,7 +250,9 @@ describe('AdminUsersPage', () => {
     await openRowMenuAndClick('admin.users.role');
 
     await waitFor(() => {
-      expect(screen.getByText('admin.users.confirmRoleChange')).toBeInTheDocument();
+      expect(
+        screen.getByText('admin.users.confirmRoleChange'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -269,7 +283,9 @@ describe('AdminUsersPage', () => {
     await openRowMenuAndClick('admin.users.disable');
 
     await waitFor(() => {
-      expect(screen.getByText('admin.users.confirmStatusChange')).toBeInTheDocument();
+      expect(
+        screen.getByText('admin.users.confirmStatusChange'),
+      ).toBeInTheDocument();
     });
   });
 

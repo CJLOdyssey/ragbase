@@ -92,11 +92,16 @@ class TestRunAgentTask:
         mock_run_async.return_value = {"run_id": "run-1", "status": "completed"}
         from tasks.registry import run_agent
 
-        with caplog.at_level(logging.INFO, logger="tasks.registry"):
-            result = run_agent.run(
-                requirement="test req",
-                run_id="run-1",
-            )
+        reg_logger = logging.getLogger("tasks.registry")
+        reg_logger.propagate = True
+        try:
+            with caplog.at_level(logging.INFO, logger="tasks.registry"):
+                result = run_agent.run(
+                    requirement="test req",
+                    run_id="run-1",
+                )
+        finally:
+            reg_logger.propagate = False
         assert result["status"] == "completed"
         assert "Celery task SUCCESS" in caplog.text
         assert "run-1" in caplog.text

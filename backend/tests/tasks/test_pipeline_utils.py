@@ -353,12 +353,15 @@ class TestGetRagContext:
             return_value=[{"asset_id": "a1", "asset_name": "手册", "text": "…", "similarity": 0.9}]
         )
         mock_log = AsyncMock()
+        mock_session = MagicMock()
+        mock_session.knowledge_base_ids = None
 
         with patch("rag.rag_pipeline.ensure_embedding_provider", mock_ensure), \
-             patch("rag.rag_pipeline.retrieve_context", mock_retrieve), \
+             patch("rag.rag_pipeline.retrieve_context_advanced", mock_retrieve), \
              patch("rag.rag_pipeline.retrieve_sources", mock_sources), \
              patch("repository.keys.get_embedding_config", mock_cfg), \
-             patch("repository.retrieval_logs.create_retrieval_log", mock_log):
+             patch("repository.retrieval_logs.create_retrieval_log", mock_log), \
+             patch("repository.session_repo.get_session", new_callable=AsyncMock, return_value=mock_session):
             context, sources = await _get_rag_context("query", "sess-1")
 
         assert context == "rag result"
@@ -401,12 +404,15 @@ class TestGetRagContext:
             return_value=[{"asset_id": "a1", "asset_name": "手册", "text": "…", "similarity": 0.9}]
         )
         mock_log = AsyncMock()
+        mock_session = MagicMock()
+        mock_session.knowledge_base_ids = None
 
         with patch("rag.rag_pipeline.ensure_embedding_provider", mock_ensure), \
-             patch("rag.rag_pipeline.retrieve_context", mock_retrieve), \
+             patch("rag.rag_pipeline.retrieve_context_advanced", mock_retrieve), \
              patch("rag.rag_pipeline.retrieve_sources", mock_sources), \
              patch("repository.keys.get_embedding_config", mock_cfg), \
-             patch("repository.retrieval_logs.create_retrieval_log", mock_log):
+             patch("repository.retrieval_logs.create_retrieval_log", mock_log), \
+             patch("repository.session_repo.get_session", new_callable=AsyncMock, return_value=mock_session):
             context, sources = await _get_rag_context("query", "sess-1", "u1")
 
         assert context == "rag result"
@@ -429,12 +435,15 @@ class TestGetRagContext:
         mock_retrieve = AsyncMock(return_value="rag result")
         mock_sources = AsyncMock(return_value=[])
         mock_log = AsyncMock(side_effect=Exception("db down"))
+        mock_session = MagicMock()
+        mock_session.knowledge_base_ids = None
 
         with patch("rag.rag_pipeline.ensure_embedding_provider", MagicMock()), \
-             patch("rag.rag_pipeline.retrieve_context", mock_retrieve), \
+             patch("rag.rag_pipeline.retrieve_context_advanced", mock_retrieve), \
              patch("rag.rag_pipeline.retrieve_sources", mock_sources), \
              patch("repository.keys.get_embedding_config", mock_cfg), \
-             patch("repository.retrieval_logs.create_retrieval_log", mock_log):
+             patch("repository.retrieval_logs.create_retrieval_log", mock_log), \
+             patch("repository.session_repo.get_session", new_callable=AsyncMock, return_value=mock_session):
             context, sources = await _get_rag_context("query", "sess-1")
 
         assert context == "rag result"
