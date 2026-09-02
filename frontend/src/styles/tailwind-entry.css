@@ -186,6 +186,26 @@
   --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.1);
   --shadow-md: 0 4px 8px -2px rgba(255, 255, 255, 0.15);
   --shadow-lg: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
+
+  /* ── Logo 5色 ── */
+  --logo-bg-1: #0f172a;
+  --logo-bg-2: #1e293b;
+  --logo-cyan: #22d3ee;
+  --logo-cyan-body: #0e4f5c;
+  --logo-cyan-top: #164e63;
+  --logo-emerald: #34d399;
+  --logo-emerald-fill: #065f46;
+  --logo-emerald-glow: #6ee7b7;
+  --logo-amber: #fbbf24;
+  --logo-amber-body: #78350f;
+  --logo-amber-handle: #f59e0b;
+  --logo-rose: #fb7185;
+  --logo-rose-fill: #be123c;
+  --logo-violet: #a78bfa;
+  --logo-violet-fill: #4c1d95;
+  --logo-glass: rgba(255, 255, 255, 0.04);
+  --logo-glass-stroke: rgba(255, 255, 255, 0.08);
+  --logo-shadow: rgba(0, 0, 0, 0.3);
 }
 
 /* 亮色主题（当 .dark class 不存在时） */
@@ -218,6 +238,26 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 8px -1px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 8px 16px -3px rgba(0, 0, 0, 0.1);
+
+  /* ── Logo 5色（浅色模式） ── */
+  --logo-bg-1: #f8fafc;
+  --logo-bg-2: #e2e8f0;
+  --logo-cyan: #0d9488;
+  --logo-cyan-body: #ccfbf1;
+  --logo-cyan-top: #99f6e4;
+  --logo-emerald: #10b981;
+  --logo-emerald-fill: #d1fae5;
+  --logo-emerald-glow: #059669;
+  --logo-amber: #d97706;
+  --logo-amber-body: #fef3c7;
+  --logo-amber-handle: #d97706;
+  --logo-rose: #e11d48;
+  --logo-rose-fill: #fda4af;
+  --logo-violet: #7c3aed;
+  --logo-violet-fill: #ede9fe;
+  --logo-glass: rgba(0, 0, 0, 0.02);
+  --logo-glass-stroke: rgba(0, 0, 0, 0.06);
+  --logo-shadow: rgba(0, 0, 0, 0.06);
 }
 
 /* ── 原生下拉主题跟随 ───────────────────────────────────────────────
