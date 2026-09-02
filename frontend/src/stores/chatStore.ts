@@ -3,6 +3,7 @@ import { disconnectRun } from '../api/websocket';
 import type { AppStatus, ChatMessage, RunResult } from '../types';
 import Logger from '../utils/logger';
 import { create } from 'zustand';
+import { releaseActiveStreamMsgIds } from './chatStreaming';
 import type { ChatState } from './chatTypes';
 import { uid } from './uid';
 
@@ -68,6 +69,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         prevRunId,
       );
       disconnectRun(prevRunId);
+      // 流式消息 id 记录随 run 结束释放，避免长会话无界累积。
+      releaseActiveStreamMsgIds(prevRunId);
     }
     set({
       messages,
@@ -93,6 +96,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (prevRunId) {
       Logger.info('[chat] cancelRun — cancelling run %s', prevRunId);
       disconnectRun(prevRunId);
+      releaseActiveStreamMsgIds(prevRunId);
       // 真取消：通知后端终止任务并中断上游 LLM 流（fire-and-forget）。
       void cancelRunApi(prevRunId).catch((err) => {
         Logger.warn(
@@ -164,7 +168,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   reset: () => {
     const s = get();
-    if (s.currentRunId) disconnectRun(s.currentRunId);
+    if (s.currentRunId) {
+      disconnectRun(s.currentRunId);
+      releaseActiveStreamMsgIds(s.currentRunId);
+    }
     set({ ...INITIAL_STATE, submissionConvId: null });
   },
 

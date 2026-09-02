@@ -87,21 +87,6 @@ class MemoryEntryItem(BaseModel):
     created_at: datetime
 
 
-class SessionItem(BaseModel):
-    """Summary view of a session (list view)."""
-
-    id: str
-    title: str
-    created_at: datetime
-    updated_at: datetime
-
-
-class SessionDetail(SessionItem):
-    """Detailed session view including runs."""
-
-    runs: list[Any] = Field(default_factory=list)
-
-
 class AttachmentResponse(BaseModel):
     """Attachment metadata returned from the API."""
 
@@ -151,6 +136,7 @@ class SessionSummary(BaseModel):
     kind: str = "normal"
     run_count: int = 0
     is_pinned: bool = False
+    knowledge_base_ids: list[str] = Field(default_factory=list)
     created_at: str | None = None
     updated_at: str | None = None
 
@@ -187,9 +173,7 @@ class MessageItem(BaseModel):
 
 
 class RunDetail(RunSummary):
-    """Detailed run view including messages."""
-
-    messages: list[MessageItem] = Field(default_factory=list)
+    """Detailed run view — inherits ``messages``/``attachments`` from RunSummary."""
 
 
 class MemoryItem(BaseModel):
@@ -209,6 +193,7 @@ class SessionDetailResponse(BaseModel):
     id: str
     title: str
     kind: str = "normal"
+    knowledge_base_ids: list[str] = Field(default_factory=list)
     created_at: str | None = None
     updated_at: str | None = None
     runs: list[RunSummary] = Field(default_factory=list)

@@ -18,7 +18,6 @@ dist/
 
 # ── Node / Frontend ───────────────────────────────────────────────────────
 node_modules/
-frontend/node_modules/
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
 
@@ -29,6 +28,7 @@ frontend/tsconfig.tsbuildinfo
 *.swo
 *~
 .obsidian/
+.trae-html-share-packages/
 
 # ── OS ─────────────────────────────────────────────────────────────────────
 .DS_Store
@@ -37,8 +37,6 @@ desktop.ini
 
 # ── Secrets / Env ──────────────────────────────────────────────────────────
 .env
-.env.local
-.env.*.local
 .env.*
 !.env.example
 
@@ -46,7 +44,7 @@ desktop.ini
 *.db
 *.db-shm
 *.db-wal
-.sqlite3
+*.sqlite3
 
 # ── Runtime / Logs ─────────────────────────────────────────────────────────
 *.log
@@ -56,6 +54,7 @@ desktop.ini
 .coverage
 .coverage.*
 coverage.xml
+coverage.json
 coverage/
 frontend/coverage/
 
@@ -103,8 +102,6 @@ prototypes/
 scripts/deploy_prod.py
 scripts/ask_credentials.py
 .omo/
-coverage.json
-# Docs are versioned — keep screenshots out
 
 # Internal (not for public repo)
 start.sh
@@ -138,3 +135,6 @@ RUNBOOK.md
 celerybeat-schedule*
 backups/
 tls/
+
+# QA checklists (working docs, never commit)
+qa/

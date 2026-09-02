@@ -1,14 +1,10 @@
-"""Tests for subscribe_run, close_redis edge cases, env overrides, and buffer operations."""
+"""Tests for subscribe_run, close_redis edge cases, and env overrides."""
 
-import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# subscribe_run
-# ---------------------------------------------------------------------------
 
 class TestSubscribeRun:
     @patch("broker.get_redis")
@@ -191,10 +187,6 @@ class TestSubscribeRun:
         mock_pubsub.close.assert_awaited_once()
 
 
-# ---------------------------------------------------------------------------
-# close_redis edge cases
-# ---------------------------------------------------------------------------
-
 class TestCloseRedisEdgeCases:
     @patch("broker.get_redis")
     @pytest.mark.asyncio
@@ -230,217 +222,48 @@ class TestCloseRedisEdgeCases:
         _pools.pop(loop_b, None)
 
 
-# ---------------------------------------------------------------------------
-# Env var overrides
-# ---------------------------------------------------------------------------
-
 class TestEnvVarOverrides:
+    """Env override tests must restore module state AFTER un-patching env.
+
+    importlib.reload() re-reads os.environ at reload time. Reloading while
+    the override is still active permanently poisons the module constants
+    (REDIS_URL/BROKER_URL/RESULT_BACKEND) for every later test on the same
+    worker — a latent order-dependent flake. The autouse fixture below
+    reloads once with the restored environment after each test.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _restore_module(self):
+        yield
+        import importlib
+
+        import broker as broker_mod
+
+        importlib.reload(broker_mod)
+
     def test_redis_url_env_override(self):
         with patch.dict("os.environ", {"REDIS_URL": "redis://env-host:9999/1"}):
             import importlib
 
             import broker as broker_mod
+
             importlib.reload(broker_mod)
             assert broker_mod.REDIS_URL == "redis://env-host:9999/1"
-            # Restore default for other tests
-            with patch.dict("os.environ", {}, clear=False):
-                pass
 
     def test_celery_broker_url_env_override(self):
         with patch.dict("os.environ", {"CELERY_BROKER_URL": "redis://broker-host:6380/2"}):
             import importlib
 
             import broker as broker_mod
-            # Reload picks up the new env var
+
             importlib.reload(broker_mod)
             assert broker_mod.BROKER_URL == "redis://broker-host:6380/2"
-            # Reload again to restore
-            importlib.reload(broker_mod)
 
     def test_result_backend_env_override(self):
         with patch.dict("os.environ", {"CELERY_RESULT_BACKEND": "redis://result-host:6381/3"}):
             import importlib
 
             import broker as broker_mod
+
             importlib.reload(broker_mod)
             assert broker_mod.RESULT_BACKEND == "redis://result-host:6381/3"
-            importlib.reload(broker_mod)
-
-
-# ---------------------------------------------------------------------------
-# buffer_run_messages & drain_buffer
-# ---------------------------------------------------------------------------
-
-class TestBufferRunMessages:
-    @patch("broker.get_redis")
-    @pytest.mark.asyncio
-    async def test_buffer_accumulates_messages(self, mock_get_redis):
-        from broker import (
-            _buffer_tasks,
-            _buffers,
-            buffer_run_messages,
-            stop_buffer,
-        )
-
-        _buffers.clear()
-        _buffer_tasks.clear()
-
-        mock_redis = MagicMock()
-        mock_pubsub = MagicMock()
-        mock_pubsub.subscribe = AsyncMock()
-
-        messages = [
-            {"type": "subscribe"},
-            {"type": "message", "data": json.dumps({"type": "text", "content": "a"})},
-            # 非 str data（如二进制）必须跳过，不进入 buffer
-            {"type": "message", "data": b"\x00\x01"},
-            {"type": "message", "data": json.dumps({"type": "stream", "content": "b"})},
-        ]
-        call_idx = {"i": 0}
-
-        async def fake_get_message(**kwargs):
-            idx = call_idx["i"]
-            call_idx["i"] += 1
-            if idx < len(messages):
-                return messages[idx]
-            await asyncio.sleep(100)  # simulate idle → timeout
-
-        mock_pubsub.get_message = fake_get_message
-        mock_pubsub.close = AsyncMock()
-        mock_redis.pubsub.return_value = mock_pubsub
-        mock_get_redis.return_value = mock_redis
-
-        await buffer_run_messages("run-buf-acc")
-        assert "run-buf-acc" in _buffers
-
-        await asyncio.sleep(0.1)  # let worker process messages
-        await stop_buffer("run-buf-acc")
-
-    @patch("broker.get_redis")
-    @pytest.mark.asyncio
-    async def test_drain_buffer_returns_and_clears(self, mock_get_redis):
-        from broker import _buffers, drain_buffer
-
-        _buffers.clear()
-        _buffers["run-d"] = [{"type": "x"}, {"type": "y"}]
-
-        result = drain_buffer("run-d")
-        assert result == [{"type": "x"}, {"type": "y"}]
-        assert "run-d" not in _buffers
-
-    @patch("broker.get_redis")
-    @pytest.mark.asyncio
-    async def test_drain_buffer_nonexistent_returns_empty(self, mock_get_redis):
-        from broker import drain_buffer
-
-        result = drain_buffer("no-such-run")
-        assert result == []
-
-    @patch("broker.get_redis")
-    @pytest.mark.asyncio
-    async def test_buffer_run_messages_subscribe_called(self, mock_get_redis):
-        from broker import (
-            _buffer_tasks,
-            _buffers,
-            buffer_run_messages,
-            stop_buffer,
-        )
-
-        _buffers.clear()
-        _buffer_tasks.clear()
-
-        mock_redis = MagicMock()
-        mock_pubsub = MagicMock()
-        mock_pubsub.subscribe = AsyncMock()
-        mock_pubsub.get_message = AsyncMock(
-            side_effect=asyncio.CancelledError
-        )
-        mock_pubsub.close = AsyncMock()
-        mock_redis.pubsub.return_value = mock_pubsub
-        mock_get_redis.return_value = mock_redis
-
-        await buffer_run_messages("run-sub")
-        mock_pubsub.subscribe.assert_awaited_once_with("run:run-sub")
-
-        await stop_buffer("run-sub")
-
-    @patch("broker.get_redis")
-    @pytest.mark.asyncio
-    async def test_buffer_fail_open_on_redis_outage(self, mock_get_redis):
-        from broker import _buffers, buffer_run_messages, stop_buffer
-
-        _buffers.clear()
-        mock_get_redis.side_effect = ConnectionError("redis down")
-
-        # Must not raise; an empty buffer is registered so the run proceeds.
-        await buffer_run_messages("run-failopen")
-        assert "run-failopen" in _buffers
-        assert _buffers["run-failopen"] == []
-        await stop_buffer("run-failopen")
-
-
-# ---------------------------------------------------------------------------
-# stop_buffer
-# ---------------------------------------------------------------------------
-
-class TestStopBuffer:
-    @pytest.mark.asyncio
-    async def test_stop_buffer_no_task(self):
-        from broker import _buffer_tasks, stop_buffer
-
-        _buffer_tasks.clear()
-        await stop_buffer("nonexistent")
-
-    @pytest.mark.asyncio
-    async def test_stop_buffer_clears_buffers_and_task(self):
-        from broker import (
-            _buffer_tasks,
-            _buffers,
-            stop_buffer,
-        )
-
-        async def noop():
-            pass
-
-        task = asyncio.create_task(noop())
-        _buffer_tasks["run-st"] = task
-        _buffers["run-st"] = [{"data": 1}]
-
-        await stop_buffer("run-st")
-        assert "run-st" not in _buffer_tasks
-        assert "run-st" not in _buffers
-
-
-# ---------------------------------------------------------------------------
-# subscribe_user_events — per-user domain event stream
-# ---------------------------------------------------------------------------
-
-class TestSubscribeUserEvents:
-    @patch("broker.get_redis")
-    @pytest.mark.asyncio
-    async def test_skips_non_json_messages(self, mock_get_redis):
-        """非 JSON data 跳过（不 yield 不 raise），流保持存活。"""
-        from broker import subscribe_user_events
-
-        mock_redis = MagicMock()
-        mock_pubsub = AsyncMock()
-        mock_pubsub.get_message = AsyncMock(
-            side_effect=[
-                {"type": "message", "data": "not-json"},
-                {"type": "message", "data": "also-bad"},
-                asyncio.CancelledError(),
-            ]
-        )
-        mock_pubsub.close = AsyncMock()
-        mock_redis.pubsub.return_value = mock_pubsub
-        mock_get_redis.return_value = mock_redis
-
-        results = []
-        try:
-            async for m in subscribe_user_events("u1"):
-                results.append(m)
-        except asyncio.CancelledError:
-            pass
-
-        assert results == []
-        mock_pubsub.close.assert_awaited_once()

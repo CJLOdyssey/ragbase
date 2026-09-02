@@ -1,7 +1,82 @@
-import type { listKeys } from '../api/client';
+import { listKeys } from '../api/client';
+import { rewriteQuery } from '../api/client';
 import type { ChatMessage } from '../types';
+import Logger from '../utils/logger';
 
 type KeyItem = Awaited<ReturnType<typeof listKeys>>[number];
+
+export async function resolveKeyAndModel(): Promise<{
+  keyId?: string;
+  model?: string;
+}> {
+  try {
+    const keys = await listKeys();
+    const activeKeys = keys.filter((k) => k.is_active);
+    const persistedModel = localStorage.getItem('ragbase-selected-model');
+    return resolveKey(activeKeys, persistedModel ?? undefined);
+  } catch {
+    return {};
+  }
+}
+
+export async function rewriteQueryWithContext(
+  query: string,
+  messages: readonly ChatMessage[],
+  sessionId: string | undefined,
+): Promise<string> {
+  try {
+    const historyMessages = messages.slice(-4).map((m) => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.content,
+    }));
+    const resp = await rewriteQuery({
+      query,
+      history: historyMessages,
+      session_id: sessionId,
+    });
+    const result = resp.rewritten_query || query;
+    Logger.info('[chat] query rewritten: "%s" -> "%s"', query, result);
+    return result;
+  } catch (err) {
+    Logger.warn('[chat] query rewrite failed, using original query:', err);
+    return query;
+  }
+}
+
+export function bindUserMessageToRun(
+  runId: string,
+  skipAddUserMessage: boolean,
+  editTargetId: string | null | undefined,
+) {
+  return (prev: { messages: ChatMessage[] }) => {
+    const msgs = [...prev.messages];
+    if (!skipAddUserMessage) {
+      const last = msgs[msgs.length - 1];
+      if (last && last.role === 'user' && !last.id.startsWith('run-')) {
+        msgs[msgs.length - 1] = { ...last, id: `run-${runId}-requirement` };
+      }
+      return { messages: msgs };
+    }
+    const targetIdx = editTargetId
+      ? msgs.findIndex((m) => m.id === editTargetId) - 1
+      : msgs.length - 1;
+    const u =
+      targetIdx >= 0 && msgs[targetIdx]?.role === 'user'
+        ? msgs[targetIdx]
+        : null;
+    if (!u) return { messages: msgs };
+    const versionRunIds = u.versionRunIds
+      ? [...u.versionRunIds, runId]
+      : [runId];
+    msgs[targetIdx] = {
+      ...u,
+      id: `run-${runId}-requirement`,
+      runId,
+      versionRunIds,
+    };
+    return { messages: msgs };
+  };
+}
 
 export function buildEditVersions(
   old: ChatMessage,

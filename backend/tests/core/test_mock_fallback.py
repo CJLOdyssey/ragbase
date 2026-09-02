@@ -27,8 +27,8 @@ class TestRunMock:
             )
 
         # Should have produced several messages
-        assert mock_emitter._emit.call_count == 5
-        calls = [call.args for call in mock_emitter._emit.call_args_list]
+        assert mock_emitter.emit_message.call_count == 5
+        calls = [call.args for call in mock_emitter.emit_message.call_args_list]
         assert calls[0][1] == "收到需求：Build a REST API"
         assert calls[1][1] == "正在分析需求..."
 
@@ -50,7 +50,7 @@ class TestRunMock:
                 session_id=None,
             )
 
-        first_call = mock_emitter._emit.call_args_list[0]
+        first_call = mock_emitter.emit_message.call_args_list[0]
         assert len(first_call.args[1]) <= 100 + 5  # "收到需求：" + 100 chars
         assert result.status == "converged"
         assert result.approved is True

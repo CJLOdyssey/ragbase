@@ -82,6 +82,10 @@ vi.mock('@/components/input/ModelSelector', () => ({
     models?.length ? <div data-testid="model-selector" /> : null,
 }));
 
+vi.mock('@/components/input/PromptSelector', () => ({
+  default: () => <div data-testid="prompt-selector" />,
+}));
+
 vi.mock('@/components/input/FileAttach', () => ({
   default: ({
     onReject,
@@ -296,7 +300,7 @@ describe('InputToolbar', { tags: ['unit'] }, () => {
       key: 'Enter',
       shiftKey: false,
     });
-    expect(paletteMock.selectCommand).toHaveBeenCalledWith(0);
+    expect(paletteMock.selectCommand).toHaveBeenCalledWith(0, '');
     expect(mockComposerSetValue).toHaveBeenCalledWith('/Cmd2 ');
   });
 
@@ -417,7 +421,8 @@ describe('InputToolbar attachment bar & preview', { tags: ['unit'] }, () => {
   it('closes preview modal via close button', async () => {
     await addDoneFile();
     fireEvent.click(screen.getByRole('button', { name: 'Preview a.txt' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(dialog.querySelector('.ant-modal-close') as HTMLElement);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

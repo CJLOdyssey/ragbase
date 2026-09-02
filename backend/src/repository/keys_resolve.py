@@ -1,14 +1,31 @@
-"""API key resolution — model/config lookups across user and anonymous keys."""
+"""API key resolution — model/config lookups across user and anonymous keys.
+
+Usage::
+
+    from repository.keys_resolve import get_api_key_for_model, get_embedding_config
+
+    cfg = await get_api_key_for_model("deepseek-v4-flash", user_id)  # decrypted for use
+    emb = await get_embedding_config(preferred_model="bge-m3")
+"""
 
 from datetime import UTC, datetime
 from typing import Any
 
 from core.infra.database import UserApiKey, get_session_factory
 from core.infra.key_vault import decrypt_api_key
-from sqlalchemy import select
+from core.infra.logging_config import get_logger
+from sqlalchemy import ColumnElement, exists, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = get_logger(__name__)
 
 
-async def _resolve_key_row(session: Any, user_id: str) -> Any:
+def _split_models(raw: str | None) -> list[str]:
+    """Split the comma-joined models column into a non-empty list."""
+    return [m.strip() for m in raw.split(",") if m.strip()] if raw else []
+
+
+async def _resolve_key_row(session: AsyncSession, user_id: str) -> UserApiKey | None:
     stmt = select(UserApiKey).where(
         UserApiKey.user_id == user_id,
         UserApiKey.is_active.is_(True),
@@ -32,9 +49,9 @@ async def _resolve_key_row(session: Any, user_id: str) -> Any:
     return result.scalar_one_or_none()
 
 
-async def _match_model_in_session(session: Any, user_id: str, model: str) -> Any:
-    from sqlalchemy import func
-
+async def _match_model_in_session(
+    session: AsyncSession, user_id: str, model: str
+) -> UserApiKey | None:
     stmt = (
         select(UserApiKey)
         .where(
@@ -76,7 +93,7 @@ async def get_api_key_for_model(model: str, user_id: str) -> dict[str, Any] | No
             "model_types": row.model_types,
             "api_key": decrypt_api_key(row.encrypted_key),
             "base_url": row.base_url,
-            "models": [m.strip() for m in row.models.split(",") if m.strip()] if row.models else [],
+            "models": _split_models(row.models),
         }
 
 
@@ -117,7 +134,7 @@ async def get_default_api_key(user_id: str) -> dict[str, Any] | None:
             "provider": row.provider,
             "api_key": decrypt_api_key(row.encrypted_key),
             "base_url": row.base_url,
-            "models": [m.strip() for m in row.models.split(",") if m.strip()] if row.models else [],
+            "models": _split_models(row.models),
         }
 
 
@@ -127,9 +144,7 @@ def _pick_embedding_model(models: str) -> str | None:
     bge-m3 is preferred (deterministic 1024-dim output) over other
     embedding-named models, regardless of list order.
     """
-    if not models:
-        return None
-    candidates = [x.strip() for x in models.split(",")]
+    candidates = _split_models(models)
     for m in candidates:
         if "bge-m3" in m.lower():
             return m
@@ -145,9 +160,7 @@ def _pick_rerank_model(models: str) -> str | None:
 
     bge-reranker-v2-m3 is preferred over other rerank-named models.
     """
-    if not models:
-        return None
-    candidates = [x.strip() for x in models.split(",")]
+    candidates = _split_models(models)
     for m in candidates:
         if "bge-reranker-v2-m3" in m.lower():
             return m
@@ -163,9 +176,6 @@ async def get_rerank_config() -> dict[str, str] | None:
     Prefers an active key whose models list names a reranker; None when no
     key declares one (rerank then stays disabled).
     """
-    from core.infra.database import UserApiKey
-    from core.infra.key_vault import decrypt_api_key
-
     factory = get_session_factory()
     async with factory() as session:
         stmt = (
@@ -186,28 +196,49 @@ async def get_rerank_config() -> dict[str, str] | None:
     return None
 
 
-async def get_embedding_config() -> dict[str, str | None] | None:
+async def get_embedding_config(
+    preferred_model: str | None = None,
+) -> dict[str, str | None] | None:
     """Resolve the embedding endpoint: {api_key, base_url, model}.
 
-    Prefers an active key whose models list names an embedding model (e.g.
-    bge-m3 / *-embedding-*); falls back to the oldest embedding-capability
-    key with the legacy DashScope endpoint.
+    With ``preferred_model`` (a KB's bound embedding model), an active
+    embedding-capability key declaring exactly that model wins — keeping
+    query/document vectors in the KB's own space. Falls back to the global
+    heuristic: an active embedding-capability key whose models list names an
+    embedding model (e.g. bge-m3 / *-embedding-*); else the oldest
+    embedding-capability key with the legacy DashScope endpoint.
     """
-    from core.infra.database import UserApiKey
-    from core.infra.key_vault import decrypt_api_key
-
-    factory = get_session_factory()
-    async with factory() as session:
-        stmt = (
-            select(UserApiKey)
-            .where(
-                UserApiKey.is_active.is_(True),
-                _capabilities_contains(session, "embedding"),
+    async def _embedding_key_rows() -> list[UserApiKey]:
+        """Active embedding-capability keys, oldest first."""
+        factory = get_session_factory()
+        async with factory() as session:
+            stmt = (
+                select(UserApiKey)
+                .where(
+                    UserApiKey.is_active.is_(True),
+                    _capabilities_contains(session, "embedding"),
+                )
+                .order_by(UserApiKey.created_at)
             )
-            .order_by(UserApiKey.created_at)
-        )
-        rows = (await session.execute(stmt)).scalars().all()
+            rows = (await session.execute(stmt)).scalars().all()
+        return list(rows)
 
+    if preferred_model:
+        for row in await _embedding_key_rows():
+            declared = _split_models(row.models)
+            if preferred_model in declared:
+                return {
+                    "api_key": decrypt_api_key(row.encrypted_key),
+                    "base_url": row.base_url,
+                    "model": preferred_model,
+                }
+        logger.warning(
+            "Preferred embedding model %r not declared on any active "
+            "embedding-capability key — falling back to global resolution",
+            preferred_model,
+        )
+
+    rows = await _embedding_key_rows()
     if not rows:
         return None
     for row in rows:
@@ -243,9 +274,6 @@ async def get_embedding_api_key() -> str | None:
 
 async def get_tool_api_key(provider: str) -> str | None:
     """Get the decrypted API key for a tool provider (e.g. 'tavily')."""
-    from core.infra.database import UserApiKey
-    from core.infra.key_vault import decrypt_api_key
-
     factory = get_session_factory()
     async with factory() as session:
         stmt = (
@@ -264,7 +292,7 @@ async def get_tool_api_key(provider: str) -> str | None:
         return decrypt_api_key(row.encrypted_key)
 
 
-def _capabilities_contains(session: Any, capability: str) -> Any:
+def _capabilities_contains(session: AsyncSession, capability: str) -> ColumnElement[bool]:
     """Array-contains predicate: JSONB ``@>`` on postgres, ``json_each`` on sqlite.
 
     ``UserApiKey.capabilities`` is JSONB on postgres (``contains`` compiles to
@@ -272,8 +300,6 @@ def _capabilities_contains(session: Any, capability: str) -> Any:
     ``@>`` operator does not exist — emulate "array contains value" with the
     json1 ``json_each`` table function so filtering is SQL-side on both engines.
     """
-    from sqlalchemy import exists, func
-
     if session.get_bind().dialect.name == "postgresql":
         return UserApiKey.capabilities.contains([capability])
     elements = func.json_each(UserApiKey.capabilities).table_valued("value")

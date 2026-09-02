@@ -4,11 +4,11 @@ from datetime import UTC, datetime, timedelta
 
 from core.infra.database import FeedbackLog, RetrievalLogDB, get_session_factory
 from repository.monitoring import (
-    _percentile,
     evaluate_alerts,
     feedback_summary,
     retrieval_summary,
 )
+from repository.monitoring_shared import percentile_nearest_rank
 
 
 async def _seed_retrieval(rows: list[dict]) -> None:
@@ -54,8 +54,14 @@ class TestRetrievalSummary:
             "total": 0,
             "empty_recall_count": 0,
             "empty_recall_rate": 0.0,
+            "slow_count": 0,
+            # 错误预算维度：超 SLO 请求占比（无样本时 0.0，与空召回率约定一致）。
+            "slow_rate": 0.0,
+            "avg_hit_count": None,
             "latency_p50_ms": None,
             "latency_p95_ms": None,
+            # 分支新增 p99 分位后 summary 的完整契约
+            "latency_p99_ms": None,
         }
 
     async def test_aggregates_rate_and_percentiles(self):
@@ -71,8 +77,34 @@ class TestRetrievalSummary:
         assert summary["total"] == 4
         assert summary["empty_recall_count"] == 1
         assert summary["empty_recall_rate"] == 0.25
+        assert summary["slow_count"] == 0
+        assert summary["slow_rate"] == 0.0
         assert summary["latency_p50_ms"] == 200
         assert summary["latency_p95_ms"] == 400
+
+    async def test_slow_rate_counts_above_slo_boundary(self):
+        await _seed_retrieval(
+            [
+                {"latency_ms": 100, "hit_count": 1},
+                {"latency_ms": 8000, "hit_count": 1},   # 恰在 SLO 上不计慢
+                {"latency_ms": 8001, "hit_count": 1},   # >SLO 计慢
+                {"latency_ms": 9000, "hit_count": 1},
+            ]
+        )
+        summary = await retrieval_summary("u1", 24)
+        assert summary["slow_count"] == 2
+        assert summary["slow_rate"] == 0.5
+
+    async def test_custom_latency_slo_threshold(self):
+        await _seed_retrieval(
+            [
+                {"latency_ms": 100, "hit_count": 1},
+                {"latency_ms": 500, "hit_count": 1},
+            ]
+        )
+        summary = await retrieval_summary("u1", 24, latency_slo_ms=300)
+        assert summary["slow_count"] == 1
+        assert summary["slow_rate"] == 0.5
 
     async def test_scoped_to_user_and_window(self):
         await _seed_retrieval(
@@ -94,7 +126,13 @@ class TestRetrievalSummary:
 class TestFeedbackSummary:
     async def test_empty_db(self):
         summary = await feedback_summary("u1", 24)
-        assert summary == {"total": 0, "good_count": 0, "bad_count": 0, "good_ratio": None}
+        assert summary == {
+            "total": 0,
+            "good_count": 0,
+            "bad_count": 0,
+            "good_ratio": None,
+            "answered_runs": 0,
+        }
 
     async def test_good_ratio(self):
         await _seed_feedback(["good", "good", "bad"])
@@ -160,9 +198,9 @@ class TestEvaluateAlerts:
 
 class TestPercentile:
     def test_nearest_rank(self):
-        assert _percentile([1, 2, 3, 4], 50) == 2
-        assert _percentile([1, 2, 3, 4], 95) == 4
-        assert _percentile([5], 50) == 5
+        assert percentile_nearest_rank([1, 2, 3, 4], 50) == 2
+        assert percentile_nearest_rank([1, 2, 3, 4], 95) == 4
+        assert percentile_nearest_rank([5], 50) == 5
 
     def test_empty(self):
-        assert _percentile([], 50) is None
+        assert percentile_nearest_rank([], 50) is None

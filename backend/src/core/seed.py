@@ -42,7 +42,15 @@ def resolve_admin_password() -> str:
 
 async def seed_default_roles_and_admin() -> None:
     """Create default roles (admin, member) and an admin user if they don't exist."""
+    import asyncio
+
     import bcrypt
+
+    async def _hash_password(password: str) -> str:
+        # bcrypt is CPU-bound (~100-250ms) — keep it off the event loop.
+        return await asyncio.to_thread(
+            lambda: bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        )
 
     factory = get_session_factory()
     async with factory() as session:
@@ -63,10 +71,7 @@ async def seed_default_roles_and_admin() -> None:
             user = UserDB(
                 username="admin",
                 email="admin@example.com",
-                password_hash=bcrypt.hashpw(
-                    resolve_admin_password().encode(),
-                    bcrypt.gensalt(),
-                ).decode(),
+                password_hash=await _hash_password(resolve_admin_password()),
                 is_active=True,
                 is_verified=True,
             )

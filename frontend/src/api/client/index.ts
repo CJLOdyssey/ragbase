@@ -17,8 +17,6 @@ export {
   deleteSession,
   deleteMemory,
   exportSessionMemories,
-  getRun,
-  listRuns,
   healthCheck,
 } from './sessions';
 export { listModels } from './models';
@@ -33,4 +31,6 @@ export type { AssetItem, AssetIndexResult } from '../../types/assets';
 export { listVersions, getVersionDetail } from './versions';
 export type { VersionItem } from './versions';
 export { createFeedback } from './feedback';
+export { rewriteQuery } from './query';
+export type { RewriteRequest, RewriteResponse } from './query';
 export { default } from './instance';

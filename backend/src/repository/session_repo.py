@@ -42,7 +42,7 @@ async def create_session(
 
 
 async def get_session(session_id: str) -> SessionDB | None:
-    """Fetch a single session by its primary key ID."""
+    """Fetch a single session by its primary key ID, or None if missing."""
     factory = get_session_factory()
     async with factory() as session:
         return await session.get(SessionDB, session_id)
@@ -74,32 +74,39 @@ async def get_sessions(
         return list(result.scalars().all())
 
 
-async def update_session_pin(session_id: str, is_pinned: bool) -> SessionDB | None:
-    """Pin/unpin a session. Returns the refreshed row, or None if not found."""
+async def _update_session(session_id: str, **fields: object) -> SessionDB | None:
+    """Apply *fields* to a session row; returns the refreshed row, or None.
+
+    Touches ``updated_at`` explicitly so the row surfaces at the top of
+    recent-session lists even when the new value equals the old one —
+    ``onupdate`` alone would skip the UPDATE when no attribute changed.
+    """
     factory = get_session_factory()
     async with factory() as session:
         obj = await session.get(SessionDB, session_id)
         if not obj:
             return None
-        obj.is_pinned = is_pinned
+        for name, value in fields.items():
+            setattr(obj, name, value)
         obj.updated_at = datetime.now(UTC)
         await session.commit()
         await session.refresh(obj)
         return obj
+
+
+async def update_session_pin(session_id: str, is_pinned: bool) -> SessionDB | None:
+    """Pin/unpin a session. Returns the refreshed row, or None if not found."""
+    return await _update_session(session_id, is_pinned=is_pinned)
 
 
 async def update_session_title(session_id: str, title: str) -> SessionDB | None:
     """Update a session's title and return the refreshed row."""
-    factory = get_session_factory()
-    async with factory() as session:
-        obj = await session.get(SessionDB, session_id)
-        if not obj:
-            return None
-        obj.title = title
-        obj.updated_at = datetime.now(UTC)
-        await session.commit()
-        await session.refresh(obj)
-        return obj
+    return await _update_session(session_id, title=title)
+
+
+async def update_session_kbs(session_id: str, kb_ids: list[str]) -> SessionDB | None:
+    """Set the knowledge base IDs bound to a chat session."""
+    return await _update_session(session_id, knowledge_base_ids=kb_ids)
 
 
 async def delete_session(session_id: str) -> bool:

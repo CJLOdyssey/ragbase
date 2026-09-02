@@ -109,18 +109,31 @@ describe('useCommandPalette', { tags: ['unit'] }, () => {
     act(() => result.current.handleKeyDown(keyEvent('/'), ''));
     let replacement = '';
     act(() => {
-      replacement = result.current.selectCommand(1);
+      replacement = result.current.selectCommand(1, '/xh');
     });
     expect(replacement).toBe('/gzh ');
     expect(result.current.open).toBe(false);
     expect(result.current.query).toBe('');
   });
 
+  it('selectCommand 保留斜杠前的行内前缀', () => {
+    const { result } = renderHook(() => useCommandPalette(commands));
+    act(() => result.current.handleKeyDown(keyEvent('/'), '帮我 '));
+    act(() => result.current.updateFromValue('帮我 /x'));
+    let replacement = '';
+    act(() => {
+      replacement = result.current.selectCommand(0, '帮我 /x');
+    });
+    // 前缀「帮我 」保留，仅替换命令段（原实现整体替换丢失前缀）
+    expect(replacement).toBe('帮我 /xhs ');
+    expect(result.current.open).toBe(false);
+  });
+
   it('selectCommand returns empty string for invalid index', () => {
     const { result } = renderHook(() => useCommandPalette(commands));
     let replacement = 'x';
     act(() => {
-      replacement = result.current.selectCommand(99);
+      replacement = result.current.selectCommand(99, '/xh');
     });
     expect(replacement).toBe('');
   });

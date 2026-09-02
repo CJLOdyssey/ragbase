@@ -116,7 +116,7 @@ backend/src/
 ├── orm/             # 保留 users/refresh_tokens/roles/user_roles/
 │                    #      user_api_keys/key_usage_logs/sessions/project_runs/
 │                    #      chat_messages/memory_entries/prompts/versions/
-│                    #      assets/attachments/command_logs/audit_logs
+│                    #      assets/attachments/audit_logs
 ├── rag/             # 保留（RAG 管线核心：切块/嵌入/向量存储/检索）
 ├── repository/      # 保留与 orm 对应的 crud
 ├── routers/         # 保留：auth/keys/models/prompts/providers/runs/run_continue/

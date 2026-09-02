@@ -22,12 +22,16 @@ dependencies = [
     "langgraph-checkpoint-sqlite>=3.1.1,<4",
     "langgraph>=1.2.6,<2",
     "mcp>=1.28.1,<2",
+    "pdfplumber",
     "pgvector>=0.4.2,<1",
     "prometheus-client>=0.25.0,<1",
+    # psycopg 3 (not psycopg2) is what langgraph-checkpoint-postgres probes for;
+    # without it the postgres checkpointer extra is installed but unimportable.
+    "psycopg[binary]>=3.2,<4",
     "psycopg2-binary>=2.9.12,<3",
     "pydantic>=2.13.4,<3",
     "pyjwt>=2.13.0,<3",
-    "pypdf>=6.15.0",
+    "pypdf>=6.16.1",
     "python-multipart>=0.0.31,<1",
     "pyyaml>=6.0.1,<7",
     "redis>=7.4.0,<8",
@@ -75,6 +79,7 @@ ignore = ["E402"]
 "backend/src/routers/*.py" = ["B008"]
 "backend/src/auth/auth_rbac.py" = ["F401"]
 "backend/tests/*.py" = ["E501", "SIM117", "N806"]
+"backend/scripts/*.py" = ["E501"]
 
 [tool.mypy]
 strict = true
@@ -85,9 +90,17 @@ warn_unused_ignores = true
 mypy_path = ["backend/src", "backend/stubs"]
 exclude = ["backend/tests/", "backend/stubs/", "backend/alembic/", "backend/src/system_team/"]
 
+# 与 mypy_path / 运行时 PYTHONPATH 对齐同一导入根，否则 IDE LSP（pyright）
+# 解析不到 from auth import … 等顶层导入，报 unknown import symbol 误报。
+[tool.pyright]
+extraPaths = ["backend/src", "backend/stubs"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
+
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
-pythonpath = ["backend/src"]
+pythonpath = ["backend/src", "backend/tests"]
 addopts = ["-n", "auto", "--dist", "worksteal", "--reruns=2", "--reruns-delay=1"]
 asyncio_mode = "auto"
 markers = [
@@ -108,7 +121,6 @@ filterwarnings = [
     "ignore::DeprecationWarning:langevals_*",
     "ignore::UserWarning:langchain.*",
     "ignore::ImportWarning:langgraph.*",
-
 ]
 
 [tool.coverage.run]

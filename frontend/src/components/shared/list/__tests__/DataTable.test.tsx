@@ -1,0 +1,96 @@
+import { TestProviders } from '../../../../test/setup';
+import DataTable, { type DataTableColumn } from '../DataTable';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+
+interface Row {
+  id: string;
+  name: string;
+  size: number;
+}
+
+const rows: Row[] = [
+  { id: 'a', name: 'alpha.md', size: 1 },
+  { id: 'b', name: 'beta.md', size: 2 },
+];
+
+const columns: DataTableColumn[] = [
+  { key: 'name', header: '文件名', width: '160px', sortable: true },
+  { key: 'size', header: '大小', width: '84px' },
+];
+
+function renderTable(overrides: Record<string, unknown> = {}) {
+  return render(
+    <TestProviders>
+      <DataTable
+        rows={rows}
+        columns={columns}
+        rowKey={(r) => r.id}
+        renderCell={(row, col) =>
+          col.key === 'name' ? (
+            <span title={row.name}>{row.name}</span>
+          ) : (
+            <span>{row.size} B</span>
+          )
+        }
+        {...overrides}
+      />
+    </TestProviders>,
+  );
+}
+
+describe('DataTable', { tags: ['unit'] }, () => {
+  it('renders all headers and rows', () => {
+    renderTable();
+    expect(screen.getByText('文件名')).toBeInTheDocument();
+    expect(screen.getByText('大小')).toBeInTheDocument();
+    expect(screen.getByTitle('alpha.md')).toBeInTheDocument();
+    expect(screen.getByTitle('beta.md')).toBeInTheDocument();
+  });
+
+  it('sortable header triggers onSort with column key', () => {
+    const onSort = vi.fn();
+    renderTable({ onSort, sortField: null, sortDir: undefined });
+    const nameHeader = screen.getByText('文件名');
+    fireEvent.click(nameHeader);
+    expect(onSort).toHaveBeenCalledWith('name');
+  });
+
+  it('non-sortable header does not trigger onSort', () => {
+    const onSort = vi.fn();
+    renderTable({ onSort });
+    fireEvent.click(screen.getByText('大小'));
+    expect(onSort).not.toHaveBeenCalled();
+  });
+
+  it('sort arrow direction follows sortDir when active', () => {
+    const { container } = renderTable({
+      sortField: 'name',
+      sortDir: 'desc',
+      onSort: vi.fn(),
+    });
+    const sortIcon = container.querySelector('.anticon-caret-down.active');
+    expect(sortIcon).toBeInTheDocument();
+  });
+
+  it('row click delegates to onRowClick; testid applied', () => {
+    const onRowClick = vi.fn();
+    renderTable({
+      onRowClick,
+      rowTestId: (r) => `item-${r.id}`,
+    });
+    fireEvent.click(screen.getByTestId('item-b'));
+    expect(onRowClick).toHaveBeenCalledWith(rows[1]);
+  });
+
+  it('renders emptyState when no rows', () => {
+    renderTable({ rows: [], emptyState: <div>暂无数据</div> });
+    expect(screen.getByText('暂无数据')).toBeInTheDocument();
+  });
+
+  it('applies project theme via ConfigProvider', () => {
+    const { container } = renderTable();
+    const wrapper = container.querySelector('.ant-table-wrapper');
+    expect(wrapper).toBeInTheDocument();
+  });
+});

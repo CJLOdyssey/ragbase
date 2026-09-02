@@ -1,32 +1,15 @@
-"""CommandLogDB, AuditLogDB, AttachmentDB, AssetDB ORM models."""
+"""AuditLogDB, AttachmentDB, AssetDB, KnowledgeBaseDB and log ORM models."""
 
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from core.base import Base
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-
-class CommandLogDB(Base):
-    __tablename__ = "command_logs"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    session_id: Mapped[str] = mapped_column(
-        String(36),
-        ForeignKey("sessions.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    command_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    command_name: Mapped[str] = mapped_column(String(64), nullable=False)
-    payload: Mapped[str] = mapped_column(Text, default="")
-    result: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-    )
 
 class AuditLogDB(Base):
     """Admin audit log — records management CRUD operations (no session FK)."""
@@ -71,6 +54,37 @@ class AttachmentDB(Base):
     )
 
 
+class KnowledgeBaseDB(Base):
+    """Knowledge base — logical grouping for assets (multi-KB isolation)."""
+
+    __tablename__ = "knowledge_bases"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    embed_model: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Bound embedding model — vectors in this KB share one space; "
+        "NULL only on legacy rows (global resolution until first edit)",
+    )
+    parser_config: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"),
+        nullable=True,
+        comment="Chunking parameters {chunk_size, overlap} applied at (re)index; "
+        "NULL = engine defaults. Changing it invalidates the KB's vectors",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class AssetDB(Base):
     """User-level asset library (distinct from session-scoped attachments)."""
 
@@ -80,6 +94,9 @@ class AssetDB(Base):
     user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     asset_type: Mapped[str] = mapped_column(String(32), default="document")
+    format: Mapped[str | None] = mapped_column(
+        String(16), nullable=True, comment="File extension: pdf, docx, png, etc."
+    )
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     storage_path: Mapped[str] = mapped_column(String(512), nullable=False)
     source: Mapped[str] = mapped_column(
@@ -88,8 +105,22 @@ class AssetDB(Base):
     source_ref: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="URL for source=url; connector-native ref for B/C sources"
     )
+    knowledge_base_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True, index=True, comment="Optional KB grouping"
+    )
     usage_count: Mapped[int] = mapped_column(Integer, default=0)
     indexed: Mapped[bool] = mapped_column(Boolean, default=False)
+    index_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Last indexing failure reason (persisted terminal state); NULL = no failure",
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"),
+        default=list,
+        server_default="[]",
+        comment="User-curated labels; injected into chunk tags at index time",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
@@ -119,6 +150,42 @@ class FeedbackLog(Base):
     )
 
 
+class FeedbackReviewDB(Base):
+    """Human triage of a bad rating — feeds the golden-set eval pipeline.
+
+    One review per feedback row (unique feedback_id). Status flow:
+    pending → resolved | dismissed. ``root_cause`` is the enum that later
+    becomes the eval-case category.
+    """
+
+    __tablename__ = "feedback_reviews"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    feedback_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("feedback_logs.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    root_cause: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16),
+        default="pending",
+        server_default="pending",
+        comment="pending|resolved|dismissed",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class RetrievalLogDB(Base):
     """Append-only retrieval activity log (OWASP LLM08 — forensics + quality).
 
@@ -131,6 +198,12 @@ class RetrievalLogDB(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    run_id: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+        index=True,
+        comment="project_runs.id — enables log-to-conversation replay",
+    )
     query: Mapped[str] = mapped_column(Text, nullable=False)
     top_k: Mapped[int] = mapped_column(Integer, default=5)
     rerank: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -138,8 +211,36 @@ class RetrievalLogDB(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     hit_count: Mapped[int] = mapped_column(Integer, default=0)
     sources: Mapped[str | None] = mapped_column(
-        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity}"
+        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity, text}"
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
+    )
+
+    # Monitoring queries filter ``user_id AND created_at BETWEEN``; the
+    # composite index answers both predicates without post-filtering.
+    __table_args__ = (
+        Index("ix_retrieval_logs_user_created", "user_id", "created_at"),
+    )
+
+
+class HealthScoreSnapshotDB(Base):
+    """Hourly composite health-score snapshot (error-budget model).
+
+    Written by the Celery beat task ``tasks.registry.health_snapshot`` so
+    the monitoring page can render a score trend independent of dashboard
+    polling. ``factors`` is a JSON array of {key, score, weight}.
+    """
+
+    __tablename__ = "health_score_snapshots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    factors: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="JSON array of {key, score, weight}"
+    )
+    window_hours: Mapped[int] = mapped_column(Integer, default=24)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
@@ -165,7 +266,7 @@ class ShadowRetrievalLogDB(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     hit_count: Mapped[int] = mapped_column(Integer, default=0)
     sources: Mapped[str | None] = mapped_column(
-        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity}"
+        Text, nullable=True, comment="JSON array of {asset_id, asset_name, similarity, text}"
     )
     variant: Mapped[str] = mapped_column(String(256), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

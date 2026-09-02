@@ -13,8 +13,10 @@ from tasks.agent_pipeline import _run_agent_pipeline
 # =============================================================================
 
 @pytest.fixture
-def mock_agent_deps():
+def mock_agent_deps(monkeypatch):
     """Mock all external dependencies for _run_agent_pipeline."""
+    # 测试环境不应触发真实 token 预算检查（会走 SQLite 无表查询）。
+    monkeypatch.delenv("USER_DAILY_TOKEN_BUDGET", raising=False)
     patchers = [
         patch("tasks.agent_pipeline.load_config"),
         patch("tasks.agent_pipeline.get_session_memories", new_callable=AsyncMock),
@@ -31,7 +33,7 @@ def mock_agent_deps():
         patch("tasks.agent_pipeline.log_key_usage", new_callable=AsyncMock),
         patch("tasks.agent_pipeline.publish_run_message", new_callable=AsyncMock),
         patch("tasks.agent_pipeline.create_checkpointer_async", new_callable=AsyncMock),
-        patch("tasks.agent_pipeline.StreamEmitter"),
+        patch("tasks.agent_pipeline.StreamEmitter", new=MagicMock(return_value=AsyncMock())),
         patch("tasks.agent_pipeline.SingleAgentGraph"),
         patch("tasks.agent_pipeline._build_session_context", return_value="session_ctx"),
         patch("tasks.agent_pipeline._get_rag_context", new_callable=AsyncMock, return_value=("rag_ctx", [])),
@@ -62,29 +64,9 @@ def _default_mocks(mocks):
         "output_tokens": 50,
         "model": "test-model",
     }
-    graph.bind_tools = MagicMock()
     mocks["SingleAgentGraph"].return_value = graph
 
     return graph
-
-
-@pytest.fixture
-def mock_complete_deps():
-    """Mock all external dependencies for _complete_pipeline."""
-    patchers = [
-        patch("tasks.complete_pipeline.load_config"),
-        patch("tasks.complete_pipeline.update_run_status", new_callable=AsyncMock),
-        patch("tasks.complete_pipeline.update_run_result", new_callable=AsyncMock),
-        patch("tasks.complete_pipeline.publish_run_message", new_callable=AsyncMock),
-        patch("tasks.complete_pipeline.stream_prefix_completion", new_callable=AsyncMock),
-    ]
-    mocks = {}
-    for p in patchers:
-        m = p.start()
-        mocks[p.attribute] = m
-    yield mocks
-    for p in patchers:
-        p.stop()
 
 
 # =============================================================================
@@ -106,6 +88,38 @@ class TestRunAgentPipeline:
         assert result is not None
         mock_agent_deps["SingleAgentGraph"].assert_called_once()
 
+    async def test_prompt_id_injects_system_prompt(self, mock_agent_deps):
+        """启用提示词经 prompt_id 加载并注入为 system_prompt。"""
+        graph = _default_mocks(mock_agent_deps)
+        with patch(
+            "graph.helpers.load_active_user_prompt",
+            new=AsyncMock(return_value="你是产品问答助手。"),
+        ):
+            await _run_agent_pipeline(
+                run_id="run-prompt",
+                requirement="问题",
+                session_id=None,
+                user_id="user-1",
+                prompt_id="prompt-1",
+            )
+        assert graph.run.call_args[1]["system_prompt"] == "你是产品问答助手。"
+
+    async def test_draft_prompt_yields_empty_system_prompt(self, mock_agent_deps):
+        """草稿提示词即使被直接传入也不注入（后端 active 硬门禁）。"""
+        graph = _default_mocks(mock_agent_deps)
+        with patch(
+            "graph.helpers.load_active_user_prompt",
+            new=AsyncMock(return_value=""),
+        ):
+            await _run_agent_pipeline(
+                run_id="run-draft",
+                requirement="问题",
+                session_id=None,
+                user_id="user-1",
+                prompt_id="draft-1",
+            )
+        assert graph.run.call_args[1]["system_prompt"] == ""
+
     async def test_runs_without_tools_binding(self, mock_agent_deps):
         """ragbase 无工具生态：管线不绑定任何工具，直接以默认图运行。"""
         graph = _default_mocks(mock_agent_deps)
@@ -119,7 +133,6 @@ class TestRunAgentPipeline:
             model=None,
         )
         assert result is not None
-        graph.bind_tools.assert_not_called()
         graph.run.assert_awaited_once()
 
     async def test_session_context_injected_when_session_id(self, mock_agent_deps):
@@ -265,8 +278,9 @@ class TestRunAgentPipeline:
             api_base=None,
             model="custom-model",
         )
-        kwargs = graph.run.call_args[1]
-        assert kwargs.get("model") == "custom-model" or graph.run.call_args[0] or True
+        # model 参数走 SingleAgentGraph 构造器（graph.run 不接收 model）。
+        graph_kwargs = mock_agent_deps["SingleAgentGraph"].call_args.kwargs
+        assert graph_kwargs["model"] == "custom-model"
 
     async def test_converged_save_failure_marks_error(self, mock_agent_deps):
         """成功路径落库失败（update_run_result 抛）→ 标记 error，不逃逸 task。"""
@@ -301,12 +315,13 @@ class TestRunAgentPipeline:
         graph = MagicMock()
         graph.run = AsyncMock(return_value={"messages": [], "input_tokens": 0, "output_tokens": 0})
         mock_agent_deps["SingleAgentGraph"].return_value = graph
-        mock_agent_deps["get_session_messages"] = AsyncMock(return_value=[])
+        # 空历史触发首轮 RAG ingest 分支（dict 重新赋值不生效，必须改 return_value）。
+        mock_agent_deps["get_session_messages"].return_value = []
         with patch(
             "rag.rag_pipeline.ingest_session_messages",
             new_callable=AsyncMock,
             side_effect=RuntimeError("ingest down"),
-        ):
+        ) as mock_ingest:
             result = await _run_agent_pipeline(
                 run_id="run-ingest",
                 requirement="写文案",
@@ -316,6 +331,7 @@ class TestRunAgentPipeline:
                 api_base=None,
                 model=None,
             )
+        mock_ingest.assert_awaited_once()
         assert result["status"] == "completed"
 
     async def test_timeout_marks_run_failed(self, mock_agent_deps):
@@ -364,6 +380,8 @@ class TestRunAgentPipeline:
         mock_agent_deps["publish_run_message"].assert_any_await(
             "run-cancel", {"type": "cancelled", "run_id": "run-cancel"}
         )
+        # 取消时半截内容落库（只要有消息就入库，刷新后仍可见）。
+        mock_agent_deps["StreamEmitter"].return_value.persist_partial.assert_awaited_once()
 
     async def test_flagged_output_publishes_warning(self, mock_agent_deps):
         """OWASP LLM01 输出注入标记 → 发 warning 事件。"""

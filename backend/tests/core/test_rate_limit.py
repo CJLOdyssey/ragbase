@@ -31,3 +31,25 @@ class TestSlidingWindowLimiter:
         limiter.allow("u1", now=100.0)
         # allow() on a different key must not affect u1's window
         assert limiter.allow("u2", now=150.0)
+
+    def test_idle_key_pruned_on_reaccess_after_window(self):
+        limiter = SlidingWindowLimiter(max_calls=1, window_seconds=60)
+        limiter.allow("u1", now=100.0)
+        # Re-accessing the same key after its window starts a fresh window.
+        assert limiter.allow("u1", now=200.0)
+        assert len(limiter._hits["u1"]) == 1
+
+    def test_expired_keys_are_swept_above_threshold(self):
+        from collections import deque
+
+        from core.rate_limit import _SWEEP_THRESHOLD
+
+        limiter = SlidingWindowLimiter(max_calls=1, window_seconds=60)
+        limiter._hits.update(
+            {f"old{i}": deque([100.0]) for i in range(_SWEEP_THRESHOLD)}
+        )
+        limiter._hits["fresh"] = deque([150.0])
+        # Next call exceeds the threshold → sweep drops fully-expired keys.
+        assert limiter.allow("new", now=200.0)
+        assert all(f"old{i}" not in limiter._hits for i in range(_SWEEP_THRESHOLD))
+        assert "fresh" in limiter._hits

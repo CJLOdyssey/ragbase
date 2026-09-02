@@ -4,6 +4,7 @@ High cohesion: single responsibility — persist and retrieve events.
 Low coupling: callers pass Event objects, never touch SQL.
 """
 
+import logging
 import os
 import queue
 import shutil
@@ -15,10 +16,19 @@ from typing import Any
 
 from observability.schema import SCHEMA_SQL, Event
 
+_logger = logging.getLogger(__name__)
+
 _DB_PATH = os.environ.get("OBSERVABILITY_DB", str(Path(__file__).parent / "events.db"))
 
 # Minimum free disk space in bytes before writes are rejected.
 _DISK_MIN_FREE = int(os.environ.get("OBSERVABILITY_MIN_DISK_MB", "100")) * 1024 * 1024
+
+
+_INSERT_SQL = """INSERT INTO events
+   (timestamp,trace_id,span_id,parent_span_id,level,logger,
+    message,error_type,error_stack,duration_ms,tags,event_type)
+   VALUES (:timestamp,:trace_id,:span_id,:parent_span_id,:level,:logger,
+           :message,:error_type,:error_stack,:duration_ms,:tags,:event_type)"""
 
 
 class EventStore:
@@ -40,7 +50,7 @@ class EventStore:
         conn.executescript(SCHEMA_SQL)
         conn.close()
 
-        self._writer = threading.Thread(target=_writer_loop, args=(db_path, self._queue), daemon=True)
+        self._writer = threading.Thread(target=self._writer_loop, daemon=True)
         self._writer.start()
 
     def _disk_free(self) -> float:
@@ -90,6 +100,19 @@ class EventStore:
             return [dict(r) for r in rows]
         finally:
             conn.close()
+
+    def recent(self, seconds: int = 300, limit: int = 50) -> list[dict[str, Any]]:
+        """Return events within the last ``seconds``, newest first."""
+        cutoff = time.time() - seconds
+        return self._query(
+            "SELECT * FROM events WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?",
+            (cutoff, limit),
+        )
+
+    def count(self) -> int:
+        """Total number of persisted events."""
+        row = self._query("SELECT COUNT(*) AS cnt FROM events")[0]
+        return int(row["cnt"])
 
     def by_trace(self, trace_id: str, limit: int = 200) -> list[dict[str, Any]]:
         """Return all events for a given trace ID."""
@@ -165,7 +188,7 @@ class EventStore:
         """Delete events older than `retention_days` and return the row count.
 
         Runs inline (not through the background writer queue) so it never
-        contends for queue slots with live writes.
+        contends for queue slots with live writes. Returns -1 on failure.
         """
         if retention_days <= 0:
             return 0
@@ -186,30 +209,32 @@ class EventStore:
             return -1
 
 
-def _writer_loop(db_path: str, q: "queue.SimpleQueue[dict[str, Any]]") -> None:
-    """Background thread that drains the queue and batch-inserts into SQLite."""
-    conn = sqlite3.connect(db_path, timeout=10)
-    conn.execute("PRAGMA synchronous=NORMAL")
-    try:
-        while True:
-            rows = []
-            rows.append(q.get())
-            while not q.empty() and len(rows) < 100:
-                rows.append(q.get_nowait())
-            if rows:
-                conn.executemany(
-                    """INSERT INTO events
-                       (timestamp,trace_id,span_id,parent_span_id,level,logger,
-                        message,error_type,error_stack,duration_ms,tags,event_type)
-                       VALUES (:timestamp,:trace_id,:span_id,:parent_span_id,:level,:logger,
-                               :message,:error_type,:error_stack,:duration_ms,:tags,:event_type)""",
-                    rows,
-                )
-                conn.commit()
-    except Exception:
-        pass
-    finally:
-        conn.close()
+    def _writer_loop(self) -> None:
+        """Background thread that drains the queue and batch-inserts into SQLite.
+
+        Must survive transient DB faults: a failed batch is dropped and
+        counted in ``write_errors`` (events are best-effort diagnostics).
+        Letting an exception escape would kill this thread silently and
+        every later write would pile up in memory forever.
+        """
+        conn = sqlite3.connect(self._db_path, timeout=10)
+        conn.execute("PRAGMA synchronous=NORMAL")
+        try:
+            while True:
+                rows = [self._queue.get()]
+                while not self._queue.empty() and len(rows) < 100:
+                    rows.append(self._queue.get_nowait())
+                try:
+                    conn.executemany(_INSERT_SQL, rows)
+                    conn.commit()
+                except Exception:
+                    self._write_errors += 1
+                    _logger.warning(
+                        "observability writer dropped %d rows", len(rows), exc_info=True
+                    )
+                    time.sleep(0.5)  # avoid hot-spinning on a persistent fault
+        finally:
+            conn.close()
 
 
 def _writer_size(q: "queue.SimpleQueue[dict[str, Any]]") -> int:
@@ -219,11 +244,14 @@ def _writer_size(q: "queue.SimpleQueue[dict[str, Any]]") -> int:
 
 # Module-level singleton — created on first use.
 _store: EventStore | None = None
+_store_lock = threading.Lock()
 
 
 def get_store() -> EventStore:
-    """Return the module-level EventStore singleton."""
+    """Return the module-level EventStore singleton (thread-safe creation)."""
     global _store
     if _store is None:
-        _store = EventStore()
+        with _store_lock:
+            if _store is None:
+                _store = EventStore()
     return _store

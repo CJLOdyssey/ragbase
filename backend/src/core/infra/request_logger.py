@@ -1,10 +1,11 @@
-"""Request logging middleware — logs every HTTP request with timing, status, and metadata."""
+"""Request logging middleware — timing, status, and request metadata per HTTP request."""
 
 import time
 import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from core.infra.asgi import client_ip
 from core.infra.logging_config import get_logger
 from observability import set_trace_id
 
@@ -15,14 +16,10 @@ ASGISend = Callable[[dict[str, Any]], Awaitable[None]]
 Scope = dict[str, Any]
 
 _EXEMPT_PREFIXES = ("/api/health", "/ws/", "/metrics")
-_SENSITIVE_HEADERS = {b"authorization", b"cookie", b"x-api-key", b"proxy-authorization"}
+# Body is never echoed for these paths — they carry plaintext secrets
+# (API keys, passwords) that must not reach the logs.
+_BODY_EXEMPT_PREFIXES = ("/api/keys", "/api/auth")
 _MAX_BODY_BYTES = 2 * 1024
-
-
-def _mask(val: str, keep: int = 8) -> str:
-    if len(val) <= keep + 4:
-        return "***"
-    return val[:4] + "***" + val[-keep:]
 
 
 def _format_duration(seconds: float) -> str:
@@ -53,9 +50,8 @@ class RequestLogMiddleware:
 
         method = scope.get("method", "UNKNOWN")
         query_string = scope.get("query_string", b"").decode("utf-8", errors="replace")
-        client_ip = _client_ip(scope)
 
-        # ── Wrap receive to capture body for logging ─────────────────────
+        # Capture request body (bounded) so errors can be diagnosed.
         body_chunks: list[bytes] = []
 
         async def _receive() -> dict[str, Any]:
@@ -68,7 +64,7 @@ class RequestLogMiddleware:
         content_length = headers.get(b"content-length", b"").decode()
         ua = headers.get(b"user-agent", b"").decode("utf-8", errors="replace")[:120]
 
-        # ── Log incoming (without body — it hasn't been read yet) ─────────
+        # Log incoming (without body — it hasn't been read yet).
         qs = f"?{query_string}" if query_string else ""
         logger.info(
             "[REQ] %s | %s%s | client=%s | len=%s | ua=%s | rid=%s",
@@ -81,7 +77,7 @@ class RequestLogMiddleware:
             request_id,
         )
 
-        # ── Wrap send to capture status & timing ─────────────────────────
+        # Wrap send to capture status & timing.
         start = time.monotonic()
         status_code = 0
 
@@ -94,27 +90,26 @@ class RequestLogMiddleware:
         try:
             await self.app(scope, _receive, _send)
         except Exception:
-            duration = time.monotonic() - start
             logger.exception(
                 "[REQ] %s %s | UNHANDLED | duration=%s | rid=%s",
                 method,
                 path,
-                _format_duration(duration),
+                _format_duration(time.monotonic() - start),
                 request_id,
             )
             raise
 
         duration = time.monotonic() - start
 
-        # ── Build body for error logging ──────────────────────────────────
+        # Build body for error logging (never echoed on secret-carrying paths).
         body_bytes = b"".join(body_chunks)
         body_for_log = body_bytes[:_MAX_BODY_BYTES].decode("utf-8", errors="replace")
         if len(body_bytes) > _MAX_BODY_BYTES:
             body_for_log += "... (truncated)"
+        if path.startswith(_BODY_EXEMPT_PREFIXES):
+            body_for_log = ""
 
-        duration = time.monotonic() - start
-
-        # ── Log outgoing ─────────────────────────────────────────────────
+        # Log outgoing.
         log_level = logger.info if status_code < 500 else logger.error
         log_level(
             "[RES] %s %s → %d | duration=%s | rid=%s",
@@ -125,7 +120,7 @@ class RequestLogMiddleware:
             request_id,
         )
 
-        # If it was a client or server error, include a hint
+        # On client/server errors, include a body hint for diagnosis.
         if 400 <= status_code < 500:
             logger.warning(
                 "[RES] %s %s → %d | body[:500]=%s | rid=%s",
@@ -144,13 +139,3 @@ class RequestLogMiddleware:
                 body_for_log[:500],
                 request_id,
             )
-
-
-def _client_ip(scope: dict[str, Any]) -> str:
-    for header_name, header_value in scope.get("headers", []):
-        if header_name == b"x-forwarded-for":
-            return str(header_value.decode("utf-8").split(",")[0].strip())
-        if header_name == b"x-real-ip":
-            return str(header_value.decode("utf-8"))
-    addr = scope.get("client")
-    return str(addr[0]) if addr else "unknown"

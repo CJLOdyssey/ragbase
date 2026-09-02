@@ -1,4 +1,4 @@
-"""Unit tests for """
+"""Unit tests for core.config (LLMConfig validation + load_config env mapping)."""
 
 from unittest.mock import patch
 
@@ -75,52 +75,6 @@ class TestLLMConfig:
         assert "(unset)" in rep
 
 
-
-
-class TestSafeFloat:
-    def test_returns_value_when_env_set(self):
-        from core.config import _safe_float
-
-        with patch("core.config.os.environ", {"TEST_KEY": "0.85"}):
-            assert _safe_float("TEST_KEY", 0.7) == 0.85
-
-    def test_returns_default_on_missing_key(self):
-        from core.config import _safe_float
-
-        with patch("core.config.os.environ", {}):
-            assert _safe_float("MISSING", 0.5) == 0.5
-
-    def test_returns_default_on_invalid_value(self):
-        from core.config import _safe_float
-
-        with patch("core.config.os.environ", {"BAD": "not-a-number"}):
-            assert _safe_float("BAD", 0.3) == 0.3
-
-
-
-
-class TestSafeInt:
-    def test_returns_value_when_env_set(self):
-        from core.config import _safe_int
-
-        with patch("core.config.os.environ", {"TEST_KEY": "42"}):
-            assert _safe_int("TEST_KEY", 10) == 42
-
-    def test_returns_default_on_missing_key(self):
-        from core.config import _safe_int
-
-        with patch("core.config.os.environ", {}):
-            assert _safe_int("MISSING", 7) == 7
-
-    def test_returns_default_on_invalid_value(self):
-        from core.config import _safe_int
-
-        with patch("core.config.os.environ", {"BAD": "xyz"}):
-            assert _safe_int("BAD", 3) == 3
-
-
-
-
 class TestLoadConfig:
     def test_loads_from_env(self):
         from core.config import load_config
@@ -169,10 +123,5 @@ class TestLoadConfig:
             assert cfg.api_key == ""
             assert cfg.model == "deepseek-v4-flash"
             assert cfg.temperature == 0.7
-
-
-# ─────────────────────────────────────────────────────────────────────
-# 2. backend/broker.py — Redis pub/sub & Celery setup
-# ─────────────────────────────────────────────────────────────────────
 
 

@@ -51,6 +51,24 @@ def _make_xlsx(path: Path, shared: list[str], cells: list[list[int | str]]) -> N
 
 
 
+def _make_pptx(path: Path, slide_texts: list[list[str]]) -> None:
+    """Build a minimal PPTX: one <a:t> run per string in ppt/slides/slideN.xml."""
+    ns = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    with zipfile.ZipFile(path, "w") as zf:
+        for i, runs in enumerate(slide_texts, start=1):
+            body = "".join(
+                f'<a:p><a:r><a:t>{t}</a:t></a:r></a:p>' for t in runs
+            )
+            slide = (
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                f'<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                f'xmlns:a="{ns}"><p:cSld><p:spTree>'
+                f'<p:sp><p:txBody>{body}</p:txBody></p:sp>'
+                f"</p:spTree></p:cSld></p:sld>"
+            )
+            zf.writestr(f"ppt/slides/slide{i}.xml", slide)
+
+
 class TestExtractText:
     def test_markdown_reads_as_text(self, tmp_path):
         p = tmp_path / "doc.md"
@@ -100,3 +118,30 @@ class TestExtractText:
         p = tmp_path / "bad.xlsx"
         p.write_bytes(b"not a zip")
         assert extract_text(p) == ""
+
+    def test_pptx_extracts_slide_texts(self, tmp_path):
+        p = tmp_path / "deck.pptx"
+        _make_pptx(p, [["标题页"], ["要点一", "要点二"]])
+        text = extract_text(p)
+        assert "标题页" in text
+        assert "要点一" in text
+        assert "要点二" in text
+
+    def test_pptx_bad_zip_returns_empty(self, tmp_path):
+        p = tmp_path / "bad.pptx"
+        p.write_bytes(b"not a zip")
+        assert extract_text(p) == ""
+
+    def test_html_strips_tags_keeps_text(self, tmp_path):
+        p = tmp_path / "page.html"
+        p.write_text(
+            "<html><body><h1>标题</h1><p>正文段落</p>"
+            "<script>var x = 1;</script><style>.a{}</style></body></html>",
+            encoding="utf-8",
+        )
+        text = extract_text(p)
+        assert "标题" in text
+        assert "正文段落" in text
+        # script/style 内容被剔除。
+        assert "var x" not in text
+        assert ".a{}" not in text

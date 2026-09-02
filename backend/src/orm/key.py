@@ -57,7 +57,7 @@ class KeyUsageLog(Base):
     __tablename__ = "key_usage_logs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    key_id: Mapped[str] = mapped_column(
+    key_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("user_api_keys.id", ondelete="SET NULL"),
         nullable=True,

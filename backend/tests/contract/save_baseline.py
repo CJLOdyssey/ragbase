@@ -17,7 +17,8 @@ from pathlib import Path
 
 import httpx
 
-HOST = "http://localhost:8080"
+#: ragbase 后端实际监听端口（systemd，见 AGENTS.md 端口表）。
+HOST = "http://localhost:8081"
 BASELINE_PATH = Path(__file__).resolve().parent / "openapi_baseline.json"
 
 

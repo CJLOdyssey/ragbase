@@ -73,6 +73,7 @@ describe('retry', { tags: ['unit'] }, () => {
       'deepseek-chat',
       null, // parent_run_id（根分支）
       undefined, // attachment_ids
+      undefined, // prompt_id
     );
     expect(connectRun).toHaveBeenCalled();
   });
@@ -110,6 +111,7 @@ describe('retry', { tags: ['unit'] }, () => {
       'THUDM/GLM-Z1-9B-0414',
       null,
       undefined,
+      undefined, // prompt_id
     );
   });
 

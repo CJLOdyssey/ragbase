@@ -102,7 +102,7 @@ describe('handleMessageEvent', { tags: ['unit'] }, () => {
 });
 
 describe('handleInfoEvent', { tags: ['unit'] }, () => {
-  it('appends info to streaming message', () => {
+  it('appends info to streaming message (content 优先)', () => {
     const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
       fn(makeState()),
     );
@@ -116,7 +116,24 @@ describe('handleInfoEvent', { tags: ['unit'] }, () => {
     const result = set.mock.results[0].value as {
       messages: Array<{ content: string }>;
     };
+    expect(result.messages[0].content).toContain('[Fetching data...]');
+  });
+
+  it('content 缺失时回退到 data，绝不追加 undefined', () => {
+    const set = vi.fn((fn: (s: ReturnType<typeof makeState>) => unknown) =>
+      fn(makeState()),
+    );
+
+    handleInfoEvent(set as never, {
+      type: 'info',
+      data: 'extra',
+    });
+
+    const result = set.mock.results[0].value as {
+      messages: Array<{ content: string }>;
+    };
     expect(result.messages[0].content).toContain('[extra]');
+    expect(result.messages[0].content).not.toContain('undefined');
   });
 
   it('returns empty state when no streamingId', () => {

@@ -89,7 +89,10 @@ class TestMarkerSet:
         assert all(m == m.lower() for m in _INSTRUCTION_MARKERS)
 
     def test_control_pattern_compiles(self):
-        assert _CONTROL_CHARS.pattern.startswith("[")
+        """控制字符集正则必须能命中代表性控制字符（无效则形同虚设）。"""
+        assert _CONTROL_CHARS.search("\x1b")
+        assert _CONTROL_CHARS.search("\x00")
+        assert not _CONTROL_CHARS.search("normal text")
 
     def test_allowed_sources_covers_current_channels(self):
         assert frozenset({"upload", "url"}) == ALLOWED_INDEX_SOURCES

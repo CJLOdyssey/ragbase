@@ -1,5 +1,5 @@
 # ── 生产部署 compose（overlay）───────────────────────────────────────────
-# 用法：docker compose -f docker/compose.base.yml -f docker/compose.prod.yml up -d
+# 用法：docker compose --env-file .env -f docker/compose.base.yml -f docker/compose.prod.yml up -d
 # 差异：ACR 镜像 tag、密钥必填、celery 生产化（RUN_DISPATCH/SKIP_MIGRATIONS）、
 #       日志轮转、独立子网、DB NullPool（celery 跨 loop 安全）、独立 project
 #       名与卷（与 local 数据隔离）。
@@ -33,6 +33,12 @@ services:
     container_name: ragbase-redis-prod
     <<: *restart-policy
     logging: *default-logging
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env for production}", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env for production}", "--no-auth-warning", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -94,7 +100,7 @@ services:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       # 用 127.0.0.1 而非 localhost：nginx 只监听 IPv4，wget 解析 localhost 到
       # ::1 会 Connection refused（本机 IPv6 黑洞，见 AGENTS.md）

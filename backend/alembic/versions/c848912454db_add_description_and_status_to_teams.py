@@ -21,7 +21,9 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.add_column("teams", sa.Column("description", sa.String(256), nullable=True))
     op.add_column("teams", sa.Column("status", sa.String(16), nullable=False, server_default="active"))
-    op.alter_column("teams", "status", server_default=None)
+    # DROP DEFAULT is PostgreSQL-only; SQLite keeps the server default.
+    if op.get_bind().dialect.name == "postgresql":
+        op.alter_column("teams", "status", server_default=None)
 
 
 def downgrade() -> None:

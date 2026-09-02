@@ -104,8 +104,3 @@ class TestAppCreation:
         assert len(router_paths) >= 5
 
 
-# ─────────────────────────────────────────────────────────────────────
-# 12. backend/repository/base.py + deps.py — CRUD patterns
-# ─────────────────────────────────────────────────────────────────────
-
-

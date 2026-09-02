@@ -18,8 +18,13 @@ const listeners = new Set<UserEventHandler>();
 const reconnectHandlers = new Set<() => void>();
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 let attempts = 0;
+// 主动断开标志：close() 的 onclose 在真实浏览器中是异步派发的，
+// 若无此标志，最后一个监听器离开后 onclose 仍会重新武装重连定时器，
+// 造成无监听器的 WebSocket 无限重连循环。
+let stopped = false;
 
 function open(): void {
+  if (stopped) return;
   try {
     ws = new WebSocket(EVENTS_URL);
   } catch {
@@ -40,6 +45,7 @@ function open(): void {
     }
   };
   ws.onclose = () => {
+    if (stopped) return;
     scheduleReconnect();
   };
   ws.onerror = () => {
@@ -48,6 +54,7 @@ function open(): void {
 }
 
 function scheduleReconnect(): void {
+  if (stopped) return;
   if (reconnectTimer) clearTimeout(reconnectTimer);
   attempts += 1;
   const delay = Math.min(1000 * 2 ** attempts, 30000);
@@ -58,6 +65,7 @@ export function connectUserEvents(
   onEvent: UserEventHandler,
   onReconnect?: () => void,
 ): void {
+  stopped = false;
   listeners.add(onEvent);
   if (onReconnect) reconnectHandlers.add(onReconnect);
   if (!ws || ws.readyState === WebSocket.CLOSED) {
@@ -72,6 +80,7 @@ export function disconnectUserEvents(
   listeners.delete(onEvent);
   if (onReconnect) reconnectHandlers.delete(onReconnect);
   if (listeners.size === 0 && ws) {
+    stopped = true;
     ws.close();
     ws = null;
     if (reconnectTimer) clearTimeout(reconnectTimer);

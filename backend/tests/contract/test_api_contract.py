@@ -1,107 +1,120 @@
-"""API contract tests — verify schema, status codes, and response shapes."""
+"""API contract tests — verify schema, status codes, and response shapes.
 
+Covers the ragbase route set (auth/keys/models/providers/prompts/sessions/
+runs/versions/assets/attachments + observability). Routes are integration-
+marked: they run against the live backend and skip when it is unreachable.
+"""
+
+import httpx
 import pytest
 
 pytestmark = pytest.mark.integration
+
+#: ragbase 实际注册的业务路由前缀（与 core/app.py 的 include_router 对齐）。
+EXPECTED_PREFIXES = [
+    "/api/health",
+    "/api/version",
+    "/api/metrics",
+    "/api/models",
+    "/api/keys",
+    "/api/providers",
+    "/api/prompts",
+    "/api/versions",
+    "/api/sessions",
+    "/api/runs",
+    "/api/attachments",
+    "/api/assets",
+    "/api/auth",
+    "/api/debug",
+    "/api/monitoring",
+    "/api/feedback",
+    "/api/retrieval-logs",
+    "/api/knowledge-bases",
+    "/api/admin",
+]
+
+#: ragbase 已裁剪模块的路由——契约测试必须断言其不存在（死路由回归防护）。
+CUT_PREFIXES = [
+    "/api/agents",
+    "/api/tools",
+    "/api/skills",
+    "/api/mcps",
+    "/api/teams",
+    "/api/workflows",
+    "/api/commands",
+]
 
 
 class TestOpenAPISchema:
     """Verify the OpenAPI schema is complete and well-formed."""
 
-    async def test_openapi_json_is_accessible(self, test_client):
-        r = await test_client.get("/openapi.json")
+    async def test_openapi_json_is_accessible(self, contract_client):
+        r = await contract_client.get("/openapi.json")
         assert r.status_code == 200
         schema = r.json()
         assert "openapi" in schema
         assert "paths" in schema
 
-    async def test_schema_contains_expected_routes(self, test_client):
-        r = await test_client.get("/openapi.json")
+    async def test_schema_contains_expected_routes(self, contract_client):
+        r = await contract_client.get("/openapi.json")
         paths = r.json()["paths"]
-        expected = [
-            "/api/health",
-            "/api/models",
-            "/api/agents",
-            "/api/tools",
-            "/api/skills",
-            "/api/mcps",
-            "/api/teams",
-            "/api/prompts",
-            "/api/keys",
-            "/api/providers",
-            "/api/commands",
-            "/api/workflows",
-            "/api/sessions",
-        ]
-        for route in expected:
-            assert route in paths, f"Missing route: {route}"
+        for prefix in EXPECTED_PREFIXES:
+            assert any(p.startswith(prefix) for p in paths), f"Missing prefix {prefix}"
+
+    async def test_schema_excludes_cut_routes(self, contract_client):
+        """SPEC 4.5 裁剪边界：被裁模块的路由不得复活。"""
+        r = await contract_client.get("/openapi.json")
+        paths = r.json()["paths"]
+        for prefix in CUT_PREFIXES:
+            assert not any(p.startswith(prefix) for p in paths), (
+                f"Cut prefix {prefix} still registered"
+            )
 
 
 class TestHealthEndpoint:
-    async def test_health_returns_200_with_status(self, test_client):
-        r = await test_client.get("/api/health")
+    async def test_health_returns_200_with_status(self, contract_client):
+        r = await contract_client.get("/api/health")
         assert r.status_code == 200
         body = r.json()
         assert "status" in body
         assert body["status"] in ("healthy", "degraded")
 
+    async def test_version_returns_version(self, contract_client):
+        r = await contract_client.get("/api/version")
+        assert r.status_code == 200
+        assert "version" in r.json()
+
 
 class TestListEndpoints:
     """Verify list endpoints return 200 with array response."""
 
-    async def test_models_returns_array(self, test_client):
-        r = await test_client.get("/api/models")
+    async def test_models_returns_array(self, contract_client):
+        r = await contract_client.get("/api/models")
         assert r.status_code == 200
         assert isinstance(r.json(), list)
 
-    async def test_agents_returns_array(self, test_client):
-        r = await test_client.get("/api/agents")
+    async def test_sessions_returns_array(self, contract_client):
+        r = await contract_client.get("/api/sessions")
         assert r.status_code == 200
         assert isinstance(r.json(), list)
 
-    async def test_tools_returns_array(self, test_client):
-        r = await test_client.get("/api/tools")
+    async def test_prompts_returns_array(self, contract_client):
+        r = await contract_client.get("/api/prompts")
         assert r.status_code == 200
         assert isinstance(r.json(), list)
 
-    async def test_skills_returns_array(self, test_client):
-        r = await test_client.get("/api/skills")
+    async def test_keys_returns_array(self, contract_client):
+        r = await contract_client.get("/api/keys")
         assert r.status_code == 200
         assert isinstance(r.json(), list)
 
-    async def test_mcps_returns_array(self, test_client):
-        r = await test_client.get("/api/mcps")
+    async def test_providers_returns_object(self, contract_client):
+        r = await contract_client.get("/api/providers")
         assert r.status_code == 200
-        assert isinstance(r.json(), list)
+        assert isinstance(r.json(), dict)
 
-    async def test_teams_returns_array(self, test_client):
-        r = await test_client.get("/api/teams")
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
-    async def test_prompts_returns_array(self, test_client):
-        r = await test_client.get("/api/prompts")
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
-    async def test_keys_returns_array(self, test_client):
-        r = await test_client.get("/api/keys")
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
-    async def test_providers_returns_object(self, test_client):
-        r = await test_client.get("/api/providers")
-        assert r.status_code == 200
-        body = r.json()
-        assert isinstance(body, dict)
-
-    async def test_commands_returns_array(self, test_client):
-        r = await test_client.get("/api/commands")
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
-    async def test_workflows_returns_array(self, test_client):
-        r = await test_client.get("/api/workflows")
+    async def test_assets_returns_array(self, contract_client):
+        r = await contract_client.get("/api/assets")
         assert r.status_code == 200
         assert isinstance(r.json(), list)
 
@@ -109,137 +122,74 @@ class TestListEndpoints:
 class TestErrorResponses:
     """Verify each endpoint returns proper error codes for invalid requests."""
 
-    async def test_nonexistent_route_returns_404(self, test_client):
-        r = await test_client.get("/api/nonexistent-route-xyz")
+    async def test_nonexistent_route_returns_404(self, contract_client):
+        r = await contract_client.get("/api/nonexistent-route-xyz")
         assert r.status_code == 404
 
-    async def test_post_agents_without_body_returns_error(self, test_client):
-        r = await test_client.post("/api/agents")
-        assert r.status_code in (401, 422)
-
-    async def test_nonexistent_agent_detail_returns_404(self, test_client):
-        r = await test_client.get("/api/agents/nonexistent-99999")
+    async def test_nonexistent_session_detail_returns_404(self, contract_client):
+        r = await contract_client.get("/api/sessions/nonexistent-99999")
         assert r.status_code == 404
 
-    async def test_nonexistent_tool_detail_returns_404(self, test_client):
-        r = await test_client.get("/api/tools/nonexistent-99999")
+    async def test_nonexistent_prompt_detail_returns_404(self, contract_client):
+        # prompts 无 GET 详情路由（仅 PUT/DELETE），用 DELETE 验证 404
+        r = await contract_client.delete("/api/prompts/nonexistent-99999")
         assert r.status_code == 404
 
-    async def test_nonexistent_skill_detail_returns_404(self, test_client):
-        r = await test_client.get("/api/skills/nonexistent-99999")
+    async def test_nonexistent_run_detail_returns_404(self, contract_client):
+        r = await contract_client.get("/api/runs/nonexistent-99999")
         assert r.status_code == 404
 
-    async def test_nonexistent_session_detail_returns_404(self, test_client):
-        r = await test_client.get("/api/sessions/nonexistent-99999")
-        assert r.status_code == 404
+    async def test_create_session_empty_body_returns_201(self, contract_client):
+        """session 的 title 有默认值（"新对话"），空 body 合法 → 201。"""
+        r = await contract_client.post("/api/sessions", json={})
+        assert r.status_code == 201
+        body = r.json()
+        assert body["title"] == "新对话"
+        await contract_client.delete(f"/api/sessions/{body['id']}")
 
-    async def test_nonexistent_team_detail_returns_404(self, test_client):
-        r = await test_client.get("/api/teams/nonexistent-99999")
-        assert r.status_code == 404
-
-    async def test_create_session_empty_body_returns_422(self, test_client):
-        r = await test_client.post("/api/sessions", json={})
+    async def test_create_prompt_empty_body_returns_422(self, contract_client):
+        r = await contract_client.post("/api/prompts", json={})
         assert r.status_code == 422
-
-    async def test_create_team_empty_body_returns_422(self, test_client):
-        r = await test_client.post("/api/teams", json={})
-        assert r.status_code == 422
-
-    async def test_create_tool_empty_body_returns_422(self, test_client):
-        r = await test_client.post("/api/tools", json={})
-        assert r.status_code == 422
-
-    async def test_create_mcp_extra_fields_ignored_or_error(self, test_client):
-        r = await test_client.post("/api/mcps", json={
-            "name": "test-mcp-extras",
-            "type": "stdio",
-            "command": "echo",
-            "args": ["hello"],
-            "env": {},
-            "nonexistent_field": "should_not_be_accepted",
-        })
-        assert r.status_code in (200, 201, 422)
 
 
 class TestAuthRequired:
-    """Verify that mutation endpoints document auth requirements in the OpenAPI schema."""
+    """Verify that mutation endpoints require authentication."""
 
-    async def test_openapi_has_security_requirements(self, test_client):
-        r = await test_client.get("/openapi.json")
+    async def test_models_without_token_returns_401(self, contract_client):
+        """不带 token 访问业务 API → 401（AuthMiddleware 生效）。
+
+        注意 httpx 会合并 client 级 headers（pop 请求级副本无效），
+        因此用独立的匿名 client 发请求。
+        """
+        from tests.contract.conftest import BASE_URL
+
+        async with httpx.AsyncClient(base_url=BASE_URL, timeout=10) as anon:
+            r = await anon.get("/api/models")
+        assert r.status_code == 401
+
+    async def test_openapi_has_security_requirements(self, contract_client):
+        """OpenAPI 应声明认证方案。
+
+        ragbase 用全局 AuthMiddleware + JWT/cookie 认证（无 per-endpoint
+        Depends security）。custom_openapi() 在 core/app.py 中手动声明
+        Bearer scheme，确保 Swagger UI 显示"Authorize"按钮。
+        """
+        r = await contract_client.get("/openapi.json")
         schema = r.json()
-        assert "components" in schema
-        components = schema["components"]
-        assert "securitySchemes" in components, "Missing securitySchemes in OpenAPI spec"
-        schemes = components["securitySchemes"]
-        assert "OAuth2PasswordBearer" in schemes or "HTTPBearer" in schemes or any(
-            "bearer" in name.lower() or "jwt" in name.lower()
+        components = schema.get("components", {})
+        schemes = components.get("securitySchemes", {})
+        assert schemes, "OpenAPI securitySchemes 为空 — custom_openapi() 可能未生效"
+        assert any(
+            "bearer" in name.lower() or "jwt" in name.lower() or "oauth" in name.lower()
             for name in schemes
         ), "No Bearer/JWT auth scheme in OpenAPI spec"
-
-    async def test_agents_delete_requires_auth(self, test_client):
-        """DELETE /api/agents/{id} uses Depends(get_current_user) — must be documented."""
-        r = await test_client.get("/openapi.json")
-        paths = r.json()["paths"]
-        if "/api/agents/{agent_id}" in paths:
-            delete_op = paths["/api/agents/{agent_id}"].get("delete", {})
-            assert "security" in delete_op, (
-                "DELETE /api/agents/{agent_id} should document security requirements"
-            )
-
-    async def test_critical_endpoints_document_auth(self, test_client):
-        """Verify mutation endpoints that should require auth are documented."""
-        r = await test_client.get("/openapi.json")
-        paths = r.json()["paths"]
-        critical_mutations: list[str] = [
-            ("post", "/api/agents"),
-            ("put", "/api/agents/{agent_id}"),
-            ("delete", "/api/agents/{agent_id}"),
-        ]
-        for method, path in critical_mutations:
-            if path in paths:
-                operation = paths[path].get(method, {})
-                assert "security" in operation, (
-                    f"{method.upper()} {path} should document security requirements"
-                )
 
 
 class TestUndocumentedEndpoints:
     """Verify openapi.json paths match the actual registered router paths."""
 
-    async def test_all_router_prefixes_in_openapi(self, test_client):
-        r = await test_client.get("/openapi.json")
-        paths: dict[str, object] = r.json()["paths"]
-
-        expected_prefixes = [
-            "/api/health",
-            "/api/models",
-            "/api/agents",
-            "/api/attachments",
-            "/api/commands",
-            "/api/keys",
-            "/api/mcps",
-            "/api/prompts",
-            "/api/providers",
-            "/api/runs",
-            "/api/sessions",
-            "/api/skills",
-            "/api/teams",
-            "/api/tools",
-            "/api/versions",
-            "/api/workflows",
-            "/api/admin",
-            "/api/auth",
-            "/api/metrics",
-            "/api/version",
-        ]
-
-        for prefix in expected_prefixes:
-            has_prefix = any(p.startswith(prefix) for p in paths)
-            assert has_prefix, f"Expected prefix {prefix} not found in openapi.json paths"
-
-    async def test_no_deprecated_routes_in_openapi(self, test_client):
-        """Ensure no route is explicitly marked as deprecated unless intended."""
-        r = await test_client.get("/openapi.json")
+    async def test_no_deprecated_routes_in_openapi(self, contract_client):
+        r = await contract_client.get("/openapi.json")
         paths = r.json()["paths"]
         deprecated_paths: list[str] = []
         for path, methods in paths.items():

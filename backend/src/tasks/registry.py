@@ -10,8 +10,10 @@ from core.mock_fallback import ENABLE as ENABLE_MOCK_FALLBACK
 
 from .agent_pipeline import _run_agent_pipeline
 from .complete_pipeline import _complete_pipeline
+from .health_snapshot import run_health_snapshot
 from .index_asset import _index_asset
 from .pipeline_utils import _report_run_error, _run_async, _try_mock_fallback
+from .purge_orphan_vectors import run_purge_orphan_vectors
 from .reindex_sweep import run_reindex_sweep
 
 logger = get_logger(__name__)
@@ -31,6 +33,7 @@ def run_agent(
     api_base: str | None = None,
     model: str | None = None,
     user_id: str = "system",
+    prompt_id: str | None = None,
 ) -> Any:
     """Run the agent pipeline for a requirement in the background."""
     t0 = time.time()
@@ -50,6 +53,7 @@ def run_agent(
                 api_base=api_base,
                 model=model,
                 user_id=user_id,
+                prompt_id=prompt_id,
             )
         )
         elapsed = time.time() - t0
@@ -84,7 +88,12 @@ def index_asset(
     asset_id: str,
     user_id: str,
 ) -> Any:
-    """Index an asset's chunks into pgvector — async, idempotent."""
+    """Index an asset's chunks into pgvector — async, idempotent.
+
+    Retries are safe: the pipeline clears previous chunks before writing and
+    persists a failed terminal state before re-raising, so attempt N never
+    leaves half-indexed fragments behind.
+    """
     t0 = time.time()
     logger.info(
         "Celery index START | asset=%s | user=%s | retry=%d",
@@ -97,12 +106,15 @@ def index_asset(
             asset_id, time.time() - t0, result.get("chunks"),
         )
         return result
-    except Exception:
+    except Exception as exc:
         logger.exception(
             "Celery index FAIL | asset=%s | elapsed=%.2fs | retry=%d",
             asset_id, time.time() - t0, self.request.retries,
         )
-        raise
+        # Transient faults (embedding API 5xx/timeout) recover on retry;
+        # permanent ones exhaust max_retries with the failure state already
+        # persisted by _index_asset itself.
+        self.retry(exc=exc)
 
 
 @_task()
@@ -113,9 +125,32 @@ def reindex_sweep() -> Any:
     return result
 
 
-@_task(bind=True, max_retries=2, default_retry_delay=5)
+@_task()
+def health_snapshot() -> Any:
+    """Celery beat entry: persist hourly composite health-score snapshots.
+
+    No task-level retries: per-user failures are contained inside the sweep
+    (fail-open), and whole-task failure means infra is down — beat simply
+    fires again next hour.
+    """
+    result = run_health_snapshot()
+    logger.info(
+        "Celery health snapshot | users=%s | failed=%s | pruned=%s",
+        result.get("users"), result.get("failed"), result.get("pruned"),
+    )
+    return result
+
+
+@_task()
+def purge_orphan_vectors() -> Any:
+    """Celery beat entry: clear vector chunks for assets without a KB binding."""
+    result = run_purge_orphan_vectors()
+    logger.info("Celery purge orphans | purged=%s", result.get("purged"))
+    return result
+
+
+@_task()
 def complete_agent(
-    self: Any,
     content: str,
     run_id: str,
     api_key: str,
@@ -124,11 +159,16 @@ def complete_agent(
     thinking: str | None = None,
     question: str | None = None,
 ) -> Any:
-    """Persist a completed run's final answer in the background."""
+    """Persist a completed run's final answer in the background.
+
+    Deliberately no retries: streaming events were already published to the
+    client channel, so replaying the task would double-stream; failures are
+    terminalized (run status + error event) inside _complete_pipeline.
+    """
     t0 = time.time()
     logger.info(
-        "Celery complete START | run=%s | model=%s | thinking=%s | retry=%d",
-        run_id, model, bool(thinking), self.request.retries,
+        "Celery complete START | run=%s | model=%s | thinking=%s",
+        run_id, model, bool(thinking),
     )
     try:
         result = _run_async(
@@ -136,14 +176,14 @@ def complete_agent(
         )
         elapsed = time.time() - t0
         logger.info(
-            "Celery complete SUCCESS | run=%s | elapsed=%.2fs | retry=%d",
-            run_id, elapsed, self.request.retries,
+            "Celery complete SUCCESS | run=%s | elapsed=%.2fs",
+            run_id, elapsed,
         )
         return result
     except Exception:
         elapsed = time.time() - t0
         logger.exception(
-            "Celery complete FAIL | run=%s | elapsed=%.2fs | retry=%d",
-            run_id, elapsed, self.request.retries,
+            "Celery complete FAIL | run=%s | elapsed=%.2fs",
+            run_id, elapsed,
         )
         raise

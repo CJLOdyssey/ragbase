@@ -48,6 +48,16 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.registry.reindex_sweep",
         "schedule": 300.0,
     },
+    # Hourly error-budget health-score snapshots (score trend source).
+    "health-score-snapshot": {
+        "task": "tasks.registry.health_snapshot",
+        "schedule": 3600.0,
+    },
+    # Hourly purge of vector chunks for assets without a KB binding.
+    "purge-orphan-vectors": {
+        "task": "tasks.registry.purge_orphan_vectors",
+        "schedule": 3600.0,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -208,7 +218,6 @@ async def subscribe_user_events(user_id: str) -> AsyncIterator[dict[str, Any]]:
 
 _buffers: dict[str, list[dict[str, Any]]] = {}
 _buffer_tasks: dict[str, asyncio.Task[Any]] = {}
-_lock: asyncio.Lock = asyncio.Lock()
 
 
 async def buffer_run_messages(run_id: str) -> None:
@@ -220,7 +229,6 @@ async def buffer_run_messages(run_id: str) -> None:
     """
     buf: list[dict[str, Any]] = []
     _buffers[run_id] = buf
-    logger = get_logger(__name__)
 
     try:
         r = get_redis()

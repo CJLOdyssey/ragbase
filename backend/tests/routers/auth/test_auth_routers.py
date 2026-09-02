@@ -105,7 +105,13 @@ class TestAuthLogin:
         assert resp2.status_code == 401
 
     def test_refresh_requires_cookie(self, client):
-        resp = client.post("/api/auth/refresh")
+        # conftest 已预登录；清空 cookie 构造"无刷新令牌"请求
+        saved = dict(client.cookies)
+        client.cookies.clear()
+        try:
+            resp = client.post("/api/auth/refresh")
+        finally:
+            client.cookies.update(saved)
         assert resp.status_code == 401
 
     def test_refresh_rotates_cookie(self, client):
@@ -364,7 +370,7 @@ class TestAuthProfile:
         resp = client.get("/api/auth/me")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["email"] == "admin@example.com"
+        assert data["email"] == "admin@test.com"
         assert data["is_verified"] is True
 
     def test_profile_returns_admin_in_legacy(self, client):

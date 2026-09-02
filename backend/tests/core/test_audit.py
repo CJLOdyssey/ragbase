@@ -1,4 +1,4 @@
-"""Unit tests for """
+"""Unit tests for core.audit — audit entry logging facade."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -46,10 +46,5 @@ class TestLogAudit:
         assert added.entity_type == "tool"
         assert added.entity_name == ""
         assert added.detail == ""
-
-
-# ─────────────────────────────────────────────────────────────────────
-# 6. backend/error_codes.py — ErrorCode & error_response
-# ─────────────────────────────────────────────────────────────────────
 
 

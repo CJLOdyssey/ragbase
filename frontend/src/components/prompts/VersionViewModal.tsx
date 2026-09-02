@@ -1,5 +1,5 @@
-import Modal from '../shared/Modal';
 import { useTranslation } from 'react-i18next';
+import MobileModal from '../shared/MobileModal';
 import type { VersionItem } from '../../api/client/versions';
 
 interface Props {
@@ -20,12 +20,11 @@ export default function VersionViewModal({
   const snapContent = snap.content ?? '';
 
   return (
-    <Modal
-      title={t('prompts.version.rollbackTitle', {
-        version: `v${version.version_num}`,
-      })}
+    <MobileModal
+      open={true}
       onClose={onClose}
-      ariaLabel={t('prompts.version.rollbackTitle', {
+      mode="sheet"
+      title={t('prompts.version.rollbackTitle', {
         version: `v${version.version_num}`,
       })}
       width={560}
@@ -77,6 +76,6 @@ export default function VersionViewModal({
           </pre>
         </div>
       </div>
-    </Modal>
+    </MobileModal>
   );
 }

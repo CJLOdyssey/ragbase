@@ -1,7 +1,6 @@
 import {
   deleteAttachment,
   uploadAttachment,
-  uploadAttachments,
 } from '../attachments';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -84,24 +83,5 @@ describe('deleteAttachment', { tags: ['unit'] }, () => {
     mockApi.delete.mockResolvedValue({ data: { success: true } });
     await deleteAttachment('att-1');
     expect(mockApi.delete).toHaveBeenCalledWith('/attachments/att-1');
-  });
-});
-
-describe('uploadAttachments', { tags: ['unit'] }, () => {
-  it('uploads each file separately and returns all ids', async () => {
-    mockApi.post.mockResolvedValue({ data: { id: 'a1' } });
-    mockApi.post.mockResolvedValueOnce({ data: { id: 'a1' } });
-    mockApi.post.mockResolvedValueOnce({ data: { id: 'a2' } });
-
-    const result = await uploadAttachments(
-      [
-        new File(['one'], 'one.txt', { type: 'text/plain' }),
-        new File(['two'], 'two.txt', { type: 'text/plain' }),
-      ],
-      's1',
-    );
-
-    expect(mockApi.post).toHaveBeenCalledTimes(2);
-    expect(result.map((a) => a.id)).toEqual(['a1', 'a2']);
   });
 });

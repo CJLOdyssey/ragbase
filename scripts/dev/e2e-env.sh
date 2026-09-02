@@ -12,7 +12,7 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 echo "▶ 启动 postgres + redis (docker/compose.local.yml)..."
-docker compose -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
+docker compose --env-file .env -f docker/compose.base.yml -f docker/compose.local.yml up -d postgres redis
 
 for c in ragbase-db ragbase-redis; do
     if [ -z "$(docker ps -q -f name="$c" -f status=running)" ]; then

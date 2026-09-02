@@ -126,7 +126,7 @@ def _kill_stuck_child_processes() -> None:
     """
     try:
         ppid = os.getpid()
-        # 无 shell 形式：ppid 是 os.getpid() 的 int，但避免 shell 拼接（bandit B605）
+        # argv 形式调用 ps，不经 shell 拼接（bandit B605）；ppid 为本进程 int，无注入面
         with subprocess.Popen(
             ["ps", "--ppid", str(ppid), "-o", "pid=", "--no-headers"],
             stdout=subprocess.PIPE,
@@ -156,17 +156,18 @@ async def _run_agent_pipeline(
     api_key: str | None = None,
     api_base: str | None = None,
     model: str | None = None,
-    user_id: str = 'system',
+    user_id: str = "system",
     image_model: bool = False,
+    prompt_id: str | None = None,
 ) -> dict[str, Any]:
     global _run_counter
     _run_counter += 1
     if os.environ.get("MEM_TRACE", "").lower() in ("1", "true", "yes") and not tracemalloc.is_tracing():
         tracemalloc.start(25)
         logger.info("[MEM] tracemalloc started")
-    # ponytail: tracemalloc snapshot/diff is heavy sync CPU work (500MB heap, 25
-    # frames) — offload to a thread or it blocks the uvicorn event loop for 10s+
-    # and POST /api/runs times out on the frontend's 10s axios limit.
+    # tracemalloc snapshot/diff is heavy sync CPU work (500MB heap, 25
+    # frames) — offload to a thread or it blocks the uvicorn event loop for
+    # 10s+ and POST /api/runs times out on the frontend's 10s axios limit.
     await asyncio.to_thread(log_memory_diff)
     logger.info("=== ENTER _run_agent_pipeline run=#%s | run=%s ===", _run_counter, run_id)
     await update_run_status(run_id, "running")
@@ -185,7 +186,12 @@ async def _run_agent_pipeline(
     effective_api_base = api_base
     effective_model = model or cfg.model
 
+    # 用户选中的启用(active)提示词作为对话人设；草稿/不存在 → 空串不注入。
     system_prompt = ""
+    if prompt_id:
+        from graph.helpers import load_active_user_prompt
+
+        system_prompt = await load_active_user_prompt(prompt_id)
 
     session_context = ""
     rag_sources: list[dict[str, Any]] = []
@@ -200,7 +206,9 @@ async def _run_agent_pipeline(
             ]
             if memories:
                 session_context = _build_session_context(memories)
-            rag_ctx, rag_sources = await _get_rag_context(requirement, session_id, user_id)
+            rag_ctx, rag_sources = await _get_rag_context(
+                requirement, session_id, user_id, run_id=run_id
+            )
             if rag_ctx:
                 session_context += "\n" + rag_ctx
         except Exception:

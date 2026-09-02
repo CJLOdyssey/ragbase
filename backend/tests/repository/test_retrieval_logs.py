@@ -13,7 +13,7 @@ class TestCreateRetrievalLog:
             query="什么是产品发布？",
             latency_ms=42,
             hit_count=2,
-            sources=[{"asset_id": "a1", "asset_name": "手册", "similarity": 0.9}],
+            sources=[{"asset_id": "a1", "asset_name": "手册", "similarity": 0.9, "text": "发布流程分三步"}],
         )
 
         factory = get_session_factory()
@@ -31,6 +31,7 @@ class TestCreateRetrievalLog:
         assert row.rerank is False
         assert row.min_score is None
         assert '"asset_name": "手册"' in (row.sources or "")
+        assert '"text": "发布流程分三步"' in (row.sources or "")
 
     async def test_writes_row_without_sources(self):
         await create_retrieval_log(user_id="u1", query="q", latency_ms=1, hit_count=0)

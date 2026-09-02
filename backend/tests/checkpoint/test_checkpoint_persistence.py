@@ -56,12 +56,25 @@ def _make_metadata(source: str = "loop", step: int = 0) -> dict:
 
 @pytest.fixture
 def checkpoint_db_path(tmp_path):
-    """Set up CHECKPOINTER env vars pointing to a temp SQLite file."""
+    """Set up CHECKPOINTER env vars pointing to a temp SQLite file.
+
+    Env vars are restored on teardown: CHECKPOINTER_* 泄漏会污染同 worker
+    后续所有读取该配置的测试（_global_state 同款隔离契约）。
+    """
     db_path = str(tmp_path / "checkpoints.db")
+    saved = {
+        key: os.environ.get(key)
+        for key in ("CHECKPOINTER_BACKEND", "CHECKPOINTER_DSN")
+    }
     os.environ["CHECKPOINTER_BACKEND"] = "sqlite"
     os.environ["CHECKPOINTER_DSN"] = db_path
     yield db_path
     # Cleanup
+    for key, value in saved.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
     if os.path.exists(db_path):
         os.unlink(db_path)
 
@@ -134,9 +147,9 @@ async def test_sqlite_persistence_cross_process(checkpointer_sqlite, checkpointe
 async def test_recovery_after_restart(tmp_path):
     """Simulate a hard process exit after writing state, then verify recovery.
 
-    A subprocess writes checkpoint state and calls os._exit(0) to simulate
-    an abrupt shutdown. The main process then opens the same DB file and
-    confirms the state was durably persisted.
+    A subprocess writes checkpoint state and exits abruptly (sys.exit after
+    closing the connection — no graceful teardown). The main process then
+    opens the same DB file and confirms the state was durably persisted.
     """
     db_path = str(tmp_path / "recovery.db")
 
@@ -197,7 +210,7 @@ async def test_recovery_after_restart(tmp_path):
     config = _make_config("recovery-t1")
     recovered = await recovery_cp.aget(config)
 
-    assert recovered is not None, "State should be recoverable after subprocess _exit(0)"
+    assert recovered is not None, "State should be recoverable after subprocess exit"
     assert recovered["channel_values"]["recovered"] is True
     assert recovered["channel_values"]["step_count"] == 5
 

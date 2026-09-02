@@ -10,10 +10,11 @@ import time
 import httpx
 import pytest
 
-pytestmark = pytest.mark.benchmark
+# benchmark + integration：需真实运行的后端，CI/本地无后端时自动跳过
+pytestmark = [pytest.mark.benchmark, pytest.mark.integration]
 
-# 全容器模式默认 8080；混合模式用 BENCH_BASE_URL 覆盖（如 8081）。
-BASE = os.environ.get("BENCH_BASE_URL", "http://localhost:8080")
+# ragbase 后端实际监听端口（systemd，见 AGENTS.md 端口表）
+BASE = os.environ.get("BENCH_BASE_URL", "http://localhost:8081")
 
 
 class TestHTTPBenchmark:
@@ -26,7 +27,7 @@ class TestHTTPBenchmark:
 
     @pytest.mark.parametrize("endpoint", [
         "/api/health",
-        "/api/agents",
+        "/api/models",
         "/api/prompts",
     ])
     def test_endpoint_latency(self, endpoint: str):

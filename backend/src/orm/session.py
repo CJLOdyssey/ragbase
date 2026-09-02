@@ -5,7 +5,8 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from core.base import Base
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -17,6 +18,13 @@ class SessionDB(Base):
     user_id: Mapped[str] = mapped_column(String(128), default="default", index=True)
     kind: Mapped[str] = mapped_column(String(16), default="normal")
     is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="f")
+    knowledge_base_ids: Mapped[list[str] | None] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"),
+        nullable=True,
+        default=list,
+        server_default="[]",
+        comment="KB IDs bound to this chat session for RAG retrieval",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -96,7 +104,7 @@ class MemoryEntry(Base):
         nullable=False,
         index=True,
     )
-    run_id: Mapped[str] = mapped_column(
+    run_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("project_runs.id", ondelete="SET NULL"),
         nullable=True,

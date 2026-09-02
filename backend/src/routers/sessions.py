@@ -5,7 +5,6 @@ import time
 from typing import Any
 
 from auth import get_user_id
-from auth.auth_rbac import AUTH_REQUIRE_LOGIN
 from broker import publish_user_event
 from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
@@ -17,12 +16,14 @@ from repository import (
     delete_memory_entry,
     delete_session,
     delete_vector_chunks_by_session,
+    get_memory_entry,
     get_runs_by_session_ids,
     get_session,
     get_session_memories,
     get_session_messages,
     get_session_runs,
     get_sessions,
+    update_session_kbs,
     update_session_pin,
     update_session_title,
 )
@@ -56,18 +57,13 @@ class SessionPinRequest(BaseModel):
     is_pinned: bool = True
 
 
+class SessionKBRequest(BaseModel):
+    knowledge_base_ids: list[str] = Field(default_factory=list)
+
+
 @router.get("/api/sessions", response_model=list[SessionSummary])
 async def list_sessions(request: Request, limit: int = 50) -> Any:
     """List sessions for the current user."""
-    user_id = get_user_id(request)
-    # 认证启用时未登录（anonymous）→ 401 而非 200 []：否则 events/发送触发的
-    # refetch 在认证瞬时失效窗口会以 anonymous 返回空列表，前端覆盖缓存清空
-    # 会话列表（"最近对话消失，需刷新才恢复"）。401 → 前端拦截器自动 refresh
-    # 恢复后重试。
-    # 与中间件登录墙（AUTH_REQUIRE_LOGIN）同口径：guest 部署（AUTH_ENABLED=1
-    # + REQUIRE_LOGIN=0）放行 anonymous 数据；强制登录部署才 401 推登录。
-    if AUTH_REQUIRE_LOGIN and user_id == "anonymous":
-        raise error_response(ErrorCode.AUTH_UNAUTHORIZED, detail="请先登录")
     try:
         user_id = get_user_id(request)
         sessions = await get_sessions(limit=min(limit, 100), user_id=user_id)
@@ -83,6 +79,7 @@ async def list_sessions(request: Request, limit: int = 50) -> Any:
                     "kind": s.kind,
                     "run_count": len(runs),
                     "is_pinned": s.is_pinned,
+                    "knowledge_base_ids": s.knowledge_base_ids or [],
                     "created_at": s.created_at.isoformat() if s.created_at else None,
                     "updated_at": s.updated_at.isoformat() if s.updated_at else None,
                 }
@@ -172,6 +169,7 @@ async def get_session_detail(request: Request, session_id: str) -> Any:
             "id": sess.id,
             "title": sess.title,
             "kind": sess.kind,
+            "knowledge_base_ids": sess.knowledge_base_ids or [],
             "created_at": sess.created_at.isoformat() if sess.created_at else None,
             "updated_at": sess.updated_at.isoformat() if sess.updated_at else None,
             "runs": [
@@ -255,6 +253,30 @@ async def pin_session(request: Request, session_id: str, req: SessionPinRequest)
         raise error_response(ErrorCode.INTERNAL_ERROR) from e
 
 
+@router.put("/api/sessions/{session_id}/knowledge-bases")
+async def set_session_knowledge_bases(
+    request: Request, session_id: str, req: SessionKBRequest
+) -> Any:
+    """Set which knowledge bases are bound to this chat session for RAG retrieval."""
+    try:
+        user_id = get_user_id(request)
+        sess = await get_session(session_id)
+        if not sess:
+            raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        if sess.user_id != user_id:
+            raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权修改该对话")
+        sess = await update_session_kbs(session_id, req.knowledge_base_ids)
+        if not sess:
+            raise error_response(ErrorCode.SESSION_NOT_FOUND, detail="未找到该对话")
+        await _publish_session_event(user_id, "session.updated", session_id)
+        return {"id": sess.id, "knowledge_base_ids": sess.knowledge_base_ids or [], "status": "updated"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error setting KBs for session %s: %s", session_id, e, exc_info=True)
+        raise error_response(ErrorCode.INTERNAL_ERROR) from e
+
+
 @router.delete("/api/sessions/{session_id}")
 async def remove_session(request: Request, session_id: str) -> Any:
     """Delete a session and its associated data."""
@@ -308,9 +330,16 @@ async def list_session_memories(request: Request, session_id: str) -> Any:
 
 
 @router.delete("/api/memories/{memory_id}")
-async def delete_session_memory(memory_id: str) -> Any:
-    """Delete a single memory entry."""
+async def delete_session_memory(memory_id: str, request: Request) -> Any:
+    """Delete a single memory entry (owner-scoped via its session)."""
     try:
+        user_id = get_user_id(request)
+        memory = await get_memory_entry(memory_id)
+        if memory is None:
+            raise error_response(ErrorCode.MEMORY_NOT_FOUND, detail="未找到该记忆")
+        sess = await get_session(memory.session_id)
+        if sess is None or sess.user_id != user_id:
+            raise error_response(ErrorCode.SESSION_FORBIDDEN, detail="无权删除该记忆")
         deleted = await delete_memory_entry(memory_id)
         if not deleted:
             raise error_response(ErrorCode.MEMORY_NOT_FOUND, detail="未找到该记忆")

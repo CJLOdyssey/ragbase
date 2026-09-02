@@ -44,8 +44,9 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    vi.mocked(authApi.getAuthConfig).mockReturnValue(new Promise(() => {}));
-    vi.mocked(authApi.getMe).mockResolvedValue(undefined as never);
+    // getMe 模拟 401 无 session 场景：reject 而非 resolve undefined
+    // （真实 getMe 返回 UserResponse，不会 resolve undefined）
+    vi.mocked(authApi.getMe).mockRejectedValue(new Error('Unauthorized'));
     vi.mocked(authApi.sendRegisterCode).mockResolvedValue({
       email_hint: 'a***@b.com',
     });
@@ -184,25 +185,6 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
     });
     expect(localStorage.getItem('ragbase_user_id')).toBe('u1');
-  });
-
-  it('legacy mode (disabled auth) skips restore and clears loading', async () => {
-    vi.mocked(authApi.getAuthConfig).mockResolvedValue({
-      enabled: false,
-      mode: 'legacy',
-    });
-    vi.mocked(authApi.getMe).mockResolvedValue(undefined as never);
-
-    render(
-      <AuthProvider>
-        <AuthProbe />
-      </AuthProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('loading').textContent).toBe('false');
-    });
-    expect(screen.getByTestId('user').textContent).toBe('null');
   });
 
   it('getMe failure falls back to refresh-then-restore', async () => {

@@ -1,14 +1,7 @@
 """Tests for keys_connectivity.py — connection testing and model parsing."""
 
 import json
-import os
 import unittest.mock
-
-os.environ.setdefault("KEY_VAULT_SECRET", "0123456789abcdef0123456789abcdef")
-os.environ.setdefault("AUTH_MODE", "legacy")
-os.environ.setdefault("AUTH_ENABLED", "0")
-os.environ.setdefault("CHECKPOINTER_BACKEND", "memory")
-os.environ.setdefault("DATABASE_POOL_SIZE", "0")
 
 from repository.keys_connectivity import (
     _classify_models,
@@ -27,25 +20,25 @@ class TestParseModelsFromResponse:
                 {"id": "o1-preview"},
             ]
         }).encode()
-        models = _parse_models_from_response(resp, "openai")
+        models = _parse_models_from_response(resp)
         assert models == ["gpt-4", "gpt-3.5-turbo", "o1-preview"]
 
     def test_parse_empty_data(self):
         resp = unittest.mock.MagicMock()
         resp.read.return_value = json.dumps({"data": []}).encode()
-        models = _parse_models_from_response(resp, "openai")
+        models = _parse_models_from_response(resp)
         assert models == []
 
     def test_parse_no_data_key(self):
         resp = unittest.mock.MagicMock()
         resp.read.return_value = json.dumps({}).encode()
-        models = _parse_models_from_response(resp, "openai")
+        models = _parse_models_from_response(resp)
         assert models == []
 
     def test_parse_invalid_json(self):
         resp = unittest.mock.MagicMock()
         resp.read.return_value = b"not json"
-        models = _parse_models_from_response(resp, "openai")
+        models = _parse_models_from_response(resp)
         assert models == []
 
     def test_parse_items_without_id(self):
@@ -53,7 +46,7 @@ class TestParseModelsFromResponse:
         resp.read.return_value = json.dumps({
             "data": [{"name": "model1"}, {"id": ""}]
         }).encode()
-        models = _parse_models_from_response(resp, "openai")
+        models = _parse_models_from_response(resp)
         assert models == []
 
 
@@ -79,7 +72,7 @@ class TestTestConnectionSync:
             result = _test_connection_sync({
                 "api_key": "sk-test",
                 "provider": "openai",
-                "base_url": "https://api.example.com/v1",
+                "base_url": "https://api.openai.com/v1",
             })
             assert result["success"] is True
             assert "m1" in result["models"]
@@ -98,7 +91,7 @@ class TestTestConnectionSync:
             result = _test_connection_sync({
                 "api_key": "sk-test",
                 "provider": "openai",
-                "base_url": "https://api.example.com/v1/",
+                "base_url": "https://api.openai.com/v1/",
             })
             assert result["success"] is True
 
@@ -114,7 +107,7 @@ class TestTestConnectionSync:
             result = _test_connection_sync({
                 "api_key": "sk-test",
                 "provider": "openai",
-                "base_url": "https://api.example.com",
+                "base_url": "https://api.openai.com",
             })
             assert result["success"] is True
             call_url = mock_open.call_args[0][0].full_url
@@ -159,7 +152,7 @@ class TestTestConnectionSync:
             result = _test_connection_sync({
                 "api_key": "sk-test",
                 "provider": "openai",
-                "base_url": "https://bad.host",
+                "base_url": "https://api.openai.com",
             })
             assert result["success"] is False
             assert "refused" in result["message"]
@@ -289,7 +282,7 @@ class TestClassifyModels:
             "embedding": ["sf/embed-1"],
         })):
             success, _, types, _ = _classify_models(
-                "https://proxy.siliconflow.example/v1/models", "sk-test", "custom"
+                "https://api.siliconflow.cn/v1/models", "sk-test", "custom"
             )
         assert success is True
         assert types["sf/embed-1"] == "embedding"
@@ -427,7 +420,39 @@ class TestTestConnectionSyncTypes:
             result = _test_connection_sync({
                 "api_key": "sk-test",
                 "provider": "openai",
-                "base_url": "https://bad.host",
+                "base_url": "https://api.openai.com",
             })
         assert result["success"] is False
         assert result["types"] == {}
+
+
+class TestSSRFProtection:
+    """SSRF guard: user-supplied base_url must never reach internal hosts."""
+
+    def test_loopback_rejected(self):
+        result = _test_connection_sync({
+            "api_key": "sk-test",
+            "provider": "openai",
+            "base_url": "http://127.0.0.1:8080",
+        })
+        assert result["success"] is False
+        assert "内网" in result["message"]
+
+    def test_private_ip_rejected(self):
+        result = _test_connection_sync({
+            "api_key": "sk-test",
+            "provider": "openai",
+            "base_url": "http://192.168.1.1",
+        })
+        assert result["success"] is False
+        assert "内网" in result["message"]
+
+    def test_link_local_metadata_rejected(self):
+        # Cloud metadata endpoint (AWS 169.254.169.254) must be unreachable.
+        result = _test_connection_sync({
+            "api_key": "sk-test",
+            "provider": "openai",
+            "base_url": "http://169.254.169.254/latest/meta-data",
+        })
+        assert result["success"] is False
+        assert "内网" in result["message"]

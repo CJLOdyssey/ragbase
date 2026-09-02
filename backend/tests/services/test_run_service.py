@@ -1,9 +1,27 @@
-"""Unit tests for """
+"""Unit tests for RunService — create_run / continue_run / get_run / list_runs / dispatch."""
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+
+def _patch_create_task():
+    """Patch services.run_service.asyncio.create_task without leaking coroutines.
+
+    The real create_task hands the coroutine to the event loop; a plain
+    MagicMock never awaits it, producing "coroutine was never awaited"
+    RuntimeWarnings at GC. The side effect closes the coroutine so the
+    ``create_task called`` assertion still holds without the leak.
+    """
+    mock = MagicMock()
+
+    def _capture(coro):
+        coro.close()
+        return MagicMock()
+
+    mock.side_effect = _capture
+    return patch("services.run_service.asyncio.create_task", mock)
 
 
 class TestRunService:
@@ -64,7 +82,7 @@ class TestRunService:
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_resolve.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages") as mock_buffer,
-            patch("services.run_service.asyncio.create_task"),
+            _patch_create_task(),
             patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.update_session_title"),
             patch("repository.create_run") as mock_db_create_run,
@@ -100,7 +118,7 @@ class TestRunService:
             patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
             patch("services.run_resolve.get_default_api_key") as mock_get_default,
             patch("services.run_service.buffer_run_messages"),
-            patch("services.run_service.asyncio.create_task"),
+            _patch_create_task(),
             patch("services.run_service.update_session_title"),
             patch("repository.create_run") as mock_db_create_run,
         ):
@@ -108,6 +126,7 @@ class TestRunService:
             existing = MagicMock()
             existing.id = "sess-existing"
             existing.title = "Existing Session"
+            existing.user_id = "user-1"
             mock_get_sess.return_value = existing
             mock_get_model.return_value = None
             mock_get_default.return_value = {"api_key": "sk-test", "base_url": None}
@@ -134,7 +153,7 @@ class TestRunService:
             patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
             patch("services.run_resolve.get_default_api_key") as mock_get_default,
             patch("services.run_service.buffer_run_messages"),
-            patch("services.run_service.asyncio.create_task"),
+            _patch_create_task(),
             patch("services.run_service.update_session_title"),
             patch("repository.create_run") as mock_db_create_run,
         ):
@@ -153,6 +172,82 @@ class TestRunService:
                 user_id="user-1",
             )
             assert result["session_id"] == "sess-new"
+
+    @pytest.mark.asyncio
+    async def test_create_run_rejects_other_users_session(self):
+        """禁止向他人会话追加 run —— 归属校验 (跨用户写防护)."""
+        from services.run_service import RunService
+
+        svc = RunService()
+        with (
+            patch("services.run_service.load_config") as mock_load,
+            patch("services.run_service.get_session") as mock_get_sess,
+        ):
+            mock_load.return_value.model = "gpt-4"
+            other = MagicMock()
+            other.id = "sess-other"
+            other.user_id = "user-2"
+            mock_get_sess.return_value = other
+
+            with pytest.raises(ValueError, match="无权访问"):
+                await svc.create_run(
+                    requirement="hi",
+                    session_id="sess-other",
+                    user_id="user-1",
+                )
+
+    @pytest.mark.asyncio
+    async def test_continue_run_rejects_other_users_session(self):
+        """禁止在他人会话中发起续写 —— 归属校验 (跨用户写防护)."""
+        from services.run_service import RunService
+
+        svc = RunService()
+        with (
+            patch("services.run_service.load_config") as mock_load,
+            patch("services.run_service.get_session") as mock_get_sess,
+        ):
+            mock_load.return_value.model = "gpt-4"
+            other = MagicMock()
+            other.id = "sess-other"
+            other.user_id = "user-2"
+            mock_get_sess.return_value = other
+
+            with pytest.raises(ValueError, match="无权访问"):
+                await svc.continue_run(
+                    content="keep going",
+                    session_id="sess-other",
+                    user_id="user-1",
+                )
+
+    @pytest.mark.asyncio
+    async def test_get_run_with_user_id_uses_for_user(self):
+        """user_id 传参 → 走 get_run_for_user 归属查询."""
+        from services.run_service import RunService
+
+        svc = RunService()
+        with (
+            patch("services.run_service.get_run_for_user", new_callable=AsyncMock) as mock_for_user,
+            patch("services.run_service.get_messages", new_callable=AsyncMock) as mock_msgs,
+        ):
+            mock_for_user.return_value = None
+            assert await svc.get_run("r-1", "user-1") is None
+            mock_for_user.assert_awaited_once_with("r-1", "user-1")
+            mock_msgs.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_list_runs_with_user_id_uses_for_user(self):
+        """user_id 传参 → 走 get_runs_for_user 归属查询."""
+        from services.run_service import RunService
+
+        svc = RunService()
+        with (
+            patch("services.run_service.get_runs_for_user", new_callable=AsyncMock) as mock_for_user,
+            patch("services.run_service.serialize_run"),
+        ):
+            mock_for_user.return_value = []
+            result = await svc.list_runs(limit=10, user_id="user-1")
+            assert result == []
+            mock_for_user.assert_awaited_once_with("user-1", limit=10)
 
     @pytest.mark.asyncio
     async def test_create_run_db_error_raises(self):
@@ -194,7 +289,7 @@ class TestRunService:
             patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
             patch("services.run_resolve.get_default_api_key") as mock_get_default,
             patch("services.run_service.buffer_run_messages"),
-            patch("services.run_service.asyncio.create_task"),
+            _patch_create_task(),
             patch("repository.create_run") as mock_db_create_run,
         ):
             mock_load.return_value.model = "gpt-4"
@@ -220,9 +315,13 @@ class TestRunService:
         svc = RunService()
         with (
             patch("services.run_service.load_config"),
+            patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_resolve.get_api_key_for_model") as mock_get_model,
             patch("services.run_resolve.get_default_api_key") as mock_get_default,
         ):
+            owned = MagicMock()
+            owned.user_id = "user-1"
+            mock_get_sess.return_value = owned
             mock_get_model.side_effect = Exception("vault down")
             mock_get_default.side_effect = Exception("vault down")
 
@@ -335,7 +434,7 @@ class TestRunService:
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_resolve.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages"),
-            patch("services.run_service.asyncio.create_task") as mock_create_task,
+            _patch_create_task() as mock_create_task,
             patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.update_session_title"),
             patch("repository.create_run") as mock_db_create_run,
@@ -343,6 +442,7 @@ class TestRunService:
             mock_load.return_value.model = "gpt-4"
             mock_sess = MagicMock()
             mock_sess.id = "sess-celery"
+            mock_sess.user_id = "user-1"
             mock_create_sess.return_value = mock_sess
             mock_get_key.return_value = {"api_key": "sk-test", "base_url": None}
             mock_get_sess.return_value = mock_sess
@@ -374,7 +474,7 @@ class TestRunService:
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("services.run_resolve.get_api_key_for_use") as mock_get_key,
             patch("services.run_service.buffer_run_messages"),
-            patch("services.run_service.asyncio.create_task") as mock_create_task,
+            _patch_create_task() as mock_create_task,
             patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.update_session_title"),
             patch("repository.create_run") as mock_db_create_run,
@@ -382,6 +482,7 @@ class TestRunService:
             mock_load.return_value.model = "gpt-4"
             mock_sess = MagicMock()
             mock_sess.id = "sess-thread"
+            mock_sess.user_id = "user-1"
             mock_create_sess.return_value = mock_sess
             mock_get_key.return_value = {"api_key": "sk-test", "base_url": None}
             mock_get_sess.return_value = mock_sess
@@ -396,10 +497,3 @@ class TestRunService:
 
         assert result == {"run_id": "run-thread", "status": "pending", "session_id": "sess-thread"}
         mock_create_task.assert_called_once()
-
-
-# ─────────────────────────────────────────────────────────────────────
-# 8. backend/services/generators/_models.py — GeneratedTool
-# ─────────────────────────────────────────────────────────────────────
-
-

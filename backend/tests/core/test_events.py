@@ -66,6 +66,27 @@ class TestEventBus:
         self.bus.clear()
         assert self.bus._handlers == {}
 
+    @pytest.mark.asyncio
+    async def test_emit_awaits_partial_wrapped_async_handler(self):
+        from functools import partial
+
+        results = []
+
+        async def handler(x):
+            results.append(x)
+
+        self.bus.on("test", partial(handler))
+        await self.bus.emit("test", x="wrapped")
+        assert results == ["wrapped"]
+
+    def test_off_removes_empty_event_key(self):
+        def handler(x):
+            pass
+
+        self.bus.on("test", handler)
+        self.bus.off("test", handler)
+        assert "test" not in self.bus._handlers
+
 
 class TestEventsConstants:
     def test_run_created(self):

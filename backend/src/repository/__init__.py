@@ -10,7 +10,7 @@ from repository.assets import (
     get_asset_for_user,
     increment_asset_usage,
     list_assets_by_user,
-    set_asset_indexed,
+    set_asset_index_result,
 )
 
 from repository.attachments import (
@@ -42,13 +42,12 @@ from repository.auth import (
     update_password,
 )
 
-from repository.command_logs import log_command
-
 from repository.core import apply_owner_filter
 
 from repository.keys import (
     create_api_key,
     delete_api_key,
+    fetch_models_for_provider,
     get_api_key_for_model,
     get_api_key_for_use,
     get_api_keys,
@@ -67,6 +66,7 @@ from repository.memory_repo import (
     clear_session_memories,
     create_memory_entry,
     delete_memory_entry,
+    get_memory_entry,
     get_session_memories,
 )
 
@@ -94,6 +94,7 @@ from repository.run_repo import (
     get_run_for_user,
     get_runs,
     get_runs_by_session_ids,
+    get_runs_for_user,
     get_session_runs,
     update_run_result,
     update_run_status,
@@ -105,12 +106,12 @@ from repository.session_repo import (
     delete_vector_chunks_by_session,
     get_session,
     get_sessions,
+    update_session_kbs,
     update_session_pin,
     update_session_title,
 )
 
 from repository.versions import (
-    count_versions,
     create_version,
     get_version,
     list_versions,
@@ -132,7 +133,6 @@ __all__ = [
     "create_run",
     "create_session",
     "create_user",
-    "count_versions",
     "create_version",
     "delete_api_key",
     "delete_asset",
@@ -141,6 +141,7 @@ __all__ = [
     "delete_prompt",
     "delete_session",
     "delete_vector_chunks_by_session",
+    "fetch_models_for_provider",
     "get_api_key_for_model",
     "get_api_key_for_use",
     "get_api_keys",
@@ -152,6 +153,7 @@ __all__ = [
     "get_embedding_config",
     "get_rerank_config",
     "get_key_usage_stats",
+    "get_memory_entry",
     "get_messages",
     "get_prompt",
     "get_prompts",
@@ -162,12 +164,12 @@ __all__ = [
     "get_run_messages",
     "get_runs",
     "get_runs_by_session_ids",
+    "get_runs_for_user",
     "get_session",
     "get_session_memories",
     "get_session_messages",
     "get_session_runs",
     "get_sessions",
-    "get_template",
     "get_tool_api_key",
     "get_user_by_email",
     "get_user_by_id",
@@ -179,9 +181,7 @@ __all__ = [
     "list_assets_by_user",
     "list_attachments_by_run",
     "list_attachments_by_session",
-    "list_templates",
     "list_versions",
-    "log_command",
     "log_key_usage",
     "mark_user_verified",
     "merge_guest_data",
@@ -189,7 +189,7 @@ __all__ = [
     "revoke_all_user_tokens",
     "revoke_token_family",
     "save_message",
-    "set_asset_indexed",
+    "set_asset_index_result",
     "test_api_key_connection",
     "update_message_content",
     "update_api_key",
@@ -197,6 +197,7 @@ __all__ = [
     "update_prompt",
     "update_run_result",
     "update_run_status",
+    "update_session_kbs",
     "update_session_pin",
     "update_session_title",
 ]

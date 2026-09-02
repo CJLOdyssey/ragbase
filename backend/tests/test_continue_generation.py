@@ -57,6 +57,7 @@ class TestContinueRun:
             patch("services.run_resolve.get_api_key_for_model", return_value=None),
             patch("services.run_resolve.get_default_api_key") as mock_key,
             patch("services.run_service.create_session") as mock_create_sess,
+            patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
             patch("services.run_service.buffer_run_messages"),
@@ -65,6 +66,7 @@ class TestContinueRun:
             mock_config.return_value = MagicMock(model="test-model")
             mock_key.return_value = {"api_key": "test-key", "base_url": "http://test.com"}
             mock_create_run.return_value = "run-456"
+            mock_get_sess.return_value = MagicMock(id="existing-session-id", user_id="user-1")
 
             result = await run_service.continue_run(
                 content="继续生成内容",
@@ -84,9 +86,11 @@ class TestContinueRun:
             patch("services.run_service.load_config") as mock_config,
             patch("services.run_resolve.get_api_key_for_model", return_value=None),
             patch("services.run_resolve.get_default_api_key") as mock_key,
+            patch("services.run_service.get_session") as mock_get_sess,
         ):
             mock_config.return_value = MagicMock(model="test-model")
             mock_key.return_value = None
+            mock_get_sess.return_value = MagicMock(user_id="user-1")
 
             with pytest.raises(ValueError, match="请先在设置中配置 API Key"):
                 await run_service.continue_run(
@@ -104,6 +108,7 @@ class TestContinueRun:
             patch("services.run_service.load_config") as mock_config,
             patch("services.run_resolve.get_api_key_for_model", return_value=None),
             patch("services.run_resolve.get_default_api_key") as mock_key,
+            patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
             patch("services.run_service.buffer_run_messages"),
@@ -112,6 +117,7 @@ class TestContinueRun:
             mock_config.return_value = MagicMock(model="test-model")
             mock_key.return_value = {"api_key": "test-key", "base_url": "http://test.com"}
             mock_create_run.return_value = "run-789"
+            mock_get_sess.return_value = MagicMock(user_id="user-1")
 
             result = await run_service.continue_run(
                 content="继续生成内容",
@@ -131,6 +137,7 @@ class TestContinueRun:
             patch("services.run_service.load_config") as mock_config,
             patch("services.run_resolve.get_api_key_for_model", return_value=None),
             patch("services.run_resolve.get_default_api_key") as mock_key,
+            patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
             patch("services.run_service.buffer_run_messages"),
@@ -139,6 +146,7 @@ class TestContinueRun:
             mock_config.return_value = MagicMock(model="test-model")
             mock_key.return_value = {"api_key": "test-key", "base_url": "http://test.com"}
             mock_create_run.return_value = "run-dispatch"
+            mock_get_sess.return_value = MagicMock(user_id="user-1")
 
             await run_service.continue_run(
                 content="继续生成内容",
@@ -157,6 +165,7 @@ class TestContinueRun:
             patch("services.run_service.load_config") as mock_config,
             patch("services.run_resolve.get_api_key_for_model", return_value=None),
             patch("services.run_resolve.get_default_api_key") as mock_key,
+            patch("services.run_service.get_session") as mock_get_sess,
             patch("services.run_service.save_message", new_callable=AsyncMock),
             patch("repository.create_run") as mock_create_run,
             patch("services.run_service.buffer_run_messages"),
@@ -165,6 +174,7 @@ class TestContinueRun:
             mock_config.return_value = MagicMock(model="test-model")
             mock_key.return_value = {"api_key": "test-key", "base_url": "http://test.com"}
             mock_create_run.return_value = "run-thinking"
+            mock_get_sess.return_value = MagicMock(user_id="user-1")
 
             await run_service.continue_run(
                 content="继续生成内容",
@@ -180,6 +190,18 @@ class TestContinueRun:
 @pytest.mark.requirement("REQ-RUN-006")
 class TestCompleteRunEndpoint:
     """Test the /api/runs/complete endpoint."""
+
+    @pytest.fixture(autouse=True)
+    async def _authenticated_client(self, test_client):
+        """登录墙恒开：为 session 级 test_client 注入有效身份令牌。"""
+        from unittest.mock import patch as _patch
+
+        with _patch("auth.auth_middleware.decode_jwt",
+                    return_value={"sub": "tester"}), \
+             _patch("repository.auth.get_user_by_id", return_value=object()):
+            test_client.headers["Authorization"] = "Bearer t"
+            yield test_client
+            test_client.headers.pop("Authorization", None)
 
     @pytest.mark.asyncio
     async def test_complete_run_endpoint_success(self, test_client):

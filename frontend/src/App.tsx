@@ -1,4 +1,3 @@
-import { lazy, Suspense } from 'react';
 import type * as React from 'react';
 import { StyleProvider } from '@ant-design/cssinjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -10,34 +9,13 @@ import { AuthProvider, useAuth } from './components/auth/AuthContext';
 import LoginModal from './components/auth/LoginModal';
 import RagBaseWorkstation from './components/studio/RagBaseWorkstation';
 import { useSettings } from './contexts/SettingsContext';
+import { palette } from './theme/palette';
+import { useResolvedIsDark } from './theme/useResolvedTheme';
 import Logger from './utils/logger';
 import { ToastProvider } from './utils/useToast';
 
-const AssetsPage = lazy(() => import('./components/assets/AssetsPage'));
-const PromptLibraryPage = lazy(
-  () => import('./components/prompts/PromptLibraryPage'),
-);
-const QualityMonitor = lazy(
-  () => import('./components/monitoring/QualityMonitor'),
-);
-
-function PageLoading() {
-  const { t } = useTranslation();
-  return (
-    <div className="h-screen flex items-center justify-center text-sm text-[var(--color-text-muted)]">
-      {t('common.loading')}
-    </div>
-  );
-}
-
 const CSS_VARS = {
   accent: '--color-accent',
-  surface: '--color-surface',
-  surfaceRaised: '--color-surface-raised',
-  textPrimary: '--color-text-primary',
-  textSecondary: '--color-text-secondary',
-  border: '--color-border',
-  surfaceHover: '--color-surface-hover',
 } as const;
 
 const queryClient = new QueryClient({
@@ -55,7 +33,7 @@ function Fallback({ error, resetErrorBoundary }: FallbackProps) {
 
   return (
     <div
-      className="flex flex-col items-center justify-center h-screen gap-4 p-8 text-center text-[var(--color-text-muted)]"
+      className="flex flex-col items-center justify-center h-dvh gap-4 p-8 text-center text-[var(--color-text-muted)]"
       role="alert"
     >
       <h2>{t('common.appError')}</h2>
@@ -100,43 +78,41 @@ function getCssVar(name: string): string {
 function ThemedApp() {
   const { settings } = useSettings();
   const { t } = useTranslation();
-  const isDark = settings.theme === 'dark';
-  const bgColor =
-    getCssVar(CSS_VARS.surface) || (isDark ? '#0f1117' : '#ffffff');
-  const bgElevated =
-    getCssVar(CSS_VARS.surfaceRaised) || (isDark ? '#1c1e24' : '#f7f8fa');
-  const txtColor =
-    getCssVar(CSS_VARS.textPrimary) || (isDark ? '#f1f1f1' : '#1a1a2e');
-  const txtSecondary =
-    getCssVar(CSS_VARS.textSecondary) || (isDark ? '#a0a5b0' : '#495057');
-  const borderColor =
-    getCssVar(CSS_VARS.border) ||
-    (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)');
-  const surfaceHover =
-    getCssVar(CSS_VARS.surfaceHover) ||
-    (isDark ? 'rgba(255,255,255,0.08)' : '#f1f3f5');
+  // 令牌取自静态调色板（见 theme/palette.ts）——不能渲染期 getCssVar 读 DOM：
+  // .dark class 在 effect 中翻转，渲染期读到的是上一次主题的值（竞态，
+  // 曾导致弹窗配色不随主题切换）。accent 不随主题变，读 DOM 无竞态。
+  const isDark = useResolvedIsDark(settings.theme);
+  const colors = palette[isDark ? 'dark' : 'light'];
   const accentColor = getCssVar(CSS_VARS.accent) || '#6366f1';
 
-  return (
-    <StyleProvider layer={{ name: 'antd' } as unknown as boolean}>
+  // cssinjs 运行时支持 { name, dependencies } 对象（useStyleRegister 读取
+// layer.name 包 @layer），但当前安装版本 .d.ts 声明滞后为 boolean——
+// 用本地接口对齐运行时契约，避免 `as unknown as` 双跳转逃生舱。
+interface AntdLayer {
+  name: string;
+}
+const antdLayer: AntdLayer = { name: 'antd' };
+
+return (
+    <StyleProvider layer={antdLayer as unknown as boolean}>
       <ConfigProvider
         theme={{
           algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
             colorPrimary: accentColor,
-            colorBgContainer: bgColor,
-            colorBgElevated: bgElevated,
-            colorText: txtColor,
-            colorTextSecondary: txtSecondary,
-            colorBorder: borderColor,
-            colorBgTextHover: surfaceHover,
+            colorBgContainer: colors.surface,
+            colorBgElevated: colors.surfaceRaised,
+            colorText: colors.textPrimary,
+            colorTextSecondary: colors.textSecondary,
+            colorBorder: colors.border,
+            colorBgTextHover: colors.surfaceHover,
             borderRadius: 6,
             fontSize: 14,
           },
           components: {
             Button: {
-              defaultBg: bgElevated,
-              colorBgContainer: bgElevated,
+              defaultBg: colors.surfaceRaised,
+              colorBgContainer: colors.surfaceRaised,
             },
             Pagination: {
               itemBg: 'transparent',
@@ -180,30 +156,6 @@ function ThemedApp() {
                   <Route
                     path="/chat/:sessionId"
                     element={<RagBaseWorkstation />}
-                  />
-                  <Route
-                    path="/prompts"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <PromptLibraryPage />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/assets"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <AssetsPage />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/monitoring"
-                    element={
-                      <Suspense fallback={<PageLoading />}>
-                        <QualityMonitor />
-                      </Suspense>
-                    }
                   />
                   <Route
                     path="*"

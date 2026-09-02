@@ -21,7 +21,7 @@ export default function VersionPager({
   return (
     <div className="flex items-center gap-0.5">
       <button
-        className="flex items-center justify-center w-6 h-6 bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-0 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] disabled:opacity-35 disabled:cursor-not-allowed"
+        className="flex items-center justify-center min-w-[32px] min-h-[32px] bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-1 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] disabled:opacity-35 disabled:cursor-not-allowed"
         onClick={onPrev}
         disabled={current === 0}
         aria-label={prevLabel}
@@ -32,7 +32,7 @@ export default function VersionPager({
         {current + 1}/{total}
       </span>
       <button
-        className="flex items-center justify-center w-6 h-6 bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-0 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] disabled:opacity-35 disabled:cursor-not-allowed"
+        className="flex items-center justify-center min-w-[32px] min-h-[32px] bg-transparent border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-pointer transition-colors duration-150 p-1 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] disabled:opacity-35 disabled:cursor-not-allowed"
         onClick={onNext}
         disabled={current === total - 1}
         aria-label={nextLabel}

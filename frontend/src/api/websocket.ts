@@ -11,9 +11,10 @@ export interface ConnectOptions {
 
 const WS_BASE = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
-/** Build WS URL. Auth is cookie-based (httpOnly) — same-origin handshake carries it. */
+/** Build WS URL with access_token query parameter for authentication. */
 function buildWsUrl(runId: string): string {
-  return `${WS_BASE}/runs/${runId}`;
+  const token = localStorage.getItem('ragbase-access-token') || '';
+  return `${WS_BASE}/runs/${runId}?token=${encodeURIComponent(token)}`;
 }
 
 let maxRetries = 3;
@@ -53,6 +54,9 @@ function connect(runId: string, options: ConnectOptions): ConnState {
   notifyStatus(state, 'connecting');
 
   ws.onopen = () => {
+    // 成功建连说明此前断线已恢复——按「连续失败」计数而非累计，
+    // 避免长会话中几次间隔很远的瞬时断线后永久放弃重连。
+    state.reconnectCount = 0;
     notifyStatus(state, 'connected');
     Logger.info('[ws] run %s connected', runId);
   };

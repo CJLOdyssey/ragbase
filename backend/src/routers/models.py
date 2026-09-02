@@ -62,6 +62,16 @@ async def _get_models_from_keys(user_id: str) -> list[ModelInfo]:
     return models
 
 
+async def get_user_models(user_id: str) -> list[ModelInfo]:
+    """Public accessor for other routes (e.g. KB embed-model validation)."""
+    return await _get_models_from_keys(user_id)
+
+
+def embedding_model_ids(models: list[ModelInfo]) -> set[str]:
+    """Ids of models classified as embedding-capable."""
+    return {m.id for m in models if m.type == "embedding"}
+
+
 @router.get("/api/models", response_model=list[ModelInfo])
 async def list_models(request: Request) -> Any:
     """Return available models from the user's active API keys."""

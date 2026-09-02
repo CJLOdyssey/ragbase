@@ -21,6 +21,7 @@ export async function uploadAttachment(
   session_id?: string | null,
   run_id?: string | null,
   onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
 ): Promise<Attachment> {
   const form = new FormData();
   form.append('file', file);
@@ -35,16 +36,9 @@ export async function uploadAttachment(
       if (onProgress && e.total)
         onProgress(Math.round((e.loaded / e.total) * 100));
     },
+    signal,
   });
   return data;
-}
-
-export async function uploadAttachments(
-  files: File[],
-  session_id?: string | null,
-  run_id?: string | null,
-): Promise<Attachment[]> {
-  return Promise.all(files.map((f) => uploadAttachment(f, session_id, run_id)));
 }
 
 export async function deleteAttachment(attachmentId: string): Promise<void> {

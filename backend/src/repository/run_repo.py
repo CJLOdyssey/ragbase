@@ -2,11 +2,11 @@
 
 import json
 from datetime import UTC, datetime
-from typing import Any
 from uuid import uuid4
 
 from core.infra.database import ProjectRun, SessionDB, get_session_factory
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, literal, select
+from sqlalchemy.orm import aliased
 
 from repository.session_repo import get_sessions
 
@@ -78,8 +78,8 @@ async def create_run(
     return run_id
 
 
-async def update_run_status(run_id: str, status: str) -> Any:
-    """Update the status field of a project run."""
+async def update_run_status(run_id: str, status: str) -> None:
+    """Update the status field of a project run. No-op if the run is missing."""
     factory = get_session_factory()
     async with factory() as session:
         run = await session.get(ProjectRun, run_id)
@@ -96,8 +96,8 @@ async def update_run_result(
     review: str,
     approved: bool,
     status: str,
-) -> Any:
-    """Persist the full result payload of a completed run."""
+) -> None:
+    """Persist the full result payload of a completed run. No-op if missing."""
     factory = get_session_factory()
     async with factory() as session:
         run = await session.get(ProjectRun, run_id)
@@ -148,7 +148,7 @@ async def get_runs_for_user(user_id: str, limit: int = 20) -> list[ProjectRun]:
         return []
     run_map = await get_runs_by_session_ids([s.id for s in sessions])
     runs = [run for rs in run_map.values() for run in rs]
-    runs.sort(key=lambda r: r.created_at or datetime.min, reverse=True)
+    runs.sort(key=lambda r: r.created_at, reverse=True)
     return runs[:limit]
 
 
@@ -169,9 +169,6 @@ async def get_run_ancestors(run_id: str) -> list[ProjectRun]:
     ``session.get`` per ancestor level. Depth is capped to guard against
     cycles in corrupt data (previously capped by a seen-set walk).
     """
-    from sqlalchemy import desc, literal, select
-    from sqlalchemy.orm import aliased
-
     factory = get_session_factory()
     async with factory() as session:
         parent = aliased(ProjectRun)

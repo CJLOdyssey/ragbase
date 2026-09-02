@@ -479,15 +479,15 @@ class TestStreamLlmResponse:
             patch("httpx.AsyncClient", return_value=_MockClientCtx([], status_code=500)),
             patch("streaming.llm_stream.llm_circuit") as mock_cb,
         ):
-            mock_cb._acquire = AsyncMock()
-            mock_cb._on_failure = AsyncMock()
+            mock_cb.acquire = AsyncMock()
+            mock_cb.record_failure = AsyncMock()
             with pytest.raises(httpx.HTTPStatusError):
                 await stream_llm_response(
                     "https://api.deepseek.com/chat/completions",
                     {"Authorization": "Bearer sk"},
                     {"model": "m", "messages": []},
                 )
-            mock_cb._on_failure.assert_awaited_once()
+            mock_cb.record_failure.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_connect_error_raises_and_circuit_breaker(self):
@@ -497,15 +497,15 @@ class TestStreamLlmResponse:
             patch("httpx.AsyncClient", return_value=_MockClientCtx([], raise_error=True)),
             patch("streaming.llm_stream.llm_circuit") as mock_cb,
         ):
-            mock_cb._acquire = AsyncMock()
-            mock_cb._on_failure = AsyncMock()
+            mock_cb.acquire = AsyncMock()
+            mock_cb.record_failure = AsyncMock()
             with pytest.raises(httpx.ConnectError):
                 await stream_llm_response(
                     "https://api.deepseek.com/chat/completions",
                     {"Authorization": "Bearer sk"},
                     {"model": "m", "messages": []},
                 )
-            mock_cb._on_failure.assert_awaited_once()
+            mock_cb.record_failure.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_success_calls_circuit_breaker_on_success(self):
@@ -519,14 +519,14 @@ class TestStreamLlmResponse:
             patch("httpx.AsyncClient", return_value=_MockClientCtx(sse)),
             patch("streaming.llm_stream.llm_circuit") as mock_cb,
         ):
-            mock_cb._acquire = AsyncMock()
-            mock_cb._on_success = AsyncMock()
+            mock_cb.acquire = AsyncMock()
+            mock_cb.record_success = AsyncMock()
             await stream_llm_response(
                 "https://api.deepseek.com/chat/completions",
                 {"Authorization": "Bearer sk"},
                 {"model": "m", "messages": []},
             )
-            mock_cb._on_success.assert_awaited_once()
+            mock_cb.record_success.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_open_rejects(self):
@@ -534,7 +534,7 @@ class TestStreamLlmResponse:
         from streaming.llm_stream import stream_llm_response
 
         with patch("streaming.llm_stream.llm_circuit") as mock_cb:
-            mock_cb._acquire = AsyncMock(side_effect=CircuitBreakerOpenError("open"))
+            mock_cb.acquire = AsyncMock(side_effect=CircuitBreakerOpenError("open"))
             with pytest.raises(CircuitBreakerOpenError):
                 await stream_llm_response(
                     "https://api.deepseek.com/chat/completions",

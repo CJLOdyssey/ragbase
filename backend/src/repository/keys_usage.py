@@ -1,11 +1,19 @@
-"""API key usage accounting — token aggregation and audit logging."""
+"""API key usage accounting — token aggregation and audit logging.
+
+Usage::
+
+    from repository.keys_usage import log_key_usage, get_key_usage_stats
+
+    await log_key_usage(key_id, user_id, run_id, provider, model, tokens_prompt=100)
+    stats = await get_key_usage_stats(user_id)  # today/month request+token totals
+"""
 
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 from core.infra.database import KeyUsageLog, get_session_factory
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 
 async def sum_user_tokens_since(user_id: str, since: datetime) -> int:
@@ -13,8 +21,6 @@ async def sum_user_tokens_since(user_id: str, since: datetime) -> int:
 
     Queries the append-only KeyUsageLog (tokens_total per call).
     """
-    from sqlalchemy import func
-
     factory = get_session_factory()
     async with factory() as session:
         result = await session.execute(
@@ -37,7 +43,7 @@ async def log_key_usage(
     duration_ms: int = 0,
     status: str = "success",
     error_message: str | None = None,
-) -> Any:
+) -> None:
     """Record an LLM call in the audit log."""
     total = tokens_prompt + tokens_completion
     factory = get_session_factory()
@@ -67,8 +73,6 @@ async def get_key_usage_stats(user_id: str | None = None) -> dict[str, Any]:
     """
     factory = get_session_factory()
     async with factory() as session:
-        from sqlalchemy import func
-
         today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
         stmt_today = select(
             func.count(KeyUsageLog.id).label("requests"),

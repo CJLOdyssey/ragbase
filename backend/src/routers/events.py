@@ -11,7 +11,6 @@ import contextlib
 from typing import Any
 
 from auth.auth_jwt import AUTH_SECRET, decode_jwt
-from auth.auth_rbac import AUTH_ENABLED
 from broker import subscribe_user_events
 from core.infra.logging_config import get_logger
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -22,8 +21,6 @@ router = APIRouter(tags=["events"])
 
 def _ws_user_id(websocket: WebSocket) -> str:
     """Resolve user identity from the WS handshake access_token cookie."""
-    if not AUTH_ENABLED:
-        return "guest"
     token = websocket.cookies.get("access_token")
     if not token:
         return ""

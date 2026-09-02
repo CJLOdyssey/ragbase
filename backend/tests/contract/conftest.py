@@ -2,23 +2,31 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import httpx
 import pytest
 
-BASE_URL = "http://localhost:8080"
+#: ragbase 后端实际监听端口（systemd，见 AGENTS.md 端口表）。
+BASE_URL = os.environ.get("E2E_BASE_URL", "http://localhost:8081")
+
+CONTRACT_EMAIL = "admin@example.com"
+CONTRACT_PASSWORD = "admin123"
+
+_TOKEN_CACHE: str | None = None
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 async def contract_client() -> Any:
-    """Session-scoped httpx.AsyncClient pointing at the local backend.
+    """httpx.AsyncClient pointing at the local backend (live HTTP).
 
-    Unlike the root conftest's ``test_client`` (which uses ASGI transport
-    directly), this fixture connects via real HTTP — suitable for contract
-    tests that verify responses over the wire.
+    Function-scoped: pytest-asyncio runs each test on its own event loop,
+    so a session-scoped async client would be finalized on a closed loop
+    ("Event loop is closed" teardown error).
 
-    Auth token is obtained once per session and cached on the client.
+    The Bearer token is obtained once per session and cached — contract
+    tests must not login per test (live rate limiter would 429 the run).
     """
     token: str | None = _obtain_token()
 
@@ -29,32 +37,22 @@ async def contract_client() -> Any:
 
 
 def _obtain_token() -> str | None:
-    """Obtain a Bearer token. Falls back to legacy login."""
-    try:
-        resp = httpx.get(
-            f"{BASE_URL}/api/auth/config",
-            timeout=5,
-        )
-        cfg = resp.json() if resp.status_code == 200 else {}
-    except Exception:
-        cfg = {}
-
-    if cfg.get("mode") == "rbac":
-        # In rbac mode, registration flow may be needed — skip for contract tests
-        return None
+    """Login as the seeded admin (rbac mode); cache the token per session."""
+    global _TOKEN_CACHE
+    if _TOKEN_CACHE is not None:
+        return _TOKEN_CACHE
 
     try:
         resp = httpx.post(
             f"{BASE_URL}/api/auth/login",
-            json={
-                "username": "admin",
-                "password": "admin123",
-            },
+            json={"email": CONTRACT_EMAIL, "password": CONTRACT_PASSWORD},
             timeout=5,
         )
         if resp.status_code == 200:
-            return resp.json().get("access_token")
+            _TOKEN_CACHE = resp.json().get("access_token")
+            return _TOKEN_CACHE
     except Exception:
         pass
 
+    _TOKEN_CACHE = ""
     return None

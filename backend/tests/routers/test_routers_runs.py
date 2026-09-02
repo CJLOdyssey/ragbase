@@ -1,104 +1,11 @@
 """Runs router tests — merged from test_coverage_boost, test_coverage_gaps, test_remaining_coverage."""
 
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 pytestmark = pytest.mark.unit
 
-import pytest
-from starlette.testclient import TestClient
-
-os.environ["AUTH_MODE"] = "legacy"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-os.environ["REDIS_URL"] = "redis://localhost:6379/0"
-os.environ["KEY_VAULT_SECRET"] = "0123456789abcdef0123456789abcdef"
-os.environ["AUTH_ENABLED"] = "0"
-os.environ["RATE_LIMIT"] = "9999"
-os.environ["CHECKPOINTER_BACKEND"] = "memory"
-
-import core.infra.database as db_mod
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-if db_mod._async_engine is None:
-    _sqlite_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    db_mod._async_engine = _sqlite_engine
-if db_mod._async_session_factory is None:
-    db_mod._async_session_factory = async_sessionmaker(
-        db_mod._async_engine if db_mod._async_engine is not None else create_async_engine("sqlite+aiosqlite:///:memory:"),
-        expire_on_commit=False,
-    )
-db_mod.DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-from core.app import app
-from core.base import Base
-
-
-@pytest.fixture
-def client():
-    import core.app_lifespan as lifespan_mod
-
-    async def _safe_init_db():
-        engine = db_mod.get_async_engine()
-        async with engine.begin() as conn:
-            # Self-contained reset: don't rely on the routers _reset_db
-            # autouse fixture (not reliably ordered under xdist worksteal).
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-        from core.seed import seed_default_roles_and_admin
-        await seed_default_roles_and_admin()
-        import bcrypt
-        from core.infra.database import UserDB, get_session_factory
-        from sqlalchemy import select
-        factory = get_session_factory()
-        async with factory() as session:
-            existing = await session.execute(
-                select(UserDB).where(UserDB.email == "admin@test.com")
-            )
-            if not existing.scalar_one_or_none():
-                user = UserDB(
-                    id="admin-login",
-                    username="admin-login",
-                    email="admin@test.com",
-                    password_hash=bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode(),
-                    is_active=True,
-                    is_verified=True,
-                )
-                session.add(user)
-                await session.commit()
-
-    lifespan_mod.init_db = _safe_init_db
-
-    store: dict[str, str] = {}
-
-    async def _redis_get(key: str) -> str | None:
-        return store.get(key)
-
-    async def _redis_set(key: str, value: str, *args: object, **kwargs: object) -> bool:
-        store[key] = value
-        return True
-
-    async def _redis_delete(key: str) -> bool:
-        store.pop(key, None)
-        return True
-
-    mock_redis = AsyncMock()
-    mock_redis.incr.return_value = 1
-    mock_redis.expire.return_value = True
-    mock_redis.ping.return_value = True
-    mock_redis.publish.return_value = 1
-    mock_redis.get.side_effect = _redis_get
-    mock_redis.set.side_effect = _redis_set
-    mock_redis.delete.side_effect = _redis_delete
-
-    with patch("broker.get_redis", return_value=mock_redis), \
-         patch("core.app_lifespan.get_redis", return_value=mock_redis), \
-         patch("routers.auth.login.get_redis", return_value=mock_redis), \
-         patch("routers.auth.register.get_redis", return_value=mock_redis), \
-         patch("routers.auth.password.get_redis", return_value=mock_redis):
-        with TestClient(app) as c:
-            yield c
 
 
 class TestRuns:
@@ -189,6 +96,34 @@ class TestRuns:
         mock_service.get_run = AsyncMock(side_effect=RuntimeError("db error"))
         resp = client.get("/api/runs/r-error")
         assert resp.status_code == 500
+
+    @patch("routers.runs.run_service", new_callable=MagicMock)
+    def test_get_run_detail_scoped_to_caller(self, mock_service, client):
+        """GET /runs/{id} 必须携带调用者身份 → 服务层归属校验 (BOLA 防护)。"""
+        mock_service.get_run = AsyncMock(return_value={
+            "id": "r-1", "requirement": "test", "status": "converged",
+            "session_id": "s-1", "messages": [],
+        })
+        resp = client.get("/api/runs/r-1")
+        assert resp.status_code == 200
+        assert mock_service.get_run.await_args.args[1] == "admin-login"
+
+    @patch("routers.runs.run_service", new_callable=MagicMock)
+    def test_list_runs_scoped_to_caller(self, mock_service, client):
+        """GET /runs 列表必须按调用者归属过滤，不再返回全局 runs。"""
+        mock_service.list_runs = AsyncMock(return_value=[])
+        resp = client.get("/api/runs")
+        assert resp.status_code == 200
+        assert mock_service.list_runs.await_args.kwargs["user_id"] == "admin-login"
+
+    @patch("routers.runs.run_service", new_callable=MagicMock)
+    def test_cancel_run_not_owner_returns_404(self, mock_service, client):
+        """非本人 run 取消 → 服务层回 not_found → 404（不泄露存在性）。"""
+        mock_service.cancel_run = AsyncMock(return_value={
+            "run_id": "r-other", "status": "not_found", "cancelled": False,
+        })
+        resp = client.post("/api/runs/r-other/cancel")
+        assert resp.status_code == 404
 
     # ── List runs ────────────────────────────────────────────────────────
 

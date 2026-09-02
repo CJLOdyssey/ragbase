@@ -288,7 +288,7 @@ export default function ModelSelector({
   return (
     <div className="relative inline-flex items-center" ref={ref}>
       <button
-        className={`inline-flex items-center gap-1 px-2 h-[26px] min-w-[140px] border rounded-md bg-transparent text-xs font-[inherit] cursor-pointer transition-all duration-150 max-w-[180px] border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)] ${!hasLoadedOnce || isEmpty || !current ? 'justify-center' : ''}`}
+        className={`inline-flex items-center gap-1 px-2 h-[26px] min-w-[80px] sm:min-w-[140px] border rounded-md bg-transparent text-xs font-[inherit] cursor-pointer transition-all duration-150 max-w-[180px] border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)] ${!hasLoadedOnce || isEmpty || !current ? 'justify-center' : ''}`}
         onClick={() => {
           if (isEmpty) {
             onConfigure?.();

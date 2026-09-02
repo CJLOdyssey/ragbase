@@ -18,6 +18,7 @@ def mock_deps():
         patch("tasks.complete_pipeline.update_run_result", new_callable=AsyncMock),
         patch("tasks.complete_pipeline.publish_run_message", new_callable=AsyncMock),
         patch("tasks.complete_pipeline.stream_prefix_completion", new_callable=AsyncMock),
+        patch("tasks.complete_pipeline.save_message", new_callable=AsyncMock),
     ]
     mocks = {}
     for p in patchers:
@@ -143,7 +144,7 @@ class TestCompletePipeline:
         mock_deps["update_run_status"].assert_awaited_with("run-c3", "error")
         mock_deps["publish_run_message"].assert_awaited_with(
             "run-c3",
-            {"type": "error", "detail": "LLM API 错误: 402 Payment Required"},
+            {"type": "error", "detail": "LLM 服务错误（HTTP 402），请检查模型配置或余额"},
         )
         assert result is None
 
@@ -162,7 +163,7 @@ class TestCompletePipeline:
         mock_deps["update_run_status"].assert_awaited_with("run-c4", "error")
         mock_deps["publish_run_message"].assert_awaited_with(
             "run-c4",
-            {"type": "error", "detail": "续写失败: Network timeout"},
+            {"type": "error", "detail": "续写失败，请稍后重试"},
         )
         assert result is None
 
@@ -182,7 +183,7 @@ class TestCompletePipeline:
         mock_deps["update_run_status"].assert_awaited_with("run-c5", "error")
         mock_deps["publish_run_message"].assert_awaited_with(
             "run-c5",
-            {"type": "error", "detail": "保存失败: DB write failed"},
+            {"type": "error", "detail": "结果保存失败，请稍后重试"},
         )
         assert result is None
 
@@ -208,42 +209,40 @@ class TestCompletePipeline:
         assert "custom.api.com" in url
         assert body["model"] == "custom-model"
 
-    async def test_proc_read_error_does_not_crash(self, mock_deps):
-        """Lines 38-39, 138-139: /proc read failure is silently ignored."""
-        mock_deps["stream_prefix_completion"].return_value = (" output", [])
+    async def test_with_thinking_non_deepseek_api(self, mock_deps):
+        """非 DeepSeek/Kimi 供应商 + 已有草稿 → thinking 显式 disabled（防止
+        续写轮次发出全新推理链覆盖消息 thinking）。"""
+        mock_deps["stream_prefix_completion"].return_value = (" out", [])
+        await _complete_pipeline(
+            content="test",
+            run_id="run-c7",
+            api_key="sk-test",
+            api_base="https://custom.api.com/v1",
+            model="custom-model",
+            thinking="prev thought",
+        )
 
-        with patch("tasks.complete_pipeline.os") as mock_os:
-            mock_os.getpid.return_value = 999999
-            mock_os.open.side_effect = OSError("no such proc")
-            result = await _complete_pipeline(
-                content="test",
-                run_id="run-proc-err",
-                api_key="sk-test",
-                api_base=None,
-                model=None,
-                thinking=None,
-            )
+        args, _ = mock_deps["stream_prefix_completion"].await_args
+        body = args[2]
+        assert body["thinking"] == {"type": "disabled"}
 
-        assert result is None
-        mock_deps["update_run_result"].assert_awaited()
+    async def test_save_message_persists_merged_content(self, mock_deps):
+        """续写结果同时落 chat_message（内容 + 思考合并），刷新后仍可见。"""
+        mock_deps["stream_prefix_completion"].return_value = (" world", ["extra"])
+        await _complete_pipeline(
+            content="Hello",
+            run_id="run-c8",
+            api_key="sk-test",
+            api_base=None,
+            model=None,
+            thinking="prev",
+        )
 
-    async def test_proc_read_error_in_thinking_path(self, mock_deps):
-        """Lines 38-39, 138-139: /proc read failure with thinking enabled."""
-        mock_deps["stream_prefix_completion"].return_value = (" result", ["thinking"])
-
-        with patch("tasks.complete_pipeline.os") as mock_os:
-            mock_os.getpid.return_value = 999999
-            mock_os.open.side_effect = OSError("no such proc")
-            result = await _complete_pipeline(
-                content="test",
-                run_id="run-proc-think",
-                api_key="sk-test",
-                api_base="https://api.deepseek.com",
-                model="deepseek-v4",
-                thinking="prev thought",
-            )
-
-        assert result is None
+        mock_deps["save_message"].assert_awaited_once()
+        call_kwargs = mock_deps["save_message"].await_args.kwargs
+        assert call_kwargs["run_id"] == "run-c8"
+        assert call_kwargs["content"] == "Hello world"
+        assert call_kwargs["thinking"] == "prevextra"
 
     async def test_tracemalloc_starts_when_not_tracing(self, mock_deps):
         """Line 41: tracemalloc.start() called when MEM_TRACE on and not already tracing."""

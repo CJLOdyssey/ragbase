@@ -6,7 +6,6 @@ import { useChatStore } from '../../../stores/chatStore';
 import { TestProviders } from '../../../test/setup';
 import { useHomeState } from '../useHomeState';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-i18next', () => ({
@@ -61,11 +60,10 @@ const RUN = {
 };
 
 function renderHome() {
+  // TestProviders 已含 MemoryRouter（默认 initialEntries=['/']），勿再嵌套。
   return renderHook(() => useHomeState(), {
     wrapper: ({ children }: { children: ReactNode }) => (
-      <TestProviders>
-        <MemoryRouter initialEntries={['/']}>{children}</MemoryRouter>
-      </TestProviders>
+      <TestProviders>{children}</TestProviders>
     ),
   });
 }

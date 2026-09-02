@@ -25,9 +25,7 @@ router = APIRouter(tags=["auth"])
 @router.get("/config", response_model=AuthConfigResponse)
 def auth_config() -> Any:
     """Return the current auth mode and enabled status."""
-    from auth import AUTH_ENABLED, AUTH_MODE
-
-    return AuthConfigResponse(enabled=AUTH_ENABLED, mode=AUTH_MODE)
+    return AuthConfigResponse(enabled=True, mode="rbac")
 
 
 @router.get("/me", response_model=UserResponse)

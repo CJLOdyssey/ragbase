@@ -1,12 +1,25 @@
-"""Generic CRUD base for simple entity repositories."""
+"""Generic CRUD base for simple entity repositories.
 
-from __future__ import annotations
+Subclasses declare ``model`` (and optionally ``default_order``/``to_dict``):
 
+.. code-block:: python
+
+    class PromptRepository(BaseRepository[PromptDB]):
+        model = PromptDB
+        default_order = desc(PromptDB.updated_at)
+
+        @staticmethod
+        def to_dict(obj: PromptDB) -> dict[str, Any]:
+            ...
+"""
+
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, ClassVar, Generic, TypeVar, cast
+from typing import Any, ClassVar, Generic, TypeVar
 
 from core.infra.database import get_session_factory
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 ModelT = TypeVar("ModelT", bound=DeclarativeBase)
@@ -14,19 +27,21 @@ ModelT = TypeVar("ModelT", bound=DeclarativeBase)
 
 class BaseRepository(Generic[ModelT]):
 
-    model: ClassVar[type[DeclarativeBase]]
-    default_order: ClassVar[Any] = None
-    session_factory = staticmethod(get_session_factory)
+    model: ClassVar[type[ModelT]]
+    default_order: ClassVar[ColumnElement[Any] | None] = None
+    session_factory: ClassVar[
+        Callable[[], async_sessionmaker[AsyncSession]]
+    ] = staticmethod(get_session_factory)
 
     @classmethod
-    def _session_cm(cls) -> Any:
+    def _session_cm(cls) -> AsyncSession:
         return cls.session_factory()()
 
     @classmethod
     async def get_one(cls, entity_id: str) -> ModelT | None:
         """Fetch a single entity by its primary key."""
         async with cls._session_cm() as session:
-            return cast(ModelT | None, await session.get(cls.model, entity_id))
+            return await session.get(cls.model, entity_id)
 
     @classmethod
     async def get_all(cls) -> list[ModelT]:
@@ -52,7 +67,7 @@ class BaseRepository(Generic[ModelT]):
     async def create_one(cls, data: dict[str, Any]) -> ModelT:
         """Insert a new entity from the given data dictionary."""
         async with cls._session_cm() as session:
-            obj = cast(ModelT, cls.model(**data))
+            obj = cls.model(**data)
             session.add(obj)
             await session.commit()
             await session.refresh(obj)
@@ -68,10 +83,11 @@ class BaseRepository(Generic[ModelT]):
             for k, v in data.items():
                 if v is not None and hasattr(obj, k):
                     setattr(obj, k, v)
-            obj.updated_at = datetime.now(UTC)
+            if hasattr(obj, "updated_at"):
+                obj.updated_at = datetime.now(UTC)
             await session.commit()
             await session.refresh(obj)
-            return cast(ModelT | None, obj)
+            return obj
 
     @classmethod
     async def delete_one(cls, entity_id: str) -> bool:

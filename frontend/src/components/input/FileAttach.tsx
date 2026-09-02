@@ -110,17 +110,21 @@ export default function FileAttach({ onAdd, onReject, fileCount = 0 }: Props) {
   );
 
   // System-wide paste handler for files (complements textarea-level paste in InputToolbar)
-  useEffect(() => {
-    const handler = (e: ClipboardEvent) => {
-      if (!e.clipboardData?.files.length) return;
-      const active = document.activeElement;
-      // Only intercept when focus is NOT on another file/text input
-      if (active instanceof HTMLInputElement && active.type === 'file') return;
-      if (active?.closest('[data-input-wrapper]')) return; // handled by InputToolbar
-    };
-    document.addEventListener('paste', handler);
-    return () => document.removeEventListener('paste', handler);
-  }, [handleFiles]);
+useEffect(() => {
+  const handler = (e: ClipboardEvent) => {
+    if (!e.clipboardData?.files.length) return;
+    const active = document.activeElement;
+    // Only intercept when focus is NOT on another file/text input
+    if (active instanceof HTMLInputElement && active.type === 'file') return;
+    if (active?.closest('[data-input-wrapper]')) return; // handled by InputToolbar
+    // 全局粘贴即上传：焦点不在输入框内时由本组件接管文件粘贴
+    // （原实现只做条件判断、无任何实际操作的死代码）。
+    e.preventDefault();
+    handleFiles(Array.from(e.clipboardData.files));
+  };
+  document.addEventListener('paste', handler);
+  return () => document.removeEventListener('paste', handler);
+}, [handleFiles]);
 
   const accept = [...allowedTypes, ...ALLOWED_EXTENSIONS].join(',');
 

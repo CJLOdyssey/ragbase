@@ -339,7 +339,7 @@ class TestStreamLlmResponse:
 
     @pytest.mark.asyncio
     async def test_think_without_reasoning_content_ordering(self):
-        """Ensure think-tag content does not emit on_custom_token for the think part."""
+        """think-tag content is routed to the thinking stream, never to content."""
         from streaming.llm_stream import stream_llm_response
 
         sse_lines = [
@@ -553,14 +553,49 @@ class TestStreamLlmResponse:
         callback.assert_any_call({"event": "on_custom_token", "data": {"content": "pending"}})
         callback.assert_any_call({"event": "on_custom_token", "data": {"content": " content"}})
 
+    @pytest.mark.asyncio
+    async def test_stream_line_guard_truncates(self):
+        """行数守卫：超限截断视为完成，防止失控输出无限挂起 worker。"""
+        from streaming.llm_stream import stream_llm_response
 
-class TestParseSse:
+        sse_lines = [
+            f'data: {{"choices":[{{"delta":{{"content":"t{i}"}},"finish_reason":null}}]}}'
+            for i in range(10)
+        ]
+        with (
+            patch("streaming.llm_stream._MAX_STREAM_LINES", 5),
+            patch("httpx.AsyncClient", return_value=_MockClientCtx(sse_lines)),
+        ):
+            content, thinking, tool_calls, finish_reason, usage = await stream_llm_response(
+                "https://api.siliconflow.cn/v1/chat/completions",
+                {"Authorization": "Bearer sk-test"},
+                {"model": "THUDM/GLM-Z1-9B-0414", "messages": []},
+            )
+        # 10 行内容仅前 5 行被消费（第 6 行触发 guard break）。
+        assert "".join(content) == "t0t1t2t3t4"
 
-    def test_parse_sse_data_line(self):
-        pass
+    @pytest.mark.asyncio
+    async def test_unclosed_think_tag_flushed_on_finish(self):
+        """尾部未闭合 think 标签：finish() 刷新为 thinking（防丢失推理链）。"""
+        from streaming.llm_stream import stream_llm_response
 
-    def test_parse_sse_event_line(self):
-        pass
-
-    def test_parse_sse_empty_line(self):
-        pass
+        # 与 splitters.ThinkTagSplitter 的标签保持一致（\x3c 转义避免
+        # 编辑器/渲染层对尖括号标签的歧义）。
+        think_open = "\x3cthink\x3e"
+        callback = AsyncMock()
+        sse_lines = [
+            'data: {"choices":[{"delta":{"content":"' + think_open + '未闭合推理"}, "finish_reason":"stop"}]}',
+            "data: [DONE]",
+        ]
+        with patch("httpx.AsyncClient", return_value=_MockClientCtx(sse_lines)):
+            content, thinking, tool_calls, finish_reason, usage = await stream_llm_response(
+                "https://api.siliconflow.cn/v1/chat/completions",
+                {"Authorization": "Bearer sk-test"},
+                {"model": "THUDM/GLM-Z1-9B-0414", "messages": []},
+                stream_cb=callback,
+            )
+        assert "".join(thinking) == "未闭合推理"
+        assert "".join(content) == ""
+        callback.assert_any_call(
+            {"event": "on_custom_thinking", "data": {"content": "未闭合推理"}}
+        )

@@ -1,0 +1,33 @@
+{
+  "retrievalLogs": {
+    "subtitle": "View hit status, response latency, and source tracing for each RAG retrieval",
+    "totalCount": "{{total}} records",
+    "knowledgeBase": "Knowledge Base",
+    "emptyRecall": "Empty Recall",
+    "latencyFilterTag": "≤{{maxLatency}}ms",
+    "hitCountTag": "{{count}} hits",
+    "latencyTrend": "Latency Trend",
+    "latencyNoData": "No data",
+    "detailTitle": "Retrieval Detail",
+    "chunkSection": "Hit Chunks",
+    "moreChunks": "{{count}} more chunks…",
+    "hitBlocks": "Hit Blocks",
+    "hitBlocksValue": "{{count}} blocks",
+    "respLatency": "Response Latency",
+    "latencyDistribution": "Latency Distribution",
+    "hitRate": "Recall Breakdown",
+    "queryTrend": "Query Trend · {{range}}",
+    "activityHeatmap": "Activity Heatmap (Day × Hour)",
+    "hitRecall": "With Hits",
+    "emptyRecallRate": "Empty recall rate",
+    "dayMon": "Mon",
+    "dayTue": "Tue",
+    "dayWed": "Wed",
+    "dayThu": "Thu",
+    "dayFri": "Fri",
+    "daySat": "Sat",
+    "daySun": "Sun",
+    "unit.count": "Count",
+    "unit.hour": "h"
+  }
+}

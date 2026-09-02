@@ -1,25 +1,15 @@
 """Unit tests for request_logger middleware functions."""
+
+import logging
 from unittest.mock import AsyncMock
 
+import core.infra.asgi as asgi_mod
 import pytest
+from core.infra.asgi import client_ip
 from core.infra.request_logger import (
-    _SENSITIVE_HEADERS,
     RequestLogMiddleware,
-    _client_ip,
     _format_duration,
-    _mask,
 )
-
-
-class TestMask:
-    def test_masks_short_value(self):
-        assert _mask("abc") == "***"
-
-    def test_keeps_ends_long_value(self):
-        result = _mask("abcdefghijklmnop")
-        assert result.startswith("abcd")
-        assert result.endswith("mnop")
-        assert "***" in result
 
 
 class TestFormatDuration:
@@ -31,28 +21,63 @@ class TestFormatDuration:
 
 
 class TestClientIp:
-    def test_x_forwarded_for(self):
+    def test_x_forwarded_for(self, monkeypatch):
+        monkeypatch.setattr(asgi_mod, "_TRUST_PROXY_HEADERS", True)
         scope = {"headers": [(b"x-forwarded-for", b"203.0.113.1, proxy")]}
-        assert _client_ip(scope) == "203.0.113.1"
+        assert client_ip(scope) == "203.0.113.1"
 
-    def test_x_real_ip(self):
+    def test_x_real_ip(self, monkeypatch):
+        monkeypatch.setattr(asgi_mod, "_TRUST_PROXY_HEADERS", True)
         scope = {"headers": [(b"x-real-ip", b"10.0.0.5")]}
-        assert _client_ip(scope) == "10.0.0.5"
+        assert client_ip(scope) == "10.0.0.5"
 
     def test_fallback_to_client(self):
         scope = {"client": ("192.168.1.1", 54321)}
-        assert _client_ip(scope) == "192.168.1.1"
+        assert client_ip(scope) == "192.168.1.1"
 
     def test_fallback_unknown(self):
-        assert _client_ip({}) == "unknown"
+        assert client_ip({}) == "unknown"
 
 
-class TestSensitiveHeaders:
-    def test_contains_expected_keys(self):
-        assert b"authorization" in _SENSITIVE_HEADERS
-        assert b"cookie" in _SENSITIVE_HEADERS
-        assert b"x-api-key" in _SENSITIVE_HEADERS
-        assert b"proxy-authorization" in _SENSITIVE_HEADERS
+class TestBodyExemptPaths:
+    @pytest.mark.asyncio
+    async def _run(self, path: str, body: bytes, caplog):
+        async def fake_app(scope, receive, send):
+            # Drain the request body so the middleware captures it.
+            await receive()
+            await receive()
+            await send({"type": "http.response.start", "status": 422, "headers": []})
+            await send({"type": "http.response.body", "body": b""})
+
+        receive = AsyncMock(side_effect=[
+            {"type": "http.request", "body": body},
+            {"type": "http.request", "body": b""},
+        ])
+        send = AsyncMock()
+        scope = {"type": "http", "path": path, "method": "POST", "headers": []}
+
+        with caplog.at_level(logging.WARNING):
+            await RequestLogMiddleware(fake_app)(scope, receive, send)
+        return caplog.text
+
+    @pytest.mark.asyncio
+    async def test_body_not_echoed_for_keys_path(self, monkeypatch, caplog):
+        monkeypatch.setattr(logging.getLogger("core.infra.request_logger"), "propagate", True)
+        log = await self._run("/api/keys", b'{"api_key":"sk-secret-value"}', caplog)
+        assert "sk-secret-value" not in log
+        assert "body[:500]=" in log
+
+    @pytest.mark.asyncio
+    async def test_body_not_echoed_for_auth_path(self, monkeypatch, caplog):
+        monkeypatch.setattr(logging.getLogger("core.infra.request_logger"), "propagate", True)
+        log = await self._run("/api/auth/login", b'{"password":"hunter2"}', caplog)
+        assert "hunter2" not in log
+
+    @pytest.mark.asyncio
+    async def test_body_echoed_for_other_paths(self, monkeypatch, caplog):
+        monkeypatch.setattr(logging.getLogger("core.infra.request_logger"), "propagate", True)
+        log = await self._run("/api/prompts", b'{"name":"helpful"}', caplog)
+        assert '{"name":"helpful"}' in log
 
 
 class TestMiddlewareExemptPaths:

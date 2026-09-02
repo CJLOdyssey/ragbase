@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Virtuoso } from 'react-virtuoso';
+import { readSessionsCache, toConversation } from '../../../stores/sessionCache';
 
 interface ConversationsListProps {
   conversations: Conversation[];
@@ -23,16 +24,11 @@ interface ConversationsListProps {
 }
 
 // Fallback: if the prop is empty but localStorage has conversations (e.g.
-// when React state propagation fails through memo boundaries), read directly.
+// when React state propagation fails through memo boundaries), read directly
+// from the real sessions cache (writeSessionsCache 落盘的数据源)。
 function readLocalConversations(): Conversation[] | null {
-  try {
-    const saved = localStorage.getItem('ragbase-conversations');
-    if (!saved) return null;
-    const parsed = JSON.parse(saved) as Conversation[];
-    return parsed.length > 0 ? parsed : null;
-  } catch {
-    return null;
-  }
+  const cached = readSessionsCache();
+  return cached.length > 0 ? cached.map(toConversation) : null;
 }
 
 const ConversationsList = memo(function ConversationsList({
@@ -238,7 +234,7 @@ const ConversationsList = memo(function ConversationsList({
         </div>
         <div className="relative shrink-0">
           <button
-            className="bg-transparent border-none p-1 rounded cursor-pointer text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] flex items-center justify-center w-[24px] h-[24px] shrink-0 opacity-0 group-hover:opacity-70 hover:opacity-100 transition-all duration-150"
+            className="bg-transparent border-none p-1 rounded cursor-pointer text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] flex items-center justify-center min-w-[32px] min-h-[32px] shrink-0 opacity-70 hover:opacity-100 transition-all duration-150 sm:min-w-[24px] sm:min-h-[24px] sm:opacity-0 sm:group-hover:opacity-70"
             onClick={(e) => {
               e.stopPropagation();
               if (openMenuConvId === conv.id) {

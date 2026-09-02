@@ -238,7 +238,10 @@ class TestKeysConnectivityV1Slash:
     def test_base_url_v1_trailing_slash(self):
         from repository.keys_connectivity import _test_connection_sync
 
-        with unittest.mock.patch("urllib.request.urlopen") as mock_open:
+        with (
+            unittest.mock.patch("urllib.request.urlopen") as mock_open,
+            unittest.mock.patch("repository.keys_connectivity.validate_public_url"),
+        ):
             mock_resp = unittest.mock.MagicMock()
             mock_resp.status = 200
             mock_resp.read.return_value = b'{"data": [{"id": "m1"}]}'

@@ -126,10 +126,6 @@ export async function resendVerification(
   return data;
 }
 
-export async function mergeGuestData(guestId: string): Promise<void> {
-  await api.post('/auth/merge', { guest_id: guestId });
-}
-
 export async function changePassword(
   oldPassword: string,
   newPassword: string,

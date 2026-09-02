@@ -4,7 +4,7 @@
 // before this file finishes evaluating.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  chatStoreMocks,
+  chatStoreMocks as _chatStoreMocks,
   resetChatStoreHard,
 } from './helpers/chatStoreTestUtils';
 

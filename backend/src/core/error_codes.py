@@ -23,6 +23,7 @@ from starlette.status import (
     HTTP_410_GONE,
     HTTP_413_CONTENT_TOO_LARGE,
     HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    HTTP_423_LOCKED,
     HTTP_429_TOO_MANY_REQUESTS,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -117,6 +118,12 @@ class ErrorCode(StrEnum):
     # ── Run ─────────────────────────────────────────────────────────
     RUN_NOT_FOUND = "RUN_001"
 
+    # ── Monitoring / review queue ───────────────────────────────────
+    REVIEW_NOT_FOUND = "REVIEW_001"
+
+    # ── RAG chunks ───────────────────────────────────────────────────
+    CHUNK_NOT_FOUND = "CHUNK_001"
+
     # ── General ──────────────────────────────────────────────────────
     INTERNAL_ERROR = "GENERAL_001"
     INVALID_REQUEST = "GENERAL_002"
@@ -137,6 +144,7 @@ _STATUS_MAP: dict[ErrorCode, int] = {
     ErrorCode.AUTH_ACCOUNT_DISABLED: HTTP_403_FORBIDDEN,
     ErrorCode.SESSION_FORBIDDEN: HTTP_403_FORBIDDEN,
     # 404
+    ErrorCode.CHUNK_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.AGENT_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.PROMPT_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.TOOL_NOT_FOUND: HTTP_404_NOT_FOUND,
@@ -152,13 +160,11 @@ _STATUS_MAP: dict[ErrorCode, int] = {
     ErrorCode.WORKFLOW_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.SYSTEM_TEAM_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.RUN_NOT_FOUND: HTTP_404_NOT_FOUND,
+    ErrorCode.REVIEW_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.MEMORY_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.AUTH_USER_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.ASSET_NOT_FOUND: HTTP_404_NOT_FOUND,
     ErrorCode.TEMPLATE_NOT_FOUND: HTTP_404_NOT_FOUND,
-    # 429
-    ErrorCode.GENERATION_LIMIT: HTTP_429_TOO_MANY_REQUESTS,
-    ErrorCode.RATE_LIMITED: HTTP_429_TOO_MANY_REQUESTS,
     # 409
     ErrorCode.TEAM_CONFLICT: HTTP_409_CONFLICT,
     ErrorCode.AGENT_DUPLICATE: HTTP_409_CONFLICT,
@@ -171,7 +177,10 @@ _STATUS_MAP: dict[ErrorCode, int] = {
     # 415
     ErrorCode.ATTACHMENT_TYPE_INVALID: HTTP_415_UNSUPPORTED_MEDIA_TYPE,
     # 423
-    ErrorCode.AUTH_ACCOUNT_LOCKED: 423,
+    ErrorCode.AUTH_ACCOUNT_LOCKED: HTTP_423_LOCKED,
+    # 429
+    ErrorCode.GENERATION_LIMIT: HTTP_429_TOO_MANY_REQUESTS,
+    ErrorCode.RATE_LIMITED: HTTP_429_TOO_MANY_REQUESTS,
     # 500
     ErrorCode.INTERNAL_ERROR: HTTP_500_INTERNAL_SERVER_ERROR,
     ErrorCode.AGENT_CREATE_FAILED: HTTP_500_INTERNAL_SERVER_ERROR,

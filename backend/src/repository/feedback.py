@@ -24,6 +24,11 @@ VALID_RATINGS = {"good", "bad"}
 
 
 def _parse_sources(raw: str | None) -> list[dict[str, Any]]:
+    """Parse the JSON sources column, degrading to [] on missing/corrupt data.
+
+    Sources are auxiliary citation metadata; a corrupt value must not block
+    feedback intake, so failures are silently treated as "no sources".
+    """
     if not raw:
         return []
     try:

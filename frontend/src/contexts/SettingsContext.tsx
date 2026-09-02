@@ -6,8 +6,9 @@ import {
   useEffect,
   useState,
 } from 'react';
+import { STORAGE_KEYS } from '../utils/storage';
 
-type Theme = 'dark' | 'light' | 'system';
+export type Theme = 'dark' | 'light' | 'system';
 
 interface Settings {
   theme: Theme;
@@ -36,6 +37,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(
 
 function playBeep() {
   try {
+    // WebAudio API 在无头浏览器/隐私模式下不可用——音效失败不阻塞 UI。
     const AudioCtor =
       window.AudioContext ||
       (window as { webkitAudioContext?: typeof AudioContext })
@@ -50,13 +52,15 @@ function playBeep() {
     osc.start();
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
     osc.stop(ctx.currentTime + 0.15);
-  } catch {}
+  } catch {
+    // 音效为非关键功能：失败降级为静默，不向上抛出
+  }
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(() => {
     try {
-      const saved = localStorage.getItem('ragbase-settings');
+      const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
       return saved
         ? { ...defaultSettings, ...JSON.parse(saved) }
         : defaultSettings;
@@ -66,7 +70,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    localStorage.setItem('ragbase-settings', JSON.stringify(settings));
+    // 与读取同等的降级保护：隐私模式/配额满时写失败不抛异常
+    // （设置仅在内存生效，刷新后回默认）。
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    } catch {
+      // storage unavailable — in-memory settings still apply
+    }
   }, [settings]);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
+import { Modal as AntdModal } from 'antd';
 import { AlertTriangle, OctagonX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import Modal from './Modal';
 
 interface ConfirmDialogProps {
   title: string | ReactNode;
@@ -46,14 +46,12 @@ export default function ConfirmDialog({
     ));
 
   return (
-    <Modal
+    <AntdModal
       title={title}
-      onClose={onCancel}
-      hideHeaderBorder
-      hideFooterBorder
-      ariaLabel={typeof title === 'string' ? title : undefined}
+      open={true}
+      onCancel={onCancel}
+      centered
       width={width}
-      className="w-[var(--modal-sm)]"
       footer={
         <>
           <button
@@ -75,7 +73,7 @@ export default function ConfirmDialog({
         </>
       }
     >
-      <div className="flex items-start gap-4 p-6">
+      <div className="flex items-start gap-4">
         {Icon}
         <div>
           <p style={{ fontWeight: 600, marginBottom: 4 }}>
@@ -84,6 +82,6 @@ export default function ConfirmDialog({
           <p>{message}</p>
         </div>
       </div>
-    </Modal>
+    </AntdModal>
   );
 }

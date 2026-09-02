@@ -54,8 +54,10 @@ export function handleMessageEvent(set: SetFn, msg: WsMessageEvent): void {
 
 export function handleInfoEvent(set: SetFn, msg: WsInfoEvent): void {
   set((s) => {
+    // content 优先；data 仅在 content 缺失时兜底（运算符优先级：先求值
+    // typeof 分支再参与 ||，否则 content 有值而 data 缺失时会追加 undefined）。
     const infoContent =
-      msg.content || typeof msg.data === 'string' ? msg.data : '';
+      msg.content || (typeof msg.data === 'string' ? msg.data : '');
     if (s.streamingId) {
       return {
         messages: s.messages.map((m) =>
