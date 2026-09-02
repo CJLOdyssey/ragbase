@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { BrandLogo } from '../shared/BrandLogo';
 import {
-  Bot,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -189,8 +189,8 @@ const RagBaseSidebar = memo(function RagBaseSidebar({
         {/* Header: logo + toggle */}
         <div className="flex items-center justify-between gap-3 px-4 py-3 shrink-0 mb-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[var(--color-accent)]/10 flex items-center justify-center text-[var(--color-accent)] shrink-0">
-              <Bot size={22} />
+            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0">
+              <BrandLogo size={40} />
             </div>
             <span className="font-semibold text-lg text-[var(--color-text-primary)] tracking-[-0.02em] truncate">
               RagBase

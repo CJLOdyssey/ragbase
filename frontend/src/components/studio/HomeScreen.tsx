@@ -1,8 +1,8 @@
 import type { RefObject } from 'react';
 import InputToolbar, { type InputToolbarHandle } from '../input/InputToolbar';
+import { BrandLogo } from '../shared/BrandLogo';
 import {
   BarChart3,
-  Bot,
   FileText,
   Image,
   MoreHorizontal,
@@ -58,12 +58,12 @@ export default function HomeScreen({
         <div className="flex flex-col items-center w-full">
           <div className="text-center mb-6 md:mb-8">
             <div
-              className="w-[72px] h-[72px] mx-auto mb-4 md:mb-6 bg-[var(--color-surface-raised)] rounded-xl flex items-center justify-center"
+              className="w-[72px] h-[72px] mx-auto mb-4 md:mb-6 rounded-xl flex items-center justify-center overflow-hidden"
               role="img"
               tabIndex={-1}
               aria-label="RagBase Logo"
             >
-              <Bot size={48} className="text-[var(--color-accent)]" />
+              <BrandLogo size={72} />
             </div>
             <GreetingAnimation key={conversationKey} />
             <p className="text-sm md:text-base text-[var(--color-text-muted)] m-0 px-4 text-center">
