@@ -146,7 +146,7 @@ export default function LoginModal({ onClose }: Props) {
         style={{ animation: 'fadeIn 0.15s ease' }}
       >
         <div
-          className="bg-[var(--color-surface-raised)] rounded-xl w-full h-full flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] p-0 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:w-[90%] sm:max-w-[400px] sm:max-h-[85vh] sm:rounded-xl sm:pt-0 sm:pb-0"
+          className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-w-[400px] h-auto max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] p-0 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-center relative px-6 py-4 border-b border-[var(--color-border)]">
@@ -193,7 +193,7 @@ export default function LoginModal({ onClose }: Props) {
       style={{ animation: 'fadeIn 0.15s ease' }}
     >
       <div
-        className="bg-[var(--color-surface-raised)] rounded-xl w-full h-full flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] p-0 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:w-[90%] sm:max-w-[400px] sm:max-h-[85vh] sm:rounded-xl sm:pt-0 sm:pb-0"
+        className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-w-[400px] h-auto max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] p-0 overflow-hidden rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center pt-[28px] pb-1">
