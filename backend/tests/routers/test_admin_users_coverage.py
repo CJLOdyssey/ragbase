@@ -4,6 +4,7 @@ Tests search, pagination, role update, last-admin protection, and status toggle.
 """
 
 import bcrypt
+import pytest
 from core.infra.database import (
     RoleDB,
     UserDB,
@@ -12,8 +13,6 @@ from core.infra.database import (
 )
 from fastapi.testclient import TestClient
 from sqlalchemy import select
-
-import pytest
 
 pytestmark = pytest.mark.unit
 

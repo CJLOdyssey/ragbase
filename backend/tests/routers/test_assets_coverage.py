@@ -3,8 +3,6 @@
 Covers pure helpers and routes not exercised by existing test files.
 """
 
-import os
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 

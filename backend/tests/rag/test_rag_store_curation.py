@@ -69,11 +69,11 @@ class TestVectorLiteral:
 
 class TestHashChunkId:
     def test_no_salt(self):
-        expected = hashlib.sha256("hello".encode()).hexdigest()[:16]
+        expected = hashlib.sha256(b"hello").hexdigest()[:16]
         assert _hash_chunk_id("hello") == expected
 
     def test_with_salt(self):
-        expected = hashlib.sha256("salt:hello".encode()).hexdigest()[:16]
+        expected = hashlib.sha256(b"salt:hello").hexdigest()[:16]
         assert _hash_chunk_id("hello", salt="salt") == expected
 
     def test_deterministic(self):
