@@ -79,10 +79,6 @@ frontend/src/
 └── i18n/          Internationalization
 ```
 
-## Contributing
-
-See [AGENTS.md](AGENTS.md) for development conventions.
-
 ## License
 
 [MIT](LICENSE)

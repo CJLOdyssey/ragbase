@@ -79,10 +79,6 @@ frontend/src/
 └── i18n/          国际化
 ```
 
-## 参与贡献
-
-开发规范见 [AGENTS.md](AGENTS.md)。
-
 ## 许可证
 
 [MIT](LICENSE)
