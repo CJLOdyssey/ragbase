@@ -20,9 +20,12 @@ jobs:
         with:
           python-version: '3.12'
 
+      - uses: astral-sh/setup-uv@v6
+
       - name: Install dependencies
         run: |
-          pip install -r backend/requirements.txt
+          cd backend
+          uv sync
 
       - name: Run RAG eval
         env:
@@ -32,7 +35,7 @@ jobs:
           LLM_API_KEY: ${{ secrets.EVAL_LLM_API_KEY }}
         run: |
           cd backend
-          python -m scripts.eval_rag \
+          uv run python -m scripts.eval_rag \
             --recall-fail-below 0.6 \
             --mrr-fail-below 0.4 \
             --faithfulness-fail-below 0.7 \
