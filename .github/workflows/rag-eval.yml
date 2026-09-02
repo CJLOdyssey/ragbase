@@ -36,7 +36,8 @@ jobs:
             --recall-fail-below 0.6 \
             --mrr-fail-below 0.4 \
             --faithfulness-fail-below 0.7 \
-            --answer-relevancy-fail-below 0.6
+            --answer-relevancy-fail-below 0.6 \
+            | tee eval_results.json
 
       - name: Upload eval results
         if: always()

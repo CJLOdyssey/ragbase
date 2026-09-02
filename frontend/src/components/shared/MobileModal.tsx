@@ -66,7 +66,9 @@ const mobileLayoutStyles: Record<'container' | 'body', CSSProperties> = {
  */
 function useSheetDismiss(enabled: boolean, onClose: () => void) {
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
   const gestureRef = useRef<GestureState | null>(null);
   const closingRef = useRef(false);
 
@@ -104,7 +106,8 @@ function useSheetDismiss(enabled: boolean, onClose: () => void) {
       const onPointerDown = (e: PointerEvent) => {
         if (closingRef.current) return;
         const scroller = findScrollParent(e.target as Element);
-        if (scroller && scroller !== container && scroller.scrollTop > 0) return;
+        if (scroller && scroller !== container && scroller.scrollTop > 0)
+          return;
         gestureRef.current = {
           startY: e.clientY,
           lastY: e.clientY,

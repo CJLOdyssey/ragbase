@@ -50,7 +50,6 @@ class RequestLogMiddleware:
 
         method = scope.get("method", "UNKNOWN")
         query_string = scope.get("query_string", b"").decode("utf-8", errors="replace")
-        ip = client_ip(scope)
 
         # Capture request body (bounded) so errors can be diagnosed.
         body_chunks: list[bytes] = []

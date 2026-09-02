@@ -216,7 +216,7 @@ function ActivityHeatmapChart({ stats }: { stats: RetrievalStatsResponse }) {
     ];
     const hours = Array.from({ length: 24 }, (_, i) => `${i}`);
     const data: [number, number, number][] = dailyActivity.map((d) => {
-      let localHour = (d.hour + utcOffsetHours + 24) % 24;
+      const localHour = (d.hour + utcOffsetHours + 24) % 24;
       let localDay = d.day;
       // Day of week rolls forward if hour wraps past midnight
       if (d.hour + utcOffsetHours >= 24) localDay = (d.day + 1) % 7;

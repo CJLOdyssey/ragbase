@@ -92,6 +92,33 @@ export default function AssetsPage() {
   }, [indexing]);
 
   const {
+    search,
+    setSearch,
+    formats,
+    setFormats,
+    statuses,
+    setStatuses,
+    kbFilter,
+    setKbFilter,
+    timeRange,
+    setTimeRange,
+    customFrom,
+    setCustomFrom,
+    customTo,
+    setCustomTo,
+    sortField,
+    sortDir,
+    stats,
+    filteredAssets,
+    sortedAssets,
+    handleSort,
+    selectedIds,
+    setSelectedIds,
+    handleSelectAll,
+    handleSelectOne,
+  } = useAssetSelection(assets, indexing, progressMap);
+
+  const {
     uploadMutation,
     renameMutation,
     deleteMutation,
@@ -140,33 +167,6 @@ export default function AssetsPage() {
     const fullName = (sanitizedBase + ext).slice(0, 256);
     renameMutation.mutate({ id: renameTarget.id, name: fullName });
   };
-
-  const {
-    search,
-    setSearch,
-    formats,
-    setFormats,
-    statuses,
-    setStatuses,
-    kbFilter,
-    setKbFilter,
-    timeRange,
-    setTimeRange,
-    customFrom,
-    setCustomFrom,
-    customTo,
-    setCustomTo,
-    sortField,
-    sortDir,
-    stats,
-    filteredAssets,
-    sortedAssets,
-    handleSort,
-    selectedIds,
-    setSelectedIds,
-    handleSelectAll,
-    handleSelectOne,
-  } = useAssetSelection(assets, indexing, progressMap);
 
   // 知识库筛选态：'all' | 'unassigned' | <kbId>（banner「立即处理」与工具栏下拉共用）
   const uncategorizedCount = useMemo(

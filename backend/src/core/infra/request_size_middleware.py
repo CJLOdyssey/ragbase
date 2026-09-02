@@ -5,9 +5,8 @@ Pure ASGI to avoid Starlette BaseHTTPMiddleware buffering the whole body.
 
 from __future__ import annotations
 
-from starlette.types import ASGIApp, Receive, Scope, Send
-
 from core.env import env_int
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 # 10 MiB default.
 _MAX_BODY = env_int("MAX_REQUEST_BODY_SIZE", 10_485_760)

@@ -54,6 +54,13 @@ vi.mock('react-i18next', () => ({
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mocks.navigate,
   useParams: () => mocks.params(),
+  useLocation: () => ({
+    pathname: '/',
+    search: '',
+    hash: '',
+    state: null,
+    key: 'default',
+  }),
 }));
 
 vi.mock('../../../api/client/sessions', () => ({
@@ -109,18 +116,16 @@ describe('RagBaseWorkstation', () => {
       continuingId: null,
     });
     // 恢复 matchMedia 桌面默认（测试间不泄漏视口状态）
-    (window.matchMedia as ReturnType<typeof vi.fn>).mockImplementation(
-      () => ({
-        matches: false,
-        media: '',
-        onchange: null,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }),
-    );
+    (window.matchMedia as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      matches: false,
+      media: '',
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
   });
 
   it('renders HomeScreen when there are no messages', () => {

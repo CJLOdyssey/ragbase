@@ -57,7 +57,22 @@ export function useApiKeys() {
   };
 
   useEffect(() => {
-    void loadKeys();
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const serverKeys = await api.listKeys();
+        if (!cancelled) setKeys(serverKeys);
+      } catch (err) {
+        Logger.warn('Failed to load API keys from server', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
