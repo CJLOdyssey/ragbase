@@ -50,7 +50,6 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   loginModalOpen: boolean;
   loginModalView: AuthModalView;
-  loginModalEmail: string;
   login: (
     email: string,
     password: string,
@@ -69,7 +68,6 @@ interface AuthContextValue {
   sendRegisterCode: (email: string) => Promise<{ emailHint: string }>;
   openLoginModal: (view?: AuthModalView) => void;
   closeLoginModal: () => void;
-  setLoginModalEmail: (email: string) => void;
   setLoginModalView: (view: AuthModalView) => void;
 }
 
@@ -82,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginModalView, setLoginModalView] = useState<AuthModalView>('login');
-  const [loginModalEmail, setLoginModalEmail] = useState('');
   const refreshTimerRef = useRef<number | null>(null);
   const lastRefreshRef = useRef(0);
 
@@ -312,7 +309,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         loginModalOpen,
         loginModalView,
-        loginModalEmail,
         login,
         register,
         verify,
@@ -323,7 +319,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sendRegisterCode,
         openLoginModal,
         closeLoginModal,
-        setLoginModalEmail,
         setLoginModalView,
       }}
     >

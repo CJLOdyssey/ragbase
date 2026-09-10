@@ -20,7 +20,6 @@ const mockUseAuth = {
     .fn()
     .mockResolvedValue({ emailHint: 't***@example.com' }),
   setLoginModalView: vi.fn(),
-  setLoginModalEmail: vi.fn(),
   closeLoginModal: vi.fn(),
 };
 
@@ -152,10 +151,11 @@ describe('LoginModal', { tags: ['unit'] }, () => {
     expect(passwordInput).toHaveAttribute('type', 'password');
   });
 
-  it('shows social login buttons in login view', () => {
+  it('shows wechat qr placeholder in login view', () => {
     render(<LoginModal onClose={onClose} />);
-    expect(screen.getByTitle('QQ登录（即将支持）')).toBeInTheDocument();
-    expect(screen.getByTitle('微信登录（即将支持）')).toBeInTheDocument();
+    expect(screen.getByText('微信扫码登录')).toBeInTheDocument();
+    expect(screen.getByText('即将支持')).toBeInTheDocument();
+    expect(screen.getByText('邮箱登录')).toBeInTheDocument();
   });
 
   it('renders forgot/reset view with ForgotPasswordForm', () => {
@@ -209,6 +209,7 @@ describe('LoginModal', { tags: ['unit'] }, () => {
       fireEvent.change(screen.getByPlaceholderText('验证码'), {
         target: { value: '123456' },
       });
+      fireEvent.click(screen.getByRole('checkbox'));
       fireEvent.submit(document.querySelector('form')!);
 
       await waitFor(() => {
@@ -264,6 +265,7 @@ describe('LoginModal', { tags: ['unit'] }, () => {
       fireEvent.change(screen.getByPlaceholderText('验证码'), {
         target: { value: '123456' },
       });
+      fireEvent.click(screen.getByRole('checkbox'));
       fireEvent.submit(document.querySelector('form')!);
       expect(await screen.findByText('Email taken')).toBeInTheDocument();
     });
@@ -330,6 +332,7 @@ describe('LoginModal', { tags: ['unit'] }, () => {
       fireEvent.change(screen.getByPlaceholderText('验证码'), {
         target: { value: '123456' },
       });
+      fireEvent.click(screen.getByRole('checkbox'));
       fireEvent.submit(document.querySelector('form')!);
       const submitBtn = document.querySelector(
         'button[type="submit"]',
@@ -344,7 +347,7 @@ describe('LoginModal', { tags: ['unit'] }, () => {
       mockUseAuth.resetPassword.mockResolvedValue(undefined);
     });
 
-    it('forgot view sends code via forgotPassword and stores email', async () => {
+    it('forgot view sends code via forgotPassword', async () => {
       mockUseAuth.loginModalView = 'forgot';
       render(<LoginModal onClose={onClose} />);
       fireEvent.change(screen.getByPlaceholderText('邮箱地址'), {
@@ -353,9 +356,6 @@ describe('LoginModal', { tags: ['unit'] }, () => {
       fireEvent.submit(document.querySelector('form')!);
       await waitFor(() => {
         expect(mockUseAuth.forgotPassword).toHaveBeenCalledWith(
-          'user@test.com',
-        );
-        expect(mockUseAuth.setLoginModalEmail).toHaveBeenCalledWith(
           'user@test.com',
         );
       });

@@ -2,3 +2,11 @@
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
 @import '@fontsource/jetbrains-mono/700.css';
+
+/* Great Vibes — 品牌手写体，自托管 */
+@import '@fontsource/great-vibes/400.css';
+
+.brand-wordmark {
+  font-family: 'Great Vibes', cursive;
+  font-weight: 400;
+}

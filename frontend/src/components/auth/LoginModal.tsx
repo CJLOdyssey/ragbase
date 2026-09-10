@@ -1,182 +1,64 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useAuth, type AuthModalView } from './AuthContext';
+import { useAuth } from './AuthContext';
+import { AuthTabs } from './AuthFormParts';
 import ForgotPasswordForm from './ForgotPasswordForm';
-import { LoginFormFields, RegisterFormFields } from './LoginFormFields';
+import LoginPanel from './LoginPanel';
+import RegisterPanel from './RegisterPanel';
 
 interface Props {
   onClose: () => void;
 }
 
+/**
+ * 黄金比例弹窗：φ ≈ 1.618
+ *  · 间距级数（Fibonacci）8 / 13 / 21 / 34 / 55
+ *  · 圆角 8 / 13 / 21，控件高 48，主字号 15 / 辅助 12
+ *  · 登录/注册共用同一 600px 外壳与左栏扫码面板，仅右栏表单切换，宽度零跳变
+ *    （大厂共识：同一 AuthForm 外壳 + mode 变体，避免异构布局造成撕裂）
+ */
 export default function LoginModal({ onClose }: Props) {
   const { t } = useTranslation();
   const {
     loginModalView: view,
-    login,
-    register,
     forgotPassword,
     resetPassword,
-    sendRegisterCode,
     setLoginModalView: setView,
-    setLoginModalEmail: setEmail,
-    closeLoginModal,
   } = useAuth();
-
-  const [email, setLocalEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [code, setCode] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [codeCooldown, setCodeCooldown] = useState(0);
-  const [passwordTouched, setPasswordTouched] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-  const tabs: { key: AuthModalView; label: string }[] = [
-    { key: 'login', label: t('auth.login') },
-    { key: 'register', label: t('auth.register') },
-  ];
-
-  function switchView(v: AuthModalView) {
-    setError('');
-    setPassword('');
-    setConfirmPassword('');
-    setCode('');
-    setCodeCooldown(0);
-    setPasswordTouched(false);
-    setView(v);
-  }
-
-  async function handleSendCode() {
-    if (!email) {
-      setError(t('auth.enterEmailFirst'));
-      return;
-    }
-    if (codeCooldown > 0) return;
-    setError('');
-    setSubmitting(true);
-    try {
-      await sendRegisterCode(email);
-      setCodeCooldown(60);
-    } catch (err: unknown) {
-      setError((err as { message?: string })?.message || t('auth.sendFailed'));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  // 验证码倒计时：interval 生命周期绑定组件，卸载即清理
-  // （原实现内联 setInterval，切换 tab/关闭弹窗后定时器泄漏并
-  // 在已卸载组件上 setState）。
-  useEffect(() => {
-    if (codeCooldown <= 0) return;
-    const id = setInterval(() => {
-      setCodeCooldown((c) => (c <= 1 ? 0 : c - 1));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [codeCooldown > 0]);
-
-  async function handleRegister() {
-    setError('');
-    if (!password) {
-      setError(t('auth.enterPassword'));
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError(t('auth.passwordMismatch'));
-      return;
-    }
-    if (!email) {
-      setError(t('auth.enterEmail'));
-      return;
-    }
-    if (!code) {
-      setError(t('auth.enterCode'));
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await register(email, code, password);
-      closeLoginModal();
-    } catch (err: unknown) {
-      setError(
-        (err as { message?: string })?.message || t('auth.registerFailed'),
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleLogin() {
-    setError('');
-    if (!email) {
-      setError(t('auth.enterEmail'));
-      return;
-    }
-    if (!password) {
-      setError(t('auth.enterPassword'));
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await login(email, password);
-      closeLoginModal();
-    } catch (err: unknown) {
-      setError((err as { message?: string })?.message || t('auth.loginFailed'));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (view === 'register') {
-      await handleRegister();
-    } else {
-      await handleLogin();
-    }
-  }
 
   if (view === 'forgot' || view === 'reset') {
     return (
       <div
-        className="fixed inset-0 bg-[var(--color-overlay)] flex items-center justify-center z-[var(--z-modal-backdrop)] backdrop-blur-[4px]"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-[21px] backdrop-blur-sm"
         onClick={onClose}
-        style={{ animation: 'fadeIn 0.15s ease' }}
       >
         <div
-          className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-w-[400px] h-auto max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] p-0 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className="relative flex w-full max-w-[460px] flex-col overflow-hidden rounded-[21px] bg-[#16161f] ring-1 ring-white/[0.06] [box-shadow:0_34px_89px_-21px_rgba(0,0,0,0.85)]"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-center relative px-6 py-4 border-b border-[var(--color-border)]">
-            <h3 className="m-0 text-lg font-bold">{t('auth.resetPassword')}</h3>
+          <div className="flex items-center justify-between border-b border-white/[0.06] px-[34px] py-[21px]">
+            <h3 className="m-0 text-[18px] font-semibold text-[#f4f4f8]">
+              {t('auth.resetPassword')}
+            </h3>
             <button
-              className="bg-transparent border-none text-[var(--color-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded-md transition-[background,color] duration-150 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
+              className="flex items-center justify-center rounded-[8px] bg-transparent p-[8px] text-[#8b8b9a] transition-colors hover:bg-white/[0.06] hover:text-[#f4f4f8]"
               onClick={onClose}
               aria-label={t('common.close')}
-              style={{
-                position: 'absolute',
-                right: 16,
-                top: '50%',
-                transform: 'translateY(-50%)',
-              }}
             >
               <X size={18} />
             </button>
           </div>
-          <div className="p-6 overflow-y-auto flex-1 min-h-0 flex flex-col">
+          <div className="p-[34px]">
             <ForgotPasswordForm
               onSendCode={async (email) => {
                 await forgotPassword(email);
-                setEmail(email);
               }}
               onReset={async (email, code, newPassword) => {
                 await resetPassword(email, code, newPassword);
-                switchView('login');
+                setView('login');
               }}
-              onBack={() => switchView('login')}
-              error={error}
+              onBack={() => setView('login')}
+              error=""
             />
           </div>
         </div>
@@ -188,163 +70,39 @@ export default function LoginModal({ onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-[var(--color-overlay)] flex items-center justify-center z-[var(--z-modal-backdrop)] backdrop-blur-[4px]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-[21px] backdrop-blur-sm"
       onClick={onClose}
-      style={{ animation: 'fadeIn 0.15s ease' }}
     >
       <div
-        className="bg-[var(--color-surface-raised)] rounded-xl w-[90%] max-w-[400px] h-auto max-h-[85vh] flex flex-col [box-shadow:var(--shadow-lg)] z-[var(--z-modal)] p-0 overflow-hidden rounded-xl"
+        className="relative flex max-h-[89vh] w-full max-w-[600px] flex-col overflow-hidden rounded-[21px] bg-[#16161f] ring-1 ring-white/[0.06] [box-shadow:0_34px_89px_-21px_rgba(0,0,0,0.85)]"
         onClick={(e) => e.stopPropagation()}
+        style={{ animation: 'fadeIn 0.22s ease' }}
       >
-        <div className="text-center pt-[28px] pb-1">
-          <span className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            ✦ RagBase
-          </span>
-        </div>
-        <div className="flex gap-1 mx-6 mt-4 mb-0 bg-[var(--color-surface-overlay)] rounded-[var(--radius-card)] p-[3px]">
-          {tabs.map((t) => (
+        <div className="pointer-events-none absolute right-[-55px] top-[-89px] h-[210px] w-[340px] rounded-full bg-[#4f7cff]/[0.09] blur-[89px]" />
+
+        <div className="relative flex-shrink-0 px-[34px] pt-[34px] pb-[21px]">
+          <div className="mb-[21px] flex items-center justify-between">
+            <span className="brand-wordmark text-[30px] leading-[1.2] text-[#f4f4f8]">
+              RagBase
+            </span>
             <button
-              key={t.key}
-              onClick={() => switchView(t.key)}
-              className="flex-1 py-2 border-none rounded-[var(--radius-btn)] text-sm cursor-pointer transition-all duration-200"
-              style={{
-                background:
-                  view === t.key
-                    ? 'var(--color-surface-raised)'
-                    : 'transparent',
-                color:
-                  view === t.key
-                    ? 'var(--color-text-primary)'
-                    : 'var(--color-text-tertiary)',
-                fontWeight: view === t.key ? 600 : 400,
-                boxShadow: view === t.key ? 'var(--shadow-sm)' : 'none',
-              }}
+              className="flex items-center justify-center rounded-[8px] bg-transparent p-[8px] text-[#8b8b9a] transition-colors hover:bg-white/[0.06] hover:text-[#f4f4f8]"
+              onClick={onClose}
+              aria-label={t('common.close')}
             >
-              {t.label}
+              <X size={18} />
             </button>
-          ))}
+          </div>
+          <AuthTabs
+            view={isRegister ? 'register' : 'login'}
+            onChange={setView}
+            loginLabel={t('auth.login')}
+            registerLabel={t('auth.register')}
+          />
         </div>
 
-        <div className="px-6 pt-5 pb-6 overflow-y-auto flex-1 min-h-0 flex flex-col">
-          <form onSubmit={handleSubmit}>
-            {isRegister ? (
-              <RegisterFormFields
-                email={email}
-                onEmailChange={setLocalEmail}
-                password={password}
-                onPasswordChange={setPassword}
-                confirmPassword={confirmPassword}
-                onConfirmPasswordChange={setConfirmPassword}
-                code={code}
-                onCodeChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
-                showPassword={showPassword}
-                onToggleShowPassword={() => setShowPassword(!showPassword)}
-                passwordTouched={passwordTouched}
-                onPasswordBlur={() => {
-                  setFocusedField(null);
-                  setPasswordTouched(true);
-                }}
-                codeCooldown={codeCooldown}
-                onSendCode={handleSendCode}
-                submitting={submitting}
-                focusedField={focusedField}
-                onFocusField={setFocusedField}
-                onBlurField={() => setFocusedField(null)}
-              />
-            ) : (
-              <LoginFormFields
-                email={email}
-                onEmailChange={setLocalEmail}
-                password={password}
-                onPasswordChange={setPassword}
-                showPassword={showPassword}
-                onToggleShowPassword={() => setShowPassword(!showPassword)}
-                focusedField={focusedField}
-                onFocusField={setFocusedField}
-                onBlurField={() => setFocusedField(null)}
-              />
-            )}
-
-            {error && (
-              <div className="px-3 py-2 rounded-[var(--radius-btn)] text-[var(--color-danger)] text-sm mb-3 leading-snug bg-[color-mix(in_srgb,var(--color-danger)_10%,_transparent)]">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-[11px] rounded-[var(--radius-btn)] border-none text-white text-base font-semibold flex items-center justify-center gap-2 transition-all duration-150"
-              style={{
-                background: submitting
-                  ? 'var(--color-border)'
-                  : 'var(--color-accent)',
-                color: submitting ? 'var(--color-text-tertiary)' : '#fff',
-                cursor: submitting ? 'default' : 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                if (!submitting)
-                  (e.target as HTMLElement).style.opacity = '0.9';
-              }}
-              onMouseLeave={(e) => {
-                if (!submitting) (e.target as HTMLElement).style.opacity = '1';
-              }}
-            >
-              {submitting && (
-                <Loader2
-                  size={16}
-                  style={{ animation: 'spin 1s linear infinite' }}
-                />
-              )}
-              {isRegister ? t('auth.register') : t('auth.login')}
-            </button>
-          </form>
-
-          {!isRegister && (
-            <button
-              type="button"
-              onClick={() => switchView('forgot')}
-              className="block mx-auto mt-3.5 bg-transparent border-none text-[var(--color-text-tertiary)] cursor-pointer text-sm p-0 transition-colors duration-150"
-              onMouseEnter={(e) =>
-                ((e.target as HTMLElement).style.color = 'var(--color-accent)')
-              }
-              onMouseLeave={(e) =>
-                ((e.target as HTMLElement).style.color =
-                  'var(--color-text-tertiary)')
-              }
-            >
-              {t('auth.forgotPassword')}
-            </button>
-          )}
-
-          {/* Divider + social login (reserved) */}
-          {!isRegister && (
-            <div className="mt-5">
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-[var(--color-border)]" />
-                <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
-                  {t('auth.or')}
-                </span>
-                <div className="flex-1 h-px bg-[var(--color-border)]" />
-              </div>
-              <div className="flex justify-center gap-3 mt-3.5">
-                {[
-                  { label: 'QQ', color: '#07c160' },
-                  { label: t('auth.wechat'), color: '#07c160' },
-                ].map((p) => (
-                  <button
-                    key={p.label}
-                    type="button"
-                    disabled
-                    className="w-11 h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-raised)] text-[var(--color-text-tertiary)] text-xs font-semibold cursor-not-allowed opacity-40 transition-all duration-200"
-                    title={t('auth.socialLoginTitle', { label: p.label })}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="relative px-[34px] pb-[34px]">
+          {isRegister ? <RegisterPanel /> : <LoginPanel />}
         </div>
       </div>
     </div>

@@ -28,7 +28,6 @@ const mocks = vi.hoisted(() => ({
     loading: false,
     loginModalOpen: false,
     loginModalView: 'login' as const,
-    loginModalEmail: '',
     login: vi.fn(),
     register: vi.fn(),
     verify: vi.fn(),
@@ -39,7 +38,6 @@ const mocks = vi.hoisted(() => ({
     sendRegisterCode: vi.fn(),
     openLoginModal: vi.fn(),
     closeLoginModal: vi.fn(),
-    setLoginModalEmail: vi.fn(),
     refetchUser: vi.fn(),
   },
 }));

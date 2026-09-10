@@ -34,7 +34,6 @@ vi.mock('../components/auth/AuthContext', () => ({
     isAuthenticated: false,
     loginModalOpen: false,
     loginModalView: 'login' as const,
-    loginModalEmail: '',
     login: vi.fn(),
     register: vi.fn(),
     verify: vi.fn(),
@@ -45,7 +44,6 @@ vi.mock('../components/auth/AuthContext', () => ({
     sendRegisterCode: vi.fn(),
     openLoginModal: vi.fn(),
     closeLoginModal: vi.fn(),
-    setLoginModalEmail: vi.fn(),
     refetchUser: vi.fn(),
   }),
 }));
@@ -114,15 +112,15 @@ export function TestProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-      <SettingsProvider>
-        <ToastProvider>
-          <VirtuosoMockContext.Provider
-            value={{ viewportHeight: 800, itemHeight: 60 }}
-          >
-            {children}
-          </VirtuosoMockContext.Provider>
-        </ToastProvider>
-      </SettingsProvider>
+        <SettingsProvider>
+          <ToastProvider>
+            <VirtuosoMockContext.Provider
+              value={{ viewportHeight: 800, itemHeight: 60 }}
+            >
+              {children}
+            </VirtuosoMockContext.Provider>
+          </ToastProvider>
+        </SettingsProvider>
       </MemoryRouter>
     </QueryClientProvider>
   );
