@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { Eye, EyeOff, Loader2, QrCode } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { type AuthModalView } from './AuthContext';
 
 /** 黄金比例圆角 13px，控件高 48px，主字号 15px。左右内边距由各字段显式给定。 */
@@ -11,19 +12,24 @@ const authInputClass =
  * 登录 / 注册两态共用同一面板，内容完全一致，避免切换时结构跳变。
  */
 export function WechatQrPanel() {
+  const { t } = useTranslation();
   return (
     <div className="flex w-[190px] flex-shrink-0 flex-col items-center self-stretch">
       <h4 className="mb-[21px] text-[14px] font-medium text-[#c8c8d2]">
-        微信扫码登录
+        {t('auth.qrLoginTitle')}
       </h4>
       <div className="flex w-full flex-1 flex-col items-center justify-center rounded-[13px] bg-white/[0.02] ring-1 ring-white/[0.05]">
         <div className="relative flex h-[150px] w-[150px] items-center justify-center rounded-[13px] bg-white p-[13px]">
           <div className="flex h-full w-full flex-col items-center justify-center gap-[6px] rounded-[8px] border border-dashed border-[#c8c8d2]">
             <QrCode size={30} className="text-[#9a9aa8]" />
-            <span className="text-[11px] text-[#9a9aa8]">即将支持</span>
+            <span className="text-[11px] text-[#9a9aa8]">
+              {t('auth.comingSoon')}
+            </span>
           </div>
         </div>
-        <p className="mt-[13px] text-[12px] text-[#6b6b7a]">请使用微信扫一扫</p>
+        <p className="mt-[13px] text-[12px] text-[#6b6b7a]">
+          {t('auth.scanQrHint')}
+        </p>
       </div>
     </div>
   );
@@ -50,12 +56,13 @@ export function EmailField({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <input
       type="email"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder="邮箱地址"
+      placeholder={t('auth.emailPlaceholder')}
       autoComplete="email"
       className={`${authInputClass} px-[16px]`}
     />
@@ -112,8 +119,9 @@ export function CodeField({
   onSend,
   cooldown,
   sending,
-  placeholder = '验证码',
+  placeholder,
 }: CodeFieldProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex gap-[13px]">
       <input
@@ -122,7 +130,7 @@ export function CodeField({
         onChange={(e) =>
           onChange(e.target.value.replace(/\D/g, '').slice(0, 6))
         }
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('auth.codePlaceholder')}
         className={`${authInputClass} min-w-0 flex-1 px-[16px]`}
       />
       <button
@@ -131,7 +139,7 @@ export function CodeField({
         disabled={cooldown > 0 || sending}
         className="h-[48px] shrink-0 rounded-[13px] border border-white/[0.07] bg-[#22222e] px-[16px] text-[14px] text-[#c8c8d2] transition-colors hover:bg-[#2b2b38] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {cooldown > 0 ? `${cooldown}s` : '获取验证码'}
+        {cooldown > 0 ? `${cooldown}s` : t('auth.sendCode')}
       </button>
     </div>
   );

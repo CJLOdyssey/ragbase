@@ -215,7 +215,18 @@ def _clear_access_token_cookie(response: Response) -> None:
 REFRESH_TOKEN_TTL = 7 * 86400  # 7 days — matches create_refresh_token default ttl_days=7
 
 
-def _set_refresh_token_cookie(response: Response, refresh_token: str, *, secure: bool) -> None:
+def _refresh_ttl_seconds(remember_me: bool) -> int:
+    """Refresh token lifetime in seconds: 30 days with remember_me, else 7."""
+    return 30 * 86400 if remember_me else REFRESH_TOKEN_TTL
+
+
+def _set_refresh_token_cookie(
+    response: Response,
+    refresh_token: str,
+    *,
+    secure: bool,
+    max_age: int = REFRESH_TOKEN_TTL,
+) -> None:
     """Set the refresh token as an httpOnly cookie (prevents XSS theft).
 
     httpOnly (inaccessible to JS) + SameSite=Lax + existing XSRF header
@@ -228,7 +239,7 @@ def _set_refresh_token_cookie(response: Response, refresh_token: str, *, secure:
         httponly=True,
         samesite="lax",
         secure=secure,
-        max_age=REFRESH_TOKEN_TTL,
+        max_age=max_age,
         path="/api",
     )
 

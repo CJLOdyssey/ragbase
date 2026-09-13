@@ -86,9 +86,9 @@ def _rid(prefix: str = "test") -> str:
     return result
 
 
-#: 后端 REDIS_URL 指向 db 1（redis://localhost:6380/1）——
-#: 限流/验证码 key 都在 db 1（auth:* 命名空间）。
-_REDIS_DB = "1"
+#: 后端默认 REDIS_URL 指向 db 0（redis://localhost:6380/0）——
+#: 限流/验证码 key 都在 db 0（auth:* 命名空间）。
+_REDIS_DB = "0"
 
 
 def _clear_rate_limits() -> None:
@@ -107,20 +107,20 @@ def _clear_rate_limits() -> None:
         pass
 
 
-_TOKEN_CACHE: str | None = None
+_COOKIE_CACHE: httpx.Cookies | None = None
 
 
-def _obtain_token() -> str | None:
-    """Obtain a Bearer token for rbac mode.
+def _obtain_cookies() -> httpx.Cookies | None:
+    """Obtain auth cookies for rbac mode (cookie-only transport).
 
     Tries POST /api/auth/login first. If that fails (user not yet
     registered), runs the full register flow using docker exec to
-    read the verification code from Redis. Caches the token globally
+    read the verification code from Redis. Caches the cookies globally
     so the flow executes at most once per session.
     """
-    global _TOKEN_CACHE
-    if _TOKEN_CACHE is not None:
-        return _TOKEN_CACHE
+    global _COOKIE_CACHE
+    if _COOKIE_CACHE is not None:
+        return _COOKIE_CACHE
 
     c = httpx.Client(base_url=BASE, timeout=15)
     try:
@@ -130,8 +130,8 @@ def _obtain_token() -> str | None:
 
         resp = c.post("/api/auth/login", json={"email": TEST_EMAIL, "password": TEST_PASSWORD})
         if resp.status_code == 200:
-            _TOKEN_CACHE = resp.json()["access_token"]
-            return _TOKEN_CACHE
+            _COOKIE_CACHE = resp.cookies
+            return _COOKIE_CACHE
 
         # Login failed → register new user
         _clear_rate_limits()
@@ -145,26 +145,26 @@ def _obtain_token() -> str | None:
                 json={"email": TEST_EMAIL, "code": code, "password": TEST_PASSWORD},
             )
             if resp.status_code == 201:
-                _TOKEN_CACHE = resp.json()["access_token"]
-                return _TOKEN_CACHE
+                _COOKIE_CACHE = resp.cookies
+                return _COOKIE_CACHE
             resp = c.post("/api/auth/login", json={"email": TEST_EMAIL, "password": TEST_PASSWORD})
             if resp.status_code == 200:
-                _TOKEN_CACHE = resp.json()["access_token"]
-                return _TOKEN_CACHE
+                _COOKIE_CACHE = resp.cookies
+                return _COOKIE_CACHE
     except Exception:
         pass
     finally:
         c.close()
 
     # Mark failure so we don't retry on every test
-    _TOKEN_CACHE = ""
+    _COOKIE_CACHE = httpx.Cookies()
     return None
 
 
 def _attach_auth(client: httpx.Client) -> None:
-    token = _obtain_token()
-    if token:
-        client.headers.update({"Authorization": f"Bearer {token}"})
+    cookies = _obtain_cookies()
+    if cookies:
+        client.cookies.update(cookies)
 
 
 def _cleanup(*ids_and_endpoints: tuple[str, str]) -> None:

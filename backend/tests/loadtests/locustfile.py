@@ -36,17 +36,13 @@ def _uid() -> str:
     return hex(random.randint(1, 99999))[2:]
 
 
-def _login(client: Any) -> str | None:
+def _login(client: Any) -> bool:
+    """Login (cookie-only transport) — locust's client keeps the cookie jar."""
     resp = client.post("/api/auth/login", json={
         "email": AUTH_EMAIL,
         "password": AUTH_PASSWORD,
     })
-    if resp.status_code == 200:
-        token = resp.json().get("access_token")
-        if token:
-            client.headers.update({"Authorization": f"Bearer {token}"})
-            return token
-    return None
+    return resp.status_code == 200
 
 
 # ── Response-time tracking for percentiles ────────────────────────────────────

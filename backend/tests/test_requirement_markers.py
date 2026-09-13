@@ -44,9 +44,11 @@ class TestAuthRequirements:
             json={"email": email, "password": password}
         )
         assert response.status_code == 200
-        token = response.json().get("access_token")
+        # cookie-only：令牌仅经 httpOnly cookie 下发，响应体不回传
+        token = response.cookies.get("access_token")
         assert token is not None
         assert len(token) > 0
+        assert response.json().get("access_token") == ""
 
     @pytest.mark.requirement("REQ-AUTH-005")
     @pytest.mark.skip(reason="token refresh endpoint not yet implemented")

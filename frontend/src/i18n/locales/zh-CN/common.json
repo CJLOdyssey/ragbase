@@ -118,7 +118,17 @@
     "pwdUpper": "大写",
     "pwdSpecial": "特殊字符",
     "pwdCommon": "非常见密码",
-    "allMet": "全部满足 ✓"
+    "allMet": "全部满足 ✓",
+    "emailLoginTitle": "邮箱登录",
+    "emailRegisterTitle": "邮箱注册",
+    "qrLoginTitle": "微信扫码登录",
+    "comingSoon": "即将支持",
+    "scanQrHint": "请使用微信扫一扫",
+    "agreeRequired": "请同意用户协议与隐私政策",
+    "agreementPrefix": "注册即代表已阅读并同意",
+    "termsOfService": "用户协议",
+    "and": "与",
+    "privacyPolicy": "隐私政策"
   },
   "sidebar": {
     "newChat": "新建对话",

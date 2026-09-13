@@ -11,10 +11,9 @@ export interface ConnectOptions {
 
 const WS_BASE = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
-/** Build WS URL with access_token query parameter for authentication. */
+/** 构建 WS URL。认证基于 cookie（httpOnly）——同源握手自动携带。 */
 function buildWsUrl(runId: string): string {
-  const token = localStorage.getItem('ragbase-access-token') || '';
-  return `${WS_BASE}/runs/${runId}?token=${encodeURIComponent(token)}`;
+  return `${WS_BASE}/runs/${runId}`;
 }
 
 let maxRetries = 3;

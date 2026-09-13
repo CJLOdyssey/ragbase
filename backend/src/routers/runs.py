@@ -138,16 +138,13 @@ async def cancel_run(run_id: str, request: Request) -> Any:
 
 
 def _ws_user_id(websocket: WebSocket) -> str:
-    """Resolve user identity from the WS handshake (cookie, then ?token=).
+    """Resolve user identity from the WS handshake access_token cookie.
 
     AuthMiddleware exempts the ``/ws/`` prefix (WebSockets can't set headers
     cross-origin), so this endpoint must authenticate itself — mirror of
     ``routers/events.py:_ws_user_id``.
     """
     token = websocket.cookies.get("access_token") or ""
-    logger.warning("WS cookies: %s", dict(websocket.cookies))
-    if not token:
-        token = websocket.query_params.get("token", "")
     if not token:
         return ""
     payload = decode_jwt(token, AUTH_SECRET)

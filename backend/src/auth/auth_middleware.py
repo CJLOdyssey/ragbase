@@ -36,6 +36,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
             token = request.cookies.get("access_token", "")
 
         client_ip = request.client.host if request.client else "?"
+        user_agent = request.headers.get("user-agent", "")[:255]
+        request_id = str(getattr(request.state, "request_id", "") or "")
+
+        # 本请求的审计身份 —— 一旦得知用户即填充，使 log_audit 调用点无需传递请求上下文。
+        from core.audit import set_audit_context
+
+        set_audit_context(client_ip=client_ip, user_agent=user_agent, request_id=request_id)
 
         # No token → reject with 401
         if not token:
@@ -67,6 +74,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             )
 
         user_id = payload.get("sub", "unknown")
+        user = None
         # 校验用户仍存在：用户合并/删除后旧 JWT 的 sub 已失效
         if user_id != "unknown":
             try:
@@ -92,5 +100,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Attach user info to request state
         request.state.user_id = user_id
         request.state.is_authenticated = True
+        set_audit_context(
+            user_name=user.username if user is not None else "",
+            client_ip=client_ip,
+            user_agent=user_agent,
+            request_id=request_id,
+        )
 
         return cast(Response, await call_next(request))

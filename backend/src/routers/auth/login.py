@@ -29,6 +29,7 @@ from .schemas import (
     _cookie_secure,
     _create_auth_response,
     _mask_email,
+    _refresh_ttl_seconds,
     _set_access_token_cookie,
     _set_refresh_token_cookie,
 )
@@ -80,10 +81,16 @@ async def login(body: LoginRequest, request: Request, response: Response) -> Any
     logger.info("User logged in: %s", _mask_email(email))
 
     auth_resp = await _create_auth_response(user.id, user.email, user.username, body.remember_me)
-    _set_access_token_cookie(response, auth_resp.access_token, secure=_cookie_secure(request))
-    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=_cookie_secure(request))
+    secure = _cookie_secure(request)
+    _set_access_token_cookie(response, auth_resp.access_token, secure=secure)
+    _set_refresh_token_cookie(
+        response,
+        auth_resp.refresh_token,
+        secure=secure,
+        max_age=_refresh_ttl_seconds(body.remember_me),
+    )
     return AuthResponse(
-        access_token=auth_resp.access_token,
+        access_token="",
         refresh_token="",
         expires_in=auth_resp.expires_in,
         user=auth_resp.user,
@@ -96,17 +103,22 @@ async def refresh(request: Request, response: Response) -> Any:
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise error_response(ErrorCode.AUTH_TOKEN_EXPIRED, detail="登录已过期，请重新登录")
-    user, family_id = await consume_refresh_token(refresh_token)
+    user, family_id, ttl_days = await consume_refresh_token(refresh_token)
     if user is None:
         _clear_refresh_token_cookie(response)
         raise error_response(ErrorCode.AUTH_TOKEN_EXPIRED, detail="登录已过期，请重新登录")
 
-    new_refresh_token_raw, _ = await create_refresh_token(user.id, family_id=family_id, ttl_days=7)
+    new_refresh_token_raw, _ = await create_refresh_token(user.id, family_id=family_id, ttl_days=ttl_days)
     access_token = create_token(user.id, AUTH_SECRET, ttl=ACCESS_TOKEN_TTL)
     user_resp = await _build_user_response(user.id, user.email, user.username)
 
     _set_access_token_cookie(response, access_token, secure=_cookie_secure(request))
-    _set_refresh_token_cookie(response, new_refresh_token_raw, secure=_cookie_secure(request))
+    _set_refresh_token_cookie(
+        response,
+        new_refresh_token_raw,
+        secure=_cookie_secure(request),
+        max_age=ttl_days * 86400,
+    )
     return AuthResponse(access_token="", refresh_token="", expires_in=ACCESS_TOKEN_TTL, user=user_resp)
 
 

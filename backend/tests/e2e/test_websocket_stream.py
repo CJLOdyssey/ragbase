@@ -11,27 +11,29 @@ import websockets
 
 pytestmark = pytest.mark.integration
 
-from tests.conftest import Api, _clear_rate_limits, _obtain_token
+from tests.conftest import Api, _clear_rate_limits, _obtain_cookies
 
 WS_BASE = os.environ.get("E2E_WS_URL", "ws://localhost:8081")
 
 
 def _ws_uri(run_id: str) -> str:
-    """Build the run WS URI with the access token.
-
-    ``/ws/*`` 由 AuthMiddleware 豁免，前端走 httpOnly cookie；httpx 连接时
-    需显式携带 token（query param），与 events WS 的 cookie 校验保持同一来源。
-    """
-    token = _obtain_token()
-    if token:
-        return f"{WS_BASE}/ws/runs/{run_id}?token={token}"
+    """Build the run WS URI (cookie-only auth, no query token)."""
     return f"{WS_BASE}/ws/runs/{run_id}"
 
 
-async def _first_status(uri: str) -> dict:
+def _ws_headers() -> dict[str, str]:
+    """Build the WS handshake Cookie header from the cached auth cookies."""
+    cookies = _obtain_cookies()
+    if not cookies:
+        return {}
+    token = cookies.get("access_token")
+    return {"Cookie": f"access_token={token}"} if token else {}
+
+
+async def _first_status(uri: str, headers: dict[str, str] | None = None) -> dict:
     """Connect and return the first status message (or None if closed early)."""
     try:
-        async with websockets.connect(uri) as ws:
+        async with websockets.connect(uri, additional_headers=headers or {}) as ws:
             msg = await asyncio.wait_for(ws.recv(), timeout=5.0)
             return json.loads(msg)
     except (websockets.exceptions.WebSocketException, TimeoutError):
@@ -67,7 +69,9 @@ class TestWebSocketStream:
         run_id = r.json()["run_id"]
 
         # 3. Connect to WebSocket
-        async with websockets.connect(_ws_uri(run_id)) as ws:
+        async with websockets.connect(
+            _ws_uri(run_id), additional_headers=_ws_headers()
+        ) as ws:
             # Should receive a status message first
             msg = await asyncio.wait_for(ws.recv(), timeout=5.0)
             data = json.loads(msg)

@@ -213,11 +213,11 @@ class TestAuthRepo:
         token_str, _token_hash = await create_refresh_token(user.id, ttl_days=1)
         assert token_str is not None
 
-        consumed_user, new_token = await consume_refresh_token(token_str)
+        consumed_user, new_token, _ = await consume_refresh_token(token_str)
         assert consumed_user is not None
         assert consumed_user.id == user.id
 
-        consumed_user2, new_token2 = await consume_refresh_token(token_str)
+        consumed_user2, new_token2, _ = await consume_refresh_token(token_str)
         assert consumed_user2 is None
         assert new_token2 is None
 
@@ -227,7 +227,7 @@ class TestAuthRepo:
         await revoke_all_user_tokens(user.id)
 
         for token_str, _ in token_strs:
-            consumed_user, new_token = await consume_refresh_token(token_str)
+            consumed_user, new_token, _ = await consume_refresh_token(token_str)
             assert consumed_user is None
             assert new_token is None
 
@@ -235,7 +235,7 @@ class TestAuthRepo:
         user = await create_user(email="family@example.com", password_hash=self.TEST_HASH)
         # 同 family 的两个 token（第二个返回值是 token_hash，family_id 需从 consume 拿）
         token1, _ = await create_refresh_token(user.id, ttl_days=1)
-        consumed_user, family_id = await consume_refresh_token(token1)
+        consumed_user, family_id, _ = await consume_refresh_token(token1)
         assert consumed_user is not None
         assert family_id is not None
         token2, _ = await create_refresh_token(user.id, family_id=family_id, ttl_days=1)
@@ -245,7 +245,7 @@ class TestAuthRepo:
 
         # family 撤销后，同 family 全部 token 消费失败
         for token in (token2, token3):
-            consumed_user, new_token = await consume_refresh_token(token)
+            consumed_user, new_token, _ = await consume_refresh_token(token)
             assert consumed_user is None
             assert new_token is None
 
