@@ -12,6 +12,7 @@ os.environ["RESEND_API_KEY"] = "re_test_key"
 
 import pytest
 from services.email_service import (
+    EmailSendError,
     LogMailer,
     ResendApiMailer,
     SmtpMailer,
@@ -129,21 +130,41 @@ class TestSendEmailTopLevel:
                 mock_send.assert_awaited_once_with("to@test.com", "Subj", "<p>Body</p>")
 
     @pytest.mark.asyncio
-    async def test_send_email_smtp_fallback_on_error(self):
+    async def test_send_email_smtp_failure_raises(self):
+        # smtp 发送失败必须抛错（由路由转 503），不得静默降级为日志——
+        # 否则用户收不到验证码却看到“已发送”。
         with patch("services.email_service.EMAIL_BACKEND", "smtp"), \
              patch("services.email_service.SMTP_HOST", "smtp.test.com"):
             with patch("services.email_service.SmtpMailer.send", new_callable=AsyncMock) as mock_smtp:
                 mock_smtp.side_effect = Exception("SMTP error")
-                with patch("services.email_service.LogMailer.send", new_callable=MagicMock) as mock_log:
+                with pytest.raises(EmailSendError):
                     await send_email("to@test.com", "Subj", "<p>Body</p>")
-                    mock_log.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_email_resend_fallback_on_error(self):
+    async def test_send_email_resend_failure_raises(self):
         with patch("services.email_service.EMAIL_BACKEND", "resend"), \
              patch("services.email_service.RESEND_API_KEY", "re_test"):
             with patch("services.email_service.ResendApiMailer.send", new_callable=AsyncMock) as mock_resend:
                 mock_resend.side_effect = Exception("Resend error")
-                with patch("services.email_service.LogMailer.send", new_callable=MagicMock) as mock_log:
+                with pytest.raises(EmailSendError):
                     await send_email("to@test.com", "Subj", "<p>Body</p>")
-                    mock_log.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_send_email_smtp_missing_host_raises(self):
+        with patch("services.email_service.EMAIL_BACKEND", "smtp"), \
+             patch("services.email_service.SMTP_HOST", ""):
+            with pytest.raises(EmailSendError):
+                await send_email("to@test.com", "Subj", "<p>Body</p>")
+
+    @pytest.mark.asyncio
+    async def test_send_email_resend_missing_key_raises(self):
+        with patch("services.email_service.EMAIL_BACKEND", "resend"), \
+             patch("services.email_service.RESEND_API_KEY", ""):
+            with pytest.raises(EmailSendError):
+                await send_email("to@test.com", "Subj", "<p>Body</p>")
+
+    @pytest.mark.asyncio
+    async def test_send_email_unknown_backend_raises(self):
+        with patch("services.email_service.EMAIL_BACKEND", "sendgrid"):
+            with pytest.raises(EmailSendError):
+                await send_email("to@test.com", "Subj", "<p>Body</p>")

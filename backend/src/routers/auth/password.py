@@ -17,6 +17,7 @@ from repository.auth import (
     update_password,
 )
 from services.email_service import (
+    EmailSendError,
     build_password_changed_email,
     build_reset_email,
     send_email,
@@ -61,7 +62,11 @@ async def forgot_password(body: ForgotPasswordRequest) -> Any:
         code = _generate_code()
         await _store_code_in_redis(r, _reset_key(email), code, 900)
         subject, html = build_reset_email(code)
-        await send_email(email, subject, html)
+        try:
+            await send_email(email, subject, html)
+        except EmailSendError as exc:
+            # 发送失败必须让用户知道（可重试），不能静默降级为日志。
+            raise error_response(ErrorCode.EMAIL_SEND_FAILED, detail="验证码发送失败，请稍后重试") from exc
         logger.info("Reset code sent: %s", _mask_email(email))
 
     return MessageResponse(message="如果该邮箱已注册，将收到重置验证码")
@@ -111,7 +116,11 @@ async def reset_password(body: ResetPasswordRequest) -> Any:
     await r.delete(_fail_key(email))
 
     subject, html = build_password_changed_email()
-    await send_email(email, subject, html)
+    try:
+        await send_email(email, subject, html)
+    except EmailSendError:
+        # 密码已重置成功——通知邮件失败只记日志，不能让接口失败误导用户。
+        logger.warning("Password reset but notification email failed: %s", _mask_email(email))
 
     logger.info("Password reset: %s", _mask_email(email))
     return MessageResponse(message="密码已重置，请重新登录")
@@ -151,7 +160,11 @@ async def change_password(
     await revoke_all_user_tokens(user.id)
 
     subject, html = build_password_changed_email()
-    await send_email(user.email, subject, html)
+    try:
+        await send_email(user.email, subject, html)
+    except EmailSendError:
+        # 密码已修改成功——通知邮件失败只记日志。
+        logger.warning("Password changed but notification email failed: %s", _mask_email(user.email))
 
     logger.info("Password changed: user=%s", current_user.id)
     return MessageResponse(message="密码已修改，请重新登录")

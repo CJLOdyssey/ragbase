@@ -10,7 +10,7 @@ from core.error_codes import ErrorCode, error_response
 from core.infra.logging_config import get_logger
 from fastapi import APIRouter, Request, Response
 from repository.auth import create_user, get_user_by_email, mark_user_verified
-from services.email_service import build_verification_email, send_email
+from services.email_service import EmailSendError, build_verification_email, send_email
 
 from .schemas import (
     AuthResponse,
@@ -59,7 +59,12 @@ async def send_register_code(body: SendRegisterCodeRequest, request: Request) ->
     await _store_code_in_redis(r, verify_key, code, 300)
 
     subject, html = build_verification_email(code)
-    await send_email(email, subject, html)
+    try:
+        await send_email(email, subject, html)
+    except EmailSendError as exc:
+        # 配置了 smtp/resend 但发送失败：不能静默降级为日志——否则用户
+        # 收不到验证码却看到“已发送”。明确返回 503 让用户重试。
+        raise error_response(ErrorCode.EMAIL_SEND_FAILED, detail="验证码发送失败，请稍后重试") from exc
 
     email_hint = _mask_email(email)
     logger.info("Register code sent: %s", email_hint)
@@ -183,7 +188,10 @@ async def resend_verification(body: SendRegisterCodeRequest) -> Any:
         code = _generate_code()
         await _store_code_in_redis(r, _verify_key(email), code, 300)
         subject, html = build_verification_email(code)
-        await send_email(email, subject, html)
+        try:
+            await send_email(email, subject, html)
+        except EmailSendError as exc:
+            raise error_response(ErrorCode.EMAIL_SEND_FAILED, detail="验证码发送失败，请稍后重试") from exc
         logger.info("Verification resent: %s", _mask_email(email))
 
     return MessageResponse(message=f"验证码已发送到邮箱 {_mask_email(email)}")

@@ -51,6 +51,14 @@ cd frontend && npm install && npm run dev
 
 Open http://localhost:5174
 
+> **First login / registration**
+>
+> - Default seeded admin: `admin@example.com` / `admin123` (development default only; production must set `SEED_ADMIN_PASSWORD`).
+> - Registering a new account requires an email verification code. With the default `EMAIL_BACKEND=log` no email is actually sent - the code is printed to the backend logs:
+>   - Docker: `docker compose -f docker/compose.base.yml -f docker/compose.local.yml logs -f backend`
+>   - Dev mode: `journalctl --user -u ragbase-backend -f`
+> - To send real emails, configure SMTP (Gmail / QQ / 163 / SendGrid, etc.) in `.env`; see the email section in [.env.example](.env.example).
+
 ## Testing
 
 ```bash

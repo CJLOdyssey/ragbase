@@ -51,6 +51,14 @@ cd frontend && npm install && npm run dev
 
 打开 http://localhost:5174
 
+> **首次登录 / 注册**
+>
+> - 默认种子管理员：`admin@example.com` / `admin123`（仅开发默认；生产必须设置 `SEED_ADMIN_PASSWORD`）。
+> - 注册新账号需要邮箱验证码。默认 `EMAIL_BACKEND=log` 不会真的发邮件，验证码直接打印在后端日志：
+>   - Docker 模式：`docker compose -f docker/compose.base.yml -f docker/compose.local.yml logs -f backend`
+>   - 开发模式：`journalctl --user -u ragbase-backend -f`
+> - 需要真实发送邮件时，在 `.env` 中配置 SMTP（Gmail / QQ / 163 / SendGrid 等），示例见 [.env.example](.env.example)「邮件服务」章节。
+
 ## 测试
 
 ```bash
