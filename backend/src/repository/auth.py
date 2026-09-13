@@ -192,8 +192,8 @@ async def create_refresh_token(user_id: str, family_id: str | None = None, ttl_d
 async def consume_refresh_token(token: str) -> tuple[UserDB | None, str | None]:
     """Validate and consume a refresh token (rotation).
 
-    Returns (user, new_family_id) on success, or (None, None) on failure.
-    New family_id is None for normal rotation, or a new uuid4 for replay attacks.
+    Returns (user, family_id) on success, or (None, None) on failure —
+    including replay attacks, which revoke the whole token family.
     """
     token_hash = _hash_token(token)
     factory = get_session_factory()

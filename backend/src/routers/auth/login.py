@@ -29,6 +29,7 @@ from .schemas import (
     _cookie_secure,
     _create_auth_response,
     _mask_email,
+    _refresh_ttl_seconds,
     _set_access_token_cookie,
     _set_refresh_token_cookie,
 )
@@ -80,8 +81,14 @@ async def login(body: LoginRequest, request: Request, response: Response) -> Any
     logger.info("User logged in: %s", _mask_email(email))
 
     auth_resp = await _create_auth_response(user.id, user.email, user.username, body.remember_me)
-    _set_access_token_cookie(response, auth_resp.access_token, secure=_cookie_secure(request))
-    _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=_cookie_secure(request))
+    secure = _cookie_secure(request)
+    _set_access_token_cookie(response, auth_resp.access_token, secure=secure)
+    _set_refresh_token_cookie(
+        response,
+        auth_resp.refresh_token,
+        secure=secure,
+        max_age=_refresh_ttl_seconds(body.remember_me),
+    )
     return AuthResponse(
         access_token=auth_resp.access_token,
         refresh_token="",

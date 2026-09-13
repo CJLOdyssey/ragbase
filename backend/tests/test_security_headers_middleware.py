@@ -103,3 +103,27 @@ class TestAllHeadersPresent:
         assert resp.headers.get("x-content-type-options") == "nosniff"
         assert resp.headers.get("x-frame-options") == "DENY"
         assert resp.headers.get("strict-transport-security") == "max-age=31536000; includeSubDomains"
+
+
+class TestMultiValueHeadersPreserved:
+    """Duplicate response headers (e.g. multiple Set-Cookie) must survive."""
+
+    def _build_app_with_dual_cookies(self) -> Starlette:
+        async def dual(request):
+            resp = PlainTextResponse("ok")
+            resp.set_cookie("access_token", "a")
+            resp.set_cookie("refresh_token", "b")
+            return resp
+
+        app = Starlette(routes=[Route("/", dual)])
+        app.add_middleware(SecurityHeadersMiddleware)
+        return app
+
+    def test_dual_set_cookie_preserved(self):
+        """Both cookies must be sent — dict() collapsing would drop one."""
+        client = TestClient(self._build_app_with_dual_cookies())
+        resp = client.get("/")
+        cookies = resp.headers.get_list("set-cookie")
+        assert len(cookies) == 2
+        assert any(c.startswith("access_token=") for c in cookies)
+        assert any(c.startswith("refresh_token=") for c in cookies)
