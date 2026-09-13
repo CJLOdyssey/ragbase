@@ -198,7 +198,8 @@ class TestCompleteRunEndpoint:
 
         with _patch("auth.auth_middleware.decode_jwt",
                     return_value={"sub": "tester"}), \
-             _patch("repository.auth.get_user_by_id", return_value=object()):
+             _patch("repository.auth.get_user_by_id",
+                    return_value=MagicMock(username="tester")):
             test_client.headers["Authorization"] = "Bearer t"
             yield test_client
             test_client.headers.pop("Authorization", None)

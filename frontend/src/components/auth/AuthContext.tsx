@@ -20,6 +20,10 @@ import {
 } from '../../api/client/auth';
 import { refreshAccessToken } from '../../api/client/refresh';
 import { useChatStore } from '../../stores/chatStore';
+import {
+  broadcastAuthEvent,
+  subscribeAuthEvents,
+} from '../../utils/authChannel';
 import { getStorageManager, STORAGE_KEYS } from '../../utils/storage';
 
 const sm = getStorageManager();
@@ -128,12 +132,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearLocalConversations();
       setLoginModalOpen(true);
     };
+    // 跨标签页登出：另一标签页登出后，cookie 已由服务端清除 ——
+    // 通过 BroadcastChannel 立即同步本页 UI（无需等待下一次 401）。
+    const unsubscribeAuthChannel = subscribeAuthEvents((event) => {
+      if (event !== 'logout') return;
+      handleUnauthorized();
+      window.dispatchEvent(new CustomEvent('auth:logout'));
+    });
     window.addEventListener('auth:login', start);
     window.addEventListener('auth:logout', stop);
     window.addEventListener('auth:unauthorized', stop);
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
+      unsubscribeAuthChannel();
       window.removeEventListener('auth:login', start);
       window.removeEventListener('auth:logout', stop);
       window.removeEventListener('auth:unauthorized', stop);
@@ -145,6 +157,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+
+    // 清理旧版本遗留的 localStorage 访问令牌（现已纯 httpOnly cookie，
+    // JS 不可读；残留值只会扩大 XSS 暴露面）。
+    localStorage.removeItem('ragbase-access-token');
 
     function applySession(me: Awaited<ReturnType<typeof getMe>>) {
       setUser({
@@ -214,7 +230,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string, rememberMe?: boolean) => {
       const res = await apiLogin(email, password, rememberMe);
       sm.setUserId(res.user.id);
-      localStorage.setItem('ragbase-access-token', res.access_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -231,7 +246,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, code: string, password: string) => {
       const res = await apiRegister(email, code, password);
       sm.setUserId(res.user.id);
-      localStorage.setItem('ragbase-access-token', res.access_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -247,7 +261,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verify = useCallback(async (email: string, code: string) => {
     const res = await apiVerify(email, code);
     sm.setUserId(res.user.id);
-    localStorage.setItem('ragbase-access-token', res.access_token);
     setLoading(false);
     setUser({
       userId: res.user.id,
@@ -280,6 +293,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sm.clearSession();
     useChatStore.getState().reset();
     setLoginModalOpen(true);
+    // 广播给同源其他标签页：cookie 已清除，其他页立即同步登出 UI。
+    broadcastAuthEvent('logout');
     window.dispatchEvent(new CustomEvent('auth:logout'));
   }, []);
 

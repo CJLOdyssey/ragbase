@@ -118,7 +118,17 @@
     "pwdUpper": "Uppercase",
     "pwdSpecial": "Special char",
     "pwdCommon": "Not a common password",
-    "allMet": "All met ✓"
+    "allMet": "All met ✓",
+    "emailLoginTitle": "Email login",
+    "emailRegisterTitle": "Email sign-up",
+    "qrLoginTitle": "Log in with WeChat",
+    "comingSoon": "Coming soon",
+    "scanQrHint": "Scan the QR code with WeChat",
+    "agreeRequired": "Please agree to the Terms and Privacy Policy",
+    "agreementPrefix": "By signing up you agree to the",
+    "termsOfService": "Terms of Service",
+    "and": "and",
+    "privacyPolicy": "Privacy Policy"
   },
   "sidebar": {
     "newChat": "New chat",

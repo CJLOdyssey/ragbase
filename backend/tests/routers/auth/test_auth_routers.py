@@ -47,9 +47,11 @@ class TestAuthLogin:
         assert "token_type" in data
         assert "expires_in" in data
         assert "user" in data
-        assert data["access_token"] != ""
+        # cookie-only：令牌仅经 httpOnly cookie 下发，响应体不回传
+        assert data["access_token"] == ""
         assert data["refresh_token"] == ""
-        assert len(data["access_token"].split(".")) == 3
+        assert "access_token" in resp.cookies
+        assert "refresh_token" in resp.cookies
 
     def test_login_wrong_password(self, client):
         resp = client.post(

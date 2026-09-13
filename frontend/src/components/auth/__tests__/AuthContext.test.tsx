@@ -30,6 +30,11 @@ vi.mock('@/api/client/auth', () => ({
 
 vi.mock('@/api/client/instance', () => ({}));
 
+vi.mock('@/utils/authChannel', () => ({
+  broadcastAuthEvent: vi.fn(),
+  subscribeAuthEvents: vi.fn(() => () => {}),
+}));
+
 function AuthProbe() {
   const { user, loading } = useAuth();
   return (
@@ -474,5 +479,43 @@ describe('AuthProvider', { tags: ['unit'] }, () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('cross-tab logout event clears user state', async () => {
+    const { subscribeAuthEvents } = await import('@/utils/authChannel');
+    let channelHandler: ((event: 'logout') => void) | null = null;
+    vi.mocked(subscribeAuthEvents).mockImplementation((handler) => {
+      channelHandler = handler;
+      return () => {};
+    });
+
+    vi.mocked(authApi.getAuthConfig).mockResolvedValue({
+      enabled: true,
+      mode: 'jwt',
+    });
+    vi.mocked(authApi.getMe).mockResolvedValue({
+      id: 'u1',
+      email: 'tab@test.com',
+      username: 'tab',
+      roles: ['member'],
+    });
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user').textContent).toBe('tab@test.com');
+    });
+
+    await act(async () => {
+      channelHandler?.('logout');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user').textContent).toBe('null');
+    });
   });
 });

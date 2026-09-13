@@ -12,7 +12,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 
 class AuditLogDB(Base):
-    """Admin audit log — records management CRUD operations (no session FK)."""
+    """Admin audit log — records management CRUD operations (no session FK).
+
+    ``user_name``/``client_ip``/``user_agent``/``request_id`` carry the request
+    identity, populated by AuthMiddleware via ``core.audit.set_audit_context``.
+    """
 
     __tablename__ = "audit_logs"
 
@@ -21,6 +25,10 @@ class AuditLogDB(Base):
     entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
     entity_name: Mapped[str] = mapped_column(String(255), default="")
     detail: Mapped[str] = mapped_column(Text, default="")
+    user_name: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    client_ip: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    user_agent: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    request_id: Mapped[str] = mapped_column(String(36), default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

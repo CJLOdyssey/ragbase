@@ -202,17 +202,34 @@ async def test_consume_refresh_token(db_engine):
 
     user = await create_user("test@example.com", "hash")
     token, _ = await create_refresh_token(user.id)
-    found_user, family_id = await consume_refresh_token(token)
+    found_user, family_id, _ = await consume_refresh_token(token)
     assert found_user is not None
     assert found_user.id == user.id
     assert family_id is not None
 
 
 @pytest.mark.asyncio
+async def test_consume_refresh_token_preserves_ttl(db_engine):
+    """Rotation preserves the original TTL — remember_me 30-day sessions
+    must not silently downgrade to 7 days on the first refresh."""
+    from repository.auth import consume_refresh_token, create_refresh_token, create_user
+
+    user = await create_user("ttl@example.com", "hash")
+
+    token30, _ = await create_refresh_token(user.id, ttl_days=30)
+    _, _, ttl30 = await consume_refresh_token(token30)
+    assert ttl30 == 30
+
+    token7, _ = await create_refresh_token(user.id, ttl_days=7)
+    _, _, ttl7 = await consume_refresh_token(token7)
+    assert ttl7 == 7
+
+
+@pytest.mark.asyncio
 async def test_consume_refresh_token_invalid(db_engine):
     from repository.auth import consume_refresh_token
 
-    found_user, family_id = await consume_refresh_token("invalid-token")
+    found_user, family_id, _ = await consume_refresh_token("invalid-token")
     assert found_user is None
     assert family_id is None
 
@@ -238,7 +255,7 @@ async def test_consume_refresh_token_expired(db_engine):
         rt.expires_at = datetime.now(UTC) - timedelta(hours=1)
         await session.commit()
 
-    found_user, family_id = await consume_refresh_token(token)
+    found_user, family_id, _ = await consume_refresh_token(token)
     assert found_user is None
     assert family_id is None
 
@@ -251,10 +268,10 @@ async def test_consume_refresh_token_replay_attack(db_engine):
     user = await create_user("test@example.com", "hash")
     token, _ = await create_refresh_token(user.id)
     # First consumption succeeds
-    found_user, _ = await consume_refresh_token(token)
+    found_user, _, _ = await consume_refresh_token(token)
     assert found_user is not None
     # Second consumption (replay) should fail
-    found_user2, _ = await consume_refresh_token(token)
+    found_user2, _, _ = await consume_refresh_token(token)
     assert found_user2 is None
 
 
@@ -277,7 +294,7 @@ async def test_consume_refresh_token_no_user(db_engine):
             await session.delete(u)
             await session.commit()
 
-    found_user, _ = await consume_refresh_token(token)
+    found_user, _, _ = await consume_refresh_token(token)
     assert found_user is None
 
 
@@ -295,12 +312,12 @@ async def test_revoke_all_user_tokens(db_engine):
     await revoke_all_user_tokens(user.id)
 
     # 旧 token 全部失效
-    consumed_user, _ = await consume_refresh_token(old_token)
+    consumed_user, _, _ = await consume_refresh_token(old_token)
     assert consumed_user is None
 
     # 撤销后新建的 token 不受影响
     token, _ = await create_refresh_token(user.id)
-    found_user, _ = await consume_refresh_token(token)
+    found_user, _, _ = await consume_refresh_token(token)
     assert found_user is not None
 
 
@@ -317,7 +334,7 @@ async def test_revoke_token_family(db_engine):
     user = await create_user("test@example.com", "hash")
     token1, _ = await create_refresh_token(user.id)
     # 消费一次拿到真 family_id（create_refresh_token 第二返回值是 token_hash）
-    first_user, family_id = await consume_refresh_token(token1)
+    first_user, family_id, _ = await consume_refresh_token(token1)
     assert first_user is not None
     assert family_id is not None
 
@@ -327,7 +344,7 @@ async def test_revoke_token_family(db_engine):
     await revoke_token_family(family_id)
 
     for token in (token2, token3):
-        consumed_user, new_token = await consume_refresh_token(token)
+        consumed_user, new_token, _ = await consume_refresh_token(token)
         assert consumed_user is None
         assert new_token is None
 

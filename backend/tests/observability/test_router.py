@@ -55,12 +55,12 @@ class TestDebugRouter:
         assert resp.status_code == 200
         assert resp.json()["by_level"] == {"INFO": 1}
 
-    @patch("observability.router.get_store")
-    def test_debug_errors_endpoint(self, mock_get_store, mock_store, client):
-        mock_get_store.return_value = mock_store
+    @patch("observability.router.recent_errors_report", return_value=[])
+    def test_debug_errors_endpoint(self, mock_report, client):
         resp = client.get("/api/debug/errors")
         assert resp.status_code == 200
         assert resp.json() == {"reports": []}
+        mock_report.assert_called_once()
 
     def test_debug_circuit_breakers_endpoint(self, client):
         resp = client.get("/api/debug/circuit-breakers")
