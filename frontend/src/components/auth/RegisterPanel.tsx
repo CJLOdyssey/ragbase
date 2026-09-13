@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import {
   Agreement,
@@ -12,6 +13,7 @@ import {
 import { useVerificationCode } from './useVerificationCode';
 
 export default function RegisterPanel() {
+  const { t } = useTranslation();
   const { register, sendRegisterCode, closeLoginModal } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,37 +28,37 @@ export default function RegisterPanel() {
 
   async function handleSend() {
     if (!email) {
-      setError('请先输入邮箱');
+      setError(t('auth.enterEmailFirst'));
       return;
     }
     setError('');
     try {
       await sendCode(email);
     } catch (err: unknown) {
-      setError((err as { message?: string })?.message || '发送失败');
+      setError((err as { message?: string })?.message || t('auth.sendFailed'));
     }
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!password) {
-      setError('请输入密码');
+      setError(t('auth.enterPassword'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('两次密码输入不一致');
+      setError(t('auth.passwordMismatch'));
       return;
     }
     if (!email) {
-      setError('请输入邮箱');
+      setError(t('auth.enterEmail'));
       return;
     }
     if (!code) {
-      setError('请输入验证码');
+      setError(t('auth.enterCode'));
       return;
     }
     if (!agreed) {
-      setError('请同意用户协议与隐私政策');
+      setError(t('auth.agreeRequired'));
       return;
     }
     setError('');
@@ -65,7 +67,9 @@ export default function RegisterPanel() {
       await register(email, code, password);
       closeLoginModal();
     } catch (err: unknown) {
-      setError((err as { message?: string })?.message || '注册失败');
+      setError(
+        (err as { message?: string })?.message || t('auth.registerFailed'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -75,21 +79,21 @@ export default function RegisterPanel() {
     /* 与登录同构：AuthTwoColumn 左栏扫码 + 分隔线 + 右栏表单，仅字段不同 */
     <AuthTwoColumn>
       <h4 className="mb-[21px] text-[14px] font-medium text-[#c8c8d2]">
-        邮箱注册
+        {t('auth.emailRegisterTitle')}
       </h4>
       <form onSubmit={handleSubmit} className="space-y-[13px]">
         <EmailField value={email} onChange={setEmail} />
         <PasswordField
           value={password}
           onChange={setPassword}
-          placeholder="密码"
+          placeholder={t('auth.passwordPlaceholder')}
           visible={showPassword}
           onToggleVisible={() => setShowPassword((v) => !v)}
         />
         <PasswordField
           value={confirmPassword}
           onChange={setConfirmPassword}
-          placeholder="确认密码"
+          placeholder={t('auth.confirmPasswordPlaceholder')}
           visible={showConfirm}
           onToggleVisible={() => setShowConfirm((v) => !v)}
         />
@@ -102,16 +106,16 @@ export default function RegisterPanel() {
         />
         {error && <ErrorBanner message={error} />}
         <Agreement checked={agreed} onChange={setAgreed}>
-          注册即代表已阅读并同意{' '}
+          {t('auth.agreementPrefix')}{' '}
           <a href="#" className="text-[#6f9bff] hover:underline">
-            用户协议
+            {t('auth.termsOfService')}
           </a>{' '}
-          与{' '}
+          {t('auth.and')}{' '}
           <a href="#" className="text-[#6f9bff] hover:underline">
-            隐私政策
+            {t('auth.privacyPolicy')}
           </a>
         </Agreement>
-        <SubmitButton submitting={submitting} label="注册" />
+        <SubmitButton submitting={submitting} label={t('auth.register')} />
       </form>
     </AuthTwoColumn>
   );

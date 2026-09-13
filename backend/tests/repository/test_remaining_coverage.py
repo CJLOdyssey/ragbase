@@ -219,7 +219,7 @@ class TestAuthRevokeTokenFamily:
         user = await create_user("family@example.com", "hash")
         token, _ = await create_refresh_token(user.id)
         from repository.auth import consume_refresh_token
-        consumed_user, family_id = await consume_refresh_token(token)
+        consumed_user, family_id, _ = await consume_refresh_token(token)
         assert consumed_user is not None
 
         # Create a new token in the same family
@@ -227,7 +227,7 @@ class TestAuthRevokeTokenFamily:
         await revoke_token_family(family_id)
 
         # Token should now be consumed (revoked)
-        consumed2, _ = await consume_refresh_token(token2)
+        consumed2, _, _ = await consume_refresh_token(token2)
         assert consumed2 is None
 
 

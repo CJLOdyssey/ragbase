@@ -189,11 +189,15 @@ async def create_refresh_token(user_id: str, family_id: str | None = None, ttl_d
     return token, token_hash
 
 
-async def consume_refresh_token(token: str) -> tuple[UserDB | None, str | None]:
+async def consume_refresh_token(token: str) -> tuple[UserDB | None, str | None, int]:
     """Validate and consume a refresh token (rotation).
 
-    Returns (user, family_id) on success, or (None, None) on failure —
-    including replay attacks, which revoke the whole token family.
+    Returns (user, family_id, ttl_days) on success, or (None, None, 0) on
+    failure — including replay attacks, which revoke the whole token family.
+
+    ``ttl_days`` is derived from the consumed row's ``expires_at - created_at``
+    (the original lifetime), so callers can rotate while preserving
+    ``remember_me`` semantics (30-day sessions stay 30 days).
     """
     token_hash = _hash_token(token)
     factory = get_session_factory()
@@ -204,7 +208,7 @@ async def consume_refresh_token(token: str) -> tuple[UserDB | None, str | None]:
         rt = result.scalar_one_or_none()
 
         if rt is None:
-            return None, None
+            return None, None, 0
 
         if rt.revoked_at is not None:
             # Replay attack — revoke the entire token family
@@ -214,13 +218,18 @@ async def consume_refresh_token(token: str) -> tuple[UserDB | None, str | None]:
             for row in family_result.scalars().all():
                 row.revoked_at = datetime.now(UTC)
             await session.commit()
-            return None, None
+            return None, None, 0
 
         expires = rt.expires_at
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=UTC)
         if expires < datetime.now(UTC):
-            return None, None
+            return None, None, 0
+
+        created = rt.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        ttl_days = max(1, round((expires - created).total_seconds() / 86400))
 
         # Rotate: revoke the consumed token so it cannot be reused
         rt.revoked_at = datetime.now(UTC)
@@ -228,10 +237,10 @@ async def consume_refresh_token(token: str) -> tuple[UserDB | None, str | None]:
         user = await session.get(UserDB, rt.user_id)
         if user is None:
             await session.commit()
-            return None, None
+            return None, None, 0
 
         await session.commit()
-        return user, rt.family_id
+        return user, rt.family_id, ttl_days
 
 
 async def revoke_all_user_tokens(user_id: str) -> None:

@@ -116,7 +116,7 @@ async def register(body: RegisterRequest, request: Request, response: Response) 
     auth_resp = await _create_auth_response(user.id, user.email, user.username)
     _set_access_token_cookie(response, auth_resp.access_token, secure=_cookie_secure(request))
     _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=_cookie_secure(request))
-    return auth_resp.model_copy(update={"refresh_token": ""})
+    return auth_resp.model_copy(update={"access_token": "", "refresh_token": ""})
 
 
 @router.post("/verify", response_model=AuthResponse)
@@ -162,7 +162,7 @@ async def verify(body: VerifyRequest, request: Request, response: Response) -> A
     auth_resp = await _create_auth_response(user.id, user.email, user.username)
     _set_access_token_cookie(response, auth_resp.access_token, secure=_cookie_secure(request))
     _set_refresh_token_cookie(response, auth_resp.refresh_token, secure=_cookie_secure(request))
-    return auth_resp.model_copy(update={"refresh_token": ""})
+    return auth_resp.model_copy(update={"access_token": "", "refresh_token": ""})
 
 
 @router.post("/resend-verification", response_model=MessageResponse)

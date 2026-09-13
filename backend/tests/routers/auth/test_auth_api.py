@@ -30,9 +30,9 @@ def _rid(prefix: str = "test") -> str:
 
 
 def _redis(args: list[str]) -> Any:  # type: ignore[type-arg]
-    """Run redis-cli on db1 (matches .env REDIS_URL)."""
+    """Run redis-cli on db0 (matches the backend's default REDIS_URL)."""
     return subprocess.run(
-        ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "1"] + args,
+        ["docker", "exec", "ragbase-redis", "redis-cli", "-n", "0"] + args,
         capture_output=True, text=True, timeout=5,
     )
 

@@ -14,7 +14,7 @@ BASE_URL = os.environ.get("E2E_BASE_URL", "http://localhost:8081")
 CONTRACT_EMAIL = "admin@example.com"
 CONTRACT_PASSWORD = "admin123"
 
-_TOKEN_CACHE: str | None = None
+_COOKIE_CACHE: httpx.Cookies | None = None
 
 
 @pytest.fixture
@@ -25,22 +25,22 @@ async def contract_client() -> Any:
     so a session-scoped async client would be finalized on a closed loop
     ("Event loop is closed" teardown error).
 
-    The Bearer token is obtained once per session and cached — contract
+    Auth cookies are obtained once per session and cached — contract
     tests must not login per test (live rate limiter would 429 the run).
     """
-    token: str | None = _obtain_token()
+    cookies: httpx.Cookies | None = _obtain_cookies()
 
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30) as client:
-        if token:
-            client.headers.update({"Authorization": f"Bearer {token}"})
+        if cookies:
+            client.cookies.update(cookies)
         yield client
 
 
-def _obtain_token() -> str | None:
-    """Login as the seeded admin (rbac mode); cache the token per session."""
-    global _TOKEN_CACHE
-    if _TOKEN_CACHE is not None:
-        return _TOKEN_CACHE
+def _obtain_cookies() -> httpx.Cookies | None:
+    """Login as the seeded admin (rbac mode); cache auth cookies per session."""
+    global _COOKIE_CACHE
+    if _COOKIE_CACHE is not None:
+        return _COOKIE_CACHE
 
     try:
         resp = httpx.post(
@@ -49,10 +49,10 @@ def _obtain_token() -> str | None:
             timeout=5,
         )
         if resp.status_code == 200:
-            _TOKEN_CACHE = resp.json().get("access_token")
-            return _TOKEN_CACHE
+            _COOKIE_CACHE = resp.cookies
+            return _COOKIE_CACHE
     except Exception:
         pass
 
-    _TOKEN_CACHE = ""
+    _COOKIE_CACHE = httpx.Cookies()
     return None

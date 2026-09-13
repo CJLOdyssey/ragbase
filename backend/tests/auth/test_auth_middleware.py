@@ -17,6 +17,12 @@ from starlette.requests import Request
 from starlette.testclient import TestClient
 
 
+class _FakeUser:
+    """Minimal stand-in for a resolved UserDB row (username used by audit ctx)."""
+
+    username = "tester"
+
+
 @pytest.fixture
 def client():
     # Use a fresh app with middleware for testing
@@ -138,7 +144,7 @@ class TestAuthMiddlewareDispatch:
             path="/api/models", headers={"Authorization": "Bearer test.jwt.token"}
         )
         with patch("auth.auth_middleware.decode_jwt", return_value={"sub": "user-123"}), \
-             patch("repository.auth.get_user_by_id", return_value=object()):
+             patch("repository.auth.get_user_by_id", return_value=_FakeUser()):
             resp = await mw.dispatch(request, _noop_call_next)
         assert resp.status_code == 200
         assert request.state.user_id == "user-123"
@@ -165,7 +171,7 @@ class TestAuthMiddlewareDispatch:
             query_string="token=ws.jwt.token&other=1",
         )
         with patch("auth.auth_middleware.decode_jwt", return_value={"sub": "ws-user"}), \
-             patch("repository.auth.get_user_by_id", return_value=object()):
+             patch("repository.auth.get_user_by_id", return_value=_FakeUser()):
             resp = await mw.dispatch(request, _noop_call_next)
         assert resp.status_code == 200
         assert request.state.user_id == "ws-user"
@@ -207,7 +213,7 @@ class TestAuthMiddlewareDispatch:
             path="/api/models", headers={"Authorization": "Bearer real.jwt"}
         )
         with patch("auth.auth_middleware.decode_jwt", return_value={"sub": "uid-42"}), \
-             patch("repository.auth.get_user_by_id", return_value=object()):
+             patch("repository.auth.get_user_by_id", return_value=_FakeUser()):
             await mw.dispatch(request, _noop_call_next)
         assert request.state.user_id == "uid-42"
 
@@ -261,7 +267,7 @@ class TestAuthMiddlewareDispatch:
             path="/api/models", headers={"Authorization": "Bearer valid.jwt"}
         )
         with patch("auth.auth_middleware.decode_jwt", return_value={"sub": "real-user"}), \
-             patch("repository.auth.get_user_by_id", return_value=object()):
+             patch("repository.auth.get_user_by_id", return_value=_FakeUser()):
             await mw.dispatch(request, _noop_call_next)
         assert request.state.user_id == "real-user"
         assert request.state.is_authenticated is True
@@ -275,7 +281,7 @@ class TestAuthMiddlewareDispatch:
             cookies={"access_token": "cookie.jwt", "refresh_token": "x"},
         )
         with patch("auth.auth_middleware.decode_jwt", return_value={"sub": "cookie-user"}), \
-             patch("repository.auth.get_user_by_id", return_value=object()):
+             patch("repository.auth.get_user_by_id", return_value=_FakeUser()):
             await mw.dispatch(request, _noop_call_next)
         assert request.state.user_id == "cookie-user"
         assert request.state.is_authenticated is True

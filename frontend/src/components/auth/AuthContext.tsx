@@ -158,6 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
+    // 清理旧版本遗留的 localStorage 访问令牌（现已纯 httpOnly cookie，
+    // JS 不可读；残留值只会扩大 XSS 暴露面）。
+    localStorage.removeItem('ragbase-access-token');
+
     function applySession(me: Awaited<ReturnType<typeof getMe>>) {
       setUser({
         userId: me.id,
@@ -226,7 +230,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string, rememberMe?: boolean) => {
       const res = await apiLogin(email, password, rememberMe);
       sm.setUserId(res.user.id);
-      localStorage.setItem('ragbase-access-token', res.access_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -243,7 +246,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, code: string, password: string) => {
       const res = await apiRegister(email, code, password);
       sm.setUserId(res.user.id);
-      localStorage.setItem('ragbase-access-token', res.access_token);
       setLoading(false);
       setUser({
         userId: res.user.id,
@@ -259,7 +261,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verify = useCallback(async (email: string, code: string) => {
     const res = await apiVerify(email, code);
     sm.setUserId(res.user.id);
-    localStorage.setItem('ragbase-access-token', res.access_token);
     setLoading(false);
     setUser({
       userId: res.user.id,
