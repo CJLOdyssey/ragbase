@@ -26,6 +26,7 @@ from starlette.status import (
     HTTP_423_LOCKED,
     HTTP_429_TOO_MANY_REQUESTS,
     HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 
@@ -112,6 +113,9 @@ class ErrorCode(StrEnum):
     # ── Rate Limiting ────────────────────────────────────────────────
     RATE_LIMITED = "RATE_001"
 
+    # ── Email ────────────────────────────────────────────────────────
+    EMAIL_SEND_FAILED = "EMAIL_001"
+
     # ── Memory ───────────────────────────────────────────────────────
     MEMORY_NOT_FOUND = "MEMORY_001"
 
@@ -186,6 +190,8 @@ _STATUS_MAP: dict[ErrorCode, int] = {
     ErrorCode.AGENT_CREATE_FAILED: HTTP_500_INTERNAL_SERVER_ERROR,
     ErrorCode.TOOL_GENERATE_FAILED: HTTP_500_INTERNAL_SERVER_ERROR,
     ErrorCode.SKILL_GENERATE_FAILED: HTTP_500_INTERNAL_SERVER_ERROR,
+    # 503
+    ErrorCode.EMAIL_SEND_FAILED: HTTP_503_SERVICE_UNAVAILABLE,
 }
 
 

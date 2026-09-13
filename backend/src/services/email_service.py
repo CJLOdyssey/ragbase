@@ -26,6 +26,15 @@ SMTP_PASSWORD = os.environ.get("EMAIL_SMTP_PASSWORD", "")
 SMTP_USE_TLS = os.environ.get("EMAIL_SMTP_TLS", "1") == "1"
 
 
+class EmailSendError(RuntimeError):
+    """Raised when a real backend (smtp/resend) is configured but the send fails.
+
+    Only ``EMAIL_BACKEND=log`` may degrade to console output. A configured
+    real backend must either deliver or surface the failure, so the API
+    never reports success for an email the user will not receive.
+    """
+
+
 class LogMailer:
     """Development mailer — prints emails to log and stdout."""
 
@@ -100,20 +109,35 @@ class ResendApiMailer:
 
 
 async def send_email(to: str, subject: str, html: str) -> None:
-    """Send an email using the configured backend."""
-    if EMAIL_BACKEND == "resend" and RESEND_API_KEY:
-        try:
-            await ResendApiMailer().send(to, subject, html)
-            return
-        except Exception:
-            logger.exception("[ResendAPI] Failed to send email, falling back to log")
-    elif EMAIL_BACKEND == "smtp" and SMTP_HOST:
+    """Send an email using the configured backend.
+
+    ``log`` (default) prints to the console for local development. ``smtp``
+    and ``resend`` deliver real email and raise ``EmailSendError`` on failure
+    — including missing configuration — instead of silently falling back to
+    the log mailer (which made the API report success for undelivered codes).
+    """
+    if EMAIL_BACKEND == "smtp":
+        if not SMTP_HOST:
+            raise EmailSendError("EMAIL_BACKEND=smtp requires EMAIL_SMTP_HOST")
         try:
             await SmtpMailer().send(to, subject, html)
-            return
-        except Exception:
-            logger.exception("[SMTP] Failed to send email, falling back to log")
-    LogMailer().send(to, subject, html)
+        except Exception as exc:
+            logger.exception("[SMTP] Failed to send email")
+            raise EmailSendError("SMTP send failed") from exc
+        return
+    if EMAIL_BACKEND == "resend":
+        if not RESEND_API_KEY:
+            raise EmailSendError("EMAIL_BACKEND=resend requires RESEND_API_KEY")
+        try:
+            await ResendApiMailer().send(to, subject, html)
+        except Exception as exc:
+            logger.exception("[ResendAPI] Failed to send email")
+            raise EmailSendError("Resend API send failed") from exc
+        return
+    if EMAIL_BACKEND == "log":
+        LogMailer().send(to, subject, html)
+        return
+    raise EmailSendError(f"Unknown EMAIL_BACKEND: {EMAIL_BACKEND!r} (expected log|smtp|resend)")
 
 
 def build_verification_email(code: str, ttl_minutes: int = 5) -> tuple[str, str]:
