@@ -1,6 +1,8 @@
 """Integration tests for auth API endpoints using in-memory SQLite and TestClient."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from services.email_service import EmailSendError
 
 
 class TestAuthLogin:
@@ -418,3 +420,52 @@ class TestAuthForgotPasswordFlow:
             },
         )
         assert reset_resp.status_code == 200
+
+
+class TestAuthEmailFailure:
+    """smtp/resend 发送失败必须暴露为 503（EMAIL_001），不得静默成功。"""
+
+    def test_send_register_code_email_failure(self, client):
+        with patch(
+            "routers.auth.register.send_email",
+            new_callable=AsyncMock,
+            side_effect=EmailSendError("SMTP send failed"),
+        ):
+            resp = client.post(
+                "/api/auth/send-register-code", json={"email": "emailfail@test.com"}
+            )
+        assert resp.status_code == 503
+        assert resp.json()["detail"]["error"]["code"] == "EMAIL_001"
+
+    def test_forgot_password_email_failure(self, client):
+        with patch(
+            "routers.auth.password.send_email",
+            new_callable=AsyncMock,
+            side_effect=EmailSendError("SMTP send failed"),
+        ):
+            resp = client.post(
+                "/api/auth/forgot-password", json={"email": "admin@test.com"}
+            )
+        assert resp.status_code == 503
+        assert resp.json()["detail"]["error"]["code"] == "EMAIL_001"
+
+    def test_change_password_notification_failure_still_succeeds(self, client):
+        # 密码已修改成功——通知邮件失败只记日志，接口仍须 200。
+        import bcrypt
+        mock_user = MagicMock()
+        mock_user.id = "u-email-fail"
+        mock_user.password_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
+        mock_user.email = "change-emailfail@test.com"
+        with patch("routers.auth.password.get_user_by_id", new_callable=AsyncMock, return_value=mock_user), \
+             patch("routers.auth.password.update_password", new_callable=AsyncMock), \
+             patch("routers.auth.password.revoke_all_user_tokens", new_callable=AsyncMock), \
+             patch("routers.auth.password.send_email", new_callable=AsyncMock,
+                   side_effect=EmailSendError("SMTP send failed")):
+            resp = client.post(
+                "/api/auth/change-password",
+                json={
+                    "old_password": "admin123",
+                    "new_password": "NewStr0ng@Pass",
+                },
+            )
+            assert resp.status_code == 200
