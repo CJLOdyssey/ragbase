@@ -50,6 +50,18 @@ async def _reset_db():
     await _reset_schema()
 
 
+@pytest.fixture(autouse=True)
+def _reset_trace_context():
+    """trace 上下文每测试重置——set_trace_id/span 写入 contextvars 且不自动
+    还原，同 worker 内测试顺序被 xdist worksteal 重排时会污染"默认值"断言
+    （实测：assert 'my-trace' == ''）。重置后与执行顺序无关。"""
+    from observability.trace import set_trace_id
+
+    set_trace_id("")
+    yield
+    set_trace_id("")
+
+
 def _build_logged_in_client(raise_server_exceptions: bool):
     """Shared login flow for both normal and 500-capturing clients."""
     import core.app_lifespan as lifespan_mod
