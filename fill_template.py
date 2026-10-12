@@ -27,6 +27,7 @@ def set_cell_text(cell, lines):
     first = cell.paragraphs[0]
     set_para_text(first, lines[0] if lines else "")
     # 添加后续段落，复制第一段格式
+    prev = first._element
     for line in lines[1:]:
         new_p = deepcopy(first._element)
         # 清空 new_p 的 run 文本
@@ -41,7 +42,8 @@ def set_cell_text(cell, lines):
             t = runs[0].find(qn('w:t'))
             if t is not None:
                 t.text = line
-        first._element.addnext(new_p)
+        prev.addnext(new_p)
+        prev = new_p
 
 # ============================================================
 # 1. 学院/专业 行（表格外的段落）
@@ -129,6 +131,10 @@ if requirement:
         "4、问答响应 P95 延迟不高于 5 秒，首 token 延迟不高于 1 秒；",
         "5、支持万级文档片段的高效检索与管理；",
         "6、人机界面友好，代码可读性较好，设计说明书按规定格式书写。",
+        "开发工具：VS Code。",
+        "开发环境：Python 3.12、Node.js 22。",
+        "开发语言：Python、TypeScript。",
+        "采用技术：FastAPI、React、PostgreSQL、pgvector、Redis、Celery、LangGraph、BGE-M3。",
     ]
     set_cell_text(cell, lines)
 
