@@ -188,11 +188,14 @@ if references:
         "[8] 张凯, 满广垠, 叶治荣. 基于混合RAG的铁路工程规范智能问答方法研究[J]. 中国铁路, 2026.",
         "[9] 王亮, 张强, 魏韵萧. 基于知识库的智能问答系统构建技术研究[J]. 网络安全与数据治理, 2026.",
         "[10] 彭琳. 基于检索增强生成的企业级知识库系统构建与优化[J]. 电脑知识与技术, 2026.",
-        "[11] Lewis P, Perez E, Piktus A, et al. Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks[C]//Advances in Neural Information Processing Systems. 2020: 9459-9474.",
-        "[12] Gao Y, Xiong Y, Gao X, et al. Retrieval-Augmented Generation for Large Language Models: A Survey[J]. arXiv preprint arXiv:2312.10997, 2023.",
-        "[13] Malkov Y A, Yashunin D A. Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs[J]. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2020, 42(4): 824-836.",
-        "[14] Cormack G V, Clarke C L A, Buettcher S. Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods[C]//Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval. 2009: 758-759.",
-        "[15] Jiang Z, Yan J, Wang S, et al. FLARE: Active Retrieval Augmented Generation[C]//Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing. 2023: 2118-2132.",
+        "[11] 曹荣荣. 融合知识图谱和大语言模型的罕见病知识问答系统设计与实现[D]. 呼和浩特: 内蒙古师范大学, 2026.",
+        "[12] 刘言. 基于改进型RAG的行业大模型知识增强方法研究[D]. 济南: 齐鲁工业大学, 2026.",
+        "[13] 孟庆宏. 面向大语言模型的检索增强生成方法研究[D]. 济南: 齐鲁工业大学, 2026.",
+        "[14] Lewis P, Perez E, Piktus A, et al. Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks[C]//Advances in Neural Information Processing Systems. 2020: 9459-9474.",
+        "[15] Gao Y, Xiong Y, Gao X, et al. Retrieval-Augmented Generation for Large Language Models: A Survey[J]. arXiv preprint arXiv:2312.10997, 2023.",
+        "[16] Malkov Y A, Yashunin D A. Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs[J]. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2020, 42(4): 824-836.",
+        "[17] Cormack G V, Clarke C L A, Buettcher S. Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods[C]//Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval. 2009: 758-759.",
+        "[18] Jiang Z, Yan J, Wang S, et al. FLARE: Active Retrieval Augmented Generation[C]//Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing. 2023: 2118-2132.",
     ]
     set_cell_text(cell, lines)
     allow_row_split(references)
