@@ -1,6 +1,7 @@
 """直接在模板上填充内容，保留原有表格结构。"""
 from docx import Document
 from docx.shared import Pt
+from docx.oxml.ns import qn
 from copy import deepcopy
 
 TEMPLATE = "/workspace/.uploads/6e796e02-7a00-4cac-bea7-d37e0d997204_2027届毕业设计课题任务书参考1 课题任务书_学号_姓名_软件工程2201班.docx"
@@ -8,8 +9,17 @@ OUTPUT = "/workspace/基于混合检索与上下文增强的RAG知识库问答�
 
 doc = Document(TEMPLATE)
 
+# --- 辅助：移除段落的自动列表编号 (numPr) ---
+def remove_numpr(para_element):
+    pPr = para_element.find(qn('w:pPr'))
+    if pPr is not None:
+        numPr = pPr.find(qn('w:numPr'))
+        if numPr is not None:
+            pPr.remove(numPr)
+
 # --- 辅助：清空段落所有 run，设置文本 ---
 def set_para_text(para, text):
+    remove_numpr(para._element)
     # 保留第一个 run 的格式，删除其余
     for run in para.runs[1:]:
         run._element.getparent().remove(run._element)
@@ -30,8 +40,8 @@ def set_cell_text(cell, lines):
     prev = first._element
     for line in lines[1:]:
         new_p = deepcopy(first._element)
+        remove_numpr(new_p)
         # 清空 new_p 的 run 文本
-        from docx.oxml.ns import qn
         for r in new_p.findall(qn('w:r')):
             t = r.find(qn('w:t'))
             if t is not None:
