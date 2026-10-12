@@ -17,6 +17,14 @@ def remove_numpr(para_element):
         if numPr is not None:
             pPr.remove(numPr)
 
+# --- 辅助：允许表格行跨页拆分（移除 cantSplit）---
+def allow_row_split(row):
+    trPr = row._tr.find(qn('w:trPr'))
+    if trPr is not None:
+        cantSplit = trPr.find(qn('w:cantSplit'))
+        if cantSplit is not None:
+            trPr.remove(cantSplit)
+
 # --- 辅助：清空段落所有 run，设置文本 ---
 def set_para_text(para, text):
     remove_numpr(para._element)
@@ -130,6 +138,7 @@ if content_task:
         "（6）系统管理模块：包含用户认证、权限控制、密钥管理、检索日志与监控功能。",
     ]
     set_cell_text(cell, lines)
+    allow_row_split(content_task)
 
 # --- 拟达到的要求或技术指标 (Row 3) ---
 if requirement:
@@ -147,6 +156,7 @@ if requirement:
         "采用技术：FastAPI、React、PostgreSQL、pgvector、Redis、Celery、LangGraph、BGE-M3。",
     ]
     set_cell_text(cell, lines)
+    allow_row_split(requirement)
 
 # --- 进度安排 (Row 4) ---
 if schedule:
@@ -162,6 +172,7 @@ if schedule:
         "2027.6.1-2027.6.7  参加毕业答辩，进一步修改毕业设计，提交电子稿材料定稿版",
     ]
     set_cell_text(cell, lines)
+    allow_row_split(schedule)
 
 # --- 主要参考资料 (Row 5) ---
 if references:
@@ -189,6 +200,7 @@ if references:
         "[20] Jiang Z, Yan J, Wang S, et al. FLARE: Active Retrieval Augmented Generation[C]//Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing. 2023: 2118-2132.",
     ]
     set_cell_text(cell, lines)
+    allow_row_split(references)
 
 # --- 教研室意见：保留原样，不动 ---
 
