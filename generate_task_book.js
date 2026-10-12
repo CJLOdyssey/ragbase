@@ -117,15 +117,15 @@ const headerTable = new Table({
   width: { size: 100, type: WidthType.PERCENTAGE },
   columnWidths: [H, V, H, V],
   rows: [
-    infoRow([["课题名称", TOPIC], ["课题类型", "工程设计"]]),
-    infoRow([["课题来源", "自选课题"], ["学生姓名", ""]]),
-    infoRow([["学号", ""], ["专业", "软件工程"]]),
-    infoRow([["班级", "软件工程2201班"], ["指导教师", ""]]),
+    infoRow([["课题名称", TOPIC], ["课题类型", "软件工程"]]),
+    infoRow([["课题来源", "自选课题"], ["学生姓名", "陈嘉乐"]]),
+    infoRow([["学号", "23020540134"], ["专业", "数据科学与大数据"]]),
+    infoRow([["班级", "数据2301班"], ["指导教师", "桂友武"]]),
     new TableRow({
       cantSplit: true,
       children: [
         cell("职称", { width: H, bold: true, align: AlignmentType.CENTER, shading: "F2F2F2" }),
-        cell("", { width: V, align: AlignmentType.CENTER }),
+        cell("副教授", { width: V, align: AlignmentType.CENTER }),
         cell("起止日期", { width: H, bold: true, align: AlignmentType.CENTER, shading: "F2F2F2" }),
         cell("2026.10—2027.5", { width: V, align: AlignmentType.CENTER }),
       ],
