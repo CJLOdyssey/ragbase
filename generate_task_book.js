@@ -175,23 +175,9 @@ const schedule = [
   ["2027.5.1—2027.5.15", "参加毕业答辩，进一步修改毕业设计，提交电子稿材料定稿版"],
 ];
 
-// 主要参考资料 (GB/T 7714-2015)
+// 主要参考资料 — 暂留空，待补充（不少于15篇，其中英文不少于5篇，GB/T 7714-2015格式）
 const references = [
-  "[1] Lewis P, Perez E, Piktus A, et al. Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks[C]//Advances in Neural Information Processing Systems (NeurIPS). 2020: 9459-9474.",
-  "[2] Gao Y, Xiong Y, Gao X, et al. Retrieval-Augmented Generation for Large Language Models: A Survey[J]. arXiv preprint arXiv:2312.10997, 2023.",
-  "[3] Johnson J, Douze M, Jégou H. Billion-scale similarity search with GPUs[J]. IEEE Transactions on Big Data, 2021, 7(3): 535-547.",
-  "[4] Malkov Y A, Yashunin D A. Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs[J]. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2020, 42(4): 824-836.",
-  "[5] Cormack G V, Clarke C L A, Büttcher S. Reciprocal rank fusion outperforms Condorcet and individual rank learning methods[C]//Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval. 2009: 758-759.",
-  "[6] Chen X, Liu Y, Miao C, et al. Contextual Retrieval: Enhancing Retrieval through Context-Aware Indexing[R]. Anthropic, 2024.",
-  "[7] Gao L, Ma X, Lin J. Precision-RAG: Prompting Large Language Models for Question Answering over Large Knowledge Bases[C]//Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP). 2023: 2331-2346.",
-  "[8] Jiang Z, Xu F F, Gao L, et al. Active Retrieval Augmented Generation[C]//Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP). 2023: 2347-2365.",
-  "[9] Izacard G, Grave É. Leveraging passage retrieval with generative models for open domain question answering[C]//Proceedings of the 16th Conference of the European Chapter of the Association for Computational Linguistics (EACL). 2021: 874-880.",
-  "[10] Xiao S, Liu Z, Zhang P, et al. BGE M3-Embedding: Multi-Lingual, Multi-Functionality, Multi-Granularity Text Embeddings Through Self-Knowledge Distillation[J]. arXiv preprint arXiv:2402.03216, 2024.",
-  "[11] 王炳宁, 张一珂, 张鹏远, 等. 基于知识增强的中文问答系统研究[J]. 计算机科学, 2024, 51(3): 210-217.",
-  "[12] 李航, 黄萱菁. 大规模预训练语言模型在检索增强生成中的应用综述[J]. 软件学报, 2024, 35(6): 1-22.",
-  "[13] 张明, 刘洋. 基于向量数据库的企业知识库问答系统设计与实现[J]. 计算机应用与软件, 2024, 41(8): 56-63.",
-  "[14] 陈思远, 赵军. 混合检索策略在RAG系统中的研究与实现[J]. 中文信息学报, 2024, 38(5): 112-121.",
-  "[15] 王晓东, 李娜. 基于pgvector的语义检索系统优化研究[J]. 计算机工程与应用, 2024, 60(12): 89-96.",
+  "（参考文献待补充：不少于15篇，其中英文文献不少于5篇，采用 GB/T 7714-2015 格式）",
 ];
 
 // ── Build body rows ────────────────────────────────────────────────────────
