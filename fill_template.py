@@ -186,7 +186,7 @@ if references:
         "[6] 裴丽娜, 淦欣喆, 陈明, 等. 基于领域HyDE查询增强与LightRAG的水稻种植检索增强生成方法[J]. 智慧农业(中英文), 2026.",
         "[7] 马成业, 马满堂. 面向大语言模型智能体的查询反馈驱动上下文蒸馏方法[J]. 计算机工程与应用, 2026.",
         "[8] 张凯, 满广垠, 叶治荣. 基于混合RAG的铁路工程规范智能问答方法研究[J]. 中国铁路, 2026.",
-        "[9] 回天, 魏雪梅, 孙延鑫, 等. 结合自适应分块与混合检索生成的态势理解方法[J]. 兵器装备工程学报, 2026.",
+        "[9] 王亮, 张强, 魏韵萧. 基于知识库的智能问答系统构建技术研究[J]. 网络安全与数据治理, 2026.",
         "[10] 彭琳. 基于检索增强生成的企业级知识库系统构建与优化[J]. 电脑知识与技术, 2026.",
         "[11] Lewis P, Perez E, Piktus A, et al. Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks[C]//Advances in Neural Information Processing Systems. 2020: 9459-9474.",
         "[12] Gao Y, Xiong Y, Gao X, et al. Retrieval-Augmented Generation for Large Language Models: A Survey[J]. arXiv preprint arXiv:2312.10997, 2023.",
