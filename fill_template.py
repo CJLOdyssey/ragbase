@@ -157,6 +157,7 @@ if schedule:
 if references:
     cell = references.cells[1]
     lines = [
+        "给出相应参考书籍与论文，任务书一般不应低于15篇（开题报告参考文献一般应不低于20篇），建议给出5篇及以上英文文献，注意参考文献格式采用：GB/T 7714-2015 格式引文。",
         "[1] 王鑫林, 李岩, 马超凡, 等. 检索增强生成综述：方法与应用[J]. 计算机科学, 2026, 53(07): 101-117.",
         "[2] 吴海周, 黄俊, 张佳晨. 基于RAG机制的知识库问答性能优化与参数调控研究[J]. 工业控制计算机, 2026, 39(07): 111-113.",
         "[3] 高川, 王龙刚, 朱晓蕾, 等. 云端―本地双模式私有知识库RAG问答系统设计与实现[J]. 计算机时代, 2026(09): 104-109.",
@@ -172,6 +173,11 @@ if references:
         "[13] 彭琳. 基于检索增强生成的企业级知识库系统构建与优化[J]. 电脑知识与技术, 2026.",
         "[14] 王亮, 张强, 魏韵萧. 基于知识库的智能问答系统构建技术研究[J]. 网络安全与数据治理, 2026.",
         "[15] 张墨涵. 融合检索增强的企业私有知识库智能问答系统[J]. 中国新技术新产品, 2026.",
+        "[16] Lewis P, Perez E, Piktus A, et al. Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks[C]//Advances in Neural Information Processing Systems. 2020: 9459-9474.",
+        "[17] Gao Y, Xiong Y, Gao X, et al. Retrieval-Augmented Generation for Large Language Models: A Survey[J]. arXiv preprint arXiv:2312.10997, 2023.",
+        "[18] Malkov Y A, Yashunin D A. Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs[J]. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2020, 42(4): 824-836.",
+        "[19] Cormack G V, Clarke C L A, Buettcher S. Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods[C]//Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval. 2009: 758-759.",
+        "[20] Jiang Z, Yan J, Wang S, et al. FLARE: Active Retrieval Augmented Generation[C]//Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing. 2023: 2118-2132.",
     ]
     set_cell_text(cell, lines)
 
