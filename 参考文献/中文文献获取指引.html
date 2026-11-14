@@ -148,6 +148,19 @@ tr.warn .note{color:#a06800}
     <li><b>下载后请改文件名</b>为"序号_作者_题名.pdf"，否则十份文件放进一个文件夹里分不清。</li>
   </ul>
 
+  <h2>进阶：一次导出 10 篇的著录（省掉手抄卷期页）</h2>
+  <p>知网单篇详情页的地址形如
+    <code style="background:#f3f3f3;border-radius:4px;padding:1px 6px;font-size:12px">kns.cnki.net/kcms2/article/abstract?v=rKlgysdy……</code>，
+    其中 <b>v= 是服务端加密生成的令牌</b>，每篇不同、也无法由题名推导，所以本页只能给检索入口，无法批量造链接。</p>
+  <p style="margin-top:10px">但有个更省事的办法——<b>让知网一次性把 10 条著录吐给你</b>：</p>
+  <ol style="margin-top:8px">
+    <li>在知网检索结果页（比如搜"检索增强生成"），把 10 篇逐篇检索出来，<b>勾选前面的复选框</b>。</li>
+    <li>点结果列表上方的 <b>「导出与分析」→「导出文献」</b>。</li>
+    <li>格式选 <b>GB/T 7714-2015</b>（与开题报告要求一致），点"复制到剪贴板"。</li>
+    <li>粘贴进开题报告的参考文献区，一条一条替换——卷、期、页码自动就有了。</li>
+  </ol>
+  <p style="margin-top:10px">这样做的额外好处：[4][5][7] 到底有没有期号页码，导出的那一刻就见分晓，不用再猜。</p>
+
   <div class="foot">生成于 2026-11　|　与"参考文献核实清单.docx"配合使用：先检索、再核实、后填表</div>
 </div>
 <script>
