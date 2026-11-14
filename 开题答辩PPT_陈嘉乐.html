@@ -183,6 +183,9 @@ table.tb td b{ font-weight:400; color: var(--ink); }
 .take{ display:flex; flex-direction:column; }
 .take .ti{ display:grid; grid-template-columns: 46px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--graphite); }
 .take .tn{ font-size: 26px; color: var(--stone); line-height:1; }
+/* 内容较少的页面：整块垂直居中，避免底部大面积空白 */
+.two, .three, .refs { align-content: safe center; }
+
 .deck:has(.s-close.active) .chrome-top,
 .deck:has(.s-close.active) .chrome-bottom{ opacity: 0; visibility: hidden; }
 </style>
@@ -281,7 +284,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         </div>
       </div>
     </div>
-    <div class="chrome-top"><span>01 / 研究背景与意义</span><span>Background</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Background</span></div>
     <div class="chrome-bottom"><span>基于混合检索与上下文增强的 RAG 知识库问答系统</span><span>03 / 17</span></div>
   </section>
 
@@ -319,7 +322,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         <p class="body">结论：RAG 的研究重心已从“能不能检索”，转向“<b style="font-weight:400;color:#171717">检索得准不准</b>、<b style="font-weight:400;color:#171717">上下文用得好不好</b>”。本课题正落在第二代向第三代过渡的关键环节上。</p>
       </div>
     </div>
-    <div class="chrome-top"><span>02 / 国内外研究现状</span><span>Literature</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Literature</span></div>
     <div class="chrome-bottom"><span>RAG 技术演进</span><span>04 / 17</span></div>
   </section>
 
@@ -360,7 +363,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         <p class="body">共查阅文献 15 篇：中文期刊 7 篇、硕士学位论文 3 篇、英文文献 5 篇，全部可在知网与官方出版平台检索核对。</p>
       </div>
     </div>
-    <div class="chrome-top"><span>02 / 国内外研究现状</span><span>Literature</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Literature</span></div>
     <div class="chrome-bottom"><span>已有研究与应用实践</span><span>05 / 17</span></div>
   </section>
 
@@ -408,7 +411,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         </div>
       </div>
     </div>
-    <div class="chrome-top"><span>02 / 不足与切入点</span><span>Gap</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Gap</span></div>
     <div class="chrome-bottom"><span>三个待改进之处</span><span>06 / 17</span></div>
   </section>
 
@@ -443,7 +446,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         </div>
       </div>
     </div>
-    <div class="chrome-top"><span>03 / 研究目标与关键问题</span><span>Objectives</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Objectives</span></div>
     <div class="chrome-bottom"><span>目标与两个关键问题</span><span>07 / 17</span></div>
   </section>
 
@@ -488,7 +491,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         </div>
       </div>
     </div>
-    <div class="chrome-top"><span>04 / 技术路线</span><span>Roadmap</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Roadmap</span></div>
     <div class="chrome-bottom"><span>五阶段推进</span><span>08 / 17</span></div>
   </section>
 
@@ -515,7 +518,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         <div class="layer"><span class="ln">数据层</span><span class="lc">知识库 · 文档原文 · 文档片段 · 向量索引 · 词法索引 · 会话与消息</span></div>
       </div>
     </div>
-    <div class="chrome-top"><span>04 / 系统总体架构</span><span>Architecture</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Architecture</span></div>
     <div class="chrome-bottom"><span>四层架构</span><span>09 / 17</span></div>
   </section>
 
@@ -533,7 +536,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
       <div class="card"><div class="num" style="font-size:26px">05</div><div class="h-3" style="margin-top:8px">问答生成</div><p class="tiny" style="margin-top:6px">提示词组装、模型调用、流式输出、来源引用与多轮对话。</p></div>
       <div class="card"><div class="num" style="font-size:26px">06</div><div class="h-3" style="margin-top:8px">系统管理</div><p class="tiny" style="margin-top:6px">用户与知识库权限、运行日志、检索参数配置。</p></div>
     </div>
-    <div class="chrome-top"><span>04 / 功能模块设计</span><span>Modules</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Modules</span></div>
     <div class="chrome-bottom"><span>六大功能模块</span><span>10 / 17</span></div>
   </section>
 
@@ -579,7 +582,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         </div>
       </div>
     </div>
-    <div class="chrome-top"><span>05 / 重点设计</span><span>Hybrid Retrieval</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Hybrid Retrieval</span></div>
     <div class="chrome-bottom"><span>混合检索模块</span><span>11 / 17</span></div>
   </section>
 
@@ -621,7 +624,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         <p class="tiny" style="margin-top:auto">配合冗余过滤与长度控制，避免上下文过长导致关键信息被稀释。</p>
       </div>
     </div>
-    <div class="chrome-top"><span>05 / 重点设计</span><span>Context Enhancement</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Context Enhancement</span></div>
     <div class="chrome-bottom"><span>上下文增强模块</span><span>12 / 17</span></div>
   </section>
 
@@ -632,8 +635,8 @@ table.tb td b{ font-weight:400; color: var(--ink); }
       <h2 class="h-1">数据模型围绕“知识库—文档—片段—会话”展开</h2>
     </div>
     <div class="stagger" style="display:grid;grid-template-rows:1fr auto;gap:16px;min-height:0">
-      <div style="overflow:hidden">
-        <table class="tb">
+      <div style="overflow:hidden;display:flex;align-items:center">
+        <table class="tb" style="width:100%">
           <thead>
             <tr><th style="width:150px">实体</th><th style="width:230px">关键字段</th><th>说明与关系</th></tr>
           </thead>
@@ -651,7 +654,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         <p class="body">设计关键：<b style="font-weight:400;color:#171717">片段与原文的关联</b>必须完整保留，使回答中的每一条引用都能定位到具体文档与位置；检索参数与融合配置单独存放，便于对比实验时切换。</p>
       </div>
     </div>
-    <div class="chrome-top"><span>05 / 数据设计</span><span>Data Model</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Data Model</span></div>
     <div class="chrome-bottom"><span>数据库设计</span><span>13 / 17</span></div>
   </section>
 
@@ -688,7 +691,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         <p class="tiny">自建评测样本，给出可对比的检索与问答效果数据。</p>
       </div>
     </div>
-    <div class="chrome-top"><span>05 / 重点难点与创新</span><span>Challenges</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Challenges</span></div>
     <div class="chrome-bottom"><span>重点 · 难点 · 创新点</span><span>14 / 17</span></div>
   </section>
 
@@ -722,7 +725,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         </div>
       </div>
     </div>
-    <div class="chrome-top"><span>06 / 进度安排与预期成果</span><span>Schedule</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Schedule</span></div>
     <div class="chrome-bottom"><span>进度与成果</span><span>15 / 17</span></div>
   </section>
 
@@ -764,7 +767,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         <div class="ri">[15] Jiang Z, Yan J, Wang S, et al. FLARE: Active Retrieval Augmented Generation[C]//Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing. 2023: 2118-2132.</div>
       </div>
     </div>
-    <div class="chrome-top"><span>参考文献</span><span>References</span></div>
+    <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>References</span></div>
     <div class="chrome-bottom"><span>GB/T 7714-2015</span><span>16 / 17</span></div>
   </section>
 
