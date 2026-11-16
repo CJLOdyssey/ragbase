@@ -188,6 +188,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
 
 .deck:has(.s-close.active) .chrome-top,
 .deck:has(.s-close.active) .chrome-bottom{ opacity: 0; visibility: hidden; }
+@media print{section{break-after:page;page-break-after:always;margin:0 auto;}section:last-of-type{break-after:auto;page-break-after:auto;}@page{size:A4 landscape;margin:0;}}
 </style>
 </head>
 <body>
@@ -319,7 +320,7 @@ table.tb td b{ font-weight:400; color: var(--ink); }
         </div>
       </div>
       <div class="card" style="background:#fbfbfb">
-        <p class="body">结论：RAG 的研究重心已从“能不能检索”，转向“<b style="font-weight:400;color:#171717">检索得准不准</b>、<b style="font-weight:400;color:#171717">上下文用得好不好</b>”。本课题正落在第二代向第三代过渡的关键环节上。</p>
+        <p class="body">结论：RAG 的研究重心已由“能否检索”转向“<b style="font-weight:400;color:#171717">检索质量</b>与<b style="font-weight:400;color:#171717">上下文可用性</b>”。本课题正落在第二代向第三代过渡的关键环节上。</p>
       </div>
     </div>
     <div class="chrome-top"><span>开题答辩 · 陈嘉乐</span><span>Literature</span></div>
