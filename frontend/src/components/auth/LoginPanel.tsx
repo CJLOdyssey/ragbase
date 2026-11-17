@@ -43,7 +43,7 @@ export default function LoginPanel() {
   return (
     /* 两栏固定结构，右栏 307：307/190 ≈ 1.62 ≈ φ */
     <AuthTwoColumn>
-      <h4 className="mb-[21px] text-[14px] font-medium text-[#c8c8d2]">
+      <h4 className="mb-[21px] text-[14px] font-medium text-[var(--color-text-secondary)]">
         {t('auth.emailLoginTitle')}
       </h4>
       <form onSubmit={handleSubmit} className="space-y-[13px]">
@@ -60,7 +60,7 @@ export default function LoginPanel() {
           <button
             type="button"
             onClick={() => setLoginModalView('forgot')}
-            className="bg-transparent text-[12px] text-[#8b8b9a] transition-colors hover:text-[#6f9bff]"
+            className="bg-transparent text-[12px] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-accent)]"
           >
             {t('auth.forgotPassword')}
           </button>
