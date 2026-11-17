@@ -29,19 +29,19 @@ export default function LoginModal({ onClose }: Props) {
   if (view === 'forgot' || view === 'reset') {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-[21px] backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-overlay)] p-[21px] backdrop-blur-sm"
         onClick={onClose}
       >
         <div
-          className="relative flex w-full max-w-[460px] flex-col overflow-hidden rounded-[21px] bg-[#16161f] ring-1 ring-white/[0.06] [box-shadow:0_34px_89px_-21px_rgba(0,0,0,0.85)]"
+          className="relative flex w-full max-w-[460px] flex-col overflow-hidden rounded-[21px] bg-[var(--color-surface-elevated)] ring-1 ring-[var(--color-border-subtle)] shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-[34px] py-[21px]">
-            <h3 className="m-0 text-[18px] font-semibold text-[#f4f4f8]">
+          <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] px-[34px] py-[21px]">
+            <h3 className="m-0 text-[18px] font-semibold text-[var(--color-text-primary)]">
               {t('auth.resetPassword')}
             </h3>
             <button
-              className="flex items-center justify-center rounded-[8px] bg-transparent p-[8px] text-[#8b8b9a] transition-colors hover:bg-white/[0.06] hover:text-[#f4f4f8]"
+              className="flex items-center justify-center rounded-[8px] bg-transparent p-[8px] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
               onClick={onClose}
               aria-label={t('common.close')}
             >
@@ -70,23 +70,23 @@ export default function LoginModal({ onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-[21px] backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-overlay)] p-[21px] backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[89vh] w-full max-w-[600px] flex-col overflow-hidden rounded-[21px] bg-[#16161f] ring-1 ring-white/[0.06] [box-shadow:0_34px_89px_-21px_rgba(0,0,0,0.85)]"
+        className="relative flex max-h-[89vh] w-full max-w-[600px] flex-col overflow-hidden rounded-[21px] bg-[var(--color-surface-elevated)] ring-1 ring-[var(--color-border-subtle)] shadow-xl"
         onClick={(e) => e.stopPropagation()}
         style={{ animation: 'fadeIn 0.22s ease' }}
       >
-        <div className="pointer-events-none absolute right-[-55px] top-[-89px] h-[210px] w-[340px] rounded-full bg-[#4f7cff]/[0.09] blur-[89px]" />
+        <div className="pointer-events-none absolute right-[-55px] top-[-89px] h-[210px] w-[340px] rounded-full bg-[var(--color-accent)]/[0.09] blur-[89px]" />
 
         <div className="relative flex-shrink-0 px-[34px] pt-[34px] pb-[21px]">
           <div className="mb-[21px] flex items-center justify-between">
-            <span className="brand-wordmark text-[30px] leading-[1.2] text-[#f4f4f8]">
+            <span className="brand-wordmark text-[30px] leading-[1.2] text-[var(--color-text-primary)]">
               RagBase
             </span>
             <button
-              className="flex items-center justify-center rounded-[8px] bg-transparent p-[8px] text-[#8b8b9a] transition-colors hover:bg-white/[0.06] hover:text-[#f4f4f8]"
+              className="flex items-center justify-center rounded-[8px] bg-transparent p-[8px] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
               onClick={onClose}
               aria-label={t('common.close')}
             >
