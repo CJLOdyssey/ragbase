@@ -99,6 +99,18 @@ deploy_frontend() {
   ls -1dt "$RELEASES_DIR"/*/ 2>/dev/null | tail -n +$((KEEP + 1)) | xargs -r rm -rf
 }
 
+wait_healthy() {
+  # 轮询健康检查（后端启动需数秒），最多 $1 次、每次 3 秒
+  local tries="${1:-20}"
+  for ((i = 0; i < tries; i++)); do
+    if curl -fsS --max-time 5 -o /dev/null "$HEALTH_URL"; then
+      return 0
+    fi
+    sleep 3
+  done
+  return 1
+}
+
 deploy_backend() {
   cd "$REPO" || fail "无法进入 $REPO"
   [[ -f .env.systemd ]] || fail ".env.systemd 缺失"
@@ -106,22 +118,33 @@ deploy_backend() {
   local prev_sha=""
   [[ -f .deployed_sha ]] && prev_sha="$(cat .deployed_sha)"
 
+  # 依赖必须与新代码同步：git reset 只更新源码，venv 仍停在旧版本。
+  # 用 python -m uv 绕过 venv 内脚本失效的 shebang；uv 不在 venv 时先装。
+  local py="${REPO}/.venv/bin/python"
+  [[ -x "$py" ]] || fail "venv python 不存在: $py"
+  if ! "$py" -m uv --version >/dev/null 2>&1; then
+    log "安装 uv 到 venv"
+    "$py" -m pip install -q uv
+  fi
+  log "同步依赖 (uv sync)"
+  "$py" -m uv sync --group dev --group test || fail "uv sync 失败"
+
   # 迁移：由 alembic 手动执行（DB 当前 p9g3n027 / main 链止于 p9g3n015，
   # 自动 upgrade 会报 Can't locate revision，故此处不自动迁移）
-  # PYTHONPATH=backend/src .venv/bin/python -m alembic -c alembic.ini upgrade head
+  # PYTHONPATH=backend/src "$py" -m alembic -c alembic.ini upgrade head
 
   systemctl --user restart ragbase-backend ragbase-celery
-  sleep 6
 
-  if curl -fsS --max-time 10 -o /dev/null "$HEALTH_URL"; then
+  if wait_healthy 20; then
     echo "$SHA" > .deployed_sha
     log "后端健康检查通过，记录 .deployed_sha=$SHA"
   else
-    log "后端健康检查失败，回滚到 $prev_sha"
+    log "后端健康检查失败，回滚到 ${prev_sha:-上一稳定状态}"
     if [[ -n "$prev_sha" ]]; then
       git reset --hard "$prev_sha" >/dev/null 2>&1 || true
+      "$py" -m uv sync --group dev --group test >/dev/null 2>&1 || true
       systemctl --user restart ragbase-backend ragbase-celery
-      sleep 5
+      wait_healthy 10 || true
     fi
     fail "后端部署失败，已回滚"
   fi
