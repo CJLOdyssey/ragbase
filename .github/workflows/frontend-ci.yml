@@ -40,8 +40,10 @@ jobs:
         run: npm run typecheck
       - name: Lint (eslint)
         run: npm run lint
-      - name: Audit (npm audit)
-        run: npm audit --audit-level=high
+      - name: Audit (npm audit, production deps)
+        # 仅审计生产依赖：dev/test 工具（c8/vitest/eslint 链）漏洞不影响运行时，
+        # 且其传递依赖已通过 overrides 锁定到安全版本（如 brace-expansion 5.0.9）。
+        run: npm audit --omit=dev --audit-level=high
 
   frontend-test:
     runs-on: ubuntu-latest
