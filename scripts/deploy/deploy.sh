@@ -17,7 +17,9 @@ CURRENT_LINK="${WEB_ROOT}/ragbase"
 NGINX_CONF="/etc/nginx/conf.d/ragbase.conf"
 KEEP=3
 HEALTH_URL="http://127.0.0.1:8081/api/health"
-PUBLIC_URL="https://ragbase.odopen.top/"
+# 健康检查走本地 nginx 的 443（TLS 在本地终结），不依赖服务器出站网络。
+# 用 127.0.0.1 而非 localhost：nginx 只监听 IPv4，localhost 解析到 ::1 会拒绝连接。
+PUBLIC_URL="https://127.0.0.1/"
 
 SHA=""
 DIST_ARCHIVE=""
@@ -85,8 +87,8 @@ deploy_frontend() {
   nginx -t >/dev/null 2>&1 || fail "nginx 配置校验失败"
   systemctl reload nginx
 
-  # 健康检查：首页可取到且含应用标记（<title>RagBase</title>）
-  if curl -fsS --max-time 15 "$PUBLIC_URL" | grep -q "RagBase"; then
+  # 健康检查：本地 nginx 443 首页可取到且含应用标记（<title>RagBase</title>）
+  if curl -kfsS --max-time 15 -H "Host: ragbase.odopen.top" "$PUBLIC_URL" | grep -q "RagBase"; then
     log "前端健康检查通过"
   else
     log "前端健康检查失败，回滚软链"
