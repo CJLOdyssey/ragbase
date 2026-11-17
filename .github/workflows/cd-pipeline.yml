@@ -86,7 +86,12 @@ jobs:
           script: |
             set -e
             cd /root/projects/ragbase
-            git fetch origin --quiet
+            # 服务器到 github.com 偶发 TLS 抖动，fetch 失败时重试（最多 5 次）
+            for i in 1 2 3 4 5; do
+              if git fetch origin --quiet; then break; fi
+              echo "git fetch 第 $i 次失败，3 秒后重试"
+              sleep 3
+            done
             git reset --hard "$DEPLOY_SHA"
             bash scripts/deploy/deploy.sh \
               --sha "$DEPLOY_SHA" \
