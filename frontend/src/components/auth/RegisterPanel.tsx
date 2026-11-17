@@ -78,7 +78,7 @@ export default function RegisterPanel() {
   return (
     /* 与登录同构：AuthTwoColumn 左栏扫码 + 分隔线 + 右栏表单，仅字段不同 */
     <AuthTwoColumn>
-      <h4 className="mb-[21px] text-[14px] font-medium text-[#c8c8d2]">
+      <h4 className="mb-[21px] text-[14px] font-medium text-[var(--color-text-secondary)]">
         {t('auth.emailRegisterTitle')}
       </h4>
       <form onSubmit={handleSubmit} className="space-y-[13px]">
@@ -107,11 +107,11 @@ export default function RegisterPanel() {
         {error && <ErrorBanner message={error} />}
         <Agreement checked={agreed} onChange={setAgreed}>
           {t('auth.agreementPrefix')}{' '}
-          <a href="#" className="text-[#6f9bff] hover:underline">
+          <a href="#" className="text-[var(--color-accent)] hover:underline">
             {t('auth.termsOfService')}
           </a>{' '}
           {t('auth.and')}{' '}
-          <a href="#" className="text-[#6f9bff] hover:underline">
+          <a href="#" className="text-[var(--color-accent)] hover:underline">
             {t('auth.privacyPolicy')}
           </a>
         </Agreement>
