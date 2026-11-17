@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from typing import Any, ClassVar, Generic, TypeVar
 
 from core.infra.database import get_session_factory
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, OrderByList, UnaryExpression, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
@@ -28,7 +28,7 @@ ModelT = TypeVar("ModelT", bound=DeclarativeBase)
 class BaseRepository(Generic[ModelT]):
 
     model: ClassVar[type[ModelT]]
-    default_order: ClassVar[ColumnElement[Any] | None] = None
+    default_order: ClassVar[ColumnElement[Any] | UnaryExpression[Any] | OrderByList | None] = None
     session_factory: ClassVar[
         Callable[[], async_sessionmaker[AsyncSession]]
     ] = staticmethod(get_session_factory)

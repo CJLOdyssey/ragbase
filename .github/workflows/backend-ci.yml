@@ -12,6 +12,8 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/cd-pipeline.yml"
+      - "scripts/deploy/**"
   pull_request:
     branches: [main, develop]
     paths:
@@ -19,6 +21,8 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/cd-pipeline.yml"
+      - "scripts/deploy/**"
 
 concurrency:
   group: backend-ci-${{ github.ref }}

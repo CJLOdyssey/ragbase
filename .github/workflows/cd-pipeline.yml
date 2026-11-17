@@ -1,0 +1,94 @@
+# 生产部署（路线 B）：runner 构建前端 → scp dist → SSH 服务器部署
+#
+# 触发：push 到 main（受保护分支，只能由用户手动合并 PR 产生）
+# 前置：GitHub Secrets 需配置
+#   SERVER_HOST     服务器 IP（39.108.61.123）
+#   SERVER_USER     SSH 用户（root）
+#   SERVER_SSH_KEY  SSH 私钥内容（deploy key）
+#   SERVER_PORT     SSH 端口（可选，默认 22）
+# 环境：production（可在 repo Settings → Environments 加 required reviewers 做审批门）
+name: Deploy (production)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "scripts/deploy/**"
+      - ".github/workflows/cd-pipeline.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "部署范围"
+        required: true
+        default: all
+        type: choice
+        options: [all, frontend, backend]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Build frontend (tsc -b && vite build)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Package dist
+        run: tar czf dist.tar.gz -C frontend/dist .
+
+      - name: Upload dist to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          source: dist.tar.gz
+          target: /tmp/ragbase-deploy
+          rm: true
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+          DEPLOY_MODE: ${{ github.event.inputs.mode || 'all' }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          envs: DEPLOY_SHA,DEPLOY_MODE
+          command_timeout: 15m
+          script: |
+            set -e
+            cd /root/projects/ragbase
+            git fetch origin --quiet
+            git reset --hard "$DEPLOY_SHA"
+            bash scripts/deploy/deploy.sh \
+              --sha "$DEPLOY_SHA" \
+              --dist /tmp/ragbase-deploy/dist.tar.gz \
+              --mode "$DEPLOY_MODE"
